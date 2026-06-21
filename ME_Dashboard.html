@@ -732,11 +732,10 @@
       </div>
     </div>
   </div>
-</div>
 
   <!-- OPD MANUAL ENTRY -->
   <div class="page" id="page-opd-manual" style="padding:24px;overflow-y:auto;background:var(--bg)">
-    <div class="card" style="max-width:860px;margin:0 auto">
+    <div class="card">
       <div class="card-title">✏️ บันทึก ME รายการ OPD ด้วยตนเอง</div>
       <div style="font-size:14px;color:var(--text-light);margin-bottom:20px">
         ข้อมูลที่บันทึกจะแสดงในแดชบอร์ด OPD เช่นเดียวกับข้อมูลที่นำเข้าจาก HosXP
@@ -887,6 +886,7 @@
       </div>
     </div>
   </div>
+</div>
 
 <!-- ========== IPD SECTION ========== -->
 <div class="section" id="section-ipd">
@@ -1063,103 +1063,11 @@
       </div>
     </div>
   </div>
-</div>
 
-<!-- ========== ER SECTION ========== -->
-<div class="section" id="section-er">
-  <div class="section-header tab-bar">
-    <button class="tab-btn active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
-  <button class="tab-btn" onclick="showPage('entry',this)">➕ บันทึก ME</button>
-  <button class="tab-btn" onclick="showPage('rx-monthly',this)">💊 Rx รายเดือน</button>
-  <button class="tab-btn" onclick="showPage('records',this)">📋 รายการทั้งหมด</button>
-  <button class="tab-btn" onclick="showPage('guide',this)">📖 คู่มือ</button>
-  </div>
-  <!-- ========== DASHBOARD ========== -->
-<div class="page active" id="page-dashboard">
-
-  <!-- KPI Row 1: ME Summary -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">ME ทั้งหมด</div>
-      <div class="kpi-value" id="kpi-total">0</div>
-      <div class="kpi-sub">รายการสะสม</div>
-    </div>
-    <div class="kpi-card warn">
-      <div class="kpi-label">เดือนนี้</div>
-      <div class="kpi-value" id="kpi-month">0</div>
-      <div class="kpi-sub" id="kpi-month-label">รายการ</div>
-    </div>
-    <div class="kpi-card danger">
-      <div class="kpi-label">ระดับ E ขึ้นไป</div>
-      <div class="kpi-value" id="kpi-severe">0</div>
-      <div class="kpi-sub">มีผลต่อผู้ป่วย</div>
-    </div>
-    <div class="kpi-card success">
-      <div class="kpi-label">ระดับ A–D</div>
-      <div class="kpi-value" id="kpi-safe">0</div>
-      <div class="kpi-sub">ไม่มีผลต่อผู้ป่วย</div>
-    </div>
-    <div class="kpi-card purple">
-      <div class="kpi-label">ME Rate</div>
-      <div class="kpi-value" id="kpi-rate">—</div>
-      <div class="kpi-sub">ต่อ 1,000 ใบสั่งยา</div>
-    </div>
-    <div class="kpi-card warn">
-      <div class="kpi-label">ME นอกเวลา</div>
-      <div class="kpi-value" id="kpi-offhours">—</div>
-      <div class="kpi-sub">ME นอกเวลา / Rx ทั้งหมด</div>
-    </div>
-  </div>
-
-  <!-- Charts Row 1 -->
-  <div class="chart-grid">
-    <div class="chart-box">
-      <div class="card-title">ประเภทความคลาดเคลื่อน (ME Type)</div>
-      <canvas id="chart-me-type"></canvas>
-    </div>
-    <div class="chart-box">
-      <div class="card-title">ระดับความรุนแรง (NCC MERP)</div>
-      <canvas id="chart-severity"></canvas>
-    </div>
-    <div class="chart-box">
-      <div class="card-title">แนวโน้ม ME รายเดือน</div>
-      <canvas id="chart-trend"></canvas>
-    </div>
-    <div class="chart-box">
-      <div class="card-title">ขั้นตอนที่เกิด ME</div>
-      <canvas id="chart-stage"></canvas>
-    </div>
-  </div>
-
-  <!-- Charts Row 2 -->
-  <div class="chart-grid">
-    <div class="chart-box">
-      <div class="card-title">ยาที่พบบ่อย (Top 10)</div>
-      <canvas id="chart-drug"></canvas>
-    </div>
-    <div class="chart-box">
-      <div class="card-title">ช่วงเวลาที่เกิด ME</div>
-      <canvas id="chart-time"></canvas>
-    </div>
-  </div>
-
-  <!-- Charts Row 3: ER section -->
-  <div class="chart-grid">
-    <div class="chart-box">
-      <div class="card-title">🚨 ใบสั่งยา ER — จำนวน ME รายเดือน</div>
-      <canvas id="chart-er-monthly"></canvas>
-    </div>
-    <div class="chart-box">
-      <div class="card-title">⏰ % ME นอกเวลาราชการ (16.00–08.00 น.) รายเดือน</div>
-      <canvas id="chart-offhours-monthly"></canvas>
-    </div>
-  </div>
-
-</div>
 
   <!-- IPD MANUAL ENTRY -->
   <div class="page" id="page-ipd-manual" style="padding:24px;overflow-y:auto;background:var(--bg)">
-    <div class="card" style="max-width:860px;margin:0 auto">
+    <div class="card">
       <div class="card-title">✏️ บันทึก ME รายการ IPD ด้วยตนเอง</div>
       <div style="font-size:14px;color:var(--text-light);margin-bottom:20px">
         ข้อมูลที่บันทึกจะแสดงในแดชบอร์ด IPD เช่นเดียวกับข้อมูลที่นำเข้าจาก HosXP
@@ -1309,7 +1217,99 @@
         </div>
       </div>
     </div>
+</div>
+
+<!-- ========== ER SECTION ========== -->
+<div class="section" id="section-er">
+  <div class="section-header tab-bar">
+    <button class="tab-btn active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+  <button class="tab-btn" onclick="showPage('entry',this)">➕ บันทึก ME</button>
+  <button class="tab-btn" onclick="showPage('rx-monthly',this)">💊 Rx รายเดือน</button>
+  <button class="tab-btn" onclick="showPage('records',this)">📋 รายการทั้งหมด</button>
+  <button class="tab-btn" onclick="showPage('guide',this)">📖 คู่มือ</button>
   </div>
+  <!-- ========== DASHBOARD ========== -->
+<div class="page active" id="page-dashboard">
+
+  <!-- KPI Row 1: ME Summary -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">ME ทั้งหมด</div>
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-sub">รายการสะสม</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">เดือนนี้</div>
+      <div class="kpi-value" id="kpi-month">0</div>
+      <div class="kpi-sub" id="kpi-month-label">รายการ</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">ระดับ E ขึ้นไป</div>
+      <div class="kpi-value" id="kpi-severe">0</div>
+      <div class="kpi-sub">มีผลต่อผู้ป่วย</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label">ระดับ A–D</div>
+      <div class="kpi-value" id="kpi-safe">0</div>
+      <div class="kpi-sub">ไม่มีผลต่อผู้ป่วย</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">ME Rate</div>
+      <div class="kpi-value" id="kpi-rate">—</div>
+      <div class="kpi-sub">ต่อ 1,000 ใบสั่งยา</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">ME นอกเวลา</div>
+      <div class="kpi-value" id="kpi-offhours">—</div>
+      <div class="kpi-sub">ME นอกเวลา / Rx ทั้งหมด</div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="card-title">ประเภทความคลาดเคลื่อน (ME Type)</div>
+      <canvas id="chart-me-type"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">ระดับความรุนแรง (NCC MERP)</div>
+      <canvas id="chart-severity"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">แนวโน้ม ME รายเดือน</div>
+      <canvas id="chart-trend"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">ขั้นตอนที่เกิด ME</div>
+      <canvas id="chart-stage"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="card-title">ยาที่พบบ่อย (Top 10)</div>
+      <canvas id="chart-drug"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">ช่วงเวลาที่เกิด ME</div>
+      <canvas id="chart-time"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 3: ER section -->
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="card-title">🚨 ใบสั่งยา ER — จำนวน ME รายเดือน</div>
+      <canvas id="chart-er-monthly"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">⏰ % ME นอกเวลาราชการ (16.00–08.00 น.) รายเดือน</div>
+      <canvas id="chart-offhours-monthly"></canvas>
+    </div>
+  </div>
+  </div>
+</div>
 
 <!-- ========== ENTRY FORM ========== -->
 <div class="page" id="page-entry">
