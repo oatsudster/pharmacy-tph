@@ -239,22 +239,8 @@ tr:hover td { background: var(--bg); }
       <input type="text" id="s-an" placeholder="เช่น 6612345">
     </div>
     <div class="form-group">
-      <label>Ward</label>
-      <select id="s-ward">
-        <option value="">-- เลือก Ward --</option>
-        <option>ICU</option>
-        <option>ER</option>
-        <option>LR</option>
-        <option>ศัลยกรรม</option>
-        <option>อายุรกรรม</option>
-        <option>กุมารเวชกรรม</option>
-        <option>สูติกรรม</option>
-        <option>อื่น ๆ</option>
-      </select>
-    </div>
-    <div class="form-group">
       <label>ชื่อยา</label>
-      <input type="text" id="s-drug" placeholder="เช่น Morphine 5mg iv">
+      <input type="text" id="s-drug" placeholder="พิมพ์ชื่อยา..." list="drug-list" autocomplete="off">
     </div>
     <div class="form-group">
       <label>ระยะเวลารอคอย</label>
@@ -281,18 +267,6 @@ tr:hover td { background: var(--bg); }
     <div class="form-group">
       <label>เวลาโทรให้มารับรถยา</label>
       <input type="time" id="c-time-called" oninput="calcCart()">
-    </div>
-    <div class="form-group">
-      <label>Ward / หอผู้ป่วย</label>
-      <select id="c-ward">
-        <option value="">-- เลือก Ward --</option>
-        <option>ICU</option>
-        <option>ศัลยกรรม</option>
-        <option>อายุรกรรม</option>
-        <option>กุมารเวชกรรม</option>
-        <option>สูติกรรม</option>
-        <option>อื่น ๆ</option>
-      </select>
     </div>
     <div class="form-group">
       <label>ระยะเวลารอคอย</label>
@@ -342,10 +316,7 @@ tr:hover td { background: var(--bg); }
           <div class="chart-title">📈 ค่าเฉลี่ยรายเดือน (นาที)</div>
           <div class="chart-wrap"><canvas id="s-chart-monthly"></canvas></div>
         </div>
-        <div class="chart-card">
-          <div class="chart-title">🏥 Ward ที่รอนานเฉลี่ยสูงสุด</div>
-          <div class="chart-wrap"><canvas id="s-chart-ward"></canvas></div>
-        </div>
+
         <div class="chart-card wide">
           <div class="chart-title">💊 ยาที่ใช้เวลานานที่สุด (Top 10)</div>
           <div class="chart-wrap tall"><canvas id="s-chart-drug"></canvas></div>
@@ -395,10 +366,7 @@ tr:hover td { background: var(--bg); }
           <div class="chart-title">📈 ค่าเฉลี่ยรายเดือน (นาที)</div>
           <div class="chart-wrap"><canvas id="c-chart-monthly"></canvas></div>
         </div>
-        <div class="chart-card">
-          <div class="chart-title">🏥 Ward ที่รอนานเฉลี่ยสูงสุด</div>
-          <div class="chart-wrap"><canvas id="c-chart-ward"></canvas></div>
-        </div>
+
       </div>
 
       <div class="table-card">
@@ -512,12 +480,11 @@ function submitStat() {
   const tIn    = document.getElementById('s-time-in').value;
   const tOut   = document.getElementById('s-time-out').value;
   const an     = document.getElementById('s-an').value.trim();
-  const ward   = document.getElementById('s-ward').value;
   const drug   = document.getElementById('s-drug').value.trim();
   if (!date || !tIn || !tOut) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tIn, tOut);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
-  const rec = { id: 'stat_'+Date.now(), date, timeIn: tIn, timeOut: tOut, an, ward, drug, mins };
+  const rec = { id: 'stat_'+Date.now(), date, timeIn: tIn, timeOut: tOut, an, drug, mins };
   statRecords.push(rec);
   saveStatLocal();
   fbSaveStat();
@@ -531,11 +498,10 @@ function submitCart() {
   const date    = document.getElementById('c-date').value;
   const tSent   = document.getElementById('c-time-sent').value;
   const tCalled = document.getElementById('c-time-called').value;
-  const ward    = document.getElementById('c-ward').value;
   if (!date || !tSent || !tCalled) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tSent, tCalled);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
-  const rec = { id: 'cart_'+Date.now(), date, timeSent: tSent, timeCalled: tCalled, ward, mins };
+  const rec = { id: 'cart_'+Date.now(), date, timeSent: tSent, timeCalled: tCalled, mins };
   cartRecords.push(rec);
   saveCartLocal();
   fbSaveCart();
@@ -563,7 +529,6 @@ function clearStat() {
   document.getElementById('s-time-in').value = '';
   document.getElementById('s-time-out').value = '';
   document.getElementById('s-an').value = '';
-  document.getElementById('s-ward').value = '';
   document.getElementById('s-drug').value = '';
   document.getElementById('s-calc').textContent = '— นาที';
   document.getElementById('s-calc').className = 'calc-display';
@@ -573,7 +538,6 @@ function clearCart() {
   document.getElementById('c-date').value = today;
   document.getElementById('c-time-sent').value = '';
   document.getElementById('c-time-called').value = '';
-  document.getElementById('c-ward').value = '';
   document.getElementById('c-calc').textContent = '— นาที';
   document.getElementById('c-calc').className = 'calc-display';
 }
@@ -679,28 +643,6 @@ function renderStatCharts() {
     }
   });
 
-  // Ward avg
-  const wardData = groupByField(statRecords, 'ward');
-  destroyChart('s-ward');
-  chartInstances['s-ward'] = new Chart(document.getElementById('s-chart-ward'), {
-    type: 'bar',
-    data: {
-      labels: wardData.map(w => w.key || 'ไม่ระบุ'),
-      datasets: [{
-        label: 'ค่าเฉลี่ย (นาที)',
-        data: wardData.map(w => w.avg),
-        backgroundColor: '#C49A22', borderRadius: 6
-      }]
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, ticks: { font: { family: 'Noto Sans Thai' } } },
-        y: { ticks: { font: { family: 'Noto Sans Thai' } } }
-      }
-    }
-  });
 
   // Drug avg (top 10)
   const drugData = groupByField(statRecords, 'drug', 10);
@@ -751,27 +693,6 @@ function renderCartCharts() {
     }
   });
 
-  const wardData = groupByField(cartRecords, 'ward');
-  destroyChart('c-ward');
-  chartInstances['c-ward'] = new Chart(document.getElementById('c-chart-ward'), {
-    type: 'bar',
-    data: {
-      labels: wardData.map(w => w.key || 'ไม่ระบุ'),
-      datasets: [{
-        label: 'ค่าเฉลี่ย (นาที)',
-        data: wardData.map(w => w.avg),
-        backgroundColor: '#C49A22', borderRadius: 6
-      }]
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, ticks: { font: { family: 'Noto Sans Thai' } } },
-        y: { ticks: { font: { family: 'Noto Sans Thai' } } }
-      }
-    }
-  });
 }
 
 // ── TABLES ───────────────────────────────────────────────
@@ -791,7 +712,7 @@ function renderStatTable() {
   wrap.innerHTML = `<table>
     <thead><tr>
       <th>วันที่</th><th>รับ Copy</th><th>จ่ายยา</th>
-      <th>AN</th><th>Ward</th><th>ชื่อยา</th>
+      <th>AN</th><th>ชื่อยา</th>
       <th>นาที</th><th>ผล</th><th></th>
     </tr></thead>
     <tbody>${recs.map(r => `<tr>
@@ -799,7 +720,6 @@ function renderStatTable() {
       <td>${r.timeIn||'—'}</td>
       <td>${r.timeOut||'—'}</td>
       <td>${r.an||'—'}</td>
-      <td>${r.ward||'—'}</td>
       <td>${r.drug||'—'}</td>
       <td style="font-weight:700;color:${r.mins<=STAT_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=STAT_LIMIT?'badge-ok':'badge-over'}">${r.mins<=STAT_LIMIT?'ผ่าน':'เกิน'}</span></td>
@@ -820,13 +740,12 @@ function renderCartTable() {
   wrap.innerHTML = `<table>
     <thead><tr>
       <th>วันที่</th><th>เวลาส่งรถยา</th><th>เวลาโทรรับ</th>
-      <th>Ward</th><th>นาที</th><th>ผล</th><th></th>
+      <th>นาที</th><th>ผล</th><th></th>
     </tr></thead>
     <tbody>${recs.map(r => `<tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.timeSent||'—'}</td>
       <td>${r.timeCalled||'—'}</td>
-      <td>${r.ward||'—'}</td>
       <td style="font-weight:700;color:${r.mins<=CART_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=CART_LIMIT?'badge-ok':'badge-over'}">${r.mins<=CART_LIMIT?'ผ่าน':'เกิน'}</span></td>
       <td><button class="btn-del" onclick="deleteCart('${r.id}')">🗑</button></td>
@@ -950,5 +869,381 @@ function showToast(msg) {
   } else { fbLoadAll(); }
 })();
 </script>
+<datalist id="drug-list">
+  <option value="(0.5) HALOPERIDOL">
+  <option value="(100 ml) UNISON ENEMA">
+  <option value="(100) PHENYTOIN(dilantin) promt">
+  <option value="(2) Benzhexol">
+  <option value="(2) DIAZEPAM(valium)">
+  <option value="(2) HALOPERIDOL">
+  <option value="(200) Acyclovir">
+  <option value="(30) oseltamivir">
+  <option value="(325) paracetamol">
+  <option value="(45) oseltamivir">
+  <option value="(5) Benzhexol">
+  <option value="(5) DIAZEPAM(valium)">
+  <option value="(5) HALOPERIDOL">
+  <option value="(50) Phenytoin(Dilantin)">
+  <option value="(500) PARACETAMOL">
+  <option value="(75) oseltamivir">
+  <option value="(800) ACYCLOVIR">
+  <option value="(Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg">
+  <option value="(ยาใช้เฉพาะราย) Penicillin G Sodium">
+  <option value="10%D/N/2">
+  <option value="3%Sodium Chloride(NaCl)">
+  <option value="[ 81] aspirin(asa)">
+  <option value="[125] amoxycillin SYR">
+  <option value="[20] ENALAPRIL">
+  <option value="[250] Amoxy dry SYRUP">
+  <option value="[250] AmoxyCillin">
+  <option value="[250] diCloxacillin  cap">
+  <option value="[300] ASPIRIN(ASA/aspent)">
+  <option value="[500] AMOXICILLIN">
+  <option value="[500] DICLOXACILLIN CAP">
+  <option value="[5] eNAlapril">
+  <option value="ACETATE RINGER">
+  <option value="ACTIVATED CHARCOAL">
+  <option value="Adenosine (adenocor)">
+  <option value="ADRENALINE">
+  <option value="Albendazole (FALBEN)susp">
+  <option value="ALBENDAZOLE(zentel)">
+  <option value="ALCOHOL">
+  <option value="ALCOHOL  60 ml">
+  <option value="ALLOPURINOL(zyloric)">
+  <option value="AMIODARONE(Cordarone) (NL)">
+  <option value="amitriptyline(A10/tripta)">
+  <option value="Amlodipine">
+  <option value="AMMONIUM CARBONATE">
+  <option value="AMPICILLIN   1 g">
+  <option value="ANTACID SUSP(alum milk)">
+  <option value="ANTIVENUM SERA,(งูเห่า)">
+  <option value="ANTIVENUM SERUM (กะปะ)">
+  <option value="aP Acellular Pertussis (ไอกรน)">
+  <option value="Atarax(hydroxyzine)">
+  <option value="ATENOLOL">
+  <option value="ATROPINE">
+  <option value="Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg)">
+  <option value="Augmentin Susp">
+  <option value="BCG(bacillus calmette-gue rin)">
+  <option value="BENZATHINE PENICILLIN">
+  <option value="BENZYL BENZOATE">
+  <option value="BERODUAL">
+  <option value="BERODUAL">
+  <option value="BERODUAL ( MDI ) inhaler">
+  <option value="BETADINE (IODINE)">
+  <option value="BETADINE (IODINE)">
+  <option value="BETAMETHASONE(5g)">
+  <option value="Bromhexine elixir">
+  <option value="BUDESONIDE  (MDI)">
+  <option value="Buscopan inj (HYOSCINE  INJ)">
+  <option value="CAFERGOT (NL)">
+  <option value="CALAMINE">
+  <option value="calcium carbonate(CaCO3)">
+  <option value="CALCIUM GLUCONATE">
+  <option value="CAPTOPRIL  25 mg">
+  <option value="CARBAMAZEPINE(tegretol)">
+  <option value="Carbocisteine">
+  <option value="CeFaZOLIN injection">
+  <option value="CefTaZidime injection">
+  <option value="CefTRIAXone 1 g injection (CEF-3)">
+  <option value="CETIRIZINE (Alerest)">
+  <option value="CHLORAMPHENICOL EAR DROP">
+  <option value="Chlorhexidine mouth wash">
+  <option value="CHLORPROMAZINE(CPZ)">
+  <option value="CHLORTETRACYCLINE">
+  <option value="Ciprofloxacin">
+  <option value="CLINDAMYCIIN">
+  <option value="clindamycin  600 mg/vial.">
+  <option value="CLONAZEPAM(rivotril)">
+  <option value="Clopidogrel (Plavix)">
+  <option value="CLOTRIMAZOLE VAG TAB(canesten)">
+  <option value="CLOTRIMAZOLE(canesten)">
+  <option value="CLOXACILLIN INJ  1  g">
+  <option value="COLCHICINE">
+  <option value="COTRIMOXAZOLE(bactrim)">
+  <option value="COTRIMOXAZOLE(bactrim)">
+  <option value="Covid Vaccine(SARS-CoV-2)">
+  <option value="CPM">
+  <option value="CPM   tab.">
+  <option value="CPM(piriton)">
+  <option value="CYPROHEPTADINE(periactin)">
+  <option value="Cytotec">
+  <option value="D-5-S">
+  <option value="D-5-S/2">
+  <option value="D-5-S/3">
+  <option value="D-5-S/4">
+  <option value="D-5-S/5">
+  <option value="D-5-W">
+  <option value="D-5-W">
+  <option value="D-5-W">
+  <option value="D-5-W">
+  <option value="D-W-10">
+  <option value="Depakin (sodium valproate)">
+  <option value="DEXAMETHASONE">
+  <option value="DEXTRAN">
+  <option value="DEXTROMETHORPHAN 15">
+  <option value="DEXTROSE (glucose)">
+  <option value="DIAZEPAM(valium)">
+  <option value="DICLOFENAC (voltaren/fenac)">
+  <option value="Dicloxacillin syp.">
+  <option value="DIGOXIN">
+  <option value="DIGOXIN(lanoxin)">
+  <option value="DIMENHYDRINATE(dramamine)">
+  <option value="DIMENHYDRINATE(Dramamine)">
+  <option value="DIP. CLORAZEPATE(trancon/T5)">
+  <option value="Dolutegravir">
+  <option value="DOMPERIDONE(motilium)">
+  <option value="DOMPERIDONE(motilium)">
+  <option value="DOPAMINE">
+  <option value="Doxazosin">
+  <option value="DOXYCYCLINE">
+  <option value="DT(diphtheria tetanus) vaccines">
+  <option value="DTP">
+  <option value="DTP-HB">
+  <option value="DTP-HB-Hib vaccine">
+  <option value="EFAVIRENZ(EFV)">
+  <option value="ERIG (vinrab)">
+  <option value="ERYTHROMYCIN">
+  <option value="ETHAMBUTOL">
+  <option value="Favipiravir (covid-19)">
+  <option value="FERROUS  DROP">
+  <option value="FERROUS  FUMARATE">
+  <option value="Ferrous fumarate Susp.">
+  <option value="FLUCONAZOLE">
+  <option value="FLUNARIZINE(sibelium)">
+  <option value="Fluoxetine">
+  <option value="Fluphenazine(DECA)">
+  <option value="FLUPHENAZINE(deca)">
+  <option value="FOLIC  ACID">
+  <option value="FUROSEMIDE(lasix)">
+  <option value="FUROSEMIDE(lasix)">
+  <option value="GEMFIBROZIL(Lopid)">
+  <option value="GENTAMICIN  80 mg/amp.">
+  <option value="gliPIZIDE(minidiab)">
+  <option value="Glyceryl guaiacolate (GG)">
+  <option value="GPO vir S30">
+  <option value="GPO VIR Z 250">
+  <option value="Guaifenesin syrup (GG)">
+  <option value="HALOPERIDOL">
+  <option value="HCTZ(hydrochlorothiazide)">
+  <option value="HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้">
+  <option value="HI SET">
+  <option value="HISTA OPH(opsil A)">
+  <option value="HPV vaccine">
+  <option value="Hydralazine  Hcl">
+  <option value="Hydralazine HCl">
+  <option value="Hydrocortisone sodium  succinate">
+  <option value="HYOSCINE(buscopan)">
+  <option value="HYOSICNE(buscopan)">
+  <option value="Ibuprofen (brufen)">
+  <option value="IBUPROFEN(brufen)">
+  <option value="IMIPRAMINE(tofranil)">
+  <option value="IMPLANON  implant">
+  <option value="Inactivated Poliomyelitis Vaccine(IPV)">
+  <option value="influenza ตามฤดูกาล">
+  <option value="INH(isoniazid)">
+  <option value="ISODIL  SL">
+  <option value="ISODIL  TAB">
+  <option value="Isoniazid 300 mg">
+  <option value="Isoniazid+Rifapentine">
+  <option value="JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml">
+  <option value="JE VACCINE(0.5 ML)">
+  <option value="K Y jelly sack">
+  <option value="KALIMATE">
+  <option value="KETOCONAZOLE(nizoral)">
+  <option value="KOCITAF (DTG50mg+FTC200mg+TAF25mg)">
+  <option value="Lamivudine">
+  <option value="Lamivudine 3TC">
+  <option value="Levodopa250 + carbidopa 25">
+  <option value="LevoFloxacin">
+  <option value="Lidocain injection">
+  <option value="LIDOCAINE">
+  <option value="LITHIUM CARBONATE(LiCO3) (NL)">
+  <option value="Lopinavir/Ritonavir">
+  <option value="Lorazepam">
+  <option value="Losartan (cozaar)">
+  <option value="M tussis ( brown mixt )">
+  <option value="M. CARMINATIVE">
+  <option value="M.tussis (brown mixt)">
+  <option value="MAGNESIUM SULFATE">
+  <option value="MAGNESIUM SULFATE">
+  <option value="MEDROXYPROGESTERONE ACETATE(depo)">
+  <option value="METFORMIN(glucophage)">
+  <option value="Methimazole">
+  <option value="METHYLDOPA(aldomet)">
+  <option value="METHYLERGOMETRINE(Methergin)">
+  <option value="METOCLOPRAMIDE(plasil)">
+  <option value="METOCLOPRAMIDE(plasil)">
+  <option value="Metoprolol tartrate">
+  <option value="METRONIDAZOLE(flagyl)">
+  <option value="METRONIDAZOLE(flagyl) 500 mg/vial.">
+  <option value="Micronised progesterone">
+  <option value="MILK OF MAGNESIA(MOM)">
+  <option value="Mixtard (ขวด)">
+  <option value="mixtard STAT">
+  <option value="MMR">
+  <option value="Molnupiravir">
+  <option value="MORPHINE">
+  <option value="Morphine MST">
+  <option value="Morphine Solution">
+  <option value="MR">
+  <option value="MTV-MULTIVITAMINS">
+  <option value="NaCl (Sodium Chloride)">
+  <option value="NALOXONE(narcan)">
+  <option value="Nevirapine">
+  <option value="NIFEDIPINE SR">
+  <option value="Norepinephrine bitartrate 4 ml/">
+  <option value="NORFLOXACIN(lexinor)">
+  <option value="Norgesic(Orphenadrine35mg/paracetamol500mg)">
+  <option value="NPH (ขวด)">
+  <option value="NPH INSULIN">
+  <option value="NSS 5 ml">
+  <option value="NSS INJ.">
+  <option value="NSS INJ.">
+  <option value="OLIVE OIL">
+  <option value="Omeprazole 10 ml">
+  <option value="OMEPRAZOLE(losec/miracid)">
+  <option value="Ondansetron inj">
+  <option value="OPV vaccine">
+  <option value="ORS(รสส้ม) 75">
+  <option value="OXYTOCIN">
+  <option value="PARACETAMOL  SYR">
+  <option value="PARACETAMOL SYRUP">
+  <option value="PCEC (ID)">
+  <option value="PCEC (IM)">
+  <option value="PERPHENAZINE(สีไข่ไก่)">
+  <option value="PETHIDINE">
+  <option value="PHENOBARBITAL(1 GRAIN)">
+  <option value="Phenytoin inj">
+  <option value="Pioglitazone">
+  <option value="PolyOPH">
+  <option value="POTASSIUM (KCL elixir)">
+  <option value="Potassium Chloride tab">
+  <option value="POTASSIUM CHLORIDE(KCl)">
+  <option value="PREDNISOLONE">
+  <option value="prednisolone cream">
+  <option value="Primolut-N(norethisterone 5 mg)">
+  <option value="PROCTOSEDYL">
+  <option value="propranolol(inderal)">
+  <option value="PTU(propylthiouracil)">
+  <option value="PZA(pyrazinamide)">
+  <option value="QUININE SULFATE">
+  <option value="R-DEN(คุมเม็ด)">
+  <option value="RABIES ANTISERUM(ERIG)">
+  <option value="RI  STAT (REGULAR INSULIN )">
+  <option value="RIFAMPICIN">
+  <option value="RIFAMPICIN">
+  <option value="Rifapentine">
+  <option value="Rifinah (Rifam+INH)">
+  <option value="Risperidone">
+  <option value="ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง)">
+  <option value="ROXITHROMYCIN(rulid)">
+  <option value="SALBUTAMOL">
+  <option value="SALBUTAMOL">
+  <option value="SALBUTAMOL  NB (ER)">
+  <option value="SALBUTAMOL NB.">
+  <option value="SALBUTAMOL(ventolin) MDI">
+  <option value="Saline IRRIGATE">
+  <option value="SELENIUM shampoo">
+  <option value="SeRoflo   (MDI)">
+  <option value="Sertraline">
+  <option value="SILVER SULFADIAZINE (25g)">
+  <option value="SIMETHICONE  (air-x)">
+  <option value="SIMETHICONE DROP SUS">
+  <option value="SimVastatin(zocor) (NL)">
+  <option value="Sodamint (Sodium bicarbonate)">
+  <option value="SODIUM BICARBONATE 7.5%(NaHCO3)">
+  <option value="SODIUM BICARBONATE(NaHCO3)">
+  <option value="spironolactone (Aldactone)">
+  <option value="STERILEWATER (SWI)">
+  <option value="Streptokinase">
+  <option value="STREPTOMYCIN SULPHATE">
+  <option value="Teevir">
+  <option value="Tenofovia disoproxil">
+  <option value="TERBUTALINE SULFATE(bricanyl)">
+  <option value="tetracain eye drop">
+  <option value="Theophylline-CR">
+  <option value="THYROXINE-L">
+  <option value="TLD (TDF300mg+3TC300mg+DTG50mg)">
+  <option value="TRAMADOL HCl(tramal)">
+  <option value="TRAMADOL inj">
+  <option value="Tranexamic acid">
+  <option value="TRIAMCINOLONE">
+  <option value="TRIAMCINOLONE">
+  <option value="Triamcinolone Oral Paste">
+  <option value="TRIAMCINOLONE+XYLOCAINE(IL)(kenacort)">
+  <option value="Triferdine">
+  <option value="UNISON">
+  <option value="UNISON ENEMA">
+  <option value="Varenicline Tartrate">
+  <option value="Varenicline Tartrate">
+  <option value="VERORAB ( ID )">
+  <option value="VERORAB ( IM )">
+  <option value="VIT B6(pyridoxine)">
+  <option value="VITAMIN B 1/6/12">
+  <option value="VITAMIN B COMPLEX">
+  <option value="vitamin c">
+  <option value="VITAMIN K1">
+  <option value="WATER FOR INJECTION">
+  <option value="Whitfields ointment">
+  <option value="Zidovudine  (AZT)">
+  <option value="Zidovudine (AZT)">
+  <option value="Zidovudine (AZT)">
+  <option value="Zilarvir (Lamivudine150mg+Zidovudine300mg)">
+  <option value="กานพลู">
+  <option value="ขมิ้นชัน แคปซูล KMC">
+  <option value="ขวดยา">
+  <option value="ขวดยา">
+  <option value="ขวดยา">
+  <option value="ขิง">
+  <option value="ครีมพญายอ">
+  <option value="จันทน์ลีลา ซองละ 24 แคปซูล">
+  <option value="เจลว่านหางจระเข้">
+  <option value="ชุมเห็ดเทศ">
+  <option value="ตรีผลาTPL">
+  <option value="เถาวัลย์เปรียง TWP">
+  <option value="น้ำมันกัญชา">
+  <option value="น้ำมันไพลPLI">
+  <option value="เพชรสังฆาต PSK">
+  <option value="ฟ้าทะลายโจร FTJ">
+  <option value="มะขามป้อม MKP">
+  <option value="ยาแก้ลมจับเส้น">
+  <option value="ยาแก้ลมอัมพฤกษ์AMP">
+  <option value="ยาเขียวหอมKH">
+  <option value="ยาเดิม (Manidipine )">
+  <option value="ยาเดิม (Natear(Artificial Tears))">
+  <option value="ยาเดิม(Acetylcysteine)">
+  <option value="ยาเดิม(Amlodipine)">
+  <option value="ยาเดิม(Atorvastatin)">
+  <option value="ยาเดิม(Azithromycin)">
+  <option value="ยาเดิม(Azitromycin Dry syrup)">
+  <option value="ยาเดิม(Betahistine)">
+  <option value="ยาเดิม(Carvedilol)">
+  <option value="ยาเดิม(Gabapentin)">
+  <option value="ยาเดิม(Hydralazine)">
+  <option value="ยาเดิม(Hypercrit)">
+  <option value="ยาเดิม(Lorazepam)">
+  <option value="ยาเดิม(Meropenem inj.)">
+  <option value="ยาเดิม(Risperidone)">
+  <option value="ยาเดิม(Vancomycin inj.)">
+  <option value="ยาเดิม(Warfarin)">
+  <option value="ยาเดิม.............................">
+  <option value="ยาธาตุบรรจบ">
+  <option value="ยาธาตุอบเชยOS">
+  <option value="ยาประสะจันทน์แดง ซองละ 12 แคปซูล">
+  <option value="ยาประสะไพลPSP">
+  <option value="ยามันทธาตุ">
+  <option value="ยาระบายมะขามแขก(senokot)">
+  <option value="ยาเลือดงามLH">
+  <option value="ยาศุขไสยาศน์">
+  <option value="ยาสหัสธาราSHTR">
+  <option value="ยาหอมเทพจิตรTPJ">
+  <option value="ยาหอมนวโกฐNVK">
+  <option value="ยาห้าราก ซองละ 9 แคปซูล">
+  <option value="ยาเหลืองปิดสมุทร">
+  <option value="ยาอมมะแว้ง MW">
+  <option value="รางจืด RJ">
+  <option value="ลูกประคบสมุนไพร">
+</datalist>
 </body>
 </html>
