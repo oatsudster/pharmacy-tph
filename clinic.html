@@ -1085,7 +1085,7 @@ function filterLeftoverCards() {
       <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;
         border-radius:10px;padding:10px 14px;min-width:0">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#065f46;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.drug||''}</div>
+          <div style="font-size:13px;font-weight:700;color:#065f46;word-break:break-word;line-height:1.4">${l.drug||''}</div>
           ${l.priceUnit>0?`<div style="font-size:11px;color:#6b7280">฿${l.priceUnit}/หน่วย</div>`:''}
         </div>
         <div style="text-align:center;flex-shrink:0">
