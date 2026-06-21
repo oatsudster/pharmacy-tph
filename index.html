@@ -360,6 +360,47 @@ footer {
       </div>
     </div>
 
+    <!-- Waiting Time -->
+    <div class="app-card" onclick="window.location.href='waiting-time.html'">
+      <div class="card-stripe" style="background:linear-gradient(135deg,#0e7490,#0891b2)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#e0f2fe;color:#0e7490;font-size:22px">⏱️</div>
+          <div class="card-title-wrap">
+            <h2>ระยะเวลารอคอยยา</h2>
+            <div class="en">WAITING TIME MONITORING</div>
+          </div>
+        </div>
+        <p class="card-desc">บันทึกและวิเคราะห์ระยะเวลารอคอยยา Stat Dose (≤10 นาที) และรถยา IPD (≤60 นาที) พร้อม dashboard รายเดือน</p>
+        <div class="card-tags">
+          <span class="tag" style="background:#e0f2fe;color:#0e7490">Stat Dose</span>
+          <span class="tag tag-purple">รถยา IPD</span>
+          <span class="tag tag-green">% ผ่านเกณฑ์</span>
+          <span class="tag tag-gold">แนวโน้ม</span>
+        </div>
+      </div>
+      <div class="card-stat-bar" style="background:#f0f9ff;border-top:1px solid #bae6fd">
+        <div class="stat-item">
+          <div class="stat-val" id="wt-stat-total" style="color:#0e7490">—</div>
+          <div class="stat-lbl">Stat ทั้งหมด</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="wt-stat-pass" style="color:#16a34a">—</div>
+          <div class="stat-lbl">% ผ่านเกณฑ์ Stat</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="wt-cart-total" style="color:#0e7490">—</div>
+          <div class="stat-lbl">รถยา IPD</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="wt-updated"></span>
+        <a href="waiting-time.html" class="open-btn" style="background:#0e7490" onclick="event.stopPropagation()">เปิดแอป →</a>
+      </div>
+    </div>
+
     <!-- DM Remission -->
     <div class="app-card" onclick="window.location.href='dm/index.html'">
       <div class="card-stripe gold"></div>
@@ -456,51 +497,73 @@ footer {
     'วัน'+days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543);
 })();
 
-// Quick stats from localStorage (same origin — works when all files in same folder)
-try {
-  const meER  = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
-  const meHX  = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
-  const meOPD = meHX.filter(r => r.dept === 'OPD');
-  const meIPD = meHX.filter(r => r.dept === 'IPD');
-  const meTotal = meER.length + meHX.length;
-
+function updateStats() {
   const g = id => document.getElementById(id);
-  if (meTotal) {
-    g('me-total').textContent = meTotal.toLocaleString();
-    g('me-er').textContent    = meER.length.toLocaleString();
-    g('me-opd').textContent   = meOPD.length.toLocaleString();
-    g('me-ipd').textContent   = meIPD.length.toLocaleString();
-    // last record date
-    const allDates = [...meER, ...meHX].map(r=>r.date).filter(Boolean).sort();
-    if (allDates.length) {
-      const ld = allDates[allDates.length-1].split('-');
-      const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-      g('me-updated').textContent = 'ข้อมูลล่าสุด '+parseInt(ld[2])+' '+months[parseInt(ld[1])-1]+' '+(parseInt(ld[0])+543);
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // ME stats
+  try {
+    const meER  = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
+    const meHX  = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
+    const meOPD = meHX.filter(r => r.dept === 'OPD');
+    const meIPD = meHX.filter(r => r.dept === 'IPD');
+    const meTotal = meER.length + meHX.length;
+    if (meTotal) {
+      g('me-total').textContent = meTotal.toLocaleString();
+      g('me-er').textContent    = meER.length.toLocaleString();
+      g('me-opd').textContent   = meOPD.length.toLocaleString();
+      g('me-ipd').textContent   = meIPD.length.toLocaleString();
+      const allDates = [...meER, ...meHX].map(r=>r.date).filter(Boolean).sort();
+      if (allDates.length) {
+        const ld = allDates[allDates.length-1].split('-');
+        g('me-updated').textContent = 'ข้อมูลล่าสุด '+parseInt(ld[2])+' '+months[parseInt(ld[1])-1]+' '+(parseInt(ld[0])+543);
+      }
+    } else {
+      g('me-total').textContent = '—';
+      g('me-er').textContent = '—'; g('me-opd').textContent = '—'; g('me-ipd').textContent = '—';
+      g('me-updated').textContent = 'ยังไม่มีข้อมูล';
     }
-  } else {
-    g('me-total').textContent = '—';
-    g('me-er').textContent = '—'; g('me-opd').textContent = '—'; g('me-ipd').textContent = '—';
-    g('me-updated').textContent = 'ยังไม่มีข้อมูล';
-  }
-} catch(e) {}
+  } catch(e) {}
 
-try {
-  const dmPt = JSON.parse(localStorage.getItem('dm_patients') || '[]');
-  const dmVs = JSON.parse(localStorage.getItem('dm_visits')   || '[]');
-  const g = id => document.getElementById(id);
-  if (dmPt.length) {
-    g('dm-patients').textContent  = dmPt.length.toLocaleString();
-    g('dm-visits').textContent    = dmVs.length.toLocaleString();
-    const remission = dmPt.filter(p => p.remission || p.status === 'remission').length;
-    g('dm-remission').textContent = remission > 0 ? remission : '—';
-    g('dm-updated').textContent   = 'ผู้ป่วย '+dmPt.length+' ราย';
-  } else {
-    g('dm-patients').textContent = '—';
-    g('dm-visits').textContent   = '—';
-    g('dm-remission').textContent= '—';
-    g('dm-updated').textContent  = 'ยังไม่มีข้อมูล';
-  }
-} catch(e) {}
+  // Waiting time stats
+  try {
+    const wtStat = JSON.parse(localStorage.getItem('wt_stat') || '[]');
+    const wtCart = JSON.parse(localStorage.getItem('wt_cart') || '[]');
+    const g = id => document.getElementById(id);
+    g('wt-stat-total').textContent = wtStat.length || '—';
+    g('wt-cart-total').textContent = wtCart.length || '—';
+    if (wtStat.length) {
+      const pass = Math.round(wtStat.filter(r=>r.mins<=10).length/wtStat.length*100);
+      g('wt-stat-pass').textContent = pass + '%';
+    }
+    if (wtStat.length || wtCart.length) {
+      g('wt-updated').textContent = 'Stat ' + wtStat.length + ' | รถยา ' + wtCart.length + ' รายการ';
+    }
+  } catch(e) {}
+
+  // DM stats
+  try {
+    const dmPt = JSON.parse(localStorage.getItem('dm_patients') || '[]');
+    const dmVs = JSON.parse(localStorage.getItem('dm_visits')   || '[]');
+    if (dmPt.length) {
+      g('dm-patients').textContent  = dmPt.length.toLocaleString();
+      g('dm-visits').textContent    = dmVs.length.toLocaleString();
+      const remission = dmPt.filter(p => p.remission || p.status === 'remission').length;
+      g('dm-remission').textContent = remission > 0 ? remission.toLocaleString() : '—';
+      g('dm-updated').textContent   = 'ผู้ป่วย '+dmPt.length+' ราย';
+    } else {
+      g('dm-patients').textContent = '—';
+      g('dm-visits').textContent   = '—';
+      g('dm-remission').textContent= '—';
+      g('dm-updated').textContent  = 'ยังไม่มีข้อมูล';
+    }
+  } catch(e) {}
+}
+
+// Run on load and every time user comes back to this tab
+updateStats();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateStats(); });
+window.addEventListener('focus', updateStats);
 </script>
 </body>
 </html>
