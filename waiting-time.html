@@ -225,8 +225,8 @@ tr:hover td { background: var(--bg); }
     <div class="form-group">
       <label>วันที่</label>
       <div style="display:flex;align-items:center;gap:6px">
-      <input type="date" id="s-date" style="flex:1">
-      <button type="button" onclick="document.getElementById('s-date').value=new Date().toISOString().split('T')[0]" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+      <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+      <button type="button" onclick="document.getElementById('s-date').value=todayTH()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
     </div>
     </div>
     <div class="form-group">
@@ -270,8 +270,8 @@ tr:hover td { background: var(--bg); }
     <div class="form-group">
       <label>วันที่</label>
       <div style="display:flex;align-items:center;gap:6px">
-      <input type="date" id="c-date" style="flex:1">
-      <button type="button" onclick="document.getElementById('c-date').value=new Date().toISOString().split('T')[0]" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+      <input type="text" id="c-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+      <button type="button" onclick="document.getElementById('c-date').value=todayTH()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
     </div>
     </div>
     <div class="form-group">
@@ -421,9 +421,8 @@ let chartInstances = {};
 
 // ── INIT ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('s-date').value = today;
-  document.getElementById('c-date').value = today;
+  document.getElementById('s-date').value = todayTH();
+  document.getElementById('c-date').value = todayTH();
   document.getElementById('badge-year').textContent = new Date().getFullYear() + 543;
   buildMonthFilter();
   renderAll();
@@ -466,6 +465,26 @@ function filterByMonth(recs) {
   return recs.filter(r => r.date && r.date.startsWith(activeMonth));
 }
 
+
+// ── Thai Date Helpers (พ.ศ. DD/MM/YY) ────────
+function todayTH() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thToISO(s) {
+  if (!s || !s.includes('/')) return s||'';
+  const [dd,mm,yy] = s.trim().split('/');
+  if (!dd||!mm||!yy) return '';
+  const ce = (yy.length<=2 ? 2500+parseInt(yy) : parseInt(yy)) - 543;
+  return `${ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function autoDateTH(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+// ─────────────────────────────────────────────
 // ── TIME CALC ────────────────────────────────────────────
 function stampNow(id) {
   const now = new Date();
@@ -509,7 +528,7 @@ function calcCart() {
 
 // ── SUBMIT STAT ──────────────────────────────────────────
 function submitStat() {
-  const date   = document.getElementById('s-date').value;
+  const date   = thToISO(document.getElementById('s-date').value);
   const tIn    = document.getElementById('s-time-in').value;
   const tOut   = document.getElementById('s-time-out').value;
   const an     = document.getElementById('s-an').value.trim();
@@ -528,7 +547,7 @@ function submitStat() {
 
 // ── SUBMIT CART ──────────────────────────────────────────
 function submitCart() {
-  const date    = document.getElementById('c-date').value;
+  const date    = thToISO(document.getElementById('c-date').value);
   const tSent   = document.getElementById('c-time-sent').value;
   const tCalled = document.getElementById('c-time-called').value;
   if (!date || !tSent || !tCalled) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
@@ -557,8 +576,7 @@ function deleteCart(id) {
 
 // ── CLEAR ────────────────────────────────────────────────
 function clearStat() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('s-date').value = today;
+  document.getElementById('s-date').value = todayTH();
   document.getElementById('s-time-in').value = '';
   document.getElementById('s-time-out').value = '';
   document.getElementById('s-an').value = '';
@@ -567,8 +585,7 @@ function clearStat() {
   document.getElementById('s-calc').className = 'calc-display';
 }
 function clearCart() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('c-date').value = today;
+  document.getElementById('c-date').value = todayTH();
   document.getElementById('c-time-sent').value = '';
   document.getElementById('c-time-called').value = '';
   document.getElementById('c-calc').textContent = '— นาที';
