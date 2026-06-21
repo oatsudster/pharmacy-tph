@@ -2012,7 +2012,7 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
       }]
     },
     options: {
-      indexAxis: horizontal ? 'y' : 'x',
+      ...(type!=='doughnut'&&type!=='pie' ? {indexAxis: horizontal ? 'y' : 'x'} : {}),
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: isMulti, position:'bottom' },
@@ -2921,6 +2921,11 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fbLoadAll() {
     setSyncStatus('🔄 กำลังโหลดข้อมูล...', 'loading');
     try {
+      // Reload from localStorage first (in case page init ran before data was set)
+      const lsER = JSON.parse(localStorage.getItem('me_records_v2')||'[]');
+      if (lsER.length > records.length) { records = lsER; }
+      const lsHX = JSON.parse(localStorage.getItem('hosxp_records')||'[]');
+      if (lsHX.length > hosxpRecords.length) { hosxpRecords = lsHX; }
       let changed = false;
 
       // ER records
