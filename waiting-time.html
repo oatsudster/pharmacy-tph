@@ -250,8 +250,10 @@ tr:hover td { background: var(--bg); }
       <input type="text" id="s-an" placeholder="เช่น 6612345">
     </div>
     <div class="form-group">
-      <label>ชื่อยา</label>
-      <input type="text" id="s-drug" placeholder="พิมพ์ชื่อยา..." list="drug-list" autocomplete="off">
+      <label>ชื่อยา (สูงสุด 3 รายการ)</label>
+      <input type="text" id="s-drug-1" placeholder="ยาที่ 1" list="drug-list" autocomplete="off" style="margin-bottom:5px">
+      <input type="text" id="s-drug-2" placeholder="ยาที่ 2 (ถ้ามี)" list="drug-list" autocomplete="off" style="margin-bottom:5px">
+      <input type="text" id="s-drug-3" placeholder="ยาที่ 3 (ถ้ามี)" list="drug-list" autocomplete="off">
     </div>
     <div class="form-group">
       <label>ระยะเวลารอคอย</label>
@@ -532,7 +534,7 @@ function submitStat() {
   const tIn    = document.getElementById('s-time-in').value;
   const tOut   = document.getElementById('s-time-out').value;
   const an     = document.getElementById('s-an').value.trim();
-  const drug   = document.getElementById('s-drug').value.trim();
+  const drug   = [1,2,3].map(n=>document.getElementById('s-drug-'+n).value.trim()).filter(Boolean).join(', ');
   if (!date || !tIn || !tOut) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tIn, tOut);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
@@ -580,7 +582,7 @@ function clearStat() {
   document.getElementById('s-time-in').value = '';
   document.getElementById('s-time-out').value = '';
   document.getElementById('s-an').value = '';
-  document.getElementById('s-drug').value = '';
+  [1,2,3].forEach(n=>{ document.getElementById('s-drug-'+n).value=''; });
   document.getElementById('s-calc').textContent = '— นาที';
   document.getElementById('s-calc').className = 'calc-display';
 }
@@ -821,9 +823,12 @@ function groupByMonth(recs) {
 function groupByField(recs, field, limit = 999) {
   const map = {};
   recs.forEach(r => {
-    const k = r[field] || '';
-    if (!map[k]) map[k] = [];
-    map[k].push(r.mins);
+    // Support comma-separated drug names (up to 3 per record)
+    const keys = (r[field] || '').split(',').map(s=>s.trim()).filter(Boolean);
+    (keys.length ? keys : ['']).forEach(k => {
+      if (!map[k]) map[k] = [];
+      map[k].push(r.mins);
+    });
   });
   return Object.keys(map)
     .map(k => ({ key: k, avg: Math.round(map[k].reduce((s,v)=>s+v,0)/map[k].length*10)/10, count: map[k].length }))
