@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คลินิกเภสัชกรรม — รพ.ถ้ำพรรณรา</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
+  --primary-light:#EAF4EE;--gold:#C49A22;--gold-light:#FBF3DC;
+  --success:#16a34a;--danger:#b91c1c;--warning:#b45309;
+  --info:#0e7490;--info-light:#e0f2fe;
+  --ht:#7c3aed;--ht-light:#ede9fe;
+  --dm:#0e7490;--dm-light:#e0f2fe;
+  --copd:#c2410c;--copd-light:#ffedd5;
+  --bg:#F4F7F5;--surface:#fff;--border:#D6E4DA;
+  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#7A9A85;
+  font-family:'Noto Sans Thai',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;
+  display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(26,94,56,.07);flex-shrink:0;position:sticky;top:0;z-index:100;}
+.topbar-home{display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;
+  padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;}
+.topbar-home:hover{background:var(--primary-dark);}
+.topbar-title{font-size:17px;font-weight:700;color:var(--primary-dark);flex:1;}
+.topbar-badge{background:var(--gold);color:#fff;font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px;flex-shrink:0;}
+.sync-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:#f3f4f6;color:#6b7280;flex-shrink:0;transition:all .3s;}
+.topbar-btns{display:flex;gap:6px;}
+.tbtn{padding:6px 11px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-mid);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.tbtn:hover{border-color:var(--primary);color:var(--primary);}
+
+.tab-bar{display:flex;background:var(--surface);border-bottom:2px solid var(--border);padding:0 20px;flex-shrink:0;}
+.tab-btn{padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;border:none;background:none;
+  color:var(--text-mid);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .18s;font-family:inherit;}
+.tab-btn.active,.tab-btn:hover{color:var(--primary);}
+.tab-btn.active{border-bottom-color:var(--primary);}
+.tab-btn.ht.active,.tab-btn.ht:hover{color:var(--ht);border-bottom-color:var(--ht);}
+.tab-btn.dm.active,.tab-btn.dm:hover{color:var(--dm);border-bottom-color:var(--dm);}
+.tab-btn.copd.active,.tab-btn.copd:hover{color:var(--copd);border-bottom-color:var(--copd);}
+
+.page-wrap{display:flex;flex:1;overflow:hidden;}
+.sidebar-form{width:310px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+  padding:14px;overflow-y:auto;height:calc(100vh - 104px);position:sticky;top:104px;}
+.main-content{flex:1;padding:18px;overflow-y:auto;}
+
+.form-title{font-size:13px;font-weight:700;color:var(--primary-dark);margin-bottom:10px;}
+.form-group{margin-bottom:8px;}
+.form-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:3px;letter-spacing:.02em;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;
+  font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border .15s;}
+.form-group textarea{resize:vertical;min-height:48px;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);background:#fff;}
+.input-row{display:flex;gap:5px;align-items:flex-end;}
+.input-row>.form-group{flex:1;margin-bottom:0;}
+.btn-stamp{padding:6px 8px;background:var(--primary-light);border:1.5px solid var(--border);
+  border-radius:7px;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit;color:var(--primary);font-weight:600;transition:all .15s;}
+.btn-stamp:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn-submit{width:100%;padding:8px;background:var(--primary);color:#fff;border:none;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .2s;}
+.btn-submit:hover{background:var(--primary-dark);}
+.btn-clear{width:100%;padding:6px;background:none;color:var(--text-mid);border:1.5px solid var(--border);
+  border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px;transition:all .2s;}
+.btn-clear:hover{border-color:var(--danger);color:var(--danger);}
+.btn-add{padding:4px 10px;border:1.5px dashed var(--primary);border-radius:6px;background:var(--primary-light);
+  color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-add:hover{background:var(--primary);color:#fff;}
+.divider{border:none;border-top:1px solid var(--border);margin:10px 0;}
+.section-lbl{font-size:10px;font-weight:700;color:var(--text-light);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+
+/* DRP rows */
+.drp-row{display:flex;gap:4px;margin-bottom:6px;align-items:flex-start;}
+.drp-row .drp-inner{flex:1;display:flex;flex-direction:column;gap:3px;}
+.drp-row select,.drp-row input{width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:11px;font-family:inherit;background:var(--bg);outline:none;}
+.drp-row select:focus,.drp-row input:focus{border-color:var(--primary);}
+.btn-rm{padding:4px 7px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);
+  color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .15s;}
+.btn-rm:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+/* Leftover rows */
+.lo-row{display:flex;gap:4px;margin-bottom:5px;align-items:center;}
+.lo-row .lo-drug{flex:2;}
+.lo-row .lo-qty{width:56px;flex-shrink:0;}
+.lo-row .lo-unit{width:40px;flex-shrink:0;font-size:10px;}
+.lo-row .lo-price{font-size:10px;color:var(--success);font-weight:700;min-width:38px;text-align:right;flex-shrink:0;}
+.lo-row input{padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg);outline:none;}
+.lo-row input:focus{border-color:var(--primary);}
+
+.lo-total-row{display:flex;justify-content:flex-end;font-size:11px;font-weight:700;color:var(--success);margin-top:4px;}
+
+/* Session section */
+.session-toggle{width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);
+  color:var(--text-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;
+  display:flex;justify-content:space-between;align-items:center;transition:all .15s;}
+.session-toggle:hover{border-color:var(--primary-mid);color:var(--primary);}
+.session-panel{display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);}
+.session-panel.open{display:block;}
+.btn-session{width:100%;padding:7px;background:#4f46e5;color:#fff;border:none;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .2s;}
+.btn-session:hover{background:#3730a3;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.kpi-card{background:var(--surface);border-radius:12px;padding:14px 16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);}
+.kpi-label{font-size:11px;color:var(--text-mid);font-weight:600;margin-bottom:3px;}
+.kpi-val{font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;}
+.kpi-val.purple{color:var(--ht);}
+.kpi-val.teal{color:var(--dm);}
+.kpi-val.orange{color:var(--copd);}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.danger{color:var(--danger);}
+.kpi-sub{font-size:11px;color:var(--text-light);margin-top:2px;}
+
+/* Charts */
+.chart-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:18px;}
+.chart-card{background:var(--surface);border-radius:12px;padding:16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);}
+.chart-title{font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:12px;}
+.chart-wrap{position:relative;height:190px;}
+
+/* Table */
+.table-card{background:var(--surface);border-radius:12px;padding:16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);margin-bottom:20px;}
+.table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.table-title{font-size:13px;font-weight:700;color:var(--primary-dark);}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-row select,.filter-row input{padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;font-family:inherit;background:var(--bg);outline:none;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px;}
+th{background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:11px;}
+td{padding:7px 10px;border-bottom:1px solid #f0f4f2;vertical-align:top;}
+tr:hover td{background:#f8faf9;}
+.badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;}
+.badge-ht{background:var(--ht-light);color:var(--ht);}
+.badge-dm{background:var(--dm-light);color:var(--dm);}
+.badge-copd{background:var(--copd-light);color:var(--copd);}
+.btn-edit{padding:3px 8px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);
+  font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-edit:hover{border-color:var(--primary);color:var(--primary);}
+.btn-del{padding:3px 8px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);
+  font-size:11px;cursor:pointer;font-family:inherit;color:var(--danger);transition:all .15s;}
+.btn-del:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+/* Sessions table */
+.session-miss{background:#fef2f2;}
+.tag-attended{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+.tag-missed{background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border-radius:14px;padding:22px;width:min(560px,95vw);max-height:88vh;overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal-title{font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:14px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.btn-ok{padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-cancel{padding:8px 16px;background:none;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-mid);cursor:pointer;font-family:inherit;}
+
+#toast{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:#1C2B22;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:300;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="topbar-home">🏠 หน้าแรก</a>
+  <span class="topbar-title">💊 คลินิกเภสัชกรรม</span>
+  <span class="topbar-badge" id="badge-year"></span>
+  <span class="sync-badge" id="sync-badge">⏳ กำลังโหลด</span>
+  <div class="topbar-btns">
+    <button class="tbtn" onclick="exportJSON()">📤 Export</button>
+    <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn ht active" id="tab-HT" onclick="switchTab('HT')">🫀 คลินิก HT</button>
+  <button class="tab-btn dm" id="tab-DM" onclick="switchTab('DM')">🩺 คลินิก DM</button>
+  <button class="tab-btn copd" id="tab-COPD" onclick="switchTab('COPD')">🫁 คลินิก COPD</button>
+  <button class="tab-btn" id="tab-all" onclick="switchTab('all')">📊 ภาพรวม</button>
+  <button class="tab-btn" id="tab-session" onclick="switchTab('session')">📋 บันทึก Session</button>
+</div>
+
+<div class="page-wrap">
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar-form">
+    <div class="form-title">➕ บันทึกการให้คำปรึกษา</div>
+
+    <div class="form-group">
+      <label>วันที่</label>
+      <div class="input-row">
+        <div class="form-group" style="margin:0;flex:1">
+          <input type="text" id="f-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)">
+        </div>
+        <button class="btn-stamp" onclick="document.getElementById('f-date').value=todayTH()">📅</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>คลินิก</label>
+      <select id="f-clinic">
+        <option value="HT">🫀 HT (ความดันโลหิตสูง)</option>
+        <option value="DM">🩺 DM (เบาหวาน)</option>
+        <option value="COPD">🫁 COPD</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>เภสัชกร</label>
+      <select id="f-pharm">
+        <option value="">-- เลือกเภสัชกร --</option>
+        <option>เภสัชกร ก</option>
+        <option>เภสัชกร ข</option>
+        <option>เภสัชกร ค</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>HN ผู้ป่วย</label>
+      <input type="text" id="f-hn" placeholder="รหัส HN">
+    </div>
+
+    <div class="form-group">
+      <label>ชื่อ-สกุล</label>
+      <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
+    </div>
+
+    <hr class="divider">
+
+    <!-- DRP SECTION -->
+    <div class="section-lbl">DRPs ที่พบ</div>
+    <div id="drp-list"></div>
+    <button class="btn-add" onclick="addDrpRow()">+ เพิ่ม DRP</button>
+
+    <hr class="divider">
+
+    <!-- LEFTOVER SECTION -->
+    <div class="section-lbl">ยาคงเหลือ (นำกลับมา)</div>
+    <div id="lo-list"></div>
+    <button class="btn-add" onclick="addLoRow()">+ เพิ่มรายการยา</button>
+    <div class="lo-total-row" id="lo-total" style="margin-top:6px"></div>
+
+    <hr class="divider">
+
+    <div class="form-group">
+      <label>หมายเหตุ</label>
+      <textarea id="f-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."></textarea>
+    </div>
+
+    <button class="btn-submit" onclick="submitVisit()">✅ บันทึก</button>
+    <button class="btn-clear" onclick="clearForm()">ล้างฟอร์ม</button>
+
+    <hr class="divider">
+
+    <!-- SESSION SECTION -->
+    <button class="session-toggle" onclick="toggleSessionPanel()">
+      <span>📋 บันทึก Session / ขาดลง</span>
+      <span id="session-arrow">▼</span>
+    </button>
+    <div class="session-panel" id="session-panel">
+      <div class="form-group">
+        <label>วันที่</label>
+        <div class="input-row">
+          <div class="form-group" style="margin:0;flex:1">
+            <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)">
+          </div>
+          <button class="btn-stamp" onclick="document.getElementById('s-date').value=todayTH()">📅</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>คลินิก</label>
+        <select id="s-clinic">
+          <option value="HT">HT</option>
+          <option value="DM">DM</option>
+          <option value="COPD">COPD</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>เภสัชกรลงคลินิก?</label>
+        <select id="s-attended" onchange="onAttendedChange()">
+          <option value="yes">✅ ลงคลินิก</option>
+          <option value="no">❌ ไม่ได้ลง</option>
+        </select>
+      </div>
+      <div id="s-pharm-group" class="form-group">
+        <label>เภสัชกร</label>
+        <select id="s-pharm">
+          <option value="">-- เลือก --</option>
+          <option>เภสัชกร ก</option>
+          <option>เภสัชกร ข</option>
+          <option>เภสัชกร ค</option>
+        </select>
+      </div>
+      <div id="s-reason-group" class="form-group" style="display:none">
+        <label>เหตุผล</label>
+        <input type="text" id="s-reason" placeholder="เช่น ติดประชุม...">
+      </div>
+      <div id="s-pm-group" class="form-group">
+        <label>จำนวนผู้ป่วย HT บ่าย (ไม่ได้พบเภสัชกร)</label>
+        <input type="number" id="s-pm-count" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>หมายเหตุ</label>
+        <input type="text" id="s-notes" placeholder="">
+      </div>
+      <button class="btn-session" onclick="submitSession()">📋 บันทึก Session</button>
+    </div>
+  </div>
+
+  <!-- ── MAIN CONTENT ── -->
+  <div class="main-content" id="main-content">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title">✏️ แก้ไขรายการ</div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn-ok" onclick="saveModal()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- datalist -->
+<datalist id="drug-dl"><option value="(ฉีด) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g."><option value="(ฉีด) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU"><option value="(ฉีด) 10%D/N/2 10 %"><option value="(ฉีด) 3%Sodium Chloride(NaCl) 3 %"><option value="(IV) ACETATE RINGER 1,000 ml."><option value="(ผง) ACTIVATED CHARCOAL 5 g."><option value="(เม็ด) Acyclovir 200 mg."><option value="(เม็ด) ACYCLOVIR 800 mg."><option value="(ฉีด) Adenosine (adenocor) 6 mg."><option value="(ฉีด) ADRENALINE 1 mg./ml."><option value="(ยาน้ำ) Albendazole (FALBEN)susp 100 mg/5ml"><option value="(เม็ด) ALBENDAZOLE(zentel) 200 mg."><option value="(สารละลาย) ALCOHOL  60 ml 70 %"><option value="(สารละลาย) ALCOHOL 70 %"><option value="(เม็ด) ALLOPURINOL(zyloric) 100 mg."><option value="(ฉีด) AMIODARONE(Cordarone) (NL) 150 mg."><option value="(เม็ด) amitriptyline(A10/tripta) 10 mg."><option value="(เม็ด) Amlodipine 5 mg."><option value="(สารละลาย) AMMONIUM CARBONATE 60 ml."><option value="(แคปซูล) AMOXICILLIN 500 mg."><option value="(ยาน้ำ) Amoxy dry SYRUP 250 mg/5ml"><option value="(แคปซูล) AmoxyCillin 250 mg."><option value="(ผง) amoxycillin SYR 125 mg./5ml."><option value="(ผง) AMPICILLIN   1 g 1 g."><option value="(ยาน้ำ) ANTACID SUSP(alum milk) 0.66 g."><option value="(ฉีด) ANTIVENUM SERA,(งูเห่า) 0.6 u."><option value="(ผง) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml."><option value="(ฉีด) aP Acellular Pertussis (ไอกรน) 5 mcg./dose"><option value="(เม็ด) aspirin(asa) 81 mg."><option value="(เม็ด) ASPIRIN(ASA/aspent) 300 mg."><option value="(เม็ด) Atarax(hydroxyzine) 10 mg."><option value="(เม็ด) ATENOLOL 50 mg."><option value="(ฉีด) ATROPINE 0.6 mg./ml."><option value="(เม็ด) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g."><option value="(ยาน้ำ) Augmentin Susp 400/57 mg/5ml"><option value="(ฉีด) BCG(bacillus calmette-gue rin) 0.1 ml."><option value="(ฉีด) BENZATHINE PENICILLIN 1,200,000 u."><option value="(เม็ด) Benzhexol 2 mg."><option value="(เม็ด) Benzhexol 5 mg."><option value="(โลชั่น) BENZYL BENZOATE 25 %"><option value="(ผง) BERODUAL ( MDI ) inhaler 200 dose"><option value="(สารละลาย) BERODUAL 0.5 %"><option value="(สารละลาย) BERODUAL 20 ml."><option value="(สารละลาย) BETADINE (IODINE) %"><option value="(ครีม) BETAMETHASONE(5g) 0.1 %"><option value="(ยาน้ำ) Bromhexine elixir 4 mg."><option value="BUDESONIDE  (MDI) 200 mcg."><option value="(ฉีด) Buscopan inj (HYOSCINE  INJ) 20 mg./ml."><option value="(เม็ด) CAFERGOT (NL) 1 mg."><option value="(ยาน้ำ) CALAMINE 15 %"><option value="(เม็ด) calcium carbonate(CaCO3) 600 mg."><option value="(ฉีด) CALCIUM GLUCONATE 10 %"><option value="(เม็ด) CAPTOPRIL  25 mg 25 mg."><option value="(เม็ด) CARBAMAZEPINE(tegretol) 200 mg."><option value="Carbocisteine 100 mg/5ml"><option value="(ผง) CeFaZOLIN injection 1 g."><option value="(ผง) CefTaZidime injection 1 g."><option value="(ฉีด) CefTRIAXone 1 g injection (CEF-3) 1 g."><option value="(เม็ด) CETIRIZINE (Alerest) 10 mg."><option value="(หยอดหู) CHLORAMPHENICOL EAR DROP 1 %"><option value="(สารละลาย) Chlorhexidine mouth wash 0.12 g."><option value="(เม็ด) CHLORPROMAZINE(CPZ) 100 mg."><option value="(ขี้ผึ้ง) CHLORTETRACYCLINE - mg."><option value="(เม็ด) Ciprofloxacin 500 mg."><option value="(แคปซูล) CLINDAMYCIIN 300 mg"><option value="(ฉีด) clindamycin  600 mg/vial. 600 mg./dose"><option value="(เม็ด) CLONAZEPAM(rivotril) 2 mg."><option value="(เม็ด) Clopidogrel (Plavix) 75 mg."><option value="(เหน็บช่องคลอด) CLOTRIMAZOLE VAG TAB(canesten) 100 mg."><option value="(ครีม) CLOTRIMAZOLE(canesten) 1 %"><option value="(ฉีด) CLOXACILLIN INJ  1  g 1 g."><option value="(เม็ด) COLCHICINE 0.6 mg."><option value="(เม็ด) COTRIMOXAZOLE(bactrim) 400 mg."><option value="(ยาน้ำ) COTRIMOXAZOLE(bactrim) 60 ml."><option value="(ฉีด) Covid Vaccine(SARS-CoV-2) 0.5 ml."><option value="(เม็ด) CPM   tab. 4 mg."><option value="(ยาน้ำ) CPM 2 mg./5ml."><option value="(ฉีด) CPM(piriton) 10 mg./ml."><option value="(เม็ด) CYPROHEPTADINE(periactin) 4 mg."><option value="(เม็ด) Cytotec 200 mcg."><option value="(IV) D-5-S - %"><option value="(IV) D-5-S/2 - %"><option value="(IV) D-5-S/3 - %"><option value="(IV) D-5-S/4 500 ml."><option value="(ฉีด) D-5-S/5 5 %"><option value="(IV) D-5-W %"><option value="(ฉีด) D-5-W %"><option value="(IV) D-5-W - %"><option value="(ฉีด) D-W-10 %"><option value="(เม็ด) Depakin (sodium valproate) 200 mg."><option value="(ฉีด) DEXAMETHASONE 5 mg./ml."><option value="(IV) DEXTRAN 40 mg."><option value="(เม็ด) DEXTROMETHORPHAN 15 mg."><option value="(ฉีด) DEXTROSE (glucose) 50 %"><option value="(ฉีด) DIAZEPAM(valium) 10 mg./ml."><option value="(เม็ด) DIAZEPAM(valium) 2 mg."><option value="(เม็ด) DIAZEPAM(valium) 5 mg."><option value="(เม็ด) DICLOFENAC (voltaren/fenac) 25 mg."><option value="(แคปซูล) diCloxacillin  cap 250 mg."><option value="(แคปซูล) DICLOXACILLIN CAP 500 mg."><option value="(ผง) Dicloxacillin syp. 62.5 mg/5ml"><option value="(ฉีด) DIGOXIN 0.25 mg./ml."><option value="(เม็ด) DIGOXIN(lanoxin) 0.25 mg."><option value="(เม็ด) DIMENHYDRINATE(dramamine) 50 mg."><option value="(ฉีด) DIMENHYDRINATE(Dramamine) 50 mg./ml."><option value="(แคปซูล) DIP. CLORAZEPATE(trancon/T5) 5 mg."><option value="(เม็ด) Dolutegravir 50 mg."><option value="(เม็ด) DOMPERIDONE(motilium) 10 mg."><option value="(ยาน้ำ) DOMPERIDONE(motilium) 5 mg/5ml"><option value="(ฉีด) DOPAMINE 250 mg./ml."><option value="(เม็ด) Doxazosin 4 mg."><option value="(แคปซูล) DOXYCYCLINE 100 mg."><option value="(ฉีด) DT(diphtheria tetanus) vaccines mg."><option value="(ฉีด) DTP iu./dose"><option value="(ฉีด) DTP-HB iu./dose"><option value="(ฉีด) DTP-HB-Hib vaccine 0.5 ml."><option value="(เม็ด) EFAVIRENZ(EFV) 600 mg."><option value="(เม็ด) ENALAPRIL 20 mg."><option value="(เม็ด) eNAlapril 5 mg."><option value="(ฉีด) ERIG (vinrab) 1000 iu."><option value="(ผง) ERYTHROMYCIN 125 mg"><option value="(เม็ด) ETHAMBUTOL 400 mg."><option value="(เม็ด) Favipiravir (covid-19) 200 mg."><option value="(สารละลาย) FERROUS  DROP 50 mg/0.6ml"><option value="(เม็ด) FERROUS  FUMARATE 200 mg."><option value="(ยาน้ำ) Ferrous fumarate Susp. 76 mg/5ml"><option value="(แคปซูล) FLUCONAZOLE 200 mg."><option value="(แคปซูล) FLUNARIZINE(sibelium) 5 mg."><option value="(เม็ด) Fluoxetine 20 mg."><option value="(ฉีด) Fluphenazine(DECA) 50"><option value="(ฉีด) FLUPHENAZINE(deca) 50 mg."><option value="(เม็ด) FOLIC  ACID 5 mg."><option value="(ฉีด) FUROSEMIDE(lasix) 20 mg/2 ml"><option value="(เม็ด) FUROSEMIDE(lasix) 40 mg."><option value="(แคปซูล) GEMFIBROZIL(Lopid) 300 mg."><option value="(ฉีด) GENTAMICIN  80 mg/amp. 80 mg./2ml."><option value="(เม็ด) gliPIZIDE(minidiab) 5 mg."><option value="(เม็ด) Glyceryl guaiacolate (GG) 100 mg."><option value="(เม็ด) GPO vir S30 30 mg."><option value="(เม็ด) GPO VIR Z 250 250"><option value="(ยาน้ำ) Guaifenesin syrup (GG) 100 mg/5ml"><option value="HALOPERIDOL 0.5 mg."><option value="(เม็ด) HALOPERIDOL 2 mg."><option value="(เม็ด) HALOPERIDOL 5 mg."><option value="(ฉีด) HALOPERIDOL 5 mg./ml."><option value="(เม็ด) HCTZ(hydrochlorothiazide) 25 mg."><option value="(ฉีด) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml."><option value="HI SET 1 u."><option value="(สารละลาย) HISTA OPH(opsil A) 0.05 %"><option value="(ฉีด) HPV vaccine 0.5 ml."><option value="(ฉีด) Hydralazine  Hcl 20 mg./1ml"><option value="(เม็ด) Hydralazine HCl 25 mg."><option value="(ฉีด) Hydrocortisone sodium  succinate 100 mg."><option value="(เม็ด) HYOSCINE(buscopan) 10 mg."><option value="(ยาน้ำ) HYOSICNE(buscopan) 5 mg./5ml."><option value="(ยาน้ำ) Ibuprofen (brufen) 100 mg/5ml"><option value="(เม็ด) IBUPROFEN(brufen) 400 mg."><option value="(เม็ด) IMIPRAMINE(tofranil) 25 mg."><option value="(ฉีด) IMPLANON  implant 68 mg."><option value="(ฉีด) Inactivated Poliomyelitis Vaccine(IPV) 40 iu."><option value="(ฉีด) influenza ตามฤดูกาล 0.5 ml."><option value="(เม็ด) INH(isoniazid) 100 mg."><option value="(เม็ด) ISODIL  SL 5 mg."><option value="(เม็ด) ISODIL  TAB 10 mg."><option value="(เม็ด) Isoniazid 300 mg 300 mg."><option value="(เม็ด) Isoniazid+Rifapentine 300/300 mg."><option value="(ฉีด) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml."><option value="(ฉีด) JE VACCINE(0.5 ML) 80 mcg./ml."><option value="(สารละลาย) K Y jelly sack 5 g."><option value="(ผง) KALIMATE ."><option value="(เม็ด) KETOCONAZOLE(nizoral) 200 mg."><option value="(เม็ด) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg."><option value="(เม็ด) Lamivudine 150 mg."><option value="(เม็ด) Lamivudine 3TC 300 mg."><option value="(เม็ด) Levodopa250 + carbidopa 25 mg."><option value="(เม็ด) LevoFloxacin 500 mg."><option value="Lidocain injection 2%"><option value="(ฉีด) LIDOCAINE 2 %"><option value="(แคปซูล) LITHIUM CARBONATE(LiCO3) (NL) 300 mg."><option value="(เม็ด) Lopinavir/Ritonavir 200/50 mg."><option value="(เม็ด) Lorazepam 1 mg."><option value="(เม็ด) Losartan (cozaar) 50 mg."><option value="(สารละลาย) M tussis ( brown mixt ) 180 ml."><option value="(สารละลาย) M. CARMINATIVE 180 ml."><option value="(สารละลาย) M.tussis (brown mixt) 60 ml."><option value="(ฉีด) MAGNESIUM SULFATE 10 %"><option value="(ฉีด) MAGNESIUM SULFATE 50 %"><option value="(ฉีด) MEDROXYPROGESTERONE ACETATE(depo) 150 mg."><option value="(เม็ด) METFORMIN(glucophage) 500 mg."><option value="(เม็ด) Methimazole 5 mg."><option value="(เม็ด) METHYLDOPA(aldomet) 250 mg."><option value="(ฉีด) METHYLERGOMETRINE(Methergin) 0.2 mg./ml."><option value="(เม็ด) METOCLOPRAMIDE(plasil) 10 mg."><option value="(ฉีด) METOCLOPRAMIDE(plasil) 10 mg./2ml."><option value="(เม็ด) Metoprolol tartrate 100 mg."><option value="(เม็ด) METRONIDAZOLE(flagyl) 400 mg."><option value="(ฉีด) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg."><option value="(เม็ด) Micronised progesterone 100 mg."><option value="(ยาน้ำ) MILK OF MAGNESIA(MOM) 60 ml."><option value="(ฉีด) Mixtard (ขวด) 100 units/ml."><option value="(ฉีด) mixtard STAT 100 iu"><option value="(ฉีด) MMR 0.5 ml."><option value="(แคปซูล) Molnupiravir 200 mg"><option value="(ฉีด) MORPHINE 10 mg./ml."><option value="(เม็ด) Morphine MST 10 mg"><option value="(สารละลาย) Morphine Solution 10 mg/5 ml"><option value="(ฉีด) MR 0.5"><option value="(เม็ด) MTV-MULTIVITAMINS g."><option value="(เม็ด) NaCl (Sodium Chloride) 300 mg"><option value="(ฉีด) NALOXONE(narcan) 0.1mg./ml."><option value="(เม็ด) Nevirapine 200 mg."><option value="(เม็ด) NIFEDIPINE SR 20 mg."><option value="(ฉีด) Norepinephrine bitartrate 4 ml/ 4 mg."><option value="(เม็ด) NORFLOXACIN(lexinor) 400 mg."><option value="(เม็ด) Norgesic(Orphenadrine35mg/paracetamol500mg) mg."><option value="(ฉีด) NPH (ขวด) 100 units/ml."><option value="(ฉีด) NPH INSULIN 1 units/ml."><option value="(ฉีด) NSS 5 ml 0.9 %"><option value="(ฉีด) NSS INJ. 0.9 %"><option value="(สารละลาย) OLIVE OIL 60 ml."><option value="(ฉีด) Omeprazole 10 ml 40 mg."><option value="(แคปซูล) OMEPRAZOLE(losec/miracid) 20 mg."><option value="(ฉีด) Ondansetron inj 8mg/4ml"><option value="(หยดกิน) OPV vaccine ."><option value="(ผง) ORS(รสส้ม) 75 4.253 g."><option value="(แคปซูล) oseltamivir 30 mg."><option value="(แคปซูล) oseltamivir 45 mg."><option value="(แคปซูล) oseltamivir 75 mg."><option value="(ฉีด) OXYTOCIN 10 iu."><option value="(ยาน้ำ) PARACETAMOL  SYR 250 mg/5ml."><option value="(เม็ด) paracetamol 325 mg."><option value="(เม็ด) PARACETAMOL 500 mg."><option value="(ยาน้ำ) PARACETAMOL SYRUP 120 มก./5มล."><option value="(ฉีด) PCEC (ID) 0.1 iu."><option value="(ฉีด) PCEC (IM) 0.5 iu."><option value="(เม็ด) PERPHENAZINE(สีไข่ไก่) 8 mg."><option value="(ฉีด) PETHIDINE 50 mg./ml."><option value="(เม็ด) PHENOBARBITAL(1 GRAIN) 60 mg."><option value="(ฉีด) Phenytoin inj 250/5 mg./ml."><option value="(เม็ด) Phenytoin(Dilantin) 50 mg."><option value="(แคปซูล) PHENYTOIN(dilantin) promt 100 mg."><option value="(เม็ด) Pioglitazone 30 mg."><option value="(หยอดตา) PolyOPH 5000 iu."><option value="(สารละลาย) POTASSIUM (KCL elixir) 20 mEq./15ml."><option value="(เม็ด) Potassium Chloride tab 6.7 mEq."><option value="(ฉีด) POTASSIUM CHLORIDE(KCl) 20 mEq."><option value="(เม็ด) PREDNISOLONE 5 mg."><option value="(ครีม) prednisolone cream 5"><option value="(เม็ด) Primolut-N(norethisterone 5 mg) 5 mg."><option value="(เหน็บทวาร) PROCTOSEDYL 5 mg."><option value="(เม็ด) propranolol(inderal) 10 mg."><option value="(เม็ด) PTU(propylthiouracil) 50 mg."><option value="(เม็ด) PZA(pyrazinamide) 500 mg."><option value="(เม็ด) QUININE SULFATE 300 mg."><option value="(เม็ด) R-DEN(คุมเม็ด) 30 mcg."><option value="(ฉีด) RABIES ANTISERUM(ERIG) 100 iu."><option value="(ฉีด) RI  STAT (REGULAR INSULIN ) 100 iu./ml."><option value="(แคปซูล) RIFAMPICIN 300 mg."><option value="(แคปซูล) RIFAMPICIN 450 mg."><option value="(เม็ด) Rifapentine 150 mg."><option value="(แคปซูล) Rifinah (Rifam+INH) 300+150 mg."><option value="(เม็ด) Risperidone 2 mg."><option value="(ยาน้ำ) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml."><option value="(เม็ด) ROXITHROMYCIN(rulid) 150 mg."><option value="(สารละลาย) SALBUTAMOL  NB (ER) 0.1 %"><option value="(เม็ด) SALBUTAMOL 2 mg."><option value="(ยาน้ำ) SALBUTAMOL 2 mg/5ml"><option value="(สารละลาย) SALBUTAMOL NB. 0.1 %"><option value="(สารละลาย) SALBUTAMOL(ventolin) MDI 100 mcg."><option value="(สารละลาย) Saline IRRIGATE 0.9 %"><option value="(สารละลาย) SELENIUM shampoo 200 mg./ml."><option value="(พ่น) SeRoflo   (MDI) 25/125 mcg./dos"><option value="(เม็ด) Sertraline 50 mg."><option value="(ครีม) SILVER SULFADIAZINE (25g) 1 %"><option value="(เม็ด) SIMETHICONE  (air-x) 80 mg."><option value="(ยาน้ำ) SIMETHICONE DROP SUS 40 mg./0.6ml."><option value="(เม็ด) SimVastatin(zocor) (NL) 20 mg."><option value="(เม็ด) Sodamint (Sodium bicarbonate) 300 mg."><option value="(ฉีด) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml."><option value="(ยาน้ำ) SODIUM BICARBONATE(NaHCO3) 10 mg./ml."><option value="(เม็ด) spironolactone (Aldactone) 25 mg."><option value="(ฉีด) STERILEWATER (SWI) 100 ml."><option value="(ฉีด) Streptokinase 1500000 u."><option value="(ฉีด) STREPTOMYCIN SULPHATE 1 g."><option value="(เม็ด) Teevir 300 mg."><option value="(เม็ด) Tenofovia disoproxil 300 mg."><option value="(ฉีด) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml."><option value="(สารละลาย) tetracain eye drop 0.5 %"><option value="(แคปซูล) Theophylline-CR 200 mg."><option value="(เม็ด) THYROXINE-L 100 mcg."><option value="(เม็ด) TLD (TDF300mg+3TC300mg+DTG50mg) mg."><option value="(แคปซูล) TRAMADOL HCl(tramal) 50 mg."><option value="(ฉีด) TRAMADOL inj 50 mg./ml."><option value="(แคปซูล) Tranexamic acid 250 mg."><option value="(ครีม) TRIAMCINOLONE 0.02 %"><option value="(ครีม) TRIAMCINOLONE 0.1 %"><option value="(ขี้ผึ้ง) Triamcinolone Oral Paste 1 g."><option value="(ฉีด) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml."><option value="(เม็ด) Triferdine 150 mg."><option value="(สารละลาย) UNISON 10 ml."><option value="(สารละลาย) UNISON ENEMA 100 ml."><option value="UNISON ENEMA 20"><option value="Varenicline Tartrate 0.5 mg"><option value="Varenicline Tartrate 1 mg"><option value="(ฉีด) VERORAB ( ID ) 0.1 ml."><option value="(ฉีด) VERORAB ( IM ) 0.5 ml."><option value="(เม็ด) VIT B6(pyridoxine) 50 mg."><option value="(เม็ด) VITAMIN B 1/6/12 1 g."><option value="(ฉีด) VITAMIN B COMPLEX ."><option value="vitamin c 25 mg."><option value="(ฉีด) VITAMIN K1 1 mg."><option value="(ฉีด) WATER FOR INJECTION 5 ml."><option value="Whitfields ointment 6 %"><option value="(แคปซูล) Zidovudine  (AZT) 300 mg."><option value="(ยาน้ำ) Zidovudine (AZT) 10 mg./ml."><option value="(แคปซูล) Zidovudine (AZT) 100 mg."><option value="(เม็ด) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg."><option value="กานพลู 5 g."><option value="(แคปซูล) ขมิ้นชัน แคปซูล KMC 500 mg."><option value="ขวดยา 120 ml."><option value="ขวดยา 30  ml."><option value="ขวดยา 60 ml."><option value="(แคปซูล) ขิง 500 mg."><option value="ครีมพญายอ 4.343 g/100g"><option value="(แคปซูล) จันทน์ลีลา ซองละ 24 แคปซูล 330 g."><option value="ชุมเห็ดเทศ 3 g."><option value="(แคปซูล) ตรีผลาTPL 90 g."><option value="น้ำมันกัญชา ml."><option value="น้ำมันไพลPLI 20 ml"><option value="(แคปซูล) ฟ้าทะลายโจร FTJ 500 mg."><option value="(ยาน้ำ) มะขามป้อม MKP 120 ml."><option value="ยาธาตุบรรจบ 500 mg."><option value="ยาธาตุอบเชยOS 240 ml."><option value="ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg."><option value="(แคปซูล) ยาประสะไพลPSP 500 mg."><option value="(แคปซูล) ยามันทธาตุ 500 mg."><option value="(เม็ด) ยาระบายมะขามแขก(senokot) 7.5  mg"><option value="(แคปซูล) ยาศุขไสยาศน์ 500 mg."><option value="(แคปซูล) ยาสหัสธาราSHTR 500 mg."><option value="(ผง) ยาหอมนวโกฐNVK 7 g."><option value="(ผง) ยาหอมเทพจิตรTPJ 30 g."><option value="(แคปซูล) ยาห้าราก ซองละ 9 แคปซูล 500 mg."><option value="(เม็ด) ยาอมมะแว้ง MW %"><option value="(แคปซูล) ยาเขียวหอมKH 500 mg."><option value="(เม็ด) ยาเดิม (Manidipine ) 20 mg"><option value="(สารละลาย) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml"><option value="(ผง) ยาเดิม(Acetylcysteine) 200 mg."><option value="(เม็ด) ยาเดิม(Amlodipine) 10 mg."><option value="(เม็ด) ยาเดิม(Atorvastatin) 40 mg."><option value="(เม็ด) ยาเดิม(Azithromycin) 250 mg."><option value="(ยาน้ำ) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml"><option value="(เม็ด) ยาเดิม(Betahistine) 6 mg."><option value="(เม็ด) ยาเดิม(Carvedilol) 6.25 mg."><option value="(แคปซูล) ยาเดิม(Gabapentin) 300 mg."><option value="(เม็ด) ยาเดิม(Hydralazine) 50 mg."><option value="(ฉีด) ยาเดิม(Hypercrit) 4000 u."><option value="(เม็ด) ยาเดิม(Lorazepam) 0.5 mg."><option value="(ผง) ยาเดิม(Meropenem inj.) 1 gm"><option value="(เม็ด) ยาเดิม(Risperidone) 1 mg."><option value="(ฉีด) ยาเดิม(Vancomycin inj.) 500 mg"><option value="(เม็ด) ยาเดิม(Warfarin) 5 mg"><option value="(แคปซูล) ยาเลือดงามLH 500 mg."><option value="(แคปซูล) ยาเหลืองปิดสมุทร 500 mg."><option value="(แคปซูล) ยาแก้ลมจับเส้น 500 mg."><option value="(ผง) ยาแก้ลมอัมพฤกษ์AMP 70 g."><option value="(แคปซูล) รางจืด RJ 400 mg."><option value="(ผง) ลูกประคบสมุนไพร 220 g."><option value="เจลว่านหางจระเข้ g."><option value="เถาวัลย์เปรียง TWP 500 mg."><option value="(แคปซูล) เพชรสังฆาต PSK 500 mg."></datalist>
+
+<script>
+// ── DRUG DATA ────────────────────────────────────────────
+const DRUG_LIST = ["(ฉีด) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.","(ฉีด) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU","(ฉีด) 10%D/N/2 10 %","(ฉีด) 3%Sodium Chloride(NaCl) 3 %","(IV) ACETATE RINGER 1,000 ml.","(ผง) ACTIVATED CHARCOAL 5 g.","(เม็ด) Acyclovir 200 mg.","(เม็ด) ACYCLOVIR 800 mg.","(ฉีด) Adenosine (adenocor) 6 mg.","(ฉีด) ADRENALINE 1 mg./ml.","(ยาน้ำ) Albendazole (FALBEN)susp 100 mg/5ml","(เม็ด) ALBENDAZOLE(zentel) 200 mg.","(สารละลาย) ALCOHOL  60 ml 70 %","(สารละลาย) ALCOHOL 70 %","(เม็ด) ALLOPURINOL(zyloric) 100 mg.","(ฉีด) AMIODARONE(Cordarone) (NL) 150 mg.","(เม็ด) amitriptyline(A10/tripta) 10 mg.","(เม็ด) Amlodipine 5 mg.","(สารละลาย) AMMONIUM CARBONATE 60 ml.","(แคปซูล) AMOXICILLIN 500 mg.","(ยาน้ำ) Amoxy dry SYRUP 250 mg/5ml","(แคปซูล) AmoxyCillin 250 mg.","(ผง) amoxycillin SYR 125 mg./5ml.","(ผง) AMPICILLIN   1 g 1 g.","(ยาน้ำ) ANTACID SUSP(alum milk) 0.66 g.","(ฉีด) ANTIVENUM SERA,(งูเห่า) 0.6 u.","(ผง) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.","(ฉีด) aP Acellular Pertussis (ไอกรน) 5 mcg./dose","(เม็ด) aspirin(asa) 81 mg.","(เม็ด) ASPIRIN(ASA/aspent) 300 mg.","(เม็ด) Atarax(hydroxyzine) 10 mg.","(เม็ด) ATENOLOL 50 mg.","(ฉีด) ATROPINE 0.6 mg./ml.","(เม็ด) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.","(ยาน้ำ) Augmentin Susp 400/57 mg/5ml","(ฉีด) BCG(bacillus calmette-gue rin) 0.1 ml.","(ฉีด) BENZATHINE PENICILLIN 1,200,000 u.","(เม็ด) Benzhexol 2 mg.","(เม็ด) Benzhexol 5 mg.","(โลชั่น) BENZYL BENZOATE 25 %","(ผง) BERODUAL ( MDI ) inhaler 200 dose","(สารละลาย) BERODUAL 0.5 %","(สารละลาย) BERODUAL 20 ml.","(สารละลาย) BETADINE (IODINE) %","(ครีม) BETAMETHASONE(5g) 0.1 %","(ยาน้ำ) Bromhexine elixir 4 mg.","BUDESONIDE  (MDI) 200 mcg.","(ฉีด) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.","(เม็ด) CAFERGOT (NL) 1 mg.","(ยาน้ำ) CALAMINE 15 %","(เม็ด) calcium carbonate(CaCO3) 600 mg.","(ฉีด) CALCIUM GLUCONATE 10 %","(เม็ด) CAPTOPRIL  25 mg 25 mg.","(เม็ด) CARBAMAZEPINE(tegretol) 200 mg.","Carbocisteine 100 mg/5ml","(ผง) CeFaZOLIN injection 1 g.","(ผง) CefTaZidime injection 1 g.","(ฉีด) CefTRIAXone 1 g injection (CEF-3) 1 g.","(เม็ด) CETIRIZINE (Alerest) 10 mg.","(หยอดหู) CHLORAMPHENICOL EAR DROP 1 %","(สารละลาย) Chlorhexidine mouth wash 0.12 g.","(เม็ด) CHLORPROMAZINE(CPZ) 100 mg.","(ขี้ผึ้ง) CHLORTETRACYCLINE - mg.","(เม็ด) Ciprofloxacin 500 mg.","(แคปซูล) CLINDAMYCIIN 300 mg","(ฉีด) clindamycin  600 mg/vial. 600 mg./dose","(เม็ด) CLONAZEPAM(rivotril) 2 mg.","(เม็ด) Clopidogrel (Plavix) 75 mg.","(เหน็บช่องคลอด) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.","(ครีม) CLOTRIMAZOLE(canesten) 1 %","(ฉีด) CLOXACILLIN INJ  1  g 1 g.","(เม็ด) COLCHICINE 0.6 mg.","(เม็ด) COTRIMOXAZOLE(bactrim) 400 mg.","(ยาน้ำ) COTRIMOXAZOLE(bactrim) 60 ml.","(ฉีด) Covid Vaccine(SARS-CoV-2) 0.5 ml.","(เม็ด) CPM   tab. 4 mg.","(ยาน้ำ) CPM 2 mg./5ml.","(ฉีด) CPM(piriton) 10 mg./ml.","(เม็ด) CYPROHEPTADINE(periactin) 4 mg.","(เม็ด) Cytotec 200 mcg.","(IV) D-5-S - %","(IV) D-5-S/2 - %","(IV) D-5-S/3 - %","(IV) D-5-S/4 500 ml.","(ฉีด) D-5-S/5 5 %","(IV) D-5-W %","(ฉีด) D-5-W %","(IV) D-5-W - %","(ฉีด) D-W-10 %","(เม็ด) Depakin (sodium valproate) 200 mg.","(ฉีด) DEXAMETHASONE 5 mg./ml.","(IV) DEXTRAN 40 mg.","(เม็ด) DEXTROMETHORPHAN 15 mg.","(ฉีด) DEXTROSE (glucose) 50 %","(ฉีด) DIAZEPAM(valium) 10 mg./ml.","(เม็ด) DIAZEPAM(valium) 2 mg.","(เม็ด) DIAZEPAM(valium) 5 mg.","(เม็ด) DICLOFENAC (voltaren/fenac) 25 mg.","(แคปซูล) diCloxacillin  cap 250 mg.","(แคปซูล) DICLOXACILLIN CAP 500 mg.","(ผง) Dicloxacillin syp. 62.5 mg/5ml","(ฉีด) DIGOXIN 0.25 mg./ml.","(เม็ด) DIGOXIN(lanoxin) 0.25 mg.","(เม็ด) DIMENHYDRINATE(dramamine) 50 mg.","(ฉีด) DIMENHYDRINATE(Dramamine) 50 mg./ml.","(แคปซูล) DIP. CLORAZEPATE(trancon/T5) 5 mg.","(เม็ด) Dolutegravir 50 mg.","(เม็ด) DOMPERIDONE(motilium) 10 mg.","(ยาน้ำ) DOMPERIDONE(motilium) 5 mg/5ml","(ฉีด) DOPAMINE 250 mg./ml.","(เม็ด) Doxazosin 4 mg.","(แคปซูล) DOXYCYCLINE 100 mg.","(ฉีด) DT(diphtheria tetanus) vaccines mg.","(ฉีด) DTP iu./dose","(ฉีด) DTP-HB iu./dose","(ฉีด) DTP-HB-Hib vaccine 0.5 ml.","(เม็ด) EFAVIRENZ(EFV) 600 mg.","(เม็ด) ENALAPRIL 20 mg.","(เม็ด) eNAlapril 5 mg.","(ฉีด) ERIG (vinrab) 1000 iu.","(ผง) ERYTHROMYCIN 125 mg","(เม็ด) ETHAMBUTOL 400 mg.","(เม็ด) Favipiravir (covid-19) 200 mg.","(สารละลาย) FERROUS  DROP 50 mg/0.6ml","(เม็ด) FERROUS  FUMARATE 200 mg.","(ยาน้ำ) Ferrous fumarate Susp. 76 mg/5ml","(แคปซูล) FLUCONAZOLE 200 mg.","(แคปซูล) FLUNARIZINE(sibelium) 5 mg.","(เม็ด) Fluoxetine 20 mg.","(ฉีด) Fluphenazine(DECA) 50","(ฉีด) FLUPHENAZINE(deca) 50 mg.","(เม็ด) FOLIC  ACID 5 mg.","(ฉีด) FUROSEMIDE(lasix) 20 mg/2 ml","(เม็ด) FUROSEMIDE(lasix) 40 mg.","(แคปซูล) GEMFIBROZIL(Lopid) 300 mg.","(ฉีด) GENTAMICIN  80 mg/amp. 80 mg./2ml.","(เม็ด) gliPIZIDE(minidiab) 5 mg.","(เม็ด) Glyceryl guaiacolate (GG) 100 mg.","(เม็ด) GPO vir S30 30 mg.","(เม็ด) GPO VIR Z 250 250","(ยาน้ำ) Guaifenesin syrup (GG) 100 mg/5ml","HALOPERIDOL 0.5 mg.","(เม็ด) HALOPERIDOL 2 mg.","(เม็ด) HALOPERIDOL 5 mg.","(ฉีด) HALOPERIDOL 5 mg./ml.","(เม็ด) HCTZ(hydrochlorothiazide) 25 mg.","(ฉีด) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.","HI SET 1 u.","(สารละลาย) HISTA OPH(opsil A) 0.05 %","(ฉีด) HPV vaccine 0.5 ml.","(ฉีด) Hydralazine  Hcl 20 mg./1ml","(เม็ด) Hydralazine HCl 25 mg.","(ฉีด) Hydrocortisone sodium  succinate 100 mg.","(เม็ด) HYOSCINE(buscopan) 10 mg.","(ยาน้ำ) HYOSICNE(buscopan) 5 mg./5ml.","(ยาน้ำ) Ibuprofen (brufen) 100 mg/5ml","(เม็ด) IBUPROFEN(brufen) 400 mg.","(เม็ด) IMIPRAMINE(tofranil) 25 mg.","(ฉีด) IMPLANON  implant 68 mg.","(ฉีด) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.","(ฉีด) influenza ตามฤดูกาล 0.5 ml.","(เม็ด) INH(isoniazid) 100 mg.","(เม็ด) ISODIL  SL 5 mg.","(เม็ด) ISODIL  TAB 10 mg.","(เม็ด) Isoniazid 300 mg 300 mg.","(เม็ด) Isoniazid+Rifapentine 300/300 mg.","(ฉีด) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.","(ฉีด) JE VACCINE(0.5 ML) 80 mcg./ml.","(สารละลาย) K Y jelly sack 5 g.","(ผง) KALIMATE .","(เม็ด) KETOCONAZOLE(nizoral) 200 mg.","(เม็ด) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.","(เม็ด) Lamivudine 150 mg.","(เม็ด) Lamivudine 3TC 300 mg.","(เม็ด) Levodopa250 + carbidopa 25 mg.","(เม็ด) LevoFloxacin 500 mg.","Lidocain injection 2%","(ฉีด) LIDOCAINE 2 %","(แคปซูล) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.","(เม็ด) Lopinavir/Ritonavir 200/50 mg.","(เม็ด) Lorazepam 1 mg.","(เม็ด) Losartan (cozaar) 50 mg.","(สารละลาย) M tussis ( brown mixt ) 180 ml.","(สารละลาย) M. CARMINATIVE 180 ml.","(สารละลาย) M.tussis (brown mixt) 60 ml.","(ฉีด) MAGNESIUM SULFATE 10 %","(ฉีด) MAGNESIUM SULFATE 50 %","(ฉีด) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.","(เม็ด) METFORMIN(glucophage) 500 mg.","(เม็ด) Methimazole 5 mg.","(เม็ด) METHYLDOPA(aldomet) 250 mg.","(ฉีด) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.","(เม็ด) METOCLOPRAMIDE(plasil) 10 mg.","(ฉีด) METOCLOPRAMIDE(plasil) 10 mg./2ml.","(เม็ด) Metoprolol tartrate 100 mg.","(เม็ด) METRONIDAZOLE(flagyl) 400 mg.","(ฉีด) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.","(เม็ด) Micronised progesterone 100 mg.","(ยาน้ำ) MILK OF MAGNESIA(MOM) 60 ml.","(ฉีด) Mixtard (ขวด) 100 units/ml.","(ฉีด) mixtard STAT 100 iu","(ฉีด) MMR 0.5 ml.","(แคปซูล) Molnupiravir 200 mg","(ฉีด) MORPHINE 10 mg./ml.","(เม็ด) Morphine MST 10 mg","(สารละลาย) Morphine Solution 10 mg/5 ml","(ฉีด) MR 0.5","(เม็ด) MTV-MULTIVITAMINS g.","(เม็ด) NaCl (Sodium Chloride) 300 mg","(ฉีด) NALOXONE(narcan) 0.1mg./ml.","(เม็ด) Nevirapine 200 mg.","(เม็ด) NIFEDIPINE SR 20 mg.","(ฉีด) Norepinephrine bitartrate 4 ml/ 4 mg.","(เม็ด) NORFLOXACIN(lexinor) 400 mg.","(เม็ด) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.","(ฉีด) NPH (ขวด) 100 units/ml.","(ฉีด) NPH INSULIN 1 units/ml.","(ฉีด) NSS 5 ml 0.9 %","(ฉีด) NSS INJ. 0.9 %","(สารละลาย) OLIVE OIL 60 ml.","(ฉีด) Omeprazole 10 ml 40 mg.","(แคปซูล) OMEPRAZOLE(losec/miracid) 20 mg.","(ฉีด) Ondansetron inj 8mg/4ml","(หยดกิน) OPV vaccine .","(ผง) ORS(รสส้ม) 75 4.253 g.","(แคปซูล) oseltamivir 30 mg.","(แคปซูล) oseltamivir 45 mg.","(แคปซูล) oseltamivir 75 mg.","(ฉีด) OXYTOCIN 10 iu.","(ยาน้ำ) PARACETAMOL  SYR 250 mg/5ml.","(เม็ด) paracetamol 325 mg.","(เม็ด) PARACETAMOL 500 mg.","(ยาน้ำ) PARACETAMOL SYRUP 120 มก./5มล.","(ฉีด) PCEC (ID) 0.1 iu.","(ฉีด) PCEC (IM) 0.5 iu.","(เม็ด) PERPHENAZINE(สีไข่ไก่) 8 mg.","(ฉีด) PETHIDINE 50 mg./ml.","(เม็ด) PHENOBARBITAL(1 GRAIN) 60 mg.","(ฉีด) Phenytoin inj 250/5 mg./ml.","(เม็ด) Phenytoin(Dilantin) 50 mg.","(แคปซูล) PHENYTOIN(dilantin) promt 100 mg.","(เม็ด) Pioglitazone 30 mg.","(หยอดตา) PolyOPH 5000 iu.","(สารละลาย) POTASSIUM (KCL elixir) 20 mEq./15ml.","(เม็ด) Potassium Chloride tab 6.7 mEq.","(ฉีด) POTASSIUM CHLORIDE(KCl) 20 mEq.","(เม็ด) PREDNISOLONE 5 mg.","(ครีม) prednisolone cream 5","(เม็ด) Primolut-N(norethisterone 5 mg) 5 mg.","(เหน็บทวาร) PROCTOSEDYL 5 mg.","(เม็ด) propranolol(inderal) 10 mg.","(เม็ด) PTU(propylthiouracil) 50 mg.","(เม็ด) PZA(pyrazinamide) 500 mg.","(เม็ด) QUININE SULFATE 300 mg.","(เม็ด) R-DEN(คุมเม็ด) 30 mcg.","(ฉีด) RABIES ANTISERUM(ERIG) 100 iu.","(ฉีด) RI  STAT (REGULAR INSULIN ) 100 iu./ml.","(แคปซูล) RIFAMPICIN 300 mg.","(แคปซูล) RIFAMPICIN 450 mg.","(เม็ด) Rifapentine 150 mg.","(แคปซูล) Rifinah (Rifam+INH) 300+150 mg.","(เม็ด) Risperidone 2 mg.","(ยาน้ำ) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.","(เม็ด) ROXITHROMYCIN(rulid) 150 mg.","(สารละลาย) SALBUTAMOL  NB (ER) 0.1 %","(เม็ด) SALBUTAMOL 2 mg.","(ยาน้ำ) SALBUTAMOL 2 mg/5ml","(สารละลาย) SALBUTAMOL NB. 0.1 %","(สารละลาย) SALBUTAMOL(ventolin) MDI 100 mcg.","(สารละลาย) Saline IRRIGATE 0.9 %","(สารละลาย) SELENIUM shampoo 200 mg./ml.","(พ่น) SeRoflo   (MDI) 25/125 mcg./dos","(เม็ด) Sertraline 50 mg.","(ครีม) SILVER SULFADIAZINE (25g) 1 %","(เม็ด) SIMETHICONE  (air-x) 80 mg.","(ยาน้ำ) SIMETHICONE DROP SUS 40 mg./0.6ml.","(เม็ด) SimVastatin(zocor) (NL) 20 mg.","(เม็ด) Sodamint (Sodium bicarbonate) 300 mg.","(ฉีด) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.","(ยาน้ำ) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.","(เม็ด) spironolactone (Aldactone) 25 mg.","(ฉีด) STERILEWATER (SWI) 100 ml.","(ฉีด) Streptokinase 1500000 u.","(ฉีด) STREPTOMYCIN SULPHATE 1 g.","(เม็ด) Teevir 300 mg.","(เม็ด) Tenofovia disoproxil 300 mg.","(ฉีด) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.","(สารละลาย) tetracain eye drop 0.5 %","(แคปซูล) Theophylline-CR 200 mg.","(เม็ด) THYROXINE-L 100 mcg.","(เม็ด) TLD (TDF300mg+3TC300mg+DTG50mg) mg.","(แคปซูล) TRAMADOL HCl(tramal) 50 mg.","(ฉีด) TRAMADOL inj 50 mg./ml.","(แคปซูล) Tranexamic acid 250 mg.","(ครีม) TRIAMCINOLONE 0.02 %","(ครีม) TRIAMCINOLONE 0.1 %","(ขี้ผึ้ง) Triamcinolone Oral Paste 1 g.","(ฉีด) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.","(เม็ด) Triferdine 150 mg.","(สารละลาย) UNISON 10 ml.","(สารละลาย) UNISON ENEMA 100 ml.","UNISON ENEMA 20","Varenicline Tartrate 0.5 mg","Varenicline Tartrate 1 mg","(ฉีด) VERORAB ( ID ) 0.1 ml.","(ฉีด) VERORAB ( IM ) 0.5 ml.","(เม็ด) VIT B6(pyridoxine) 50 mg.","(เม็ด) VITAMIN B 1/6/12 1 g.","(ฉีด) VITAMIN B COMPLEX .","vitamin c 25 mg.","(ฉีด) VITAMIN K1 1 mg.","(ฉีด) WATER FOR INJECTION 5 ml.","Whitfields ointment 6 %","(แคปซูล) Zidovudine  (AZT) 300 mg.","(ยาน้ำ) Zidovudine (AZT) 10 mg./ml.","(แคปซูล) Zidovudine (AZT) 100 mg.","(เม็ด) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.","กานพลู 5 g.","(แคปซูล) ขมิ้นชัน แคปซูล KMC 500 mg.","ขวดยา 120 ml.","ขวดยา 30  ml.","ขวดยา 60 ml.","(แคปซูล) ขิง 500 mg.","ครีมพญายอ 4.343 g/100g","(แคปซูล) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.","ชุมเห็ดเทศ 3 g.","(แคปซูล) ตรีผลาTPL 90 g.","น้ำมันกัญชา ml.","น้ำมันไพลPLI 20 ml","(แคปซูล) ฟ้าทะลายโจร FTJ 500 mg.","(ยาน้ำ) มะขามป้อม MKP 120 ml.","ยาธาตุบรรจบ 500 mg.","ยาธาตุอบเชยOS 240 ml.","ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.","(แคปซูล) ยาประสะไพลPSP 500 mg.","(แคปซูล) ยามันทธาตุ 500 mg.","(เม็ด) ยาระบายมะขามแขก(senokot) 7.5  mg","(แคปซูล) ยาศุขไสยาศน์ 500 mg.","(แคปซูล) ยาสหัสธาราSHTR 500 mg.","(ผง) ยาหอมนวโกฐNVK 7 g.","(ผง) ยาหอมเทพจิตรTPJ 30 g.","(แคปซูล) ยาห้าราก ซองละ 9 แคปซูล 500 mg.","(เม็ด) ยาอมมะแว้ง MW %","(แคปซูล) ยาเขียวหอมKH 500 mg.","(เม็ด) ยาเดิม (Manidipine ) 20 mg","(สารละลาย) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml","(ผง) ยาเดิม(Acetylcysteine) 200 mg.","(เม็ด) ยาเดิม(Amlodipine) 10 mg.","(เม็ด) ยาเดิม(Atorvastatin) 40 mg.","(เม็ด) ยาเดิม(Azithromycin) 250 mg.","(ยาน้ำ) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml","(เม็ด) ยาเดิม(Betahistine) 6 mg.","(เม็ด) ยาเดิม(Carvedilol) 6.25 mg.","(แคปซูล) ยาเดิม(Gabapentin) 300 mg.","(เม็ด) ยาเดิม(Hydralazine) 50 mg.","(ฉีด) ยาเดิม(Hypercrit) 4000 u.","(เม็ด) ยาเดิม(Lorazepam) 0.5 mg.","(ผง) ยาเดิม(Meropenem inj.) 1 gm","(เม็ด) ยาเดิม(Risperidone) 1 mg.","(ฉีด) ยาเดิม(Vancomycin inj.) 500 mg","(เม็ด) ยาเดิม(Warfarin) 5 mg","(แคปซูล) ยาเลือดงามLH 500 mg.","(แคปซูล) ยาเหลืองปิดสมุทร 500 mg.","(แคปซูล) ยาแก้ลมจับเส้น 500 mg.","(ผง) ยาแก้ลมอัมพฤกษ์AMP 70 g.","(แคปซูล) รางจืด RJ 400 mg.","(ผง) ลูกประคบสมุนไพร 220 g.","เจลว่านหางจระเข้ g.","เถาวัลย์เปรียง TWP 500 mg.","(แคปซูล) เพชรสังฆาต PSK 500 mg."];
+const DRUG_PRICES = {"HALOPERIDOL 0.5 mg.":{"p":0.5,"u":"เม็ด"},"(สารละลาย) UNISON ENEMA 100 ml.":{"p":60.0,"u":"ขวด"},"(แคปซูล) PHENYTOIN(dilantin) promt 100 mg.":{"p":1.0,"u":"แค็บซูล"},"(เม็ด) Benzhexol 2 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) DIAZEPAM(valium) 2 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) HALOPERIDOL 2 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) Acyclovir 200 mg.":{"p":5.5,"u":"เม็ด"},"(แคปซูล) oseltamivir 30 mg.":{"p":20.0,"u":"เม็ด"},"(เม็ด) paracetamol 325 mg.":{"p":0.5,"u":"เม็ด"},"(แคปซูล) oseltamivir 45 mg.":{"p":30.0,"u":"เม็ด"},"(เม็ด) Benzhexol 5 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) DIAZEPAM(valium) 5 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) HALOPERIDOL 5 mg.":{"p":1.5,"u":"เม็ด"},"(เม็ด) Phenytoin(Dilantin) 50 mg.":{"p":3.5,"u":"เม็ด"},"(เม็ด) PARACETAMOL 500 mg.":{"p":0.5,"u":"เม็ด"},"(แคปซูล) oseltamivir 75 mg.":{"p":40.0,"u":"แค็บซูล"},"(เม็ด) ACYCLOVIR 800 mg.":{"p":20.0,"u":"เม็ด"},"(ฉีด) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.":{"p":50.0,"u":"Vial"},"(ฉีด) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU":{"p":46.0,"u":"Vial"},"(ฉีด) 10%D/N/2 10 %":{"p":50.0,"u":"ถุง (1,000 ml.)"},"(ฉีด) 3%Sodium Chloride(NaCl) 3 %":{"p":45.0,"u":"ขวด (500 ml.)"},"(เม็ด) aspirin(asa) 81 mg.":{"p":1.0,"u":"เม็ด"},"(ผง) amoxycillin SYR 125 mg./5ml.":{"p":25.0,"u":"ขวด (60 ซีซี)"},"(เม็ด) ENALAPRIL 20 mg.":{"p":2.0,"u":"เม็ด"},"(ยาน้ำ) Amoxy dry SYRUP 250 mg/5ml":{"p":25.0,"u":"bot"},"(แคปซูล) AmoxyCillin 250 mg.":{"p":2.0,"u":"แค็บซูล"},"(แคปซูล) diCloxacillin  cap 250 mg.":{"p":3.0,"u":"แค็บซูล"},"(เม็ด) ASPIRIN(ASA/aspent) 300 mg.":{"p":1.0,"u":"เม็ด"},"(แคปซูล) AMOXICILLIN 500 mg.":{"p":4.0,"u":"แค็บซูล"},"(แคปซูล) DICLOXACILLIN CAP 500 mg.":{"p":5.0,"u":"แค็บซูล"},"(เม็ด) eNAlapril 5 mg.":{"p":1.0,"u":"เม็ด"},"(IV) ACETATE RINGER 1,000 ml.":{"p":70.0,"u":"ถุง (1,000 ซีซี)"},"(ผง) ACTIVATED CHARCOAL 5 g.":{"p":25.0,"u":"ซอง"},"(ฉีด) Adenosine (adenocor) 6 mg.":{"p":535.0,"u":"Amphule (2 ml.)"},"(ฉีด) ADRENALINE 1 mg./ml.":{"p":10.0,"u":"Amp(1ml)"},"(ยาน้ำ) Albendazole (FALBEN)susp 100 mg/5ml":{"p":15.0,"u":"ขวด (20 ml.)"},"(เม็ด) ALBENDAZOLE(zentel) 200 mg.":{"p":10.0,"u":"เม็ด"},"(สารละลาย) ALCOHOL 70 %":{"p":40.0,"u":"450 ml"},"(สารละลาย) ALCOHOL  60 ml 70 %":{"p":15.0,"u":"ขวด"},"(เม็ด) ALLOPURINOL(zyloric) 100 mg.":{"p":1.5,"u":"เม็ด"},"(ฉีด) AMIODARONE(Cordarone) (NL) 150 mg.":{"p":100.0,"u":"Amphule (3ml.)"},"(เม็ด) amitriptyline(A10/tripta) 10 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) Amlodipine 5 mg.":{"p":1.0,"u":"เม็ด"},"(สารละลาย) AMMONIUM CARBONATE 60 ml.":{"p":10.0,"u":"ขวด (60 ซีซี)"},"(ผง) AMPICILLIN   1 g 1 g.":{"p":20.0,"u":"ไวอัล"},"(ยาน้ำ) ANTACID SUSP(alum milk) 0.66 g.":{"p":25.0,"u":"ขวด (240ซีซี.)"},"(ฉีด) ANTIVENUM SERA,(งูเห่า) 0.6 u.":{"p":1300.0,"u":"Amp(10ml)"},"(ผง) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.":{"p":1300.0,"u":"Amp(10ml)"},"(ฉีด) aP Acellular Pertussis (ไอกรน) 5 mcg./dose":{"p":455.0,"u":"dose"},"(เม็ด) Atarax(hydroxyzine) 10 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) ATENOLOL 50 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) ATROPINE 0.6 mg./ml.":{"p":25.0,"u":"แอมป์"},"(เม็ด) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.":{"p":10.0,"u":"เม็ด"},"(ยาน้ำ) Augmentin Susp 400/57 mg/5ml":{"p":250.0,"u":"ขวด"},"(ฉีด) BCG(bacillus calmette-gue rin) 0.1 ml.":{"p":20.0,"u":"Vial"},"(ฉีด) BENZATHINE PENICILLIN 1,200,000 u.":{"p":100.0,"u":"ไวอัล"},"(โลชั่น) BENZYL BENZOATE 25 %":{"p":25.0,"u":"ขวด (60 ซีซี)"},"(สารละลาย) BERODUAL 0.5 %":{"p":20.0,"u":"dose"},"(สารละลาย) BERODUAL 20 ml.":{"p":120.0,"u":"ขวด"},"(ผง) BERODUAL ( MDI ) inhaler 200 dose":{"p":300.0,"u":"กล่อง"},"(สารละลาย) BETADINE (IODINE) %":{"p":30.0,"u":"ขวด (30 ml.)"},"(ครีม) BETAMETHASONE(5g) 0.1 %":{"p":20.0,"u":"หลอด (5 กรัม)"},"(ยาน้ำ) Bromhexine elixir 4 mg.":{"p":21.0,"u":"ขวด (60 ml.)"},"BUDESONIDE  (MDI) 200 mcg.":{"p":300.0,"u":"ขวด MDI (200 dose)"},"(ฉีด) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.":{"p":25.0,"u":"Amp. (1 ml.)"},"(เม็ด) CAFERGOT (NL) 1 mg.":{"p":2.0,"u":"เม็ด"},"(ยาน้ำ) CALAMINE 15 %":{"p":20.0,"u":"ขวด (60 ml.)"},"(เม็ด) calcium carbonate(CaCO3) 600 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) CALCIUM GLUCONATE 10 %":{"p":10.0,"u":"Amphule (10 ml.)"},"(เม็ด) CAPTOPRIL  25 mg 25 mg.":{"p":5.0,"u":"tab"},"(เม็ด) CARBAMAZEPINE(tegretol) 200 mg.":{"p":2.0,"u":"เม็ด"},"Carbocisteine 100 mg/5ml":{"p":26.0,"u":"ขวด"},"(ผง) CeFaZOLIN injection 1 g.":{"p":23.0,"u":"Vial"},"(ผง) CefTaZidime injection 1 g.":{"p":26.0,"u":"Vial"},"(ฉีด) CefTRIAXone 1 g injection (CEF-3) 1 g.":{"p":15.0,"u":"ไวอัล"},"(เม็ด) CETIRIZINE (Alerest) 10 mg.":{"p":0.5,"u":"เม็ด"},"(หยอดหู) CHLORAMPHENICOL EAR DROP 1 %":{"p":25.0,"u":"ขวด (10ซีซี)"},"(สารละลาย) Chlorhexidine mouth wash 0.12 g.":{"p":45.0,"u":"ขวด (250 ml)"},"(เม็ด) CHLORPROMAZINE(CPZ) 100 mg.":{"p":1.5,"u":"เม็ด"},"(ขี้ผึ้ง) CHLORTETRACYCLINE - mg.":{"p":20.0,"u":"หลอด"},"(เม็ด) Ciprofloxacin 500 mg.":{"p":2.5,"u":"เม็ด"},"(แคปซูล) CLINDAMYCIIN 300 mg":{"p":10.0,"u":"เม็ด"},"(ฉีด) clindamycin  600 mg/vial. 600 mg./dose":{"p":25.0,"u":"Vial"},"(เม็ด) CLONAZEPAM(rivotril) 2 mg.":{"p":7.25,"u":"เม็ด"},"(เม็ด) Clopidogrel (Plavix) 75 mg.":{"p":5.0,"u":"เม็ด"},"(เหน็บช่องคลอด) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.":{"p":10.0,"u":"เม็ด"},"(ครีม) CLOTRIMAZOLE(canesten) 1 %":{"p":8.0,"u":"หลอด (5 g.)"},"(ฉีด) CLOXACILLIN INJ  1  g 1 g.":{"p":20.0,"u":"Vial"},"(เม็ด) COLCHICINE 0.6 mg.":{"p":2.0,"u":"เม็ด"},"(เม็ด) COTRIMOXAZOLE(bactrim) 400 mg.":{"p":1.5,"u":"เม็ด"},"(ยาน้ำ) COTRIMOXAZOLE(bactrim) 60 ml.":{"p":15.0,"u":"ขวด (60 ซีซี)"},"(ฉีด) Covid Vaccine(SARS-CoV-2) 0.5 ml.":{"p":640.0,"u":"Vial"},"(ยาน้ำ) CPM 2 mg./5ml.":{"p":10.0,"u":"ขวด (60 ซีซี)"},"(เม็ด) CPM   tab. 4 mg.":{"p":0.5,"u":"เม็ด"},"(ฉีด) CPM(piriton) 10 mg./ml.":{"p":5.0,"u":"Amphule (1 ml.)"},"(เม็ด) CYPROHEPTADINE(periactin) 4 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) Cytotec 200 mcg.":{"p":15.0,"u":"เม็ด"},"(IV) D-5-S - %":{"p":50.0,"u":"ถุง (1,000 ซีซี)"},"(IV) D-5-S/2 - %":{"p":40.0,"u":"ถุง (1,000 ซีซี)"},"(IV) D-5-S/3 - %":{"p":40.0,"u":"ถุง (500 ซีซี)"},"(IV) D-5-S/4 500 ml.":{"p":40.0,"u":"ถุง (500 ml.)"},"(ฉีด) D-5-S/5 5 %":{"p":40.0,"u":"ถุง (500 ml.)"},"(IV) D-5-W %":{"p":30.0,"u":"ถุง (100 ซีซี)"},"(ฉีด) D-5-W %":{"p":40.0,"u":"ถุง(250 cc)"},"(IV) D-5-W - %":{"p":50.0,"u":"ถุง (1,000 ซีซี)"},"(ฉีด) D-W-10 %":{"p":40.0,"u":"ขวด (500 ml.)"},"(เม็ด) Depakin (sodium valproate) 200 mg.":{"p":4.0,"u":"เม็ด"},"(ฉีด) DEXAMETHASONE 5 mg./ml.":{"p":8.0,"u":"Amphule"},"(IV) DEXTRAN 40 mg.":{"p":560.0,"u":"ถุง (500 ซีซี)"},"(เม็ด) DEXTROMETHORPHAN 15 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) DEXTROSE (glucose) 50 %":{"p":50.0,"u":"ขวด (50 ซีซี)"},"(ฉีด) DIAZEPAM(valium) 10 mg./ml.":{"p":10.0,"u":"Amp.(2ml)"},"(เม็ด) DICLOFENAC (voltaren/fenac) 25 mg.":{"p":1.0,"u":"เม็ด"},"(ผง) Dicloxacillin syp. 62.5 mg/5ml":{"p":25.0,"u":"ขวด (60 ml.)"},"(ฉีด) DIGOXIN 0.25 mg./ml.":{"p":50.0,"u":"Amphule"},"(เม็ด) DIGOXIN(lanoxin) 0.25 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) DIMENHYDRINATE(dramamine) 50 mg.":{"p":0.5,"u":"เม็ด"},"(ฉีด) DIMENHYDRINATE(Dramamine) 50 mg./ml.":{"p":30.0,"u":"Amp."},"(แคปซูล) DIP. CLORAZEPATE(trancon/T5) 5 mg.":{"p":2.0,"u":"เม็ด"},"(เม็ด) Dolutegravir 50 mg.":{"p":12.0,"u":"เม็ด"},"(เม็ด) DOMPERIDONE(motilium) 10 mg.":{"p":1.0,"u":"เม็ด"},"(ยาน้ำ) DOMPERIDONE(motilium) 5 mg/5ml":{"p":10.0,"u":"ขวด (30 ซีซี)"},"(ฉีด) DOPAMINE 250 mg./ml.":{"p":50.0,"u":"Amphule"},"(เม็ด) Doxazosin 4 mg.":{"p":1.5,"u":"เม็ด"},"(แคปซูล) DOXYCYCLINE 100 mg.":{"p":2.0,"u":"แค็บซูล"},"(ฉีด) DT(diphtheria tetanus) vaccines mg.":{"p":10.0,"u":"ครั้ง"},"(ฉีด) DTP iu./dose":{"p":15.0,"u":"Vial (5 ml.)"},"(ฉีด) DTP-HB iu./dose":{"p":55.0,"u":"Vial (5 ml.)"},"(ฉีด) DTP-HB-Hib vaccine 0.5 ml.":{"p":33.0,"u":"ซีซี"},"(เม็ด) EFAVIRENZ(EFV) 600 mg.":{"p":30.0,"u":"แค็บซูล"},"(ฉีด) ERIG (vinrab) 1000 iu.":{"p":850.0,"u":"Vial (5 ml.)"},"(ผง) ERYTHROMYCIN 125 mg":{"p":25.0,"u":"ขวด (60 ซีซี)"},"(เม็ด) ETHAMBUTOL 400 mg.":{"p":2.0,"u":"เม็ด"},"(เม็ด) Favipiravir (covid-19) 200 mg.":{"p":16.0,"u":"เม็ด"},"(สารละลาย) FERROUS  DROP 50 mg/0.6ml":{"p":55.0,"u":"ขวด (15 ml.)"},"(เม็ด) FERROUS  FUMARATE 200 mg.":{"p":0.5,"u":"เม็ด"},"(ยาน้ำ) Ferrous fumarate Susp. 76 mg/5ml":{"p":30.0,"u":"ขวด (60 ml.)"},"(แคปซูล) FLUCONAZOLE 200 mg.":{"p":12.0,"u":"แคปซูล"},"(แคปซูล) FLUNARIZINE(sibelium) 5 mg.":{"p":2.0,"u":"แค็บซูล"},"(เม็ด) Fluoxetine 20 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) Fluphenazine(DECA) 50":{"p":60.0,"u":"Amphule (2 ml.)"},"(ฉีด) FLUPHENAZINE(deca) 50 mg.":{"p":60.0,"u":"Amphule (2 ml.)"},"(เม็ด) FOLIC  ACID 5 mg.":{"p":0.5,"u":"เม็ด"},"(ฉีด) FUROSEMIDE(lasix) 20 mg/2 ml":{"p":10.0,"u":"Amp. (2 ml.)"},"(เม็ด) FUROSEMIDE(lasix) 40 mg.":{"p":0.5,"u":"เม็ด"},"(แคปซูล) GEMFIBROZIL(Lopid) 300 mg.":{"p":4.0,"u":"แค็บซูล"},"(ฉีด) GENTAMICIN  80 mg/amp. 80 mg./2ml.":{"p":15.0,"u":"Amphule (2 ml.)"},"(เม็ด) gliPIZIDE(minidiab) 5 mg.":{"p":3.0,"u":"เม็ด"},"(เม็ด) Glyceryl guaiacolate (GG) 100 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) GPO vir S30 30 mg.":{"p":25.3,"u":"เม็ด"},"(เม็ด) GPO VIR Z 250 250":{"p":35.0,"u":"TAB"},"(ยาน้ำ) Guaifenesin syrup (GG) 100 mg/5ml":{"p":12.0,"u":"ขวด (60 ml.)"},"(ฉีด) HALOPERIDOL 5 mg./ml.":{"p":110.0,"u":"Amphule (1 ml.)"},"(เม็ด) HCTZ(hydrochlorothiazide) 25 mg.":{"p":0.3,"u":"เม็ด"},"(ฉีด) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.":{"p":300.0,"u":"Vial"},"HI SET 1 u.":{"p":1000.0,"u":"กล่อง"},"(สารละลาย) HISTA OPH(opsil A) 0.05 %":{"p":20.0,"u":"ขวด ED (5 ml.)"},"(ฉีด) HPV vaccine 0.5 ml.":{"p":364.0,"u":"dose"},"(ฉีด) Hydralazine  Hcl 20 mg./1ml":{"p":320.0,"u":"Amphule"},"(เม็ด) Hydralazine HCl 25 mg.":{"p":2.0,"u":"เม็ด"},"(ฉีด) Hydrocortisone sodium  succinate 100 mg.":{"p":62.0,"u":"Vial"},"(เม็ด) HYOSCINE(buscopan) 10 mg.":{"p":3.0,"u":"เม็ด"},"(ยาน้ำ) HYOSICNE(buscopan) 5 mg./5ml.":{"p":10.0,"u":"ขวด (30 ซีซี)"},"(ยาน้ำ) Ibuprofen (brufen) 100 mg/5ml":{"p":15.0,"u":"ขวด"},"(เม็ด) IBUPROFEN(brufen) 400 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) IMIPRAMINE(tofranil) 25 mg.":{"p":2.0,"u":"เม็ด"},"(ฉีด) IMPLANON  implant 68 mg.":{"p":2380.0,"u":"แท่ง"},"(ฉีด) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.":{"p":130.0,"u":"Vial"},"(ฉีด) influenza ตามฤดูกาล 0.5 ml.":{"p":200.0,"u":"Amphule"},"(เม็ด) INH(isoniazid) 100 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) ISODIL  SL 5 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) ISODIL  TAB 10 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) Isoniazid 300 mg 300 mg.":{"p":1.5,"u":"เม็ด"},"(ฉีด) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.":{"p":180.0,"u":"Vial"},"(ฉีด) JE VACCINE(0.5 ML) 80 mcg./ml.":{"p":90.0,"u":"Vial"},"(สารละลาย) K Y jelly sack 5 g.":{"p":8.0,"u":"ซอง (5 g.)"},"(ผง) KALIMATE .":{"p":30.0,"u":"ซอง (5 g.)"},"(เม็ด) KETOCONAZOLE(nizoral) 200 mg.":{"p":5.0,"u":"เม็ด"},"(เม็ด) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.":{"p":26.0,"u":"เม็ด"},"(เม็ด) Lamivudine 150 mg.":{"p":110.0,"u":"เม็ด"},"(เม็ด) Lamivudine 3TC 300 mg.":{"p":8.0,"u":"เม็ด"},"(เม็ด) Levodopa250 + carbidopa 25 mg.":{"p":10.0,"u":"เม็ด"},"(เม็ด) LevoFloxacin 500 mg.":{"p":13.0,"u":"เม็ด"},"Lidocain injection 2%":{"p":1.0,"u":"CC"},"(ฉีด) LIDOCAINE 2 %":{"p":45.0,"u":"Vial (50 ml.)"},"(แคปซูล) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.":{"p":2.5,"u":"แค็บซูล"},"(เม็ด) Lopinavir/Ritonavir 200/50 mg.":{"p":10.0,"u":"เม็ด"},"(เม็ด) Lorazepam 1 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) Losartan (cozaar) 50 mg.":{"p":3.0,"u":"tab"},"(สารละลาย) M tussis ( brown mixt ) 180 ml.":{"p":25.0,"u":"ขวด"},"(สารละลาย) M. CARMINATIVE 180 ml.":{"p":20.0,"u":"ขวด"},"(สารละลาย) M.tussis (brown mixt) 60 ml.":{"p":10.0,"u":"ขวด"},"(ฉีด) MAGNESIUM SULFATE 10 %":{"p":15.0,"u":"Amphule (10 ml.)"},"(ฉีด) MAGNESIUM SULFATE 50 %":{"p":10.0,"u":"Amphule (2 ml.)"},"(ฉีด) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.":{"p":30.0,"u":"ไวอัล"},"(เม็ด) METFORMIN(glucophage) 500 mg.":{"p":2.0,"u":"เม็ด"},"(เม็ด) Methimazole 5 mg.":{"p":1.5,"u":"เม็ด"},"(เม็ด) METHYLDOPA(aldomet) 250 mg.":{"p":3.0,"u":"เม็ด"},"(ฉีด) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.":{"p":10.0,"u":"Amp."},"(เม็ด) METOCLOPRAMIDE(plasil) 10 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) METOCLOPRAMIDE(plasil) 10 mg./2ml.":{"p":10.0,"u":"Amphule"},"(เม็ด) Metoprolol tartrate 100 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) METRONIDAZOLE(flagyl) 400 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.":{"p":70.0,"u":"Vial (100 ml.)"},"(เม็ด) Micronised progesterone 100 mg.":{"p":15.0,"u":"เม็ด (VG.)"},"(ยาน้ำ) MILK OF MAGNESIA(MOM) 60 ml.":{"p":10.0,"u":"ขวด (60 ซีซี)"},"(ฉีด) Mixtard (ขวด) 100 units/ml.":{"p":250.0,"u":"Vial (10 ml.)"},"(ฉีด) mixtard STAT 100 iu":{"p":1.0,"u":"Stat"},"(ฉีด) MMR 0.5 ml.":{"p":190.0,"u":"Vial"},"(แคปซูล) Molnupiravir 200 mg":{"p":12.0,"u":"เม็ด"},"(ฉีด) MORPHINE 10 mg./ml.":{"p":25.0,"u":"Amphule (1 ml.)"},"(เม็ด) Morphine MST 10 mg":{"p":15.0,"u":"tablet"},"(สารละลาย) Morphine Solution 10 mg/5 ml":{"p":80.0,"u":"ขวด (60ml)"},"(ฉีด) MR 0.5":{"p":105.0,"u":"Vial"},"(เม็ด) MTV-MULTIVITAMINS g.":{"p":1.0,"u":"เม็ด"},"(เม็ด) NaCl (Sodium Chloride) 300 mg":{"p":1.0,"u":"เม็ด"},"(ฉีด) NALOXONE(narcan) 0.1mg./ml.":{"p":300.0,"u":"แอมป์"},"(เม็ด) Nevirapine 200 mg.":{"p":15.0,"u":"แค็บซูล"},"(เม็ด) NIFEDIPINE SR 20 mg.":{"p":1.5,"u":"เม็ด"},"(ฉีด) Norepinephrine bitartrate 4 ml/ 4 mg.":{"p":65.0,"u":"Amphule"},"(เม็ด) NORFLOXACIN(lexinor) 400 mg.":{"p":3.0,"u":"เม็ด"},"(เม็ด) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.":{"p":1.5,"u":"เม็ด"},"(ฉีด) NPH (ขวด) 100 units/ml.":{"p":300.0,"u":"Vial (10 ml.)"},"(ฉีด) NPH INSULIN 1 units/ml.":{"p":1.0,"u":"Stat"},"(ฉีด) NSS 5 ml 0.9 %":{"p":6.0,"u":"Amphule"},"(ฉีด) NSS INJ. 0.9 %":{"p":50.0,"u":"ขวด (1,000 ml.)"},"(สารละลาย) OLIVE OIL 60 ml.":{"p":47.0,"u":"ขวด"},"(ฉีด) Omeprazole 10 ml 40 mg.":{"p":35.0,"u":"Vial"},"(แคปซูล) OMEPRAZOLE(losec/miracid) 20 mg.":{"p":1.5,"u":"เม็ด"},"(ฉีด) Ondansetron inj 8mg/4ml":{"p":20.0,"u":"Amphule"},"(หยดกิน) OPV vaccine .":{"p":10.0,"u":"dose"},"(ผง) ORS(รสส้ม) 75 4.253 g.":{"p":5.0,"u":"ซอง"},"(ฉีด) OXYTOCIN 10 iu.":{"p":20.0,"u":"Amp."},"(ยาน้ำ) PARACETAMOL  SYR 250 mg/5ml.":{"p":25.0,"u":"ขวด (60 ml.)"},"(ยาน้ำ) PARACETAMOL SYRUP 120 มก./5มล.":{"p":15.0,"u":"ขวด (60 ซีซี)"},"(ฉีด) PCEC (ID) 0.1 iu.":{"p":150.0,"u":"Vial"},"(ฉีด) PCEC (IM) 0.5 iu.":{"p":400.0,"u":"Vial"},"(เม็ด) PERPHENAZINE(สีไข่ไก่) 8 mg.":{"p":2.0,"u":"เม็ด"},"(ฉีด) PETHIDINE 50 mg./ml.":{"p":25.0,"u":"Amphule"},"(เม็ด) PHENOBARBITAL(1 GRAIN) 60 mg.":{"p":1.0,"u":"เม็ด"},"(ฉีด) Phenytoin inj 250/5 mg./ml.":{"p":330.0,"u":"Vial (5 ml.)"},"(เม็ด) Pioglitazone 30 mg.":{"p":1.5,"u":"เม็ด"},"(หยอดตา) PolyOPH 5000 iu.":{"p":40.0,"u":"ขวด"},"(สารละลาย) POTASSIUM (KCL elixir) 20 mEq./15ml.":{"p":1.0,"u":"ซีซี"},"(เม็ด) Potassium Chloride tab 6.7 mEq.":{"p":2.0,"u":"เม็ด"},"(ฉีด) POTASSIUM CHLORIDE(KCl) 20 mEq.":{"p":15.0,"u":"Amphule (10 ml.)"},"(เม็ด) PREDNISOLONE 5 mg.":{"p":0.5,"u":"เม็ด"},"(ครีม) prednisolone cream 5":{"p":10.0,"u":"หลอด (5 g.)"},"(เม็ด) Primolut-N(norethisterone 5 mg) 5 mg.":{"p":10.0,"u":"เม็ด"},"(เหน็บทวาร) PROCTOSEDYL 5 mg.":{"p":10.0,"u":"เม็ด (SP.)"},"(เม็ด) propranolol(inderal) 10 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) PTU(propylthiouracil) 50 mg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) PZA(pyrazinamide) 500 mg.":{"p":4.0,"u":"เม็ด"},"(เม็ด) QUININE SULFATE 300 mg.":{"p":2.5,"u":"เม็ด"},"(เม็ด) R-DEN(คุมเม็ด) 30 mcg.":{"p":40.0,"u":"แผง"},"(ฉีด) RABIES ANTISERUM(ERIG) 100 iu.":{"p":150.0,"u":"UNIT"},"(ฉีด) RI  STAT (REGULAR INSULIN ) 100 iu./ml.":{"p":1.0,"u":"cc"},"(แคปซูล) RIFAMPICIN 300 mg.":{"p":5.0,"u":"แค็บซูล"},"(แคปซูล) RIFAMPICIN 450 mg.":{"p":7.0,"u":"แค็บซูล"},"(แคปซูล) Rifinah (Rifam+INH) 300+150 mg.":{"p":10.0,"u":"ขวด"},"(เม็ด) Risperidone 2 mg.":{"p":3.75,"u":"เม็ด"},"(ยาน้ำ) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.":{"p":370.0,"u":"dose"},"(เม็ด) ROXITHROMYCIN(rulid) 150 mg.":{"p":5.0,"u":"เม็ด"},"(เม็ด) SALBUTAMOL 2 mg.":{"p":0.5,"u":"เม็ด"},"(ยาน้ำ) SALBUTAMOL 2 mg/5ml":{"p":15.0,"u":"ขวด (60 ซีซี)"},"(สารละลาย) SALBUTAMOL  NB (ER) 0.1 %":{"p":10.0,"u":"1 CC"},"(สารละลาย) SALBUTAMOL NB. 0.1 %":{"p":115.0,"u":"20 ml"},"(สารละลาย) SALBUTAMOL(ventolin) MDI 100 mcg.":{"p":150.0,"u":"ขวด MDI (200 dose)"},"(สารละลาย) Saline IRRIGATE 0.9 %":{"p":40.0,"u":"ถุง (1,000 ml.)"},"(สารละลาย) SELENIUM shampoo 200 mg./ml.":{"p":120.0,"u":"ขวด"},"(พ่น) SeRoflo   (MDI) 25/125 mcg./dos":{"p":500.0,"u":"กล่อง"},"(เม็ด) Sertraline 50 mg.":{"p":3.5,"u":"เม็ด"},"(ครีม) SILVER SULFADIAZINE (25g) 1 %":{"p":50.0,"u":"หลอด"},"(เม็ด) SIMETHICONE  (air-x) 80 mg.":{"p":1.0,"u":"เม็ด"},"(ยาน้ำ) SIMETHICONE DROP SUS 40 mg./0.6ml.":{"p":25.0,"u":"ขวด (15 ml.)"},"(เม็ด) SimVastatin(zocor) (NL) 20 mg.":{"p":2.0,"u":"เม็ด"},"(เม็ด) Sodamint (Sodium bicarbonate) 300 mg.":{"p":0.5,"u":"เม็ด"},"(ฉีด) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.":{"p":40.0,"u":"Amphule"},"(ยาน้ำ) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.":{"p":10.0,"u":"ขวด (60 ml.)"},"(เม็ด) spironolactone (Aldactone) 25 mg.":{"p":3.0,"u":"เม็ด"},"(ฉีด) STERILEWATER (SWI) 100 ml.":{"p":30.0,"u":"ถุง"},"(ฉีด) Streptokinase 1500000 u.":{"p":8000.0,"u":"Vial"},"(ฉีด) STREPTOMYCIN SULPHATE 1 g.":{"p":18.0,"u":"Vial"},"(เม็ด) Teevir 300 mg.":{"p":31.0,"u":"เม็ด"},"(เม็ด) Tenofovia disoproxil 300 mg.":{"p":500.0,"u":"เม็ด"},"(ฉีด) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.":{"p":20.0,"u":"Amphule"},"(สารละลาย) tetracain eye drop 0.5 %":{"p":100.0,"u":"ขวด (5 ml.)"},"(แคปซูล) Theophylline-CR 200 mg.":{"p":3.0,"u":"แค็บซูล"},"(เม็ด) THYROXINE-L 100 mcg.":{"p":1.0,"u":"เม็ด"},"(เม็ด) TLD (TDF300mg+3TC300mg+DTG50mg) mg.":{"p":29.0,"u":"เม็ด"},"(แคปซูล) TRAMADOL HCl(tramal) 50 mg.":{"p":6.0,"u":"แค็บซูล"},"(ฉีด) TRAMADOL inj 50 mg./ml.":{"p":25.0,"u":"Amphule (1 ml.)"},"(แคปซูล) Tranexamic acid 250 mg.":{"p":3.5,"u":"แค็บซูล"},"(ครีม) TRIAMCINOLONE 0.02 %":{"p":10.0,"u":"หลอด (5 g)"},"(ครีม) TRIAMCINOLONE 0.1 %":{"p":10.0,"u":"หลอด (5 g.)"},"(ขี้ผึ้ง) Triamcinolone Oral Paste 1 g.":{"p":10.0,"u":"ซอง"},"(ฉีด) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.":{"p":30.0,"u":"ซีซี"},"(เม็ด) Triferdine 150 mg.":{"p":1.0,"u":"เม็ด"},"(สารละลาย) UNISON 10 ml.":{"p":10.0,"u":"ขวด (10 ml.)"},"UNISON ENEMA 20":{"p":30.0,"u":"ขวด (20 ml.)"},"Varenicline Tartrate 0.5 mg":{"p":2.0,"u":"เม็ด"},"Varenicline Tartrate 1 mg":{"p":2.0,"u":"เม็ด"},"(ฉีด) VERORAB ( ID ) 0.1 ml.":{"p":150.0,"u":"Vial"},"(ฉีด) VERORAB ( IM ) 0.5 ml.":{"p":400.0,"u":"Vial"},"(เม็ด) VIT B6(pyridoxine) 50 mg.":{"p":0.5,"u":"เม็ด"},"(เม็ด) VITAMIN B 1/6/12 1 g.":{"p":1.0,"u":"เม็ด"},"(ฉีด) VITAMIN B COMPLEX .":{"p":15.0,"u":"Amphule (1 ml.)"},"vitamin c 25 mg.":{"p":0.5,"u":"เม็ด"},"(ฉีด) VITAMIN K1 1 mg.":{"p":15.0,"u":"Ampule"},"(ฉีด) WATER FOR INJECTION 5 ml.":{"p":10.0,"u":"Amphule (5 ml.)"},"Whitfields ointment 6 %":{"p":26.0,"u":"หลอด (15 g.)"},"(แคปซูล) Zidovudine  (AZT) 300 mg.":{"p":35.0,"u":"เม็ด"},"(ยาน้ำ) Zidovudine (AZT) 10 mg./ml.":{"p":50.0,"u":"ขวด"},"(แคปซูล) Zidovudine (AZT) 100 mg.":{"p":15.0,"u":"เม็ด"},"(เม็ด) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.":{"p":12.0,"u":"เม็ด"},"กานพลู 5 g.":{"p":10.0,"u":"ถุง"},"(แคปซูล) ขมิ้นชัน แคปซูล KMC 500 mg.":{"p":3.0,"u":"เม็ด"},"ขวดยา 120 ml.":{"p":2.25,"u":"ขวด (120 ml.)"},"ขวดยา 30  ml.":{"p":1.75,"u":"ขวด (30 ml.)"},"ขวดยา 60 ml.":{"p":2.0,"u":"ขวด (60 ml.)"},"(แคปซูล) ขิง 500 mg.":{"p":2.0,"u":"แค็บซูล"},"ครีมพญายอ 4.343 g/100g":{"p":60.0,"u":"1"},"(แคปซูล) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.":{"p":2.0,"u":"แค็บซูล"},"เจลว่านหางจระเข้ g.":{"p":55.0,"u":"หลอด (30 g.)"},"ชุมเห็ดเทศ 3 g.":{"p":10.0,"u":"ซอง"},"(แคปซูล) ตรีผลาTPL 90 g.":{"p":1.5,"u":"แค็บซูล"},"เถาวัลย์เปรียง TWP 500 mg.":{"p":5.0,"u":"แค็บซูล"},"น้ำมันไพลPLI 20 ml":{"p":32.0,"u":"ขวด"},"(แคปซูล) เพชรสังฆาต PSK 500 mg.":{"p":2.0,"u":"แค็บซูล"},"(แคปซูล) ฟ้าทะลายโจร FTJ 500 mg.":{"p":4.75,"u":"เม็ด"},"(ยาน้ำ) มะขามป้อม MKP 120 ml.":{"p":33.0,"u":"ขวด"},"(ผง) ยาแก้ลมอัมพฤกษ์AMP 70 g.":{"p":130.0,"u":"ขวด"},"(แคปซูล) ยาเขียวหอมKH 500 mg.":{"p":1.5,"u":"แค็บซูล"},"ยาธาตุอบเชยOS 240 ml.":{"p":33.0,"u":"ขวด"},"ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.":{"p":2.25,"u":"แค็บซูล"},"(แคปซูล) ยาประสะไพลPSP 500 mg.":{"p":1.75,"u":"แค็บซูล"},"(เม็ด) ยาระบายมะขามแขก(senokot) 7.5  mg":{"p":2.0,"u":"เม็ด"},"(แคปซูล) ยาเลือดงามLH 500 mg.":{"p":1.5,"u":"แค็บซูล"},"(แคปซูล) ยาศุขไสยาศน์ 500 mg.":{"p":5.0,"u":"แค็บซูล"},"(แคปซูล) ยาสหัสธาราSHTR 500 mg.":{"p":1.75,"u":"แค็บซูล"},"(ผง) ยาหอมเทพจิตรTPJ 30 g.":{"p":12.0,"u":"ซอง"},"(ผง) ยาหอมนวโกฐNVK 7 g.":{"p":40.0,"u":"ขวด"},"(แคปซูล) ยาห้าราก ซองละ 9 แคปซูล 500 mg.":{"p":2.25,"u":"แค็บซูล"},"(แคปซูล) ยาเหลืองปิดสมุทร 500 mg.":{"p":1.5,"u":"เม็ด"},"(เม็ด) ยาอมมะแว้ง MW %":{"p":10.0,"u":"ซอง"},"(แคปซูล) รางจืด RJ 400 mg.":{"p":1.5,"u":"แค็บซูล"},"(ผง) ลูกประคบสมุนไพร 220 g.":{"p":95.0,"u":"ถุง"}};
+
+// ── PHARMACISTS ──────────────────────────────────────────
+const PHARMACISTS = ['เภสัชกร ก','เภสัชกร ข','เภสัชกร ค'];
+
+// ── DRP TYPES ────────────────────────────────────────────
+const DRP_TYPES = [
+  'ผู้ป่วยได้รับยาผิดขนาด',
+  'ผู้ป่วยไม่ได้ใช้ยาตามแพทย์สั่ง',
+  'แพทย์เปลี่ยนแปลงการรักษา',
+  'เกิด ADR จากยา',
+  'เกิด Drug interaction',
+  'ได้รับยาซ้ำซ้อนจากรพ.อื่น/รพ.ถ้ำพรรณรา',
+  'ผู้ป่วยรับประทานยาผิดขนาด',
+  'ผู้ป่วยรับประทานยาผิดวิธีใช้',
+  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง',
+  'ผู้ป่วยมาผิดนัด/ขาดนัด',
+  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน',
+  'ยาเหลือสะสม',
+  'ยาหมดก่อนนัด',
+  'ได้ยาไม่ครบรายการ',
+  'การเก็บรักษายาไม่ถูกต้อง',
+  'ได้ยาผิดจำนวน',
+  'ผู้ป่วยไม่ได้รับประทานมื้อเที่ยงจึงไม่รับประทานยา',
+  'อื่นๆ'
+];
+
+const DRP_CAUSES = {
+  'ผู้ป่วยรับประทานยาผิดวิธีใช้':['ไม่อ่านฉลากเป็นปัจจุบัน','ไม่อ่านฉลาก','อ่านฉลากผิด','ตามองไม่ชัด','อื่นๆ'],
+  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน':['ไม่ได้ทานอาหารเที่ยง','ไม่ได้ทานอาหารเช้า','ไม่ได้นำยาติดตัวเมื่อไปธุระ','ติดธุระจึงลืมทาน','ผู้ป่วยจำไม่ได้ว่าทานยาแล้วหรือยัง','ลืมทานมื้อก่อนนอน','ไม่เห็นความสำคัญในการรับประทานยา','อื่นๆ'],
+  'ยาหมดก่อนนัด':['ผู้ป่วยทานยาผิดวิธีใช้','แจ้งจำนวนยาที่เหลือผิด','ผิดนัด','ไม่ทราบสาเหตุ','จ่ายยาผิดจำนวน','แบ่งยาครึ่งเม็ดจนเม็ดยาแตก','ผู้อื่นเอายาผู้ป่วยไปทาน','ไม่เห็นยาที่เหลือ','อื่นๆ'],
+  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง':['จำนวนเม็ดยาที่ทานต่อมื้อมากเกินไป','เกิด ADR หลังทานยา','ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา','กรณีต้องแบ่งเม็ดยา วิธีบริหารยายากสำหรับผู้ป่วย','แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น','ไม่เห็นความสำคัญในการใช้ยา','คาดเดาอาการตนเองว่าป่วย เช่น ความดันสูง น้ำตาลสูง','ตรวจวัดความดัน/DTX เองที่บ้าน','ผลเลือดปกติในนัดรอบก่อน จึงไม่ทานยา คิดว่าผลเลือดปกติ','กังวลเรื่องการทานยามากเกินไป ทำให้ตับ/ไตพัง','ต้องการรวบมื้อยาในมื้อเดียวกัน','ปรับวิธีใช้ยาตามความสะดวกในการรับประทาน','ปรับยาตามขนาดที่ทานแล้วอาการยังปกติ','ผู้ป่วยมีอาการป่วยจึงหยุดใช้ยา','ผู้ป่วยอาการดีขึ้นแล้วหยุดใช้ยา/ทานเมื่อมีอาการ','อื่นๆ']
+};
+
+// ── FISCAL MONTHS ────────────────────────────────────────
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+
+// ── STATE ────────────────────────────────────────────────
+let visitRecords = [];
+let sessionRecords = [];
+let activeTab = 'HT';
+let editingId = null;
+let chartInstances = {};
+
+// ── DATE HELPERS ─────────────────────────────────────────
+function todayTH() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thToISO(s) {
+  if (!s||!s.includes('/')) return s||'';
+  const [dd,mm,yy] = s.trim().split('/');
+  if (!dd||!mm||!yy) return '';
+  const ce = (yy.length<=2 ? 2500+parseInt(yy) : parseInt(yy)) - 543;
+  return `${ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function autoDateTH(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+function thDate(s) {
+  if (!s) return '-';
+  const d = new Date(s); if (isNaN(d)) return s;
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function fiscalInfo(iso) {
+  const d = new Date(iso); if (isNaN(d)) return {year:null,month:null,key:''};
+  const m = d.getMonth();
+  const y = d.getFullYear()+543;
+  const fy = m>=9 ? y+1 : y;
+  return {year:fy, month:TH_MONTHS[m], key:iso.slice(0,7)};
+}
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg,dur=2800) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',dur);
+}
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  ['HT','DM','COPD','all','session'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab!=='session') document.getElementById('f-clinic').value = tab==='all'?'HT':tab;
+  renderMain();
+}
+
+// ── DRP ROWS ─────────────────────────────────────────────
+function addDrpRow(type='', cause='', causeNote='') {
+  const list = document.getElementById('drp-list');
+  const div = document.createElement('div');
+  div.className = 'drp-row';
+  div.innerHTML = `
+    <div class="drp-inner">
+      <select class="drp-type" onchange="onDrpTypeChange(this)">
+        <option value="">-- เลือก DRP --</option>
+        ${DRP_TYPES.map(t=>`<option ${t===type?'selected':''} value="${t}">${t}</option>`).join('')}
+      </select>
+      <select class="drp-cause" style="display:none">
+        <option value="">-- เลือกสาเหตุ --</option>
+      </select>
+      <input class="drp-cause-note" type="text" placeholder="ระบุสาเหตุ/เพิ่มเติม..." style="display:none" value="${causeNote||cause||''}">
+    </div>
+    <button class="btn-rm" onclick="this.closest('.drp-row').remove()">✕</button>`;
+  list.appendChild(div);
+  if (type) {
+    const sel = div.querySelector('.drp-type');
+    onDrpTypeChange(sel, cause);
+  }
+}
+
+function onDrpTypeChange(sel, preset='') {
+  const row = sel.closest('.drp-row');
+  const causeSel = row.querySelector('.drp-cause');
+  const causeNote = row.querySelector('.drp-cause-note');
+  const t = sel.value;
+  const causes = DRP_CAUSES[t];
+  if (causes) {
+    causeSel.innerHTML = '<option value="">-- สาเหตุ --</option>' + causes.map(c=>`<option ${c===preset?'selected':''} value="${c}">${c}</option>`).join('');
+    causeSel.style.display = '';
+    causeNote.style.display = 'none';
+    causeSel.onchange = () => {
+      causeNote.style.display = causeSel.value==='อื่นๆ'?'':'none';
+    };
+    if (preset==='อื่นๆ') causeNote.style.display = '';
+  } else if (t && t!=='--') {
+    causeSel.style.display = 'none';
+    causeNote.style.display = '';
+  } else {
+    causeSel.style.display = 'none';
+    causeNote.style.display = 'none';
+  }
+}
+
+function getDrpData() {
+  const rows = document.querySelectorAll('.drp-row');
+  return [...rows].map(row => {
+    const type = row.querySelector('.drp-type').value;
+    const causeSel = row.querySelector('.drp-cause');
+    const causeNote = row.querySelector('.drp-cause-note');
+    const cause = causeSel.style.display!=='none' ? causeSel.value : '';
+    const note = causeNote.style.display!=='none' ? causeNote.value.trim() : '';
+    return type ? {type, cause, causeNote:note} : null;
+  }).filter(Boolean);
+}
+
+// ── LEFTOVER ROWS ────────────────────────────────────────
+function addLoRow(drug='', qty='', unit='', price=0) {
+  const list = document.getElementById('lo-list');
+  const div = document.createElement('div');
+  div.className = 'lo-row';
+  div.innerHTML = `
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา" value="${drug}" oninput="onDrugInput(this)">
+    <input class="lo-qty" type="number" min="0" step="1" placeholder="จำนวน" value="${qty}" oninput="updateLoTotal()">
+    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="width:42px">
+    <span class="lo-price">฿${price>0?price:'0'}</span>
+    <button class="btn-rm" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
+  div.querySelector('.lo-qty')._price = price;
+  list.appendChild(div);
+  updateLoTotal();
+}
+
+function onDrugInput(el) {
+  const row = el.closest('.lo-row');
+  const info = DRUG_PRICES[el.value];
+  if (info) {
+    row.querySelector('.lo-unit').value = info.u || 'เม็ด';
+    row.querySelector('.lo-qty')._price = info.p;
+    row.querySelector('.lo-price').textContent = '฿'+info.p;
+  } else {
+    row.querySelector('.lo-qty')._price = 0;
+    row.querySelector('.lo-price').textContent = '฿0';
+  }
+  updateLoTotal();
+}
+
+function updateLoTotal() {
+  let total = 0;
+  document.querySelectorAll('.lo-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
+    const price = row.querySelector('.lo-qty')._price||0;
+    total += qty*price;
+  });
+  const el = document.getElementById('lo-total');
+  el.textContent = total>0 ? 'ประมาณการประหยัด: ฿'+total.toFixed(2) : '';
+}
+
+function getLoData() {
+  return [...document.querySelectorAll('.lo-row')].map(row => {
+    const drug = row.querySelector('.lo-drug').value.trim();
+    const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
+    const unit = row.querySelector('.lo-unit').value.trim();
+    const price = row.querySelector('.lo-qty')._price||0;
+    return drug||qty ? {drug,qty,unit,priceUnit:price,total:Math.round(qty*price*100)/100} : null;
+  }).filter(Boolean);
+}
+
+// ── SESSION PANEL ─────────────────────────────────────────
+function toggleSessionPanel() {
+  const p = document.getElementById('session-panel');
+  const a = document.getElementById('session-arrow');
+  p.classList.toggle('open');
+  a.textContent = p.classList.contains('open') ? '▲' : '▼';
+  if (p.classList.contains('open') && !document.getElementById('s-date').value)
+    document.getElementById('s-date').value = todayTH();
+}
+function onAttendedChange() {
+  const v = document.getElementById('s-attended').value;
+  document.getElementById('s-pharm-group').style.display = v==='yes'?'':'none';
+  document.getElementById('s-reason-group').style.display = v==='no'?'':'none';
+}
+function onSClinicChange() {
+  const c = document.getElementById('s-clinic').value;
+  document.getElementById('s-pm-group').style.display = c==='HT'?'':'none';
+}
+document.getElementById('s-clinic').addEventListener('change', onSClinicChange);
+
+// ── SUBMIT VISIT ─────────────────────────────────────────
+function submitVisit() {
+  const date = thToISO(document.getElementById('f-date').value);
+  const clinic = document.getElementById('f-clinic').value;
+  const pharm = document.getElementById('f-pharm').value;
+  const hn = document.getElementById('f-hn').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  if (!hn && !name) { showToast('⚠️ กรุณาระบุ HN หรือชื่อผู้ป่วย'); return; }
+  const drps = getDrpData();
+  const leftovers = getLoData();
+  const totalSaving = leftovers.reduce((s,l)=>s+l.total,0);
+  const rec = {
+    id: uid(), date, clinic, pharmacist:pharm, hn, name,
+    drps, leftovers, totalSaving:Math.round(totalSaving*100)/100,
+    notes: document.getElementById('f-notes').value.trim(),
+    created: Date.now()
+  };
+  visitRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึกแล้ว' + (drps.length ? ' — พบ DRP '+drps.length+' รายการ' : '') + (totalSaving>0?' ประหยัด ฿'+totalSaving.toFixed(2):''));
+  clearForm();
+}
+
+function clearForm() {
+  document.getElementById('f-date').value = todayTH();
+  ['f-hn','f-name','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('drp-list').innerHTML = '';
+  document.getElementById('lo-list').innerHTML = '';
+  document.getElementById('lo-total').textContent = '';
+}
+
+// ── SUBMIT SESSION ───────────────────────────────────────
+function submitSession() {
+  const date = thToISO(document.getElementById('s-date').value);
+  const clinic = document.getElementById('s-clinic').value;
+  const attended = document.getElementById('s-attended').value === 'yes';
+  const pharm = attended ? document.getElementById('s-pharm').value : '';
+  const reason = !attended ? document.getElementById('s-reason').value.trim() : '';
+  const pmCount = clinic==='HT' ? (parseInt(document.getElementById('s-pm-count').value)||0) : 0;
+  const notes = document.getElementById('s-notes').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  const rec = {id:uid(), date, clinic, attended, pharmacist:pharm, reason, htPmCount:pmCount, notes, created:Date.now()};
+  sessionRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึก Session แล้ว');
+  document.getElementById('s-pm-count').value = '';
+  document.getElementById('s-notes').value = '';
+  document.getElementById('s-reason').value = '';
+}
+
+// ── DELETE ───────────────────────────────────────────────
+function deleteVisit(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  visitRecords = visitRecords.filter(r=>r.id!==id);
+  saveLocal(); fbSave(); renderAll();
+}
+function deleteSession(id) {
+  if (!confirm('ลบ session นี้?')) return;
+  sessionRecords = sessionRecords.filter(r=>r.id!==id);
+  saveLocal(); fbSave(); renderAll();
+}
+
+// ── EDIT MODAL ───────────────────────────────────────────
+function editVisit(id) {
+  const r = visitRecords.find(r=>r.id===id); if (!r) return;
+  editingId = id;
+  const box = document.getElementById('modal-body');
+  box.innerHTML = `
+    <div class="form-group"><label>วันที่</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="m-date" value="${thDate(r.date)}" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+        <button class="btn-stamp" onclick="document.getElementById('m-date').value=todayTH()">📅</button>
+      </div></div>
+    <div class="form-group"><label>คลินิก</label>
+      <select id="m-clinic">${['HT','DM','COPD'].map(c=>`<option ${c===r.clinic?'selected':''} value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label>เภสัชกร</label>
+      <select id="m-pharm"><option value="">--</option>${PHARMACISTS.map(p=>`<option ${p===r.pharmacist?'selected':''} value="${p}">${p}</option>`).join('')}</select></div>
+    <div class="form-group"><label>HN</label><input type="text" id="m-hn" value="${r.hn||''}"></div>
+    <div class="form-group"><label>ชื่อ-สกุล</label><input type="text" id="m-name" value="${r.name||''}"></div>
+    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${r.notes||''}</textarea></div>`;
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+  editingId = null;
+}
+
+function saveModal() {
+  if (!editingId) return;
+  const idx = visitRecords.findIndex(r=>r.id===editingId); if (idx<0) return;
+  visitRecords[idx].date = thToISO(document.getElementById('m-date').value);
+  visitRecords[idx].clinic = document.getElementById('m-clinic').value;
+  visitRecords[idx].pharmacist = document.getElementById('m-pharm').value;
+  visitRecords[idx].hn = document.getElementById('m-hn').value.trim();
+  visitRecords[idx].name = document.getElementById('m-name').value.trim();
+  visitRecords[idx].notes = document.getElementById('m-notes').value.trim();
+  saveLocal(); fbSave(); renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function renderAll() {
+  renderMain();
+}
+
+function getFilteredVisits(clinic) {
+  if (clinic==='all') return visitRecords;
+  return visitRecords.filter(r=>r.clinic===clinic);
+}
+function getFilteredSessions(clinic) {
+  if (clinic==='all') return sessionRecords;
+  return sessionRecords.filter(r=>r.clinic===clinic);
+}
+
+function calcKPIs(clinic) {
+  const visits = getFilteredVisits(clinic);
+  const sessions = getFilteredSessions(clinic);
+  const attended = sessions.filter(s=>s.attended);
+  const missed = sessions.filter(s=>!s.attended);
+  const withDRP = visits.filter(v=>v.drps&&v.drps.length>0);
+  const drpPct = visits.length>0 ? Math.round(withDRP.length/visits.length*1000)/10 : 0;
+  const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
+  const htPmTotal = sessions.filter(s=>s.clinic==='HT'||clinic!=='all').reduce((s,r)=>s+(r.htPmCount||0),0);
+  return {visits:visits.length, attended:attended.length, missed:missed.length,
+          withDRP:withDRP.length, drpPct, totalSaving, htPmTotal};
+}
+
+function renderMain() {
+  const main = document.getElementById('main-content');
+  if (activeTab==='session') { renderSessionTab(main); return; }
+
+  const clinic = activeTab;
+  const kpi = calcKPIs(clinic);
+  const color = clinic==='HT'?'purple':clinic==='DM'?'teal':clinic==='COPD'?'orange':'';
+
+  const curYear = new Date().getFullYear()+543;
+  const fy = new Date().getMonth()>=9 ? curYear+1 : curYear;
+
+  main.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">ผู้ป่วยที่ให้คำปรึกษา</div>
+        <div class="kpi-val ${color}">${kpi.visits.toLocaleString()}</div>
+        <div class="kpi-sub">ราย (ทุก session)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">พบ DRP</div>
+        <div class="kpi-val ${color}">${kpi.drpPct}%</div>
+        <div class="kpi-sub">${kpi.withDRP} ใน ${kpi.visits} ราย</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">ลงคลินิก / ขาด</div>
+        <div class="kpi-val ${color}">${kpi.attended}</div>
+        <div class="kpi-sub">ครั้ง (ขาด ${kpi.missed} ครั้ง)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">เงินประหยัดสะสม</div>
+        <div class="kpi-val gold">฿${Math.round(kpi.totalSaving).toLocaleString()}</div>
+        <div class="kpi-sub">จากยาคงเหลือที่คืน</div>
+      </div>
+    </div>
+    ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
+    <div class="chart-grid">
+      <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน</div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย</div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿)</div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head">
+        <span class="table-title">รายการให้คำปรึกษา</span>
+        <div class="filter-row">
+          <input type="text" id="f-search" placeholder="🔍 ค้นหา HN/ชื่อ/DRP..." oninput="renderTable()" style="width:180px">
+          <select id="f-year" onchange="renderTable()">
+            <option value="">ทุกปี</option>
+            ${[...new Set(visitRecords.map(r=>fiscalInfo(r.date).year).filter(Boolean))].sort((a,b)=>b-a).map(y=>`<option>${y}</option>`).join('')}
+          </select>
+          <select id="f-month" onchange="renderTable()">
+            <option value="">ทุกเดือน</option>
+            ${TH_MONTHS.map(m=>`<option value="${m}">${m}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th><th></th></tr></thead>
+        <tbody id="tbl-body"></tbody>
+      </table></div>
+    </div>`;
+
+  renderCharts(clinic);
+  renderTable();
+}
+
+function renderTable() {
+  const q = (document.getElementById('f-search')||{}).value||'';
+  const fYear = (document.getElementById('f-year')||{}).value||''
+  const fMonth = (document.getElementById('f-month')||{}).value||''
+  const clinic = activeTab;
+
+  let recs = getFilteredVisits(clinic).filter(r => {
+    if (q && ![r.hn,r.name,...(r.drps||[]).map(d=>d.type)].some(f=>String(f||'').toLowerCase().includes(q.toLowerCase()))) return false;
+    const fi = fiscalInfo(r.date);
+    if (fYear && String(fi.year)!==fYear) return false;
+    if (fMonth && fi.month!==fMonth) return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+
+  const tbody = document.getElementById('tbl-body');
+  if (!tbody) return;
+  tbody.innerHTML = recs.map(r => {
+    const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+d.type+(d.cause?' → '+d.cause:'')+'</span>').join('');
+    const loList = (r.leftovers||[]).map(l=>`<span style="font-size:10px;display:block">${l.drug||''} ${l.qty} ${l.unit}</span>`).join('');
+    const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
+    return `<tr>
+      <td style="white-space:nowrap">${thDate(r.date)}</td>
+      <td><div style="font-weight:600">${r.hn||''}</div><div style="font-size:11px;color:var(--text-mid)">${r.name||''}</div></td>
+      <td>${badge}</td>
+      <td>${drpList||'<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>'}</td>
+      <td>${loList||'<span style="color:var(--text-light);font-size:11px">-</span>'}</td>
+      <td style="white-space:nowrap;font-weight:700;color:var(--success)">${r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):''}</td>
+      <td style="font-size:11px">${r.pharmacist||''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-edit" onclick="editVisit('${r.id}')">✏️</button>
+        <button class="btn-del" onclick="deleteVisit('${r.id}')">🗑</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function renderSessionTab(main) {
+  const all = [...sessionRecords].sort((a,b)=>b.date.localeCompare(a.date));
+  main.innerHTML = `
+    <div class="table-card">
+      <div class="table-head">
+        <span class="table-title">📋 บันทึก Session การลงคลินิก</span>
+      </div>
+      <div class="tbl-wrap"><table style="min-width:500px">
+        <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>HT บ่าย</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <tbody>${all.map(r=>`<tr class="${r.attended?'':' session-miss'}">
+          <td>${thDate(r.date)}</td>
+          <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
+          <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${r.reason||''}</div>`}</td>
+          <td style="font-size:12px">${r.pharmacist||''}</td>
+          <td style="text-align:center">${r.htPmCount>0?r.htPmCount:''}</td>
+          <td style="font-size:11px;color:var(--text-mid)">${r.notes||''}</td>
+          <td><button class="btn-del" onclick="deleteSession('${r.id}')">🗑</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+function renderCharts(clinic) {
+  const visits = getFilteredVisits(clinic);
+
+  // Monthly patient count
+  destroyChart('monthly');
+  const monthMap = {};
+  visits.forEach(v => {
+    const fi = fiscalInfo(v.date);
+    if (!fi.key) return;
+    const label = fi.month+' '+String(fi.year).slice(-2);
+    monthMap[label] = (monthMap[label]||0)+1;
+  });
+  const mLabels = Object.keys(monthMap).slice(-12);
+  const mData = mLabels.map(k=>monthMap[k]);
+  const clrMap = {HT:'#7c3aed',DM:'#0e7490',COPD:'#c2410c',all:'#1A5E38'};
+  const clr = clrMap[clinic]||'#1A5E38';
+  const ctx1 = document.getElementById('c-monthly').getContext('2d');
+  chartInstances['monthly'] = new Chart(ctx1,{type:'bar',data:{labels:mLabels,datasets:[{label:'ผู้ป่วย',data:mData,backgroundColor:clr+'99',borderColor:clr,borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}}}});
+
+  // DRP types
+  destroyChart('drp');
+  const drpMap = {};
+  visits.forEach(v => (v.drps||[]).forEach(d=>{ if(d.type) drpMap[d.type]=(drpMap[d.type]||0)+1; }));
+  const drpEntries = Object.entries(drpMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ctx2 = document.getElementById('c-drp').getContext('2d');
+  chartInstances['drp'] = new Chart(ctx2,{type:'bar',data:{labels:drpEntries.map(e=>e[0].length>16?e[0].slice(0,15)+'…':e[0]),datasets:[{data:drpEntries.map(e=>e[1]),backgroundColor:'#f59e0b99',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
+
+  // Savings
+  destroyChart('saving');
+  const savMap = {};
+  visits.forEach(v => {
+    const fi = fiscalInfo(v.date);
+    if (!fi.key) return;
+    const label = fi.month+' '+String(fi.year).slice(-2);
+    savMap[label] = (savMap[label]||0)+(v.totalSaving||0);
+  });
+  const sLabels = mLabels;
+  const sData = sLabels.map(k=>Math.round(savMap[k]||0));
+  const ctx3 = document.getElementById('c-saving').getContext('2d');
+  chartInstances['saving'] = new Chart(ctx3,{type:'bar',data:{labels:sLabels,datasets:[{label:'฿',data:sData,backgroundColor:'#16a34a55',borderColor:'#16a34a',borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>'฿'+v.toLocaleString()},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}}}});
+}
+
+// ── STORAGE ──────────────────────────────────────────────
+function saveLocal() {
+  localStorage.setItem('clinic_visits', JSON.stringify(visitRecords));
+  localStorage.setItem('clinic_sessions', JSON.stringify(sessionRecords));
+}
+function loadLocal() {
+  visitRecords = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
+  sessionRecords = JSON.parse(localStorage.getItem('clinic_sessions')||'[]');
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────
+function exportJSON() {
+  const d = new Date(); const ts = d.toISOString().slice(0,10);
+  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  const a = Object.assign(document.createElement('a'),{href:url,download:'clinic_backup_'+ts+'.json'});
+  a.click(); URL.revokeObjectURL(url);
+}
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.visitRecords) visitRecords = data.visitRecords;
+      if (data.sessionRecords) sessionRecords = data.sessionRecords;
+      saveLocal(); fbSave(); renderAll();
+      showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
+    } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── FIREBASE ─────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:"AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+  authDomain:"pharmacy-tph.firebaseapp.com",
+  projectId:"pharmacy-tph",
+  storageBucket:"pharmacy-tph.firebasestorage.app",
+  messagingSenderId:"617328257113",
+  appId:"1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+
+let db;
+function initFirebase() {
+  try {
+    firebase.initializeApp(FB_CONFIG);
+    db = firebase.firestore();
+    const badge = document.getElementById('sync-badge');
+    db.collection('pharmacy_tph').doc('clinic_data').onSnapshot(snap => {
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.visitRecords) visitRecords = d.visitRecords;
+        if (d.sessionRecords) sessionRecords = d.sessionRecords;
+        saveLocal(); renderAll();
+        badge.textContent='☁️ ซิงค์แล้ว'; badge.style.background='#dcfce7'; badge.style.color='#15803d';
+      } else {
+        badge.textContent='⚠️ ไม่พบข้อมูล'; badge.style.background='#fef9c3'; badge.style.color='#854d0e';
+      }
+    }, err => {
+      badge.textContent='📴 ออฟไลน์'; badge.style.background='#fee2e2'; badge.style.color='#991b1b';
+    });
+  } catch(e) { console.warn('Firebase:',e); }
+}
+function fbSave() {
+  if (!db) return;
+  db.collection('pharmacy_tph').doc('clinic_data').set({visitRecords,sessionRecords,updated:Date.now()})
+    .catch(e=>console.warn('FB save:',e));
+}
+
+// ── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('badge-year').textContent = 'ปีงบ ' + (new Date().getMonth()>=9 ? new Date().getFullYear()+544 : new Date().getFullYear()+543);
+  loadLocal();
+  initFirebase();
+  document.getElementById('f-date').value = todayTH();
+  document.getElementById('s-date').value = todayTH();
+  renderAll();
+});
+</script>
+</body>
+</html>
