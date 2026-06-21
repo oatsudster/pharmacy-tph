@@ -724,6 +724,7 @@ function _startSync() {
   _unsubscribeSync = _col().onSnapshot(
     snap => {
       _visitsCache = snap.docs.map(d => d.data());
+      localStorage.setItem('dm_visits', JSON.stringify(_visitsCache));
       _setSyncStatus('online');
       _afterChange();
     },
@@ -825,6 +826,7 @@ function saveVisits(v) {
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   PATIENTS = getPatients();
+  savePatients(PATIENTS); // ensure portal can read stats
   initStorage(); // load localStorage or connect Firebase
   rebuildAllStrips();
   // Default date = today (แสดงเป็นวันที่ไทย วว/ดด/ปปปป)
