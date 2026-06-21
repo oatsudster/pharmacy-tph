@@ -564,6 +564,7 @@
     <button class="tab-btn"        id="tab-opd-kpi"     onclick="showHosXPTab('opd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-opd-records" onclick="showHosXPTab('opd','records',this)">📋 รายการ</button>
     <button class="tab-btn"        id="tab-opd-upload"  onclick="showHosXPTab('opd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn"        id="tab-opd-manual"  onclick="showHosXPTab('opd','manual',this)">✏️ บันทึกเอง</button>
   </div>
 
   <!-- OPD DASHBOARD -->
@@ -733,6 +734,136 @@
   </div>
 </div>
 
+  <!-- OPD MANUAL ENTRY -->
+  <div class="page" id="page-opd-manual" style="padding:24px;overflow-y:auto;background:var(--bg)">
+    <div class="card" style="max-width:860px;margin:0 auto">
+      <div class="card-title">✏️ บันทึก ME รายการ OPD ด้วยตนเอง</div>
+      <div style="font-size:14px;color:var(--text-light);margin-bottom:20px">
+        ข้อมูลที่บันทึกจะแสดงในแดชบอร์ด OPD เช่นเดียวกับข้อมูลที่นำเข้าจาก HosXP
+      </div>
+
+      <div class="form-grid" id="manual-form-opd">
+
+        <div class="section-label">📅 วันที่และเวลา</div>
+        <div class="form-group">
+          <label>วันที่ <span class="req">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="mf-opd-date" placeholder="วว/ดด/ปป" maxlength="8"
+              oninput="autoDateME(this)" style="flex:1;letter-spacing:.05em">
+            <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;white-space:nowrap"
+              onclick="document.getElementById('mf-opd-date').value=todayME()">📅 วันนี้</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>เวลา</label>
+          <input type="text" id="mf-opd-time" placeholder="เช่น 14:30" maxlength="5"
+            oninput="formatTimeInput(this)" style="letter-spacing:.08em">
+        </div>
+
+        <div class="section-label">👤 ข้อมูลผู้ป่วย</div>
+        <div class="form-group">
+          <label>HN</label>
+          <input type="text" id="mf-opd-hn" placeholder="รหัส HN">
+        </div>
+        <div class="form-group">
+          <label>ชื่อ-สกุล</label>
+          <input type="text" id="mf-opd-patient" placeholder="ชื่อผู้ป่วย">
+        </div>
+        <div class="form-group">
+          <label>แพทย์ผู้สั่ง</label>
+          <input type="text" id="mf-opd-doctor" placeholder="ชื่อแพทย์">
+        </div>
+        <div class="form-group">
+          <label>ผู้บันทึก</label>
+          <select id="mf-opd-reporter">
+            <option value="">-- เลือกผู้บันทึก --</option>
+            <option>ภก.พงศกร นวเลิศปัญญา</option>
+            <option>ภก.พงศ์ไพสิฐ บรรจงเมือง</option>
+            <option>ภญ.สมฤดี คงศรี</option>
+          </select>
+        </div>
+
+        <div class="section-label">⚠️ รายละเอียดความคลาดเคลื่อน</div>
+        <div class="form-group full">
+          <label>ยาที่เกี่ยวข้อง <span class="req">*</span></label>
+          <input type="text" id="mf-opd-drug" placeholder="ชื่อยา" list="drug-list-opd">
+          <datalist id="drug-list-opd"></datalist>
+        </div>
+        <div class="form-group">
+          <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
+          <select id="mf-opd-stage">
+            <option value="">-- เลือก --</option>
+            <option value="Pre-dispensing">Pre-dispensing (ก่อนจ่ายยา)</option>
+            <option value="Prescribing">Prescribing (การสั่งยา)</option>
+            <option value="Transcribing">Transcribing (การถ่ายทอดคำสั่ง)</option>
+            <option value="Dispensing">Dispensing (การจัดจ่ายยา)</option>
+            <option value="Administration">Administration (การให้ยา)</option>
+            <option value="Monitoring">Monitoring (การติดตาม)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ประเภทความคลาดเคลื่อน</label>
+          <select id="mf-opd-metype">
+            <option value="">-- เลือก --</option>
+            <option>Wrong drug (ยาผิด)</option>
+            <option>Wrong dose (ขนาดผิด)</option>
+            <option>Wrong route (ทางผิด)</option>
+            <option>Wrong patient (ผู้ป่วยผิด)</option>
+            <option>Wrong time (เวลาผิด)</option>
+            <option>Wrong frequency (ความถี่ผิด)</option>
+            <option>Wrong form (รูปแบบผิด)</option>
+            <option>Omission (ขาดยา)</option>
+            <option>Extra dose (ยาเกิน)</option>
+            <option>Labeling error (ฉลากผิด)</option>
+            <option>Near miss (เกือบพลาด)</option>
+            <option>อื่นๆ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ระดับความรุนแรง (NCC MERP) <span class="req">*</span></label>
+          <select id="mf-opd-severity">
+            <option value="">-- เลือก --</option>
+            <option value="A">A – ยังไม่ถึงผู้ป่วย (Capacity)</option>
+            <option value="B">B – ไม่ถึงผู้ป่วย, ไม่มีผล</option>
+            <option value="C">C – ถึงผู้ป่วย, ไม่มีผล</option>
+            <option value="D">D – ถึงผู้ป่วย, ต้องติดตามเพิ่ม</option>
+            <option value="E">E – มีผลชั่วคราว</option>
+            <option value="F">F – มีผลชั่วคราว, ต้องรักษาเพิ่ม</option>
+            <option value="G">G – มีผลถาวร</option>
+            <option value="H">H – เกือบเสียชีวิต</option>
+            <option value="I">I – เสียชีวิต</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>รายละเอียด / สิ่งที่เกิดขึ้น</label>
+          <textarea id="mf-opd-detail" rows="3" placeholder="อธิบายเหตุการณ์ที่เกิดขึ้น..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>การแก้ไข / Intervention</label>
+          <textarea id="mf-opd-intervention" rows="2" placeholder="การแก้ไขที่ดำเนินการ..."></textarea>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <div class="form-actions" style="margin-top:20px">
+        <button class="btn btn-primary" onclick="submitManualME('OPD')" style="font-size:16px;padding:12px 32px">
+          💾 บันทึก ME (OPD)
+        </button>
+        <button class="btn btn-secondary" onclick="clearManualME('OPD')" style="font-size:15px">🗑 ล้างฟอร์ม</button>
+      </div>
+
+      <!-- Recent manual records for this dept -->
+      <div style="margin-top:28px">
+        <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:12px">
+          📋 รายการที่บันทึกเอง (OPD) <span id="manual-count-opd" style="font-size:13px;font-weight:400;color:var(--text-light)"></span>
+        </div>
+        <div class="table-wrap" id="manual-recent-opd">
+          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:14px">ยังไม่มีรายการ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <!-- ========== IPD SECTION ========== -->
 <div class="section" id="section-ipd">
   <div class="section-header tab-bar">
@@ -740,6 +871,7 @@
     <button class="tab-btn"        id="tab-ipd-kpi"     onclick="showHosXPTab('ipd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-ipd-records" onclick="showHosXPTab('ipd','records',this)">📋 รายการ</button>
     <button class="tab-btn"        id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn"        id="tab-ipd-manual"  onclick="showHosXPTab('ipd','manual',this)">✏️ บันทึกเอง</button>
   </div>
 
   <!-- IPD DASHBOARD -->
@@ -1000,6 +1132,136 @@
   </div>
 
 </div>
+
+  <!-- IPD MANUAL ENTRY -->
+  <div class="page" id="page-ipd-manual" style="padding:24px;overflow-y:auto;background:var(--bg)">
+    <div class="card" style="max-width:860px;margin:0 auto">
+      <div class="card-title">✏️ บันทึก ME รายการ IPD ด้วยตนเอง</div>
+      <div style="font-size:14px;color:var(--text-light);margin-bottom:20px">
+        ข้อมูลที่บันทึกจะแสดงในแดชบอร์ด IPD เช่นเดียวกับข้อมูลที่นำเข้าจาก HosXP
+      </div>
+
+      <div class="form-grid" id="manual-form-ipd">
+
+        <div class="section-label">📅 วันที่และเวลา</div>
+        <div class="form-group">
+          <label>วันที่ <span class="req">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="mf-ipd-date" placeholder="วว/ดด/ปป" maxlength="8"
+              oninput="autoDateME(this)" style="flex:1;letter-spacing:.05em">
+            <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;white-space:nowrap"
+              onclick="document.getElementById('mf-ipd-date').value=todayME()">📅 วันนี้</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>เวลา</label>
+          <input type="text" id="mf-ipd-time" placeholder="เช่น 14:30" maxlength="5"
+            oninput="formatTimeInput(this)" style="letter-spacing:.08em">
+        </div>
+
+        <div class="section-label">👤 ข้อมูลผู้ป่วย</div>
+        <div class="form-group">
+          <label>HN</label>
+          <input type="text" id="mf-ipd-hn" placeholder="รหัส HN">
+        </div>
+        <div class="form-group">
+          <label>ชื่อ-สกุล</label>
+          <input type="text" id="mf-ipd-patient" placeholder="ชื่อผู้ป่วย">
+        </div>
+        <div class="form-group">
+          <label>แพทย์ผู้สั่ง</label>
+          <input type="text" id="mf-ipd-doctor" placeholder="ชื่อแพทย์">
+        </div>
+        <div class="form-group">
+          <label>ผู้บันทึก</label>
+          <select id="mf-ipd-reporter">
+            <option value="">-- เลือกผู้บันทึก --</option>
+            <option>ภก.พงศกร นวเลิศปัญญา</option>
+            <option>ภก.พงศ์ไพสิฐ บรรจงเมือง</option>
+            <option>ภญ.สมฤดี คงศรี</option>
+          </select>
+        </div>
+
+        <div class="section-label">⚠️ รายละเอียดความคลาดเคลื่อน</div>
+        <div class="form-group full">
+          <label>ยาที่เกี่ยวข้อง <span class="req">*</span></label>
+          <input type="text" id="mf-ipd-drug" placeholder="ชื่อยา" list="drug-list-ipd">
+          <datalist id="drug-list-ipd"></datalist>
+        </div>
+        <div class="form-group">
+          <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
+          <select id="mf-ipd-stage">
+            <option value="">-- เลือก --</option>
+            <option value="Pre-dispensing">Pre-dispensing (ก่อนจ่ายยา)</option>
+            <option value="Prescribing">Prescribing (การสั่งยา)</option>
+            <option value="Transcribing">Transcribing (การถ่ายทอดคำสั่ง)</option>
+            <option value="Dispensing">Dispensing (การจัดจ่ายยา)</option>
+            <option value="Administration">Administration (การให้ยา)</option>
+            <option value="Monitoring">Monitoring (การติดตาม)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ประเภทความคลาดเคลื่อน</label>
+          <select id="mf-ipd-metype">
+            <option value="">-- เลือก --</option>
+            <option>Wrong drug (ยาผิด)</option>
+            <option>Wrong dose (ขนาดผิด)</option>
+            <option>Wrong route (ทางผิด)</option>
+            <option>Wrong patient (ผู้ป่วยผิด)</option>
+            <option>Wrong time (เวลาผิด)</option>
+            <option>Wrong frequency (ความถี่ผิด)</option>
+            <option>Wrong form (รูปแบบผิด)</option>
+            <option>Omission (ขาดยา)</option>
+            <option>Extra dose (ยาเกิน)</option>
+            <option>Labeling error (ฉลากผิด)</option>
+            <option>Near miss (เกือบพลาด)</option>
+            <option>อื่นๆ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ระดับความรุนแรง (NCC MERP) <span class="req">*</span></label>
+          <select id="mf-ipd-severity">
+            <option value="">-- เลือก --</option>
+            <option value="A">A – ยังไม่ถึงผู้ป่วย (Capacity)</option>
+            <option value="B">B – ไม่ถึงผู้ป่วย, ไม่มีผล</option>
+            <option value="C">C – ถึงผู้ป่วย, ไม่มีผล</option>
+            <option value="D">D – ถึงผู้ป่วย, ต้องติดตามเพิ่ม</option>
+            <option value="E">E – มีผลชั่วคราว</option>
+            <option value="F">F – มีผลชั่วคราว, ต้องรักษาเพิ่ม</option>
+            <option value="G">G – มีผลถาวร</option>
+            <option value="H">H – เกือบเสียชีวิต</option>
+            <option value="I">I – เสียชีวิต</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>รายละเอียด / สิ่งที่เกิดขึ้น</label>
+          <textarea id="mf-ipd-detail" rows="3" placeholder="อธิบายเหตุการณ์ที่เกิดขึ้น..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>การแก้ไข / Intervention</label>
+          <textarea id="mf-ipd-intervention" rows="2" placeholder="การแก้ไขที่ดำเนินการ..."></textarea>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <div class="form-actions" style="margin-top:20px">
+        <button class="btn btn-primary" onclick="submitManualME('IPD')" style="font-size:16px;padding:12px 32px">
+          💾 บันทึก ME (IPD)
+        </button>
+        <button class="btn btn-secondary" onclick="clearManualME('IPD')" style="font-size:15px">🗑 ล้างฟอร์ม</button>
+      </div>
+
+      <!-- Recent manual records for this dept -->
+      <div style="margin-top:28px">
+        <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:12px">
+          📋 รายการที่บันทึกเอง (IPD) <span id="manual-count-ipd" style="font-size:13px;font-weight:400;color:var(--text-light)"></span>
+        </div>
+        <div class="table-wrap" id="manual-recent-ipd">
+          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:14px">ยังไม่มีรายการ</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <!-- ========== ENTRY FORM ========== -->
 <div class="page" id="page-entry">
@@ -2207,6 +2469,133 @@ function saveRxMonthly() {
   localStorage.setItem('hosxp_manual_seeded_v2', '1');
 })();
 
+
+// ── MANUAL ME ENTRY HELPERS ─────────────────────────────────────────
+function todayME() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()+543).slice(-2);
+  return dd+'/'+mm+'/'+yy;
+}
+
+function autoDateME(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 2) v = v.slice(0,2)+'/'+v.slice(2);
+  if (v.length > 5) v = v.slice(0,5)+'/'+v.slice(5);
+  el.value = v;
+}
+
+function thToISOme(s) {
+  const p = String(s||'').split('/');
+  if (p.length !== 3) return '';
+  let [dd, mm, yy] = p;
+  let year = parseInt(yy);
+  if (year < 100) year += (year > 50 ? 2400 : 2500);
+  year -= 543;
+  return `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+
+function submitManualME(dept) {
+  const d = dept.toLowerCase();
+  const dateISO = thToISOme(document.getElementById('mf-'+d+'-date').value.trim());
+  const stage   = document.getElementById('mf-'+d+'-stage').value;
+  const severity= document.getElementById('mf-'+d+'-severity').value;
+  const drug    = document.getElementById('mf-'+d+'-drug').value.trim();
+  if (!dateISO) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  if (!stage)   { showToast('⚠️ กรุณาเลือกขั้นตอนที่เกิด ME'); return; }
+  if (!severity){ showToast('⚠️ กรุณาเลือกระดับความรุนแรง'); return; }
+
+  const rec = {
+    id: Date.now() + Math.random(),
+    date:     dateISO,
+    time:     document.getElementById('mf-'+d+'-time').value.trim(),
+    hn:       document.getElementById('mf-'+d+'-hn').value.trim(),
+    patient:  document.getElementById('mf-'+d+'-patient').value.trim(),
+    doctor:   document.getElementById('mf-'+d+'-doctor').value.trim(),
+    dept:     dept,
+    drug:     drug,
+    stage:    stage,
+    stageRaw: stage,
+    meType:   document.getElementById('mf-'+d+'-metype').value,
+    severity: severity,
+    severityRaw: 'Category '+severity+':',
+    detail:   document.getElementById('mf-'+d+'-detail').value.trim(),
+    intervention: document.getElementById('mf-'+d+'-intervention').value.trim(),
+    reporter: document.getElementById('mf-'+d+'-reporter').value,
+    source:   'manual',
+  };
+
+  hosxpRecords.push(rec);
+  saveHosXP();
+  renderHosXPDashboard(dept);
+  renderManualRecent(dept);
+  showToast('✅ บันทึก ME '+dept+' แล้ว');
+  clearManualME(dept);
+}
+
+function clearManualME(dept) {
+  const d = dept.toLowerCase();
+  ['date','time','hn','patient','doctor','drug','stage','metype','severity','detail','intervention','reporter']
+    .forEach(f => {
+      const el = document.getElementById('mf-'+d+'-'+f);
+      if (!el) return;
+      if (el.tagName === 'SELECT') el.value = '';
+      else el.value = '';
+    });
+  document.getElementById('mf-'+d+'-date').value = todayME();
+}
+
+function renderManualRecent(dept) {
+  const d = dept.toLowerCase();
+  const recs = hosxpRecords
+    .filter(r => r.dept === dept && r.source === 'manual')
+    .sort((a,b) => b.id - a.id).slice(0, 20);
+  const countEl = document.getElementById('manual-count-'+d);
+  const wrap = document.getElementById('manual-recent-'+d);
+  if (countEl) countEl.textContent = `(${recs.length} รายการล่าสุด)`;
+  if (!wrap) return;
+  if (!recs.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:14px">ยังไม่มีรายการที่บันทึกเอง</div>';
+    return;
+  }
+  const sevColor = {A:'#6b7280',B:'#6b7280',C:'#0e7490',D:'#0284c7',E:'#d97706',F:'#ea580c',G:'#dc2626',H:'#9d174d',I:'#581c87'};
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:#f1f5f9">
+      <th style="padding:8px 10px;text-align:left">วันที่</th>
+      <th style="padding:8px 10px;text-align:left">HN</th>
+      <th style="padding:8px 10px;text-align:left">ยา</th>
+      <th style="padding:8px 10px;text-align:left">ขั้นตอน</th>
+      <th style="padding:8px 10px;text-align:center">ระดับ</th>
+      <th style="padding:8px 10px;text-align:left">ผู้บันทึก</th>
+      <th style="padding:8px 10px"></th>
+    </tr></thead>
+    <tbody>${recs.map(r => `<tr style="border-bottom:1px solid #f0f4f2">
+      <td style="padding:7px 10px">${r.date}</td>
+      <td style="padding:7px 10px">${r.hn||'—'}</td>
+      <td style="padding:7px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.drug||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${r.stage||'—'}</td>
+      <td style="padding:7px 10px;text-align:center">
+        <span style="font-weight:800;font-size:15px;color:${sevColor[r.severity]||'#374151'}">${r.severity||'—'}</span>
+      </td>
+      <td style="padding:7px 10px;font-size:11px">${r.reporter||'—'}</td>
+      <td style="padding:7px 10px">
+        <button onclick="deleteManualME('${r.id}','${dept}')"
+          style="padding:3px 8px;border:1px solid #fecaca;border-radius:5px;background:#fff1f2;color:#b91c1c;cursor:pointer;font-size:11px">ลบ</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function deleteManualME(id, dept) {
+  if (!confirm('ลบรายการนี้?')) return;
+  hosxpRecords = hosxpRecords.filter(r => String(r.id) !== String(id));
+  saveHosXP();
+  renderHosXPDashboard(dept);
+  renderManualRecent(dept);
+  showToast('🗑 ลบแล้ว');
+}
+
 let hosxpRecords = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
 function saveHosXP() { localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords)); }
 
@@ -2233,6 +2622,17 @@ function showSection(name) {
 }
 
 function showHosXPTab(dept, tab, btn) {
+  if (tab === 'manual') {
+    // Show the manual page
+    const sec = document.getElementById('section-' + dept);
+    sec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pg = document.getElementById('page-' + dept + '-manual');
+    if (pg) pg.classList.add('active');
+    sec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderManualRecent(dept.toUpperCase());
+    return;
+  }
   const sec = document.getElementById('section-' + dept);
   sec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   sec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
