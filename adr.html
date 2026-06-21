@@ -293,9 +293,13 @@ tr.missing-symptom:hover td { background: #fef3c7; }
     <div class="form-group">
       <label>ความร้ายแรง</label>
       <select id="f-sev">
-        <option value="ไม่รุนแรง">ไม่รุนแรง (Mild)</option>
-        <option value="รุนแรงปานกลาง">รุนแรงปานกลาง (Moderate)</option>
-        <option value="รุนแรงมาก">รุนแรงมาก (Severe)</option>
+        <option value="ไม่ร้ายแรง (Non-serious)">ไม่ร้ายแรง (Non-serious)</option>
+        <option value="ร้ายแรง - เสียชีวิต (Death)">ร้ายแรง - เสียชีวิต (Death)</option>
+        <option value="ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)">ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+        <option value="ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)">ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+        <option value="ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)">ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+        <option value="ร้ายแรง - พิการ (Disability)">ร้ายแรง - พิการ (Disability)</option>
+        <option value="ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)">ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
         <option value="ยังไม่ทราบ">ยังไม่ทราบ</option>
       </select>
     </div>
@@ -342,7 +346,14 @@ tr.missing-symptom:hover td { background: #fef3c7; }
           </select>
           <select id="fil-sev" onchange="renderAll()">
             <option value="">ทุกระดับ</option>
-            <option>ไม่รุนแรง</option><option>รุนแรงปานกลาง</option><option>รุนแรงมาก</option>
+            <option value="">ทุกระดับ</option>
+            <option>ไม่ร้ายแรง (Non-serious)</option>
+            <option>ร้ายแรง - เสียชีวิต (Death)</option>
+            <option>ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+            <option>ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+            <option>ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+            <option>ร้ายแรง - พิการ (Disability)</option>
+            <option>ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
           </select>
           <input type="text" id="fil-q" placeholder="🔍 HN/ชื่อ/ยา" oninput="renderAll()">
         </div>
@@ -360,6 +371,15 @@ tr.missing-symptom:hover td { background: #fef3c7; }
   <div class="modal-box">
     <div class="modal-title">✏️ แก้ไขรายการ</div>
     <div class="form-group">
+      <label>ชนิดรายงาน (ADR Type)</label>
+      <select id="m-type" onchange="onModalTypeChange()">
+        <option value="">-- เลือกชนิด --</option>
+        <option value="A">Type A — ผลข้างเคียง</option>
+        <option value="B">Type B — แพ้ยา</option>
+        <option value="G6PD">G6PD</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>ลักษณะอาการ</label>
       <select id="m-symptom"></select>
     </div>
@@ -370,9 +390,13 @@ tr.missing-symptom:hover td { background: #fef3c7; }
     <div class="form-group">
       <label>ความร้ายแรง</label>
       <select id="m-sev">
-        <option value="ไม่รุนแรง">ไม่รุนแรง</option>
-        <option value="รุนแรงปานกลาง">รุนแรงปานกลาง</option>
-        <option value="รุนแรงมาก">รุนแรงมาก</option>
+        <option value="ไม่ร้ายแรง (Non-serious)">ไม่ร้ายแรง (Non-serious)</option>
+        <option value="ร้ายแรง - เสียชีวิต (Death)">ร้ายแรง - เสียชีวิต (Death)</option>
+        <option value="ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)">ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+        <option value="ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)">ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+        <option value="ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)">ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+        <option value="ร้ายแรง - พิการ (Disability)">ร้ายแรง - พิการ (Disability)</option>
+        <option value="ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)">ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
         <option value="ยังไม่ทราบ">ยังไม่ทราบ</option>
       </select>
     </div>
@@ -538,13 +562,20 @@ function deleteRecord(id) {
   renderAll(); showToast('🗑️ ลบแล้ว');
 }
 
+function onModalTypeChange() {
+  const t = document.getElementById('m-type').value;
+  const cur = document.getElementById('m-symptom').value;
+  populateModalSymptoms(t, cur);
+}
+
 function editRecord(id) {
   const r = records.find(r=>r.id===id); if (!r) return;
   editingId = id;
+  document.getElementById('m-type').value = r.type||'';
   populateModalSymptoms(r.type, r.symptom);
   document.getElementById('m-symptom').value = r.symptom||'';
   document.getElementById('m-drug').value = r.drug||'';
-  document.getElementById('m-sev').value = r.severity||'ไม่รุนแรง';
+  document.getElementById('m-sev').value = r.severity||'ไม่ร้ายแรง (Non-serious)';
   document.getElementById('m-diag').value = r.diagnosis||'';
   document.getElementById('edit-modal').classList.add('show');
 }
@@ -557,6 +588,7 @@ function closeModal() {
 function saveModal() {
   if (!editingId) return;
   const idx = records.findIndex(r=>r.id===editingId); if (idx<0) return;
+  records[idx].type = document.getElementById('m-type').value;
   records[idx].symptom = document.getElementById('m-symptom').value;
   records[idx].drug = document.getElementById('m-drug').value.trim();
   records[idx].severity = document.getElementById('m-sev').value;
@@ -571,7 +603,7 @@ function resetForm() {
   ['f-hn','f-name','f-dept','f-an','f-drug','f-diag'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-date').value = today();
   document.getElementById('f-type').value = '';
-  document.getElementById('f-sev').value = 'ไม่รุนแรง';
+  document.getElementById('f-sev').value = 'ไม่ร้ายแรง (Non-serious)';
   document.getElementById('f-prodtype').value = 'ยา';
   onTypeChange('');
 }
@@ -606,12 +638,21 @@ async function importHosXP(input) {
       if (s.includes('type a')||s.includes('ข้างเคียง')||/\ba\b/.test(s)) return 'A';
       return '';
     };
+    const SEV_MAP = [
+      ['ไม่ร้ายแรง (Non-serious)', ['ไม่ร้ายแรง','non-serious','ไม่รุนแรง']],
+      ['ร้ายแรง - เสียชีวิต (Death)', ['เสียชีวิต','death']],
+      ['ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)', ['อันตรายถึงชีวิต','life-threat','อัตรายถึงชีวิต']],
+      ['ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)', ['hospitalization-initial','เข้ารับการรักษา','ต้องเข้า']],
+      ['ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)', ['hospitalization-prolonged','เพิ่มระยะเวลา','prolonged']],
+      ['ร้ายแรง - พิการ (Disability)', ['พิการ','disability']],
+      ['ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)', ['แต่กำเนิด','congenital']],
+    ];
     const mapSev = v => {
-      const s = String(v);
-      if (s.includes('ไม่รุนแรง')) return 'ไม่รุนแรง';
-      if (s.includes('ปานกลาง')) return 'รุนแรงปานกลาง';
-      if (s.includes('รุนแรงมาก')||s.includes('ร้ายแรง')) return 'รุนแรงมาก';
-      return s||'ยังไม่ทราบ';
+      const s = String(v).trim();
+      for (const [canonical, keys] of SEV_MAP) {
+        if (s === canonical || keys.some(k => s.toLowerCase().includes(k.toLowerCase()))) return canonical;
+      }
+      return s || 'ยังไม่ทราบ';
     };
     const getDate = raw => {
       if (!raw) return '';
@@ -719,7 +760,7 @@ function renderKPI(tabRecs, fRecs) {
   const now = new Date();
   const curFYMonth = TH_MONTHS[now.getMonth()];
   const thisMonth = fRecs.filter(r=>fiscalInfo(r.date).month===curFYMonth);
-  const severe = fRecs.filter(r=>r.severity==='รุนแรงมาก').length;
+  const severe = fRecs.filter(r=>r.severity && r.severity.startsWith('ร้ายแรง')).length;
   const noSym = fRecs.filter(r=>!r.symptom).length;
   const counts = {A:tabRecs.filter(r=>r.type==='A').length, B:tabRecs.filter(r=>r.type==='B').length, G6PD:tabRecs.filter(r=>r.type==='G6PD').length};
 
@@ -739,7 +780,7 @@ function renderKPI(tabRecs, fRecs) {
       <div class="kpi-sub">รายการ</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">รุนแรงมาก (Severe)</div>
+      <div class="kpi-label">ร้ายแรง (Serious)</div>
       <div class="kpi-val ${severe?'danger':''}">${severe}</div>
       <div class="kpi-sub">รายการ</div>
     </div>
@@ -833,7 +874,17 @@ function renderTable(fRecs) {
     return;
   }
   const typeBadge = t => t==='A'?'<span class="badge badge-a">Type A</span>':t==='B'?'<span class="badge badge-b">Type B</span>':t==='G6PD'?'<span class="badge badge-g6pd">G6PD</span>':'<span class="badge badge-na">?</span>';
-  const sevBadge = s => s==='ไม่รุนแรง'?'<span class="badge badge-mild">ไม่รุนแรง</span>':s==='รุนแรงปานกลาง'?'<span class="badge badge-mod">ปานกลาง</span>':s==='รุนแรงมาก'?'<span class="badge badge-sev">รุนแรงมาก</span>':`<span class="badge badge-na">${s||'-'}</span>`;
+  const sevBadge = s => {
+    if (!s || s==='ยังไม่ทราบ') return `<span class="badge badge-na">${s||'-'}</span>`;
+    if (s.includes('ไม่ร้ายแรง')||s.includes('Non-serious')) return '<span class="badge badge-mild">ไม่ร้ายแรง</span>';
+    if (s.includes('เสียชีวิต')||s.includes('Death')) return '<span class="badge badge-sev" style="background:#18181b;color:#fff">เสียชีวิต</span>';
+    if (s.includes('อันตรายถึงชีวิต')||s.includes('Life-threat')) return '<span class="badge badge-sev">Life-threatening</span>';
+    if (s.includes('Hospitalization-initial')||s.includes('เข้ารับการรักษา')) return '<span class="badge badge-sev">Hospitalize-initial</span>';
+    if (s.includes('Hospitalization-prolonged')||s.includes('เพิ่มระยะเวลา')) return '<span class="badge badge-mod">Hospitalize-prolonged</span>';
+    if (s.includes('พิการ')||s.includes('Disability')) return '<span class="badge badge-sev">พิการ</span>';
+    if (s.includes('แต่กำเนิด')||s.includes('Congenital')) return '<span class="badge badge-mod">Congenital anomaly</span>';
+    return `<span class="badge badge-na">${s}</span>`;
+  };
 
   wrap.innerHTML = `
     <table>
