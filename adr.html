@@ -244,15 +244,7 @@ tr.missing-symptom:hover td { background: #fef3c7; }
       <label>ชื่อ-สกุล</label>
       <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
     </div>
-    <div class="form-group">
-      <label>แผนก</label>
-      <input type="text" id="f-dept" placeholder="อายุรกรรม..." list="dept-dl">
-      <datalist id="dept-dl">
-        <option value="อายุรกรรม"><option value="ศัลยกรรม"><option value="สูตินรีเวช">
-        <option value="กุมารเวชกรรม"><option value="ผู้ป่วยนอก"><option value="ฉุกเฉิน">
-        <option value="ออร์โธปิดิกส์"><option value="จักษุวิทยา"><option value="ไตเทียม">
-      </datalist>
-    </div>
+
     <div class="form-group">
       <label>AN (IPD)</label>
       <input type="text" id="f-an" placeholder="เลขผู้ป่วยใน (ถ้ามี)">
@@ -412,6 +404,9 @@ tr.missing-symptom:hover td { background: #fef3c7; }
 </div>
 
 <script>
+// ═══ DRUG LIST (from HosXP) ═════════════════════════════════════
+const DRUG_LIST = ["(ฉีด) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.","(ฉีด) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU","(ฉีด) 10%D/N/2 10 %","(ฉีด) 3%Sodium Chloride(NaCl) 3 %","(IV) ACETATE RINGER 1,000 ml.","(ผง) ACTIVATED CHARCOAL 5 g.","(เม็ด) Acyclovir 200 mg.","(เม็ด) ACYCLOVIR 800 mg.","(ฉีด) Adenosine (adenocor) 6 mg.","(ฉีด) ADRENALINE 1 mg./ml.","(ยาน้ำ) Albendazole (FALBEN)susp 100 mg/5ml","(เม็ด) ALBENDAZOLE(zentel) 200 mg.","(สารละลาย) ALCOHOL  60 ml 70 %","(สารละลาย) ALCOHOL 70 %","(เม็ด) ALLOPURINOL(zyloric) 100 mg.","(ฉีด) AMIODARONE(Cordarone) (NL) 150 mg.","(เม็ด) amitriptyline(A10/tripta) 10 mg.","(เม็ด) Amlodipine 5 mg.","(สารละลาย) AMMONIUM CARBONATE 60 ml.","(แคปซูล) AMOXICILLIN 500 mg.","(ยาน้ำ) Amoxy dry SYRUP 250 mg/5ml","(แคปซูล) AmoxyCillin 250 mg.","(ผง) amoxycillin SYR 125 mg./5ml.","(ผง) AMPICILLIN   1 g 1 g.","(ยาน้ำ) ANTACID SUSP(alum milk) 0.66 g.","(ฉีด) ANTIVENUM SERA,(งูเห่า) 0.6 u.","(ผง) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.","(ฉีด) aP Acellular Pertussis (ไอกรน) 5 mcg./dose","(เม็ด) aspirin(asa) 81 mg.","(เม็ด) ASPIRIN(ASA/aspent) 300 mg.","(เม็ด) Atarax(hydroxyzine) 10 mg.","(เม็ด) ATENOLOL 50 mg.","(ฉีด) ATROPINE 0.6 mg./ml.","(เม็ด) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.","(ยาน้ำ) Augmentin Susp 400/57 mg/5ml","(ฉีด) BCG(bacillus calmette-gue rin) 0.1 ml.","(ฉีด) BENZATHINE PENICILLIN 1,200,000 u.","(เม็ด) Benzhexol 2 mg.","(เม็ด) Benzhexol 5 mg.","(โลชั่น) BENZYL BENZOATE 25 %","(ผง) BERODUAL ( MDI ) inhaler 200 dose","(สารละลาย) BERODUAL 0.5 %","(สารละลาย) BERODUAL 20 ml.","(สารละลาย) BETADINE (IODINE) %","(ครีม) BETAMETHASONE(5g) 0.1 %","(ยาน้ำ) Bromhexine elixir 4 mg.","BUDESONIDE  (MDI) 200 mcg.","(ฉีด) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.","(เม็ด) CAFERGOT (NL) 1 mg.","(ยาน้ำ) CALAMINE 15 %","(เม็ด) calcium carbonate(CaCO3) 600 mg.","(ฉีด) CALCIUM GLUCONATE 10 %","(เม็ด) CAPTOPRIL  25 mg 25 mg.","(เม็ด) CARBAMAZEPINE(tegretol) 200 mg.","(ผง) CeFaZOLIN injection 1 g.","(ผง) CefTaZidime injection 1 g.","(ฉีด) CefTRIAXone 1 g injection (CEF-3) 1 g.","(เม็ด) CETIRIZINE (Alerest) 10 mg.","(หยอดหู) CHLORAMPHENICOL EAR DROP 1 %","(สารละลาย) Chlorhexidine mouth wash 0.12 g.","(เม็ด) CHLORPROMAZINE(CPZ) 100 mg.","(ขี้ผึ้ง) CHLORTETRACYCLINE - mg.","(เม็ด) Ciprofloxacin 500 mg.","(แคปซูล) CLINDAMYCIIN 300 mg","(ฉีด) clindamycin  600 mg/vial. 600 mg./dose","(เม็ด) CLONAZEPAM(rivotril) 2 mg.","(เม็ด) Clopidogrel (Plavix) 75 mg.","(เหน็บช่องคลอด) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.","(ครีม) CLOTRIMAZOLE(canesten) 1 %","(ฉีด) CLOXACILLIN INJ  1  g 1 g.","(เม็ด) COLCHICINE 0.6 mg.","(เม็ด) COTRIMOXAZOLE(bactrim) 400 mg.","(ยาน้ำ) COTRIMOXAZOLE(bactrim) 60 ml.","(ฉีด) Covid Vaccine(SARS-CoV-2) 0.5 ml.","(เม็ด) CPM   tab. 4 mg.","(ยาน้ำ) CPM 2 mg./5ml.","(ฉีด) CPM(piriton) 10 mg./ml.","(เม็ด) CYPROHEPTADINE(periactin) 4 mg.","(เม็ด) Cytotec 200 mcg.","(IV) D-5-S - %","(IV) D-5-S/2 - %","(IV) D-5-S/3 - %","(IV) D-5-S/4 500 ml.","(ฉีด) D-5-S/5 5 %","(IV) D-5-W %","(ฉีด) D-5-W %","(IV) D-5-W - %","(ฉีด) D-W-10 %","(เม็ด) Depakin (sodium valproate) 200 mg.","(ฉีด) DEXAMETHASONE 5 mg./ml.","(IV) DEXTRAN 40 mg.","(เม็ด) DEXTROMETHORPHAN 15 mg.","(ฉีด) DEXTROSE (glucose) 50 %","(ฉีด) DIAZEPAM(valium) 10 mg./ml.","(เม็ด) DIAZEPAM(valium) 2 mg.","(เม็ด) DIAZEPAM(valium) 5 mg.","(เม็ด) DICLOFENAC (voltaren/fenac) 25 mg.","(แคปซูล) diCloxacillin  cap 250 mg.","(แคปซูล) DICLOXACILLIN CAP 500 mg.","(ผง) Dicloxacillin syp. 62.5 mg/5ml","(ฉีด) DIGOXIN 0.25 mg./ml.","(เม็ด) DIGOXIN(lanoxin) 0.25 mg.","(เม็ด) DIMENHYDRINATE(dramamine) 50 mg.","(ฉีด) DIMENHYDRINATE(Dramamine) 50 mg./ml.","(แคปซูล) DIP. CLORAZEPATE(trancon/T5) 5 mg.","(เม็ด) Dolutegravir 50 mg.","(เม็ด) DOMPERIDONE(motilium) 10 mg.","(ยาน้ำ) DOMPERIDONE(motilium) 5 mg/5ml","(ฉีด) DOPAMINE 250 mg./ml.","(เม็ด) Doxazosin 4 mg.","(แคปซูล) DOXYCYCLINE 100 mg.","(ฉีด) DT(diphtheria tetanus) vaccines mg.","(ฉีด) DTP iu./dose","(ฉีด) DTP-HB iu./dose","(ฉีด) DTP-HB-Hib vaccine 0.5 ml.","(เม็ด) EFAVIRENZ(EFV) 600 mg.","(เม็ด) ENALAPRIL 20 mg.","(เม็ด) eNAlapril 5 mg.","(ฉีด) ERIG (vinrab) 1000 iu.","(ผง) ERYTHROMYCIN 125 mg","(เม็ด) ETHAMBUTOL 400 mg.","(เม็ด) Favipiravir (covid-19) 200 mg.","(สารละลาย) FERROUS  DROP 50 mg/0.6ml","(เม็ด) FERROUS  FUMARATE 200 mg.","(ยาน้ำ) Ferrous fumarate Susp. 76 mg/5ml","(แคปซูล) FLUCONAZOLE 200 mg.","(แคปซูล) FLUNARIZINE(sibelium) 5 mg.","(เม็ด) Fluoxetine 20 mg.","(ฉีด) Fluphenazine(DECA) 50","(ฉีด) FLUPHENAZINE(deca) 50 mg.","(เม็ด) FOLIC  ACID 5 mg.","(ฉีด) FUROSEMIDE(lasix) 20 mg/2 ml","(เม็ด) FUROSEMIDE(lasix) 40 mg.","(แคปซูล) GEMFIBROZIL(Lopid) 300 mg.","(ฉีด) GENTAMICIN  80 mg/amp. 80 mg./2ml.","(เม็ด) gliPIZIDE(minidiab) 5 mg.","(เม็ด) Glyceryl guaiacolate (GG) 100 mg.","(เม็ด) GPO vir S30 30 mg.","(เม็ด) GPO VIR Z 250 250","(ยาน้ำ) Guaifenesin syrup (GG) 100 mg/5ml","HALOPERIDOL 0.5 mg.","(เม็ด) HALOPERIDOL 2 mg.","(เม็ด) HALOPERIDOL 5 mg.","(ฉีด) HALOPERIDOL 5 mg./ml.","(เม็ด) HCTZ(hydrochlorothiazide) 25 mg.","(ฉีด) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.","HI SET 1 u.","(สารละลาย) HISTA OPH(opsil A) 0.05 %","(ฉีด) HPV vaccine 0.5 ml.","(ฉีด) Hydralazine  Hcl 20 mg./1ml","(เม็ด) Hydralazine HCl 25 mg.","(ฉีด) Hydrocortisone sodium  succinate 100 mg.","(เม็ด) HYOSCINE(buscopan) 10 mg.","(ยาน้ำ) HYOSICNE(buscopan) 5 mg./5ml.","(ยาน้ำ) Ibuprofen (brufen) 100 mg/5ml","(เม็ด) IBUPROFEN(brufen) 400 mg.","(เม็ด) IMIPRAMINE(tofranil) 25 mg.","(ฉีด) IMPLANON  implant 68 mg.","(ฉีด) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.","(ฉีด) influenza ตามฤดูกาล 0.5 ml.","(เม็ด) INH(isoniazid) 100 mg.","(เม็ด) ISODIL  SL 5 mg.","(เม็ด) ISODIL  TAB 10 mg.","(เม็ด) Isoniazid 300 mg 300 mg.","(เม็ด) Isoniazid+Rifapentine 300/300 mg.","(ฉีด) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.","(ฉีด) JE VACCINE(0.5 ML) 80 mcg./ml.","(สารละลาย) K Y jelly sack 5 g.","(ผง) KALIMATE .","(เม็ด) KETOCONAZOLE(nizoral) 200 mg.","(เม็ด) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.","(เม็ด) Lamivudine 150 mg.","(เม็ด) Lamivudine 3TC 300 mg.","(เม็ด) Levodopa250 + carbidopa 25 mg.","(เม็ด) LevoFloxacin 500 mg.","(ฉีด) LIDOCAINE 2 %","(แคปซูล) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.","(เม็ด) Lopinavir/Ritonavir 200/50 mg.","(เม็ด) Lorazepam 1 mg.","(เม็ด) Losartan (cozaar) 50 mg.","(สารละลาย) M tussis ( brown mixt ) 180 ml.","(สารละลาย) M. CARMINATIVE 180 ml.","(สารละลาย) M.tussis (brown mixt) 60 ml.","(ฉีด) MAGNESIUM SULFATE 10 %","(ฉีด) MAGNESIUM SULFATE 50 %","(ฉีด) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.","(เม็ด) METFORMIN(glucophage) 500 mg.","(เม็ด) Methimazole 5 mg.","(เม็ด) METHYLDOPA(aldomet) 250 mg.","(ฉีด) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.","(เม็ด) METOCLOPRAMIDE(plasil) 10 mg.","(ฉีด) METOCLOPRAMIDE(plasil) 10 mg./2ml.","(เม็ด) Metoprolol tartrate 100 mg.","(เม็ด) METRONIDAZOLE(flagyl) 400 mg.","(ฉีด) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.","(เม็ด) Micronised progesterone 100 mg.","(ยาน้ำ) MILK OF MAGNESIA(MOM) 60 ml.","(ฉีด) Mixtard (ขวด) 100 units/ml.","(ฉีด) mixtard STAT 100 iu","(ฉีด) MMR 0.5 ml.","(แคปซูล) Molnupiravir 200 mg","(ฉีด) MORPHINE 10 mg./ml.","(เม็ด) Morphine MST 10 mg","(สารละลาย) Morphine Solution 10 mg/5 ml","(ฉีด) MR 0.5","(เม็ด) MTV-MULTIVITAMINS g.","(เม็ด) NaCl (Sodium Chloride) 300 mg","(ฉีด) NALOXONE(narcan) 0.1mg./ml.","(เม็ด) Nevirapine 200 mg.","(เม็ด) NIFEDIPINE SR 20 mg.","(ฉีด) Norepinephrine bitartrate 4 ml/ 4 mg.","(เม็ด) NORFLOXACIN(lexinor) 400 mg.","(เม็ด) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.","(ฉีด) NPH (ขวด) 100 units/ml.","(ฉีด) NPH INSULIN 1 units/ml.","(ฉีด) NSS 5 ml 0.9 %","(ฉีด) NSS INJ. 0.9 %","(สารละลาย) OLIVE OIL 60 ml.","(ฉีด) Omeprazole 10 ml 40 mg.","(แคปซูล) OMEPRAZOLE(losec/miracid) 20 mg.","(ฉีด) Ondansetron inj 8mg/4ml","(หยดกิน) OPV vaccine .","(ผง) ORS(รสส้ม) 75 4.253 g.","(แคปซูล) oseltamivir 30 mg.","(แคปซูล) oseltamivir 45 mg.","(แคปซูล) oseltamivir 75 mg.","(ฉีด) OXYTOCIN 10 iu.","(ยาน้ำ) PARACETAMOL  SYR 250 mg/5ml.","(เม็ด) paracetamol 325 mg.","(เม็ด) PARACETAMOL 500 mg.","(ยาน้ำ) PARACETAMOL SYRUP 120 มก./5มล.","(ฉีด) PCEC (ID) 0.1 iu.","(ฉีด) PCEC (IM) 0.5 iu.","(เม็ด) PERPHENAZINE(สีไข่ไก่) 8 mg.","(ฉีด) PETHIDINE 50 mg./ml.","(เม็ด) PHENOBARBITAL(1 GRAIN) 60 mg.","(ฉีด) Phenytoin inj 250/5 mg./ml.","(เม็ด) Phenytoin(Dilantin) 50 mg.","(แคปซูล) PHENYTOIN(dilantin) promt 100 mg.","(เม็ด) Pioglitazone 30 mg.","(หยอดตา) PolyOPH 5000 iu.","(สารละลาย) POTASSIUM (KCL elixir) 20 mEq./15ml.","(เม็ด) Potassium Chloride tab 6.7 mEq.","(ฉีด) POTASSIUM CHLORIDE(KCl) 20 mEq.","(เม็ด) PREDNISOLONE 5 mg.","(ครีม) prednisolone cream 5","(เม็ด) Primolut-N(norethisterone 5 mg) 5 mg.","(เหน็บทวาร) PROCTOSEDYL 5 mg.","(เม็ด) propranolol(inderal) 10 mg.","(เม็ด) PTU(propylthiouracil) 50 mg.","(เม็ด) PZA(pyrazinamide) 500 mg.","(เม็ด) QUININE SULFATE 300 mg.","(เม็ด) R-DEN(คุมเม็ด) 30 mcg.","(ฉีด) RABIES ANTISERUM(ERIG) 100 iu.","(ฉีด) RI  STAT (REGULAR INSULIN ) 100 iu./ml.","(แคปซูล) RIFAMPICIN 300 mg.","(แคปซูล) RIFAMPICIN 450 mg.","(เม็ด) Rifapentine 150 mg.","(แคปซูล) Rifinah (Rifam+INH) 300+150 mg.","(เม็ด) Risperidone 2 mg.","(ยาน้ำ) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.","(เม็ด) ROXITHROMYCIN(rulid) 150 mg.","(สารละลาย) SALBUTAMOL  NB (ER) 0.1 %","(เม็ด) SALBUTAMOL 2 mg.","(ยาน้ำ) SALBUTAMOL 2 mg/5ml","(สารละลาย) SALBUTAMOL NB. 0.1 %","(สารละลาย) SALBUTAMOL(ventolin) MDI 100 mcg.","(สารละลาย) Saline IRRIGATE 0.9 %","(สารละลาย) SELENIUM shampoo 200 mg./ml.","(พ่น) SeRoflo   (MDI) 25/125 mcg./dos","(เม็ด) Sertraline 50 mg.","(ครีม) SILVER SULFADIAZINE (25g) 1 %","(เม็ด) SIMETHICONE  (air-x) 80 mg.","(ยาน้ำ) SIMETHICONE DROP SUS 40 mg./0.6ml.","(เม็ด) SimVastatin(zocor) (NL) 20 mg.","(เม็ด) Sodamint (Sodium bicarbonate) 300 mg.","(ฉีด) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.","(ยาน้ำ) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.","(เม็ด) spironolactone (Aldactone) 25 mg.","(ฉีด) STERILEWATER (SWI) 100 ml.","(ฉีด) Streptokinase 1500000 u.","(ฉีด) STREPTOMYCIN SULPHATE 1 g.","(เม็ด) Teevir 300 mg.","(เม็ด) Tenofovia disoproxil 300 mg.","(ฉีด) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.","(สารละลาย) tetracain eye drop 0.5 %","(แคปซูล) Theophylline-CR 200 mg.","(เม็ด) THYROXINE-L 100 mcg.","(เม็ด) TLD (TDF300mg+3TC300mg+DTG50mg) mg.","(แคปซูล) TRAMADOL HCl(tramal) 50 mg.","(ฉีด) TRAMADOL inj 50 mg./ml.","(แคปซูล) Tranexamic acid 250 mg.","(ครีม) TRIAMCINOLONE 0.02 %","(ครีม) TRIAMCINOLONE 0.1 %","(ขี้ผึ้ง) Triamcinolone Oral Paste 1 g.","(ฉีด) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.","(เม็ด) Triferdine 150 mg.","(สารละลาย) UNISON 10 ml.","(สารละลาย) UNISON ENEMA 100 ml.","(ฉีด) VERORAB ( ID ) 0.1 ml.","(ฉีด) VERORAB ( IM ) 0.5 ml.","(เม็ด) VIT B6(pyridoxine) 50 mg.","(เม็ด) VITAMIN B 1/6/12 1 g.","(ฉีด) VITAMIN B COMPLEX .","(ฉีด) VITAMIN K1 1 mg.","(ฉีด) WATER FOR INJECTION 5 ml.","(แคปซูล) Zidovudine  (AZT) 300 mg.","(ยาน้ำ) Zidovudine (AZT) 10 mg./ml.","(แคปซูล) Zidovudine (AZT) 100 mg.","(เม็ด) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.","(แคปซูล) ขมิ้นชัน แคปซูล KMC 500 mg.","(แคปซูล) ขิง 500 mg.","(แคปซูล) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.","(แคปซูล) ตรีผลาTPL 90 g.","(แคปซูล) ฟ้าทะลายโจร FTJ 500 mg.","(ยาน้ำ) มะขามป้อม MKP 120 ml.","ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.","(แคปซูล) ยาประสะไพลPSP 500 mg.","(แคปซูล) ยามันทธาตุ 500 mg.","(เม็ด) ยาระบายมะขามแขก(senokot) 7.5  mg","(แคปซูล) ยาศุขไสยาศน์ 500 mg.","(แคปซูล) ยาสหัสธาราSHTR 500 mg.","(ผง) ยาหอมนวโกฐNVK 7 g.","(ผง) ยาหอมเทพจิตรTPJ 30 g.","(แคปซูล) ยาห้าราก ซองละ 9 แคปซูล 500 mg.","(เม็ด) ยาอมมะแว้ง MW %","(แคปซูล) ยาเขียวหอมKH 500 mg.","(เม็ด) ยาเดิม (Manidipine ) 20 mg","(สารละลาย) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml","(ผง) ยาเดิม(Acetylcysteine) 200 mg.","(เม็ด) ยาเดิม(Amlodipine) 10 mg.","(เม็ด) ยาเดิม(Atorvastatin) 40 mg.","(เม็ด) ยาเดิม(Azithromycin) 250 mg.","(ยาน้ำ) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml","(เม็ด) ยาเดิม(Betahistine) 6 mg.","(เม็ด) ยาเดิม(Carvedilol) 6.25 mg.","(แคปซูล) ยาเดิม(Gabapentin) 300 mg.","(เม็ด) ยาเดิม(Hydralazine) 50 mg.","(ฉีด) ยาเดิม(Hypercrit) 4000 u.","(เม็ด) ยาเดิม(Lorazepam) 0.5 mg.","(ผง) ยาเดิม(Meropenem inj.) 1 gm","(เม็ด) ยาเดิม(Risperidone) 1 mg.","(ฉีด) ยาเดิม(Vancomycin inj.) 500 mg","(เม็ด) ยาเดิม(Warfarin) 5 mg","(แคปซูล) ยาเลือดงามLH 500 mg.","(แคปซูล) ยาเหลืองปิดสมุทร 500 mg.","(แคปซูล) ยาแก้ลมจับเส้น 500 mg.","(ผง) ยาแก้ลมอัมพฤกษ์AMP 70 g.","(แคปซูล) รางจืด RJ 400 mg.","(ผง) ลูกประคบสมุนไพร 220 g.","(แคปซูล) เพชรสังฆาต PSK 500 mg."];
+
 // ═══ CONSTANTS ══════════════════════════════════════════════════
 const TYPE_A_SYMPTOMS = [
   'Agitation','Bradycardia','Constipation','Drug induced hepatitis','Dry cough',
@@ -509,7 +504,7 @@ function saveLocal() { localStorage.setItem('adr_records', JSON.stringify(record
 function buildDrugList() {
   const used = records.map(r=>r.drug).filter(Boolean);
   const all = [...new Set([...ADR_DRUGS,...used])].sort();
-  document.getElementById('drug-dl-adr').innerHTML = all.map(d=>`<option value="${d}">`).join('');
+  document.getElementById('drug-dl-adr').innerHTML = DRUG_LIST.map(d=>`<option value="${d}">`).join('');
 }
 
 // ═══ YEAR FILTER ════════════════════════════════════════════════
@@ -555,7 +550,7 @@ function submitForm() {
     date, type,
     hn: document.getElementById('f-hn').value.trim(),
     name: document.getElementById('f-name').value.trim(),
-    dept: document.getElementById('f-dept').value.trim(),
+    dept: 'หอผู้ป่วยใน',
     an: document.getElementById('f-an').value.trim(),
     symptom: document.getElementById('f-symptom').value,
     drug,
@@ -622,7 +617,7 @@ function saveModal() {
 function resetForm() {
   document.getElementById('edit-id').value = '';
   document.getElementById('form-title').textContent = '➕ เพิ่มรายการ ADR';
-  ['f-hn','f-name','f-dept','f-an','f-drug','f-diag'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['f-hn','f-name','f-an','f-drug','f-diag'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-date').value = todayTH();
   document.getElementById('f-type').value = '';
   document.getElementById('f-sev').value = 'ไม่ร้ายแรง (Non-serious)';
@@ -761,7 +756,7 @@ function getFiltered(base) {
     if (year && String(fi.year)!==year) return false;
     if (month && fi.month!==month) return false;
     if (sev && r.severity!==sev) return false;
-    if (q && ![r.hn,r.name,r.drug,r.symptom,r.dept].some(f=>String(f||'').toLowerCase().includes(q))) return false;
+    if (q && ![r.hn,r.name,r.drug,r.symptom].some(f=>String(f||'').toLowerCase().includes(q))) return false;
     return true;
   });
 }
@@ -912,7 +907,7 @@ function renderTable(fRecs) {
     <table>
       <thead>
         <tr>
-          <th>วันที่</th><th>HN / ชื่อ</th><th>แผนก</th>
+          <th>วันที่</th><th>HN / ชื่อ</th>
           <th>ยา / ผลิตภัณฑ์</th><th>ชนิด</th>
           <th>ลักษณะอาการ</th><th>ความร้ายแรง</th><th></th>
         </tr>
@@ -922,7 +917,7 @@ function renderTable(fRecs) {
           <tr class="${!r.symptom?'missing-symptom':''}">
             <td style="white-space:nowrap">${thDate(r.date)}</td>
             <td><strong>${r.hn||'-'}</strong>${r.name?`<br><small style="color:var(--text-light)">${r.name}</small>`:''}</td>
-            <td>${r.dept||'-'}</td>
+
             <td>${r.drug||'-'}</td>
             <td>${typeBadge(r.type)}</td>
             <td>${r.symptom||'<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
@@ -988,9 +983,3 @@ function renderTable(fRecs) {
 
 // ═══ INIT ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('f-date').value = todayTH();
-  renderAll();
-});
-</script>
-</body>
-</html>
