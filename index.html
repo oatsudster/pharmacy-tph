@@ -442,6 +442,46 @@ footer {
       </div>
     </div>
 
+    <!-- ADR -->
+    <div class="app-card" onclick="window.location.href='adr.html'">
+      <div class="card-stripe" style="background:linear-gradient(135deg,#9d174d,#be185d)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#fdf2f8">⚠️</div>
+          <div class="card-title-wrap">
+            <h2>ADR Reporting</h2>
+            <div class="en">ADVERSE DRUG REACTION</div>
+          </div>
+        </div>
+        <p class="card-desc">ระบบรายงานอาการไม่พึงประสงค์จากยา แยกตาม Type A/B/G6PD บันทึกรายการยา ลักษณะอาการ และความร้ายแรง Import จาก HosXP ได้เลย</p>
+        <div class="card-tags">
+          <span class="tag" style="background:#fce7f3;color:#9d174d">Type A/B</span>
+          <span class="tag" style="background:#fef3c7;color:#92400e">G6PD</span>
+          <span class="tag tag-blue">Firebase Sync</span>
+        </div>
+      </div>
+      <div class="card-stat-bar" style="background:#fdf2f8">
+        <div class="stat-item">
+          <div class="stat-val" id="adr-total" style="color:#9d174d">—</div>
+          <div class="stat-lbl">ADR ทั้งหมด</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="adr-typeB" style="color:#be185d">—</div>
+          <div class="stat-lbl">Type B (แพ้ยา)</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="adr-severe" style="color:#b91c1c">—</div>
+          <div class="stat-lbl">รุนแรงมาก</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="adr-updated"></span>
+        <a href="adr.html" class="open-btn" style="background:#9d174d" onclick="event.stopPropagation()">เปิดแอป →</a>
+      </div>
+    </div>
+
   </div>
 
   <!-- Coming soon -->
@@ -538,6 +578,25 @@ function updateStats() {
     }
     if (wtStat.length || wtCart.length) {
       g('wt-updated').textContent = 'Stat ' + wtStat.length + ' | รถยา ' + wtCart.length + ' รายการ';
+    }
+  } catch(e) {}
+
+  // ADR stats
+  try {
+    const adrRecs = JSON.parse(localStorage.getItem('adr_records') || '[]');
+    if (adrRecs.length) {
+      g('adr-total').textContent  = adrRecs.length.toLocaleString();
+      g('adr-typeB').textContent  = adrRecs.filter(r=>r.type==='B').length.toLocaleString();
+      const sev = adrRecs.filter(r=>r.severity==='รุนแรงมาก').length;
+      g('adr-severe').textContent = sev > 0 ? sev.toLocaleString() : '0';
+      const dates = adrRecs.map(r=>r.date).filter(Boolean).sort();
+      if (dates.length) {
+        const ld = dates[dates.length-1].split('-');
+        g('adr-updated').textContent = 'ข้อมูลล่าสุด '+parseInt(ld[2])+' '+months[parseInt(ld[1])-1]+' '+(parseInt(ld[0])+543);
+      }
+    } else {
+      g('adr-total').textContent = '—'; g('adr-typeB').textContent = '—'; g('adr-severe').textContent = '—';
+      g('adr-updated').textContent = 'ยังไม่มีข้อมูล';
     }
   } catch(e) {}
 
