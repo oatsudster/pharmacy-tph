@@ -224,13 +224,17 @@ tr:hover td { background: var(--bg); }
 
     <div class="form-group">
       <label>วันที่</label>
-      <input type="date" id="s-date">
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="date" id="s-date" style="flex:1">
+      <button type="button" onclick="document.getElementById('s-date').value=new Date().toISOString().split('T')[0]" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+    </div>
     </div>
     <div class="form-group">
       <label>เวลารับ Copy Order</label>
       <div style="display:flex;align-items:center;gap:6px">
       <input type="text" id="s-time-in" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcStat()" style="flex:1">
       <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('s-time-in');calcStat()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
     </div>
     </div>
     <div class="form-group">
@@ -238,6 +242,7 @@ tr:hover td { background: var(--bg); }
       <div style="display:flex;align-items:center;gap:6px">
       <input type="text" id="s-time-out" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcStat()" style="flex:1">
       <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('s-time-out');calcStat()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
     </div>
     </div>
     <div class="form-group">
@@ -264,13 +269,17 @@ tr:hover td { background: var(--bg); }
 
     <div class="form-group">
       <label>วันที่</label>
-      <input type="date" id="c-date">
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="date" id="c-date" style="flex:1">
+      <button type="button" onclick="document.getElementById('c-date').value=new Date().toISOString().split('T')[0]" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+    </div>
     </div>
     <div class="form-group">
       <label>เวลาส่งรถยา (เริ่มจัด)</label>
       <div style="display:flex;align-items:center;gap:6px">
       <input type="text" id="c-time-sent" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcCart()" style="flex:1">
       <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('c-time-sent');calcCart()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
     </div>
     </div>
     <div class="form-group">
@@ -278,6 +287,7 @@ tr:hover td { background: var(--bg); }
       <div style="display:flex;align-items:center;gap:6px">
       <input type="text" id="c-time-called" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcCart()" style="flex:1">
       <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('c-time-called');calcCart()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
     </div>
     </div>
     <div class="form-group">
@@ -457,6 +467,12 @@ function filterByMonth(recs) {
 }
 
 // ── TIME CALC ────────────────────────────────────────────
+function stampNow(id) {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById(id).value = h + ':' + m;
+}
 function autoTime(el) {
   let v = el.value.replace(/\D/g, '').slice(0, 4);
   if (v.length >= 3) v = v.slice(0,2) + ':' + v.slice(2);
