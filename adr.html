@@ -483,7 +483,10 @@ function showToast(msg, dur=2800) {
 function thDate(s) {
   if (!s) return '-';
   const d = new Date(s); if (isNaN(d)) return s;
-  return d.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()+543).slice(-2);
+  return `${dd}/${mm}/${yy}`;
 }
 
 function fiscalInfo(dateStr) {
