@@ -208,6 +208,25 @@ tr:hover td{background:#f8faf9;}
   border:2px solid #86efac;border-radius:12px;display:flex;align-items:center;justify-content:space-between;}
 .lo-summary-label{font-size:14px;font-weight:700;color:#15803d;}
 .lo-summary-val{font-size:28px;font-weight:800;color:#15803d;}
+/* ── Quick DRP checkbox ── */
+.drp-quick{border:2.5px solid var(--border);border-radius:12px;background:var(--surface);
+  transition:all .2s;overflow:hidden;}
+.drp-quick.active{border-color:#059669;background:#f0fdf4;}
+.drp-quick-label{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;user-select:none;}
+.drp-quick-check{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:24px;color:var(--text-light);transition:all .2s;}
+.drp-quick.active .drp-quick-check{color:#059669;}
+.drp-quick-title{font-size:15px;font-weight:700;color:var(--text);}
+.drp-quick.active .drp-quick-title{color:#065f46;}
+.drp-quick-sub{font-size:12px;color:var(--text-light);margin-top:2px;}
+.drp-quick.active .drp-quick-sub{color:#059669;}
+
+/* Leftover section highlight when quick DRP active */
+.lo-section-wrap{border:2.5px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);
+  transition:all .2s;margin-top:8px;}
+.lo-section-wrap.highlighted{border-color:#059669;background:#f0fdf4;}
+.lo-section-wrap.highlighted .form-title{color:#065f46;}
+
 </style>
 </head>
 <body>
@@ -313,11 +332,28 @@ tr:hover td{background:#f8faf9;}
     <!-- RIGHT COL: DRP + Leftover -->
     <div class="entry-col">
       <div class="form-title">DRPs ที่พบ</div>
+
+      <!-- Quick DRP: ยาเหลือสะสม (90% of cases) -->
+      <div class="drp-quick" id="drp-quick-wrap">
+        <label class="drp-quick-label" onclick="toggleQuickDrp()">
+          <div class="drp-quick-check" id="drp-quick-check">
+            <span id="drp-quick-icon">☐</span>
+          </div>
+          <div class="drp-quick-text">
+            <div class="drp-quick-title">📦 ยาเหลือสะสม</div>
+            <div class="drp-quick-sub">DRP ที่พบบ่อยที่สุด — กรอกยาในช่องด้านล่างได้เลย</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Other DRPs -->
+      <div style="margin-top:10px;margin-bottom:4px;font-size:11px;font-weight:700;color:var(--text-light);letter-spacing:.05em">DRP อื่นๆ</div>
       <div id="drp-list"></div>
-      <button class="btn-add" onclick="addDrpRow()">+ เพิ่ม DRP</button>
+      <button class="btn-add" onclick="addDrpRow()">+ เพิ่ม DRP อื่นๆ</button>
 
       <hr class="divider">
 
+      <div class="lo-section-wrap" id="lo-section-wrap">
       <div class="form-title">📦 ยาที่คนไข้นำกลับมา</div>
       <div style="font-size:11px;color:var(--text-light);margin-bottom:10px">กรอกจำนวนที่เหลือ → ระบบคำนวณมูลค่าให้อัตโนมัติ</div>
 
@@ -338,6 +374,7 @@ tr:hover td{background:#f8faf9;}
         <div class="lo-summary-label">💰 ประหยัดได้ทั้งหมด</div>
         <div class="lo-summary-val" id="lo-total">฿0</div>
       </div>
+      </div><!-- /lo-section-wrap -->
     </div>
 
   </div><!-- /entry-grid -->
@@ -516,6 +553,8 @@ function fiscalInfo(iso) {
   const fy = m>=9 ? y+1 : y;
   return {year:fy, month:TH_MONTHS[m], key:iso.slice(0,7)};
 }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ── TOAST ────────────────────────────────────────────────
@@ -573,6 +612,23 @@ function renderRecentRecords() {
     </tbody></table>`;
 }
 
+// ── QUICK DRP TOGGLE ─────────────────────────────────────
+let quickDrpActive = false;
+
+function toggleQuickDrp(forceState) {
+  quickDrpActive = forceState !== undefined ? forceState : !quickDrpActive;
+  const wrap = document.getElementById('drp-quick-wrap');
+  const icon = document.getElementById('drp-quick-icon');
+  const loWrap = document.getElementById('lo-section-wrap');
+  wrap.classList.toggle('active', quickDrpActive);
+  icon.textContent = quickDrpActive ? '☑' : '☐';
+  if (loWrap) loWrap.classList.toggle('highlighted', quickDrpActive);
+  // Auto-add leftover row if none exist
+  if (quickDrpActive && document.getElementById('lo-list').children.length === 0) {
+    addLoRow();
+  }
+}
+
 // ── DRP ROWS ─────────────────────────────────────────────
 function addDrpRow(type='', cause='', causeNote='') {
   const list = document.getElementById('drp-list');
@@ -622,7 +678,7 @@ function onDrpTypeChange(sel, preset='') {
 
 function getDrpData() {
   const rows = document.querySelectorAll('.drp-row');
-  return [...rows].map(row => {
+  const others = [...rows].map(row => {
     const type = row.querySelector('.drp-type').value;
     const causeSel = row.querySelector('.drp-cause');
     const causeNote = row.querySelector('.drp-cause-note');
@@ -630,6 +686,11 @@ function getDrpData() {
     const note = causeNote.style.display!=='none' ? causeNote.value.trim() : '';
     return type ? {type, cause, causeNote:note} : null;
   }).filter(Boolean);
+  // Prepend quick DRP if active
+  if (quickDrpActive) {
+    return [{type:'ยาเหลือสะสม', cause:'', causeNote:''}, ...others];
+  }
+  return others;
 }
 
 // ── LEFTOVER ROWS ────────────────────────────────────────
@@ -638,7 +699,7 @@ function addLoRow(drug='', qty='', unit='', price=0) {
   const div = document.createElement('div');
   div.className = 'lo-row';
   div.innerHTML = `
-    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${escHtml(drug)}" oninput="onDrugInput(this)" autocomplete="off">
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onDrugInput(this)" autocomplete="off">
     <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()" style="text-align:center">
     <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
     <span class="lo-price-display" id="">฿${price>0?price:'—'}</span>
@@ -748,6 +809,7 @@ function clearForm() {
   ['f-hn','f-name','f-notes','f-pharmnote'].forEach(id=>document.getElementById(id).value='');
   ['chk-adherence','chk-noleftover','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
   document.getElementById('drp-list').innerHTML = '';
+  toggleQuickDrp(false);
   document.getElementById('lo-list').innerHTML = '';
   document.getElementById('lo-total').textContent = '';
 }
