@@ -181,6 +181,33 @@ tr:hover td{background:#f8faf9;}
 #toast{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   background:#1C2B22;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:300;
   box-shadow:0 4px 12px rgba(0,0,0,.2);}
+
+/* ── Checklist ── */
+.check-group{display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);}
+.check-item{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);user-select:none;}
+.check-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--primary);flex-shrink:0;}
+.check-item input[type=checkbox]:checked + span{color:var(--primary);}
+
+/* ── Leftover header + redesigned rows ── */
+.lo-header{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;
+  padding:6px 8px;background:var(--primary-light);border-radius:8px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--primary-dark);}
+.lo-h-drug,.lo-h-qty,.lo-h-unit,.lo-h-price,.lo-h-total,.lo-h-del{text-align:center;line-height:1.3;}
+.lo-h-drug{text-align:left;}
+.lo-row{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;margin-bottom:6px;align-items:center;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:8px;transition:border .15s;}
+.lo-row:hover{border-color:var(--primary-mid);}
+.lo-row .lo-drug{font-size:13px;}
+.lo-row .lo-qty{width:100%;text-align:center;}
+.lo-row .lo-unit{width:100%;text-align:center;font-size:12px;}
+.lo-row .lo-price-display{font-size:12px;color:var(--text-light);text-align:center;}
+.lo-row .lo-total-display{font-size:13px;font-weight:700;color:var(--success);text-align:center;}
+.lo-row input{padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none;width:100%;}
+.lo-row input:focus{border-color:var(--primary);background:#fff;}
+
+.lo-summary{margin-top:14px;padding:16px 20px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+  border:2px solid #86efac;border-radius:12px;display:flex;align-items:center;justify-content:space-between;}
+.lo-summary-label{font-size:14px;font-weight:700;color:#15803d;}
+.lo-summary-val{font-size:28px;font-weight:800;color:#15803d;}
 </style>
 </head>
 <body>
@@ -259,9 +286,24 @@ tr:hover td{background:#f8faf9;}
         <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
       </div>
 
+      <!-- Checklist -->
+      <div class="form-group">
+        <label>ประเมินผู้ป่วย</label>
+        <div class="check-group">
+          <label class="check-item"><input type="checkbox" id="chk-adherence"> <span>💊 กินยาถูกต้อง</span></label>
+          <label class="check-item"><input type="checkbox" id="chk-noleftover"> <span>📭 ไม่มียาเหลือ</span></label>
+          <label class="check-item"><input type="checkbox" id="chk-icebox"> <span>🧊 นำกระติกน้ำแข็งมา</span></label>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>หมายเหตุ</label>
-        <textarea id="f-notes" rows="3" placeholder="บันทึกเพิ่มเติม..."></textarea>
+        <textarea id="f-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Pharmacist Note <span style="font-size:11px;font-weight:400;color:var(--text-light)">(สำหรับเภสัชกรเท่านั้น)</span></label>
+        <textarea id="f-pharmnote" rows="2" placeholder="ข้อสังเกต แผนการดูแล หรือนัดติดตาม..."></textarea>
       </div>
 
       <button class="btn-submit" onclick="submitVisit()">✅ บันทึกการให้คำปรึกษา</button>
@@ -276,10 +318,26 @@ tr:hover td{background:#f8faf9;}
 
       <hr class="divider">
 
-      <div class="form-title">ยาคงเหลือ (นำกลับมา)</div>
+      <div class="form-title">📦 ยาที่คนไข้นำกลับมา</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:10px">กรอกจำนวนที่เหลือ → ระบบคำนวณมูลค่าให้อัตโนมัติ</div>
+
+      <!-- column headers -->
+      <div class="lo-header">
+        <span class="lo-h-drug">ชื่อยา</span>
+        <span class="lo-h-qty">จำนวน<br>ที่เหลือ</span>
+        <span class="lo-h-unit">หน่วย</span>
+        <span class="lo-h-price">ราคา/<br>หน่วย</span>
+        <span class="lo-h-total">มูลค่า<br>ประหยัด</span>
+        <span class="lo-h-del"></span>
+      </div>
       <div id="lo-list"></div>
-      <button class="btn-add" onclick="addLoRow()">+ เพิ่มรายการยา</button>
-      <div class="lo-total-row" id="lo-total" style="margin-top:10px;font-size:14px"></div>
+      <button class="btn-add" onclick="addLoRow()" style="width:100%;margin-top:6px">+ เพิ่มรายการยา</button>
+
+      <!-- Savings summary card -->
+      <div class="lo-summary" id="lo-summary" style="display:none">
+        <div class="lo-summary-label">💰 ประหยัดได้ทั้งหมด</div>
+        <div class="lo-summary-val" id="lo-total">฿0</div>
+      </div>
     </div>
 
   </div><!-- /entry-grid -->
@@ -497,7 +555,7 @@ function renderRecentRecords() {
     return;
   }
   wrap.innerHTML = `<table>
-    <thead><tr><th>วันที่</th><th>HN</th><th>ชื่อ</th><th>เภสัชกร</th><th>DRP</th><th>ประหยัด</th><th></th></tr></thead>
+    <thead><tr><th>วันที่</th><th>HN</th><th>ชื่อ</th><th>เภสัชกร</th><th>DRP</th><th>ประหยัด</th><th>ประเมิน</th><th></th></tr></thead>
     <tbody>${recs.map(r => `<tr>
       <td>${thDate(r.date)}</td>
       <td>${r.hn||'—'}</td>
@@ -505,6 +563,11 @@ function renderRecentRecords() {
       <td style="font-size:11px">${r.pharmacist||'—'}</td>
       <td>${r.drps&&r.drps.length ? '<span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.drps.length+' DRP</span>' : '—'}</td>
       <td>${r.totalSaving>0?'฿'+Math.round(r.totalSaving).toLocaleString():'—'}</td>
+      <td style="font-size:14px;white-space:nowrap">
+        ${r.checks&&r.checks.adherence?'💊':''}
+        ${r.checks&&r.checks.noLeftover?'📭':''}
+        ${r.checks&&r.checks.icebox?'🧊':''}
+      </td>
       <td><button class="btn-del" onclick="deleteVisit('${r.id}')">✕</button></td>
     </tr>`).join('')}
     </tbody></table>`;
@@ -575,10 +638,11 @@ function addLoRow(drug='', qty='', unit='', price=0) {
   const div = document.createElement('div');
   div.className = 'lo-row';
   div.innerHTML = `
-    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา" value="${drug}" oninput="onDrugInput(this)">
-    <input class="lo-qty" type="number" min="0" step="1" placeholder="จำนวน" value="${qty}" oninput="updateLoTotal()">
-    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="width:42px">
-    <span class="lo-price">฿${price>0?price:'0'}</span>
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${escHtml(drug)}" oninput="onDrugInput(this)" autocomplete="off">
+    <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()" style="text-align:center">
+    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <span class="lo-price-display" id="">฿${price>0?price:'—'}</span>
+    <span class="lo-total-display">—</span>
     <button class="btn-rm" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
   div.querySelector('.lo-qty')._price = price;
   list.appendChild(div);
@@ -591,10 +655,10 @@ function onDrugInput(el) {
   if (info) {
     row.querySelector('.lo-unit').value = info.u || 'เม็ด';
     row.querySelector('.lo-qty')._price = info.p;
-    row.querySelector('.lo-price').textContent = '฿'+info.p;
+    row.querySelector('.lo-price-display').textContent = '฿'+info.p;
   } else {
     row.querySelector('.lo-qty')._price = 0;
-    row.querySelector('.lo-price').textContent = '฿0';
+    row.querySelector('.lo-price-display').textContent = '—';
   }
   updateLoTotal();
 }
@@ -604,10 +668,17 @@ function updateLoTotal() {
   document.querySelectorAll('.lo-row').forEach(row => {
     const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
     const price = row.querySelector('.lo-qty')._price||0;
-    total += qty*price;
+    const rowTotal = qty * price;
+    total += rowTotal;
+    const totalSpan = row.querySelector('.lo-total-display');
+    if (totalSpan) totalSpan.textContent = rowTotal > 0 ? '฿'+rowTotal.toFixed(0) : '—';
   });
+  const summary = document.getElementById('lo-summary');
   const el = document.getElementById('lo-total');
-  el.textContent = total>0 ? 'ประมาณการประหยัด: ฿'+total.toFixed(2) : '';
+  if (summary && el) {
+    summary.style.display = total > 0 ? 'flex' : 'none';
+    el.textContent = '฿'+total.toFixed(2);
+  }
 }
 
 function getLoData() {
@@ -652,9 +723,16 @@ function submitVisit() {
   const drps = getDrpData();
   const leftovers = getLoData();
   const totalSaving = leftovers.reduce((s,l)=>s+l.total,0);
+  const checks = {
+    adherence: document.getElementById('chk-adherence').checked,
+    noLeftover: document.getElementById('chk-noleftover').checked,
+    icebox: document.getElementById('chk-icebox').checked,
+  };
   const rec = {
     id: uid(), date, clinic, pharmacist:pharm, hn, name,
     drps, leftovers, totalSaving:Math.round(totalSaving*100)/100,
+    checks,
+    pharmNote: document.getElementById('f-pharmnote').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
     created: Date.now()
   };
@@ -667,7 +745,8 @@ function submitVisit() {
 
 function clearForm() {
   document.getElementById('f-date').value = todayTH();
-  ['f-hn','f-name','f-notes'].forEach(id=>document.getElementById(id).value='');
+  ['f-hn','f-name','f-notes','f-pharmnote'].forEach(id=>document.getElementById(id).value='');
+  ['chk-adherence','chk-noleftover','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
   document.getElementById('drp-list').innerHTML = '';
   document.getElementById('lo-list').innerHTML = '';
   document.getElementById('lo-total').textContent = '';
