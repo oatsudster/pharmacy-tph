@@ -785,9 +785,33 @@
 
         <div class="section-label">⚠️ รายละเอียดความคลาดเคลื่อน</div>
         <div class="form-group full">
-          <label>ยาที่เกี่ยวข้อง <span class="req">*</span></label>
-          <input type="text" id="mf-opd-drug" placeholder="ชื่อยา" list="drug-list-opd">
+          <label>หมวดหมู่ความคลาดเคลื่อน</label>
+          <input type="hidden" id="mf-opd-mecat" value="drug">
+          <div style="display:flex;gap:8px">
+            <button type="button" id="mecat-opd-drug" class="btn btn-primary" onclick="switchMECategory('OPD','drug')" style="flex:1;padding:10px;font-size:14px;font-weight:700">💊 ด้านยา</button>
+            <button type="button" id="mecat-opd-system" class="btn btn-secondary" onclick="switchMECategory('OPD','system')" style="flex:1;padding:10px;font-size:14px;font-weight:700">⚙️ ด้านระบบ/กระบวนการ</button>
+          </div>
+        </div>
+        <div class="form-group full" id="drugrow-OPD">
+          <label>ยาที่เกี่ยวข้อง</label>
+          <input type="text" id="mf-opd-drug" placeholder="ชื่อยา (ถ้าเกี่ยวข้อง)" list="drug-list-opd">
           <datalist id="drug-list-opd"></datalist>
+        </div>
+        <div class="form-group full" id="systyperow-OPD" style="display:none">
+          <label>ประเภทความคลาดเคลื่อน (ระบบ/กระบวนการ) <span class="req">*</span></label>
+          <select id="mf-opd-systype">
+            <option value="">-- เลือกประเภท --</option>
+            <option value="Med Reconciliation">ไม่ได้ทำ Med Reconciliation</option>
+            <option value="Labeling error - wrong patient">ติดสติ๊กเกอร์/ฉลากซองยาผิดคน</option>
+            <option value="Labeling error - wrong drug">ติดสติ๊กเกอร์/ฉลากซองยาผิดรายการ</option>
+            <option value="Incomplete dispensing">ได้ยาไม่ครบรายการในตะกร้า/ถุงยา</option>
+            <option value="Dispensing without verification">จ่ายยาโดยไม่ตรวจสอบ</option>
+            <option value="Wrong bag/pack">จัดยาสลับถุง/ซอง/ตะกร้า</option>
+            <option value="No patient counseling">ไม่ได้ให้คำแนะนำยาแก่ผู้ป่วย</option>
+            <option value="Documentation error">ผิดพลาดด้านเอกสาร/บันทึก</option>
+            <option value="System/HIS error">ระบบสารสนเทศ/HosXP ผิดพลาด</option>
+            <option value="อื่นๆ">อื่นๆ (ระบุในรายละเอียด)</option>
+          </select>
         </div>
         <div class="form-group">
           <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
@@ -801,8 +825,8 @@
             <option value="Monitoring">Monitoring (การติดตาม)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>ประเภทความคลาดเคลื่อน</label>
+        <div class="form-group" id="metype-row-OPD">
+          <label>ประเภทความคลาดเคลื่อน (ยา)</label>
           <select id="mf-opd-metype">
             <option value="">-- เลือก --</option>
             <option>Wrong drug (ยาผิด)</option>
@@ -1184,9 +1208,33 @@
 
         <div class="section-label">⚠️ รายละเอียดความคลาดเคลื่อน</div>
         <div class="form-group full">
-          <label>ยาที่เกี่ยวข้อง <span class="req">*</span></label>
-          <input type="text" id="mf-ipd-drug" placeholder="ชื่อยา" list="drug-list-ipd">
+          <label>หมวดหมู่ความคลาดเคลื่อน</label>
+          <input type="hidden" id="mf-ipd-mecat" value="drug">
+          <div style="display:flex;gap:8px">
+            <button type="button" id="mecat-ipd-drug" class="btn btn-primary" onclick="switchMECategory('IPD','drug')" style="flex:1;padding:10px;font-size:14px;font-weight:700">💊 ด้านยา</button>
+            <button type="button" id="mecat-ipd-system" class="btn btn-secondary" onclick="switchMECategory('IPD','system')" style="flex:1;padding:10px;font-size:14px;font-weight:700">⚙️ ด้านระบบ/กระบวนการ</button>
+          </div>
+        </div>
+        <div class="form-group full" id="drugrow-IPD">
+          <label>ยาที่เกี่ยวข้อง</label>
+          <input type="text" id="mf-ipd-drug" placeholder="ชื่อยา (ถ้าเกี่ยวข้อง)" list="drug-list-ipd">
           <datalist id="drug-list-ipd"></datalist>
+        </div>
+        <div class="form-group full" id="systyperow-IPD" style="display:none">
+          <label>ประเภทความคลาดเคลื่อน (ระบบ/กระบวนการ) <span class="req">*</span></label>
+          <select id="mf-ipd-systype">
+            <option value="">-- เลือกประเภท --</option>
+            <option value="Med Reconciliation">ไม่ได้ทำ Med Reconciliation</option>
+            <option value="Labeling error - wrong patient">ติดสติ๊กเกอร์/ฉลากซองยาผิดคน</option>
+            <option value="Labeling error - wrong drug">ติดสติ๊กเกอร์/ฉลากซองยาผิดรายการ</option>
+            <option value="Incomplete dispensing">ได้ยาไม่ครบรายการในตะกร้า/ถุงยา</option>
+            <option value="Dispensing without verification">จ่ายยาโดยไม่ตรวจสอบ</option>
+            <option value="Wrong bag/pack">จัดยาสลับถุง/ซอง/ตะกร้า</option>
+            <option value="No patient counseling">ไม่ได้ให้คำแนะนำยาแก่ผู้ป่วย</option>
+            <option value="Documentation error">ผิดพลาดด้านเอกสาร/บันทึก</option>
+            <option value="System/HIS error">ระบบสารสนเทศ/HosXP ผิดพลาด</option>
+            <option value="อื่นๆ">อื่นๆ (ระบุในรายละเอียด)</option>
+          </select>
         </div>
         <div class="form-group">
           <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
@@ -1200,8 +1248,8 @@
             <option value="Monitoring">Monitoring (การติดตาม)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>ประเภทความคลาดเคลื่อน</label>
+        <div class="form-group" id="metype-row-IPD">
+          <label>ประเภทความคลาดเคลื่อน (ยา)</label>
           <select id="mf-ipd-metype">
             <option value="">-- เลือก --</option>
             <option>Wrong drug (ยาผิด)</option>
@@ -2496,15 +2544,50 @@ function thToISOme(s) {
   return `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
 }
 
+function switchMECategory(dept, cat) {
+  const D = dept;
+  const d = dept.toLowerCase();
+  const drugRow = document.getElementById('drugrow-'+D);
+  const sysRow  = document.getElementById('systyperow-'+D);
+  const meTypeRow = document.getElementById('metype-row-'+D);
+  const btnDrug = document.getElementById('mecat-'+d+'-drug');
+  const btnSys  = document.getElementById('mecat-'+d+'-system');
+  const catInput = document.getElementById('mf-'+d+'-mecat');
+  if (catInput) catInput.value = cat;
+  if (cat === 'drug') {
+    if (drugRow)   drugRow.style.display   = '';
+    if (sysRow)    sysRow.style.display    = 'none';
+    if (meTypeRow) meTypeRow.style.display = '';
+    if (btnDrug) { btnDrug.className = 'btn btn-primary'; }
+    if (btnSys)  { btnSys.className  = 'btn btn-secondary'; }
+  } else {
+    if (drugRow)   drugRow.style.display   = 'none';
+    if (sysRow)    sysRow.style.display    = '';
+    if (meTypeRow) meTypeRow.style.display = 'none';
+    if (btnSys)  { btnSys.className  = 'btn btn-primary'; }
+    if (btnDrug) { btnDrug.className = 'btn btn-secondary'; }
+    const drugEl = document.getElementById('mf-'+d+'-drug');
+    if (drugEl) drugEl.value = '';
+  }
+}
+
 function submitManualME(dept) {
   const d = dept.toLowerCase();
+  const D = dept;
   const dateISO = thToISOme(document.getElementById('mf-'+d+'-date').value.trim());
   const stage   = document.getElementById('mf-'+d+'-stage').value;
   const severity= document.getElementById('mf-'+d+'-severity').value;
-  const drug    = document.getElementById('mf-'+d+'-drug').value.trim();
+  const catEl   = document.getElementById('mf-'+d+'-mecat');
+  const mecat   = catEl ? (catEl.value || 'drug') : 'drug';
+  const drug    = mecat === 'drug'
+    ? document.getElementById('mf-'+d+'-drug').value.trim()
+    : '';
+  const systypeEl = document.getElementById('mf-'+d+'-systype');
+  const systype   = (mecat === 'system' && systypeEl) ? systypeEl.value : '';
   if (!dateISO) { showToast('⚠️ กรุณาระบุวันที่'); return; }
   if (!stage)   { showToast('⚠️ กรุณาเลือกขั้นตอนที่เกิด ME'); return; }
   if (!severity){ showToast('⚠️ กรุณาเลือกระดับความรุนแรง'); return; }
+  if (mecat === 'system' && !systype) { showToast('⚠️ กรุณาเลือกประเภทความคลาดเคลื่อน'); return; }
 
   const rec = {
     id: Date.now() + Math.random(),
@@ -2514,10 +2597,11 @@ function submitManualME(dept) {
     patient:  document.getElementById('mf-'+d+'-patient').value.trim(),
     doctor:   document.getElementById('mf-'+d+'-doctor').value.trim(),
     dept:     dept,
-    drug:     drug,
+    drug:     mecat === 'system' ? ('['+systype+']') : drug,
     stage:    stage,
     stageRaw: stage,
-    meType:   document.getElementById('mf-'+d+'-metype').value,
+    meType:   mecat === 'system' ? systype : document.getElementById('mf-'+d+'-metype').value,
+    meCategory: mecat,
     severity: severity,
     severityRaw: 'Category '+severity+':',
     detail:   document.getElementById('mf-'+d+'-detail').value.trim(),
@@ -2536,7 +2620,7 @@ function submitManualME(dept) {
 
 function clearManualME(dept) {
   const d = dept.toLowerCase();
-  ['date','time','hn','patient','doctor','drug','stage','metype','severity','detail','intervention','reporter']
+  ['date','time','hn','patient','doctor','drug','systype','stage','metype','severity','detail','intervention','reporter']
     .forEach(f => {
       const el = document.getElementById('mf-'+d+'-'+f);
       if (!el) return;
@@ -2544,6 +2628,7 @@ function clearManualME(dept) {
       else el.value = '';
     });
   document.getElementById('mf-'+d+'-date').value = todayME();
+  switchMECategory(dept, 'drug');
 }
 
 function renderManualRecent(dept) {
