@@ -598,7 +598,44 @@ function getPatients() {
     return stored || DEFAULT_PATIENTS;
   } catch(e) { return DEFAULT_PATIENTS; }
 }
-function savePatients(list) { localStorage.setItem('dm_patients', JSON.stringify(list)); }
+function savePatients(list) {
+  localStorage.setItem('dm_patients', JSON.stringify(list));
+  _fbSavePatients();
+}
+
+function _patientsDoc() {
+  return _db ? _db.collection('dm_data').doc('patients') : null;
+}
+
+function _fbSavePatients() {
+  const doc = _patientsDoc();
+  if (!doc) return;
+  doc.set({ list: PATIENTS, updated: Date.now() })
+    .catch(e => console.warn('fbSavePatients:', e));
+}
+
+function _fbLoadPatients(callback) {
+  const doc = _patientsDoc();
+  if (!doc) { if(callback) callback(); return; }
+  doc.get().then(snap => {
+    if (snap.exists) {
+      const fbPt = snap.data().list || [];
+      if (fbPt.length > 0) {
+        PATIENTS = fbPt;
+        localStorage.setItem('dm_patients', JSON.stringify(PATIENTS));
+        rebuildAllStrips();
+        if (typeof renderPatientsPage === 'function') renderPatientsPage();
+        if (typeof renderDashboard === 'function') renderDashboard();
+      } else if (PATIENTS.length > 0 && !PATIENTS.some(p => p.id && p.id.startsWith('default'))) {
+        // Local has real data → migrate to Firebase
+        _fbSavePatients();
+      }
+    } else if (PATIENTS.length > 0) {
+      _fbSavePatients(); // first time: push local to Firebase
+    }
+    if (callback) callback();
+  }).catch(e => { console.warn('fbLoadPatients:', e); if(callback) callback(); });
+}
 
 let currentPatient = null;
 let currentHistPatient = null;
@@ -733,6 +770,9 @@ function _startSync() {
       _setSyncStatus('error');
     }
   );
+
+  // Also sync patients from Firebase
+  _fbLoadPatients();
 }
 
 function openSyncModal() {
