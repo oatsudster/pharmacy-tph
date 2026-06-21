@@ -188,45 +188,34 @@ tr:hover td{background:#f8faf9;}
 .check-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--primary);flex-shrink:0;}
 .check-item input[type=checkbox]:checked + span{color:var(--primary);}
 
-/* ── Leftover redesigned cards ── */
-.lo-header{display:none;}
-.lo-row{
-  background:var(--surface);
-  border:2px solid var(--border);
-  border-radius:14px;
-  padding:14px 16px;
-  margin-bottom:10px;
-  transition:border-color .15s, box-shadow .15s;
-  box-shadow:0 1px 3px rgba(0,0,0,.06);
-}
-.lo-row:hover{border-color:var(--primary-mid);box-shadow:0 2px 8px rgba(79,70,229,.1);}
-.lo-row-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-.lo-row-top .lo-drug{flex:1;font-size:15px;font-weight:600;padding:9px 12px;
-  border:1.5px solid var(--border);border-radius:9px;background:var(--bg);font-family:inherit;outline:none;}
-.lo-row-top .lo-drug:focus{border-color:var(--primary);background:#fff;}
-.lo-row-top .btn-rm{width:32px;height:32px;border-radius:8px;border:1.5px solid #fca5a5;
-  background:#fff5f5;color:#dc2626;font-size:15px;cursor:pointer;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;}
-.lo-row-bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.lo-qty-wrap{display:flex;flex-direction:column;align-items:center;min-width:100px;
-  background:var(--primary-light);border-radius:12px;padding:10px 14px;}
-.lo-qty-label{font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:4px;letter-spacing:.03em;text-transform:uppercase;}
-.lo-qty-row{display:flex;align-items:center;gap:6px;}
-.lo-row .lo-qty{width:80px;font-size:28px;font-weight:800;text-align:center;padding:4px 6px;
-  border:2px solid var(--primary-mid);border-radius:9px;background:#fff;font-family:inherit;
-  outline:none;color:var(--primary-dark);letter-spacing:-.02em;-moz-appearance:textfield;}
-.lo-row .lo-qty::-webkit-outer-spin-button,.lo-row .lo-qty::-webkit-inner-spin-button{-webkit-appearance:none;}
-.lo-row .lo-qty:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.15);}
-.lo-unit-wrap{display:flex;flex-direction:column;align-items:center;min-width:70px;}
-.lo-unit-label{font-size:11px;color:var(--text-light);margin-bottom:4px;}
-.lo-row .lo-unit{width:70px;font-size:14px;text-align:center;padding:6px 8px;
-  border:1.5px solid var(--border);border-radius:8px;background:var(--bg);font-family:inherit;outline:none;}
+/* ── Leftover compact grid ── */
+.lo-header{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;
+  padding:6px 8px;background:var(--primary-light);border-radius:8px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--primary-dark);}
+.lo-h-drug,.lo-h-qty,.lo-h-unit,.lo-h-price,.lo-h-total,.lo-h-del{text-align:center;line-height:1.3;}
+.lo-h-drug{text-align:left;}
+.lo-row{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;margin-bottom:6px;align-items:center;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:8px;transition:border .15s;}
+.lo-row:hover{border-color:var(--primary-mid);}
+.lo-row-top{display:contents;}
+.lo-row-bottom{display:contents;}
+.lo-qty-wrap{display:contents;}
+.lo-qty-label{display:none;}
+.lo-qty-row{display:contents;}
+.lo-unit-wrap{display:contents;}
+.lo-unit-label{display:none;}
+.lo-row .lo-drug{font-size:13px;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg);font-family:inherit;outline:none;width:100%;}
+.lo-row .lo-drug:focus{border-color:var(--primary);background:#fff;}
+.lo-row .lo-qty{width:100%;text-align:center;font-size:13px;padding:7px 8px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.lo-row .lo-qty:focus{border-color:var(--primary);background:#fff;}
+.lo-row .lo-unit{width:100%;text-align:center;font-size:12px;padding:7px 4px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
 .lo-row .lo-unit:focus{border-color:var(--primary);}
-.lo-price-display{font-size:12px;color:var(--text-light);padding:4px 8px;
-  background:var(--surface);border:1px solid var(--border);border-radius:6px;white-space:nowrap;}
-.lo-total-display{font-size:16px;font-weight:800;color:var(--success);
-  background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:6px 12px;
-  white-space:nowrap;min-width:80px;text-align:center;}
+.lo-price-display{font-size:12px;color:var(--text-light);text-align:center;}
+.lo-total-display{font-size:13px;font-weight:700;color:var(--success);text-align:center;}
+.lo-row .btn-rm{width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;
+  background:#fff5f5;color:#dc2626;font-size:13px;cursor:pointer;font-weight:700;justify-self:center;}
 
 .lo-summary{margin-top:14px;padding:16px 20px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);
   border:2px solid #86efac;border-radius:12px;display:flex;align-items:center;justify-content:space-between;}
@@ -381,6 +370,15 @@ tr:hover td{background:#f8faf9;}
       <div class="form-title">📦 ยาที่คนไข้นำกลับมา</div>
       <div style="font-size:11px;color:var(--text-light);margin-bottom:10px">กรอกจำนวนที่เหลือ → ระบบคำนวณมูลค่าให้อัตโนมัติ</div>
 
+      <!-- column headers -->
+      <div class="lo-header">
+        <span class="lo-h-drug">ชื่อยา</span>
+        <span class="lo-h-qty">จำนวน<br>ที่เหลือ</span>
+        <span class="lo-h-unit">หน่วย</span>
+        <span class="lo-h-price">ราคา/<br>หน่วย</span>
+        <span class="lo-h-total">มูลค่า<br>ประหยัด</span>
+        <span class="lo-h-del"></span>
+      </div>
       <div id="lo-list"></div>
       <button class="btn-add" onclick="addLoRow()" style="width:100%;margin-top:6px">+ เพิ่มรายการยา</button>
 
@@ -714,24 +712,14 @@ function addLoRow(drug='', qty='', unit='', price=0) {
   const div = document.createElement('div');
   div.className = 'lo-row';
   div.innerHTML = `
-    <div class="lo-row-top">
-      <input class="lo-drug" type="text" list="drug-dl" placeholder="พิมพ์ชื่อยา..." value="${drug}" oninput="onDrugInput(this)" autocomplete="off">
-      <button class="btn-rm" type="button" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>
-    </div>
-    <div class="lo-row-bottom">
-      <div class="lo-qty-wrap">
-        <div class="lo-qty-label">📦 คงเหลือ</div>
-        <div class="lo-qty-row">
-          <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()">
-        </div>
-      </div>
-      <div class="lo-unit-wrap">
-        <div class="lo-unit-label">หน่วย</div>
-        <input class="lo-unit" type="text" placeholder="เม็ด" value="${unit||'เม็ด'}">
-      </div>
-      <span class="lo-price-display">฿/หน่วย: ${price>0?price:'—'}</span>
-      <span class="lo-total-display" title="มูลค่าที่ประหยัดได้">—</span>
-    </div>`;
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onDrugInput(this)" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.lo-row').querySelector('.lo-qty').select();}">
+    <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()" style="text-align:center"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();addLoRow();}">
+    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <span class="lo-price-display">฿${price>0?price:'—'}</span>
+    <span class="lo-total-display">—</span>
+    <button class="btn-rm" type="button" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
   div.querySelector('.lo-qty')._price = price;
   list.appendChild(div);
   div.querySelector('.lo-drug').focus();
@@ -951,10 +939,13 @@ function renderMain() {
   const curYear = new Date().getFullYear()+543;
   const fy = new Date().getMonth()>=9 ? curYear+1 : curYear;
 
-  const clinicBtns = ['HT','DM','COPD','all','session'].map(c => {
-    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', session:'📋 Session'};
-    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',session:''};
-    return `<button class="clinic-tab ${colors[c]} ${c===clinic?'active':''}" onclick="window.reportClinic='${c}';window.reportClinic==='session'?renderSessionTab(document.getElementById('main-content')):renderMain()" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+  const clinicBtns = ['HT','DM','COPD','all','leftover','session'].map(c => {
+    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
+    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
+    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
+                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
+                  : `renderMain()`;
+    return `<button class="clinic-tab ${colors[c]} ${c===clinic?'active':''}" onclick="window.reportClinic='${c}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
   }).join('');
 
   main.innerHTML = `
@@ -1012,6 +1003,119 @@ function renderMain() {
   renderTable();
 }
 
+function renderLeftoverReport(main) {
+  const clinicBtns = ['HT','DM','COPD','all','leftover','session'].map(c => {
+    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
+    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
+    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
+                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
+                  : `renderMain()`;
+    return `<button class="clinic-tab ${colors[c]} ${'leftover'===c?'active':''}" onclick="window.reportClinic='${c}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+  }).join('');
+
+  // Get all visits with leftovers, sorted newest first
+  const recs = [...visitRecords]
+    .filter(r => r.leftovers && r.leftovers.length > 0)
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  // Build filter UI
+  const clinicOptions = ['','HT','DM','COPD'].map(v=>`<option value="${v}">${v||'ทุกคลินิก'}</option>`).join('');
+  const curYear = new Date().getFullYear()+543;
+  const years = [];
+  for(let y=curYear-2;y<=curYear+1;y++) years.push(y);
+  const yearOptions = ['', ...years].map(y=>`<option value="${y}">${y||'ทุกปี'}</option>`).join('');
+
+  main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    <div class="table-card" style="background:transparent;box-shadow:none;padding:0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-size:16px;font-weight:700">📦 ยาคงเหลือทั้งหมด</span>
+        <input type="text" id="lo-search" placeholder="🔍 ค้นหา HN/ชื่อ/ยา..." oninput="filterLeftoverCards()"
+          style="padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;width:200px">
+        <select id="lo-f-clinic" onchange="filterLeftoverCards()"
+          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
+          ${clinicOptions}
+        </select>
+        <select id="lo-f-year" onchange="filterLeftoverCards()"
+          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
+          ${yearOptions}
+        </select>
+        <span id="lo-count" style="font-size:13px;color:var(--text-light)"></span>
+      </div>
+      <div id="lo-cards-wrap"></div>
+    </div>`;
+
+  filterLeftoverCards();
+}
+
+function filterLeftoverCards() {
+  const q = (document.getElementById('lo-search')||{}).value||'';
+  const fc = (document.getElementById('lo-f-clinic')||{}).value||'';
+  const fy = (document.getElementById('lo-f-year')||{}).value||'';
+
+  let recs = [...visitRecords]
+    .filter(r => r.leftovers && r.leftovers.length > 0)
+    .filter(r => {
+      if (fc && r.clinic !== fc) return false;
+      if (fy) { const fi = fiscalInfo(r.date); if (String(fi.year) !== String(fy)) return false; }
+      if (q) {
+        const ql = q.toLowerCase();
+        const inPatient = [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql));
+        const inDrug = (r.leftovers||[]).some(l => String(l.drug||'').toLowerCase().includes(ql));
+        if (!inPatient && !inDrug) return false;
+      }
+      return true;
+    })
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const countEl = document.getElementById('lo-count');
+  if (countEl) countEl.textContent = recs.length + ' รายการ';
+
+  const wrap = document.getElementById('lo-cards-wrap');
+  if (!wrap) return;
+  if (!recs.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">ไม่พบรายการยาคงเหลือ</div>';
+    return;
+  }
+
+  wrap.innerHTML = recs.map(r => {
+    const clinicColor = r.clinic==='HT'?'#7c3aed':r.clinic==='DM'?'#0d9488':'#ea580c';
+    const clinicBg   = r.clinic==='HT'?'#f5f3ff':r.clinic==='DM'?'#f0fdfa':'#fff7ed';
+    const drugCards = (r.leftovers||[]).map(l => `
+      <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;
+        border-radius:10px;padding:10px 14px;min-width:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#065f46;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.drug||''}</div>
+          ${l.priceUnit>0?`<div style="font-size:11px;color:#6b7280">฿${l.priceUnit}/หน่วย</div>`:''}
+        </div>
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-size:26px;font-weight:900;color:#15803d;line-height:1">${l.qty}</div>
+          <div style="font-size:11px;color:#059669;font-weight:600">${l.unit||'เม็ด'}</div>
+        </div>
+        ${l.total>0?`<div style="font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;border-radius:6px;padding:4px 8px;flex-shrink:0">฿${l.total}</div>`:''}
+      </div>`).join('');
+
+    const totalSaving = r.totalSaving > 0 ? `<span style="font-size:13px;font-weight:700;color:#15803d">💰 ฿${r.totalSaving.toFixed(0)}</span>` : '';
+    return `
+      <div style="background:var(--surface);border:2px solid ${clinicColor}22;border-left:4px solid ${clinicColor};
+        border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
+            border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
+          <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
+          <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
+          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)}</span>
+          ${totalSaving}
+          <button onclick="editVisit('${r.id}')" style="background:none;border:1.5px solid var(--border);
+            border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--primary)">✏️ แก้ไข</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+          ${drugCards}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 function renderTable() {
   const q = (document.getElementById('f-search')||{}).value||'';
   const fYear = (document.getElementById('f-year')||{}).value||''
@@ -1030,7 +1134,13 @@ function renderTable() {
   if (!tbody) return;
   tbody.innerHTML = recs.map(r => {
     const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+d.type+(d.cause?' → '+d.cause:'')+'</span>').join('');
-    const loList = (r.leftovers||[]).map(l=>`<span style="font-size:10px;display:block">${l.drug||''} ${l.qty} ${l.unit}</span>`).join('');
+    const loList = (r.leftovers||[]).length
+      ? (r.leftovers||[]).map(l=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:4px 8px;min-width:0">
+          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.drug||''}</span>
+          <span style="font-size:16px;font-weight:800;color:#15803d;flex-shrink:0">${l.qty}</span>
+          <span style="font-size:11px;color:#065f46;flex-shrink:0">${l.unit||''}</span>
+        </div>`).join('')
+      : '<span style="color:var(--text-light);font-size:11px">-</span>';
     const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
     return `<tr>
       <td style="white-space:nowrap">${thDate(r.date)}</td>
