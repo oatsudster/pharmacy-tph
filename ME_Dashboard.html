@@ -2936,6 +2936,10 @@ function importData(input) {
       renderHosXPDashboard('OPD');
       renderHosXPDashboard('IPD');
       updateLandingCounts();
+      // Push imported data to Firebase
+      if (typeof window._fbSaveER === 'function') window._fbSaveER();
+      if (typeof window._fbSaveHosXP === 'function') window._fbSaveHosXP();
+      if (typeof window._fbSaveDenom === 'function') window._fbSaveDenom();
     } catch(err) {
       showToast('❌ ไฟล์ไม่ถูกต้อง: ' + err.message);
     }
