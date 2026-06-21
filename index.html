@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กลุ่มงานเภสัชกรรม รพ.ถ้ำพรรณรา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary:      #1A5E38;
+  --primary-dark: #124228;
+  --primary-mid:  #237A4A;
+  --primary-light:#EAF4EE;
+  --gold:         #C49A22;
+  --gold-light:   #FBF3DC;
+  --success:      #16a34a;
+  --warning:      #b45309;
+  --danger:       #b91c1c;
+  --bg:           #F4F7F5;
+  --surface:      #ffffff;
+  --border:       #D6E4DA;
+  --text:         #1C2B22;
+  --text-mid:     #3D5A47;
+  --text-light:   #7A9A85;
+  --shadow:       0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
+  --shadow-md:    0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
+  --shadow-lg:    0 8px 32px rgba(26,94,56,.15), 0 2px 8px rgba(26,94,56,.08);
+  --radius:       12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans Thai', 'Sarabun', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--primary-dark);
+  color: #fff;
+  height: 64px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(18,66,40,.35);
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-pill {
+  background: var(--gold);
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+}
+.header-name { font-size: 16px; font-weight: 700; line-height: 1.35; }
+.header-sub  { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 1px; }
+.header-date {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  padding: 6px 14px;
+  border-radius: 99px;
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-mid) 100%);
+  color: #fff;
+  padding: 56px 24px 72px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+/* subtle dot pattern */
+.hero::before {
+  content:'';
+  position:absolute; inset:0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+/* gold decorative line */
+.hero::after {
+  content:'';
+  position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 3px;
+  background: var(--gold);
+  border-radius: 2px 2px 0 0;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(196,154,34,.2);
+  border: 1px solid rgba(196,154,34,.4);
+  color: #f0cc6a;
+  border-radius: 99px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 22px;
+  letter-spacing: .3px;
+}
+.hero h1 {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  letter-spacing: -.2px;
+}
+.hero h1 span { color: #f0cc6a; }
+.hero p {
+  font-size: 16px;
+  color: rgba(255,255,255,.75);
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── Cards section ── */
+.cards-wrap {
+  max-width: 860px;
+  margin: -36px auto 0;
+  padding: 0 24px 60px;
+  position: relative;
+  z-index: 10;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+/* ── App Card ── */
+.app-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+  overflow: hidden;
+}
+.app-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* top color stripe */
+.card-stripe {
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-mid) 100%);
+}
+.card-stripe.gold {
+  background: linear-gradient(90deg, var(--gold) 0%, #e0b830 100%);
+}
+
+.card-body { padding: 22px 22px 16px; flex: 1; }
+.card-head  { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+.card-icon  {
+  width: 52px; height: 52px; flex-shrink: 0;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.icon-me  { background: #fef2f2; }
+.icon-dm  { background: var(--primary-light); }
+.icon-soon{ background: #f8fafc; }
+.card-title-wrap h2 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+.card-title-wrap .en { font-size: 11px; color: var(--text-light); font-weight: 500; letter-spacing: .5px; }
+.card-desc { font-size: 14px; color: var(--text-mid); line-height: 1.7; }
+
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tag {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tag-green  { background: var(--primary-light); color: var(--primary-dark); }
+.tag-gold   { background: var(--gold-light);    color: #7a5c0a; }
+.tag-red    { background: #fff1f1; color: #991b1b; }
+.tag-blue   { background: #eff6ff; color: #1e40af; }
+.tag-purple { background: #f5f3ff; color: #5b21b6; }
+.tag-gray   { background: #f1f5f9; color: #475569; }
+
+/* stat bar */
+.card-stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  background: var(--primary-light);
+  border-top: 1px solid var(--border);
+}
+.card-stat-bar.gold-bar { background: var(--gold-light); }
+.stat-item { display: flex; flex-direction: column; }
+.stat-val { font-size: 18px; font-weight: 800; color: var(--primary); line-height: 1; }
+.stat-val.gold-val { color: #7a5c0a; }
+.stat-lbl { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+.stat-divider { width: 1px; height: 32px; background: var(--border); }
+
+/* footer */
+.card-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.open-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary);
+  color: #fff;
+  border: none; border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: background .15s;
+  font-family: inherit;
+}
+.open-btn:hover { background: var(--primary-dark); }
+.open-btn.gold-btn { background: var(--gold); color: var(--primary-dark); }
+.open-btn.gold-btn:hover { background: #a8831a; }
+.last-update { font-size: 12px; color: var(--text-light); }
+
+/* ── Coming soon cards ── */
+.card-soon {
+  opacity: .55;
+  pointer-events: none;
+  cursor: default;
+}
+.soon-badge {
+  font-size: 12px;
+  background: #f1f5f9;
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-weight: 600;
+}
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 28px 20px;
+  font-size: 13px;
+  color: var(--text-light);
+  border-top: 1px solid var(--border);
+}
+.footer-logo {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 24px; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .header-date { display: none; }
+  .header-name { font-size: 14px; }
+  .card-stat-bar { flex-wrap: wrap; gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-pill">💊</div>
+    <div>
+      <div class="header-name">กลุ่มงานเภสัชกรรม</div>
+      <div class="header-sub">โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
+    </div>
+  </div>
+  <div class="header-date" id="hdr-date"></div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">🏥 ระบบสารสนเทศเภสัชกรรม</div>
+  <h1>ระบบจัดการข้อมูล<br><span>กลุ่มงานเภสัชกรรม</span></h1>
+  <p>รวมเครื่องมือดิจิทัลสำหรับงานเภสัชกรรมคลินิก<br>โรงพยาบาลถ้ำพรรณรา</p>
+</section>
+
+<!-- Cards -->
+<div class="cards-wrap">
+  <div class="section-label" style="margin-top:0">เครื่องมือที่ใช้งานได้</div>
+  <div class="cards-grid">
+
+    <!-- ME Dashboard -->
+    <div class="app-card" onclick="window.location.href='ME_Dashboard.html'">
+      <div class="card-stripe"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-me">⚠️</div>
+          <div class="card-title-wrap">
+            <h2>ME Dashboard</h2>
+            <div class="en">MEDICATION ERROR MONITORING</div>
+          </div>
+        </div>
+        <p class="card-desc">ระบบบันทึกและวิเคราะห์ความคลาดเคลื่อนทางยา สำหรับแผนก ER, OPD และ IPD พร้อม dashboard อัตโนมัติตามมาตรฐาน NCC MERP</p>
+        <div class="card-tags">
+          <span class="tag tag-red">ER</span>
+          <span class="tag tag-blue">OPD</span>
+          <span class="tag tag-purple">IPD</span>
+          <span class="tag tag-gold">NCC MERP</span>
+          <span class="tag tag-green">ME Rate</span>
+        </div>
+      </div>
+      <div class="card-stat-bar" id="me-statbar">
+        <div class="stat-item">
+          <div class="stat-val" id="me-total">—</div>
+          <div class="stat-lbl">รายการ ME สะสม</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="me-er">—</div>
+          <div class="stat-lbl">ER</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="me-opd">—</div>
+          <div class="stat-lbl">OPD</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="me-ipd">—</div>
+          <div class="stat-lbl">IPD</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="me-updated"></span>
+        <a href="ME_Dashboard.html" class="open-btn" onclick="event.stopPropagation()">เปิดแอป →</a>
+      </div>
+    </div>
+
+    <!-- DM Remission -->
+    <div class="app-card" onclick="window.location.href='dm/index.html'">
+      <div class="card-stripe gold"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-dm">🩺</div>
+          <div class="card-title-wrap">
+            <h2>DM Remission Clinic</h2>
+            <div class="en">DIABETES MANAGEMENT</div>
+          </div>
+        </div>
+        <p class="card-desc">ระบบติดตามผู้ป่วยเบาหวาน บันทึกประวัติการรักษา ติดตาม HbA1c และประเมินผลลัพธ์การเข้าสู่ภาวะ Remission</p>
+        <div class="card-tags">
+          <span class="tag tag-green">เบาหวาน</span>
+          <span class="tag tag-gold">DM Remission</span>
+          <span class="tag tag-green">HbA1c</span>
+          <span class="tag tag-blue">ติดตามผล</span>
+        </div>
+      </div>
+      <div class="card-stat-bar gold-bar">
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="dm-patients">—</div>
+          <div class="stat-lbl">ผู้ป่วยทั้งหมด</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="dm-visits">—</div>
+          <div class="stat-lbl">การเยี่ยมสะสม</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="dm-remission">—</div>
+          <div class="stat-lbl">Remission</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="dm-updated"></span>
+        <a href="dm/index.html" class="open-btn gold-btn" onclick="event.stopPropagation()">เปิดแอป →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Coming soon -->
+  <div class="section-label" style="margin-top:36px">กำลังพัฒนา</div>
+  <div class="cards-grid">
+    <div class="app-card card-soon">
+      <div class="card-stripe"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-soon">📦</div>
+          <div class="card-title-wrap">
+            <h2>คลังยา / Inventory</h2>
+            <div class="en">DRUG INVENTORY MANAGEMENT</div>
+          </div>
+        </div>
+        <p class="card-desc">ระบบจัดการสต็อกยา ติดตามยาใกล้หมดอายุ และรายงานการเบิกจ่าย</p>
+      </div>
+      <div class="card-footer" style="justify-content:flex-end">
+        <span class="soon-badge">🔧 กำลังพัฒนา</span>
+      </div>
+    </div>
+    <div class="app-card card-soon">
+      <div class="card-stripe"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-soon">🔴</div>
+          <div class="card-title-wrap">
+            <h2>รายงาน ADR</h2>
+            <div class="en">ADVERSE DRUG REACTION</div>
+          </div>
+        </div>
+        <p class="card-desc">ระบบรายงานอาการไม่พึงประสงค์จากยา ตามมาตรฐาน WHO-UMC</p>
+      </div>
+      <div class="card-footer" style="justify-content:flex-end">
+        <span class="soon-badge">🔧 กำลังพัฒนา</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">💊 กลุ่มงานเภสัชกรรม โรงพยาบาลถ้ำพรรณรา</div>
+  <div>จ.นครศรีธรรมราช · พัฒนาเพื่อใช้ภายในหน่วยงาน</div>
+</footer>
+
+<script>
+// Header date
+(function(){
+  const d = new Date();
+  const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  document.getElementById('hdr-date').textContent =
+    'วัน'+days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543);
+})();
+
+// Quick stats from localStorage (same origin — works when all files in same folder)
+try {
+  const meER  = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
+  const meHX  = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
+  const meOPD = meHX.filter(r => r.dept === 'OPD');
+  const meIPD = meHX.filter(r => r.dept === 'IPD');
+  const meTotal = meER.length + meHX.length;
+
+  const g = id => document.getElementById(id);
+  if (meTotal) {
+    g('me-total').textContent = meTotal.toLocaleString();
+    g('me-er').textContent    = meER.length.toLocaleString();
+    g('me-opd').textContent   = meOPD.length.toLocaleString();
+    g('me-ipd').textContent   = meIPD.length.toLocaleString();
+    // last record date
+    const allDates = [...meER, ...meHX].map(r=>r.date).filter(Boolean).sort();
+    if (allDates.length) {
+      const ld = allDates[allDates.length-1].split('-');
+      const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      g('me-updated').textContent = 'ข้อมูลล่าสุด '+parseInt(ld[2])+' '+months[parseInt(ld[1])-1]+' '+(parseInt(ld[0])+543);
+    }
+  } else {
+    g('me-total').textContent = '—';
+    g('me-er').textContent = '—'; g('me-opd').textContent = '—'; g('me-ipd').textContent = '—';
+    g('me-updated').textContent = 'ยังไม่มีข้อมูล';
+  }
+} catch(e) {}
+
+try {
+  const dmPt = JSON.parse(localStorage.getItem('dm_patients') || '[]');
+  const dmVs = JSON.parse(localStorage.getItem('dm_visits')   || '[]');
+  const g = id => document.getElementById(id);
+  if (dmPt.length) {
+    g('dm-patients').textContent  = dmPt.length.toLocaleString();
+    g('dm-visits').textContent    = dmVs.length.toLocaleString();
+    const remission = dmPt.filter(p => p.remission || p.status === 'remission').length;
+    g('dm-remission').textContent = remission > 0 ? remission : '—';
+    g('dm-updated').textContent   = 'ผู้ป่วย '+dmPt.length+' ราย';
+  } else {
+    g('dm-patients').textContent = '—';
+    g('dm-visits').textContent   = '—';
+    g('dm-remission').textContent= '—';
+    g('dm-updated').textContent  = 'ยังไม่มีข้อมูล';
+  }
+} catch(e) {}
+</script>
+</body>
+</html>
