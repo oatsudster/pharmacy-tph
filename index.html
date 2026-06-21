@@ -3,504 +3,2585 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>กลุ่มงานเภสัชกรรม รพ.ถ้ำพรรณรา</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>DM Remission Clinic — รพ.ถ้ำพรรณา</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --primary:      #1A5E38;
-  --primary-dark: #124228;
-  --primary-mid:  #237A4A;
-  --primary-light:#EAF4EE;
-  --gold:         #C49A22;
-  --gold-light:   #FBF3DC;
-  --success:      #16a34a;
-  --warning:      #b45309;
-  --danger:       #b91c1c;
-  --bg:           #F4F7F5;
-  --surface:      #ffffff;
-  --border:       #D6E4DA;
-  --text:         #1C2B22;
-  --text-mid:     #3D5A47;
-  --text-light:   #7A9A85;
-  --shadow:       0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
-  --shadow-md:    0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
-  --shadow-lg:    0 8px 32px rgba(26,94,56,.15), 0 2px 8px rgba(26,94,56,.08);
-  --radius:       12px;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Noto Sans Thai', 'Sarabun', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue: #1A5E38; --blue-light: #EAF4EE; --blue-mid: #D6E4DA;
+    --primary-dark: #124228; --primary-mid: #237A4A;
+    --gold: #C49A22; --gold-light: #FBF3DC;
+    --red: #b91c1c; --red-light: #fee2e2;
+    --green: #16a34a; --green-light: #d1fae5;
+    --yellow: #b45309; --yellow-light: #fff7ed;
+    --gray: #7A9A85; --gray-light: #F4F7F5; --gray-border: #D6E4DA;
+    --text: #1C2B22; --text-muted: #7A9A85;
+    --shadow: 0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
+    --shadow-md: 0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
+    --radius: 12px;
+  }
+  body { font-family: 'Noto Sans Thai', 'Sarabun', 'Segoe UI', sans-serif; background: var(--gray-light); color: var(--text); font-size: 17px; min-height: 100vh; line-height: 1.6; }
 
-/* ── Header ── */
-.header {
-  background: var(--primary-dark);
-  color: #fff;
-  height: 64px;
-  padding: 0 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 12px rgba(18,66,40,.35);
-  position: sticky;
-  top: 0;
-  z-index: 200;
-}
-.header-left { display: flex; align-items: center; gap: 12px; }
-.header-pill {
-  background: var(--gold);
-  color: var(--primary-dark);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 22px;
-  line-height: 1;
-  font-weight: 800;
-}
-.header-name { font-size: 16px; font-weight: 700; line-height: 1.35; }
-.header-sub  { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 1px; }
-.header-date {
-  font-size: 13px;
-  color: rgba(255,255,255,.65);
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.12);
-  padding: 6px 14px;
-  border-radius: 99px;
-}
+  /* ===== HEADER ===== */
+  .app-header { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--blue) 100%); color: #fff; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); position: sticky; top: 0; z-index: 100; }
+  .app-header h1 { font-size: 20px; font-weight: 700; letter-spacing: .01em; }
+  .app-header .sub { font-size: 14px; opacity: .8; margin-top: 1px; }
+  .nav-tabs { display: flex; gap: 2px; margin-left: auto; background: rgba(0,0,0,.15); border-radius: 8px; padding: 4px; }
+  .nav-tab { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; color: rgba(255,255,255,.75); border: none; background: none; transition: all .15s; font-family: inherit; }
+  .nav-tab.active, .nav-tab:hover { background: rgba(255,255,255,.2); color: #fff; }
 
-/* ── Hero ── */
-.hero {
-  background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-mid) 100%);
-  color: #fff;
-  padding: 56px 24px 72px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-/* subtle dot pattern */
-.hero::before {
-  content:'';
-  position:absolute; inset:0;
-  background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  pointer-events: none;
-}
-/* gold decorative line */
-.hero::after {
-  content:'';
-  position: absolute;
-  bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 80px; height: 3px;
-  background: var(--gold);
-  border-radius: 2px 2px 0 0;
-}
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(196,154,34,.2);
-  border: 1px solid rgba(196,154,34,.4);
-  color: #f0cc6a;
-  border-radius: 99px;
-  padding: 5px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 22px;
-  letter-spacing: .3px;
-}
-.hero h1 {
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.4;
-  margin-bottom: 10px;
-  letter-spacing: -.2px;
-}
-.hero h1 span { color: #f0cc6a; }
-.hero p {
-  font-size: 16px;
-  color: rgba(255,255,255,.75);
-  max-width: 420px;
-  margin: 0 auto;
-  line-height: 1.7;
-}
+  /* ===== LAYOUT ===== */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
 
-/* ── Cards section ── */
-.cards-wrap {
-  max-width: 860px;
-  margin: -36px auto 0;
-  padding: 0 24px 60px;
-  position: relative;
-  z-index: 10;
-}
-.section-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-light);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 14px;
-  padding-left: 2px;
-}
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 20px;
-}
+  /* ===== CARDS ===== */
+  .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden; border: 1px solid var(--gray-border); }
+  .card-header { padding: 14px 20px; border-bottom: 2px solid var(--blue-light); display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--primary-dark); background: var(--gray-light); }
+  .card-body { padding: 18px 20px; }
 
-/* ── App Card ── */
-.app-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
-  color: var(--text);
-  cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease;
-  overflow: hidden;
-}
-.app-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-}
+  /* ===== PATIENT CHIPS ===== */
+  .patient-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .p-chip { padding: 9px 18px; border-radius: 20px; cursor: pointer; font-size: 15px; font-weight: 600; border: 2px solid var(--gray-border); background: #fff; color: var(--text-muted); transition: all .15s; font-family: inherit; }
+  .p-chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .p-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
 
-/* top color stripe */
-.card-stripe {
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-mid) 100%);
-}
-.card-stripe.gold {
-  background: linear-gradient(90deg, var(--gold) 0%, #e0b830 100%);
-}
+  /* ===== FORM GRID ===== */
+  .form-grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: 1fr 1fr 1fr; }
+  .g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .g5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+  .field label { display: block; font-size: 14px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1.5px solid var(--gray-border); border-radius: 8px;
+    padding: 10px 13px; font-size: 16px; background: #fff; color: var(--text);
+    transition: border-color .15s, box-shadow .15s; font-family: inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,94,56,.12); }
+  .field input.auto { color: var(--blue); background: var(--blue-light); font-weight: 700; }
+  .field input.flag-red { border-color: var(--red); background: var(--red-light); color: var(--red); }
+  .field input.flag-yellow { border-color: var(--yellow); background: var(--yellow-light); color: var(--yellow); }
+  .field input.flag-green { border-color: var(--green); background: var(--green-light); color: var(--green); }
 
-.card-body { padding: 22px 22px 16px; flex: 1; }
-.card-head  { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
-.card-icon  {
-  width: 52px; height: 52px; flex-shrink: 0;
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-}
-.icon-me  { background: #fef2f2; }
-.icon-dm  { background: var(--primary-light); }
-.icon-soon{ background: #f8fafc; }
-.card-title-wrap h2 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
-.card-title-wrap .en { font-size: 11px; color: var(--text-light); font-weight: 500; letter-spacing: .5px; }
-.card-desc { font-size: 14px; color: var(--text-mid); line-height: 1.7; }
+  /* ===== DRUG TABLE ===== */
+  .drug-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--gray-border); }
+  table.drug-tbl { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .drug-tbl th { background: var(--blue); color: #fff; padding: 12px 14px; text-align: left; border: none; font-weight: 700; white-space: nowrap; }
+  .drug-tbl td { border-bottom: 1px solid var(--gray-border); padding: 8px 10px; vertical-align: middle; }
+  .drug-tbl td input, .drug-tbl td select { border: none; background: none; font-size: 15px; width: 100%; padding: 4px 2px; font-family: inherit; }
+  .drug-tbl td input:focus, .drug-tbl td select:focus { outline: 1px solid var(--blue); border-radius: 3px; }
+  .drug-tbl tr:nth-child(even) td { background: #F9FCF9; }
+  .drug-tbl tr:hover td { background: var(--blue-light); }
+  .drug-tbl .total-row td { background: var(--blue-light) !important; font-weight: 700; color: var(--blue); }
+  td.price-cell, td.total-cell { text-align: right; font-weight: 600; color: var(--blue); }
+  td.price-cell input, td.total-cell input { text-align: right; color: var(--blue); font-weight: 600; }
+  .del-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 3px 8px; border-radius: 4px; }
+  .del-btn:hover { color: var(--red); background: var(--red-light); }
 
-.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-.tag {
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.tag-green  { background: var(--primary-light); color: var(--primary-dark); }
-.tag-gold   { background: var(--gold-light);    color: #7a5c0a; }
-.tag-red    { background: #fff1f1; color: #991b1b; }
-.tag-blue   { background: #eff6ff; color: #1e40af; }
-.tag-purple { background: #f5f3ff; color: #5b21b6; }
-.tag-gray   { background: #f1f5f9; color: #475569; }
+  /* Drug search */
+  .drug-search-wrap { position: relative; }
+  .drug-search-input { border: none !important; background: none !important; width: 100%; font-size: 15px; padding: 4px 2px; font-family: inherit; }
+  .drug-search-input:focus { outline: 1px solid var(--blue); border-radius: 3px; }
+  .drug-dropdown { position: absolute; top: 100%; left: 0; z-index: 200; background: #fff; border: 1px solid var(--gray-border); border-radius: 8px; box-shadow: var(--shadow-md); max-height: 240px; overflow-y: auto; min-width: 300px; display: none; }
+  .drug-dropdown.open { display: block; }
+  .drug-opt { padding: 9px 14px; cursor: pointer; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+  .drug-opt:hover, .drug-opt.focused { background: var(--blue-light); }
+  .drug-opt .drug-name { flex: 1; }
+  .drug-opt .drug-price { color: var(--blue); font-weight: 700; white-space: nowrap; }
+  .drug-opt .drug-unit { color: var(--text-muted); font-size: 13px; }
 
-/* stat bar */
-.card-stat-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 22px;
-  background: var(--primary-light);
-  border-top: 1px solid var(--border);
-}
-.card-stat-bar.gold-bar { background: var(--gold-light); }
-.stat-item { display: flex; flex-direction: column; }
-.stat-val { font-size: 18px; font-weight: 800; color: var(--primary); line-height: 1; }
-.stat-val.gold-val { color: #7a5c0a; }
-.stat-lbl { font-size: 11px; color: var(--text-light); margin-top: 2px; }
-.stat-divider { width: 1px; height: 32px; background: var(--border); }
+  /* ===== BUTTONS ===== */
+  .btn { padding: 11px 24px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; border: none; transition: all .2s; font-family: inherit; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); box-shadow: var(--shadow-md); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #991b1b; }
+  .btn-outline { background: #fff; color: var(--text); border: 1.5px solid var(--gray-border); }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #15803d; box-shadow: var(--shadow-md); }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .btn-gold:hover { background: #A6820F; }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .btn-sm { padding: 7px 14px; font-size: 14px; }
 
-/* footer */
-.card-footer {
-  padding: 14px 22px;
-  border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.open-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--primary);
-  color: #fff;
-  border: none; border-radius: 8px;
-  padding: 9px 18px;
-  font-size: 14px; font-weight: 700;
-  cursor: pointer; text-decoration: none;
-  transition: background .15s;
-  font-family: inherit;
-}
-.open-btn:hover { background: var(--primary-dark); }
-.open-btn.gold-btn { background: var(--gold); color: var(--primary-dark); }
-.open-btn.gold-btn:hover { background: #a8831a; }
-.last-update { font-size: 12px; color: var(--text-light); }
+  /* ===== BADGES ===== */
+  .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 700; }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
 
-/* ── Coming soon cards ── */
-.card-soon {
-  opacity: .55;
-  pointer-events: none;
-  cursor: default;
-}
-.soon-badge {
-  font-size: 12px;
-  background: #f1f5f9;
-  color: var(--text-light);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-weight: 600;
-}
+  /* ===== HISTORY TABLE ===== */
+  .hist-tbl { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .hist-tbl th { background: var(--blue); color: #fff; padding: 12px 14px; border: none; font-weight: 700; text-align: left; }
+  .hist-tbl td { border-bottom: 1px solid var(--gray-border); padding: 10px 14px; vertical-align: top; }
+  .hist-tbl tr:nth-child(even) td { background: #F9FCF9; }
+  .hist-tbl tr:hover td { background: var(--blue-light); cursor: pointer; }
+  .drug-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .drug-pill { background: var(--blue-light); color: var(--blue); padding: 3px 9px; border-radius: 10px; font-size: 13px; font-weight: 600; }
 
-/* ── Footer ── */
-footer {
-  text-align: center;
-  padding: 28px 20px;
-  font-size: 13px;
-  color: var(--text-light);
-  border-top: 1px solid var(--border);
-}
-.footer-logo {
-  display: inline-flex; align-items: center; gap: 8px;
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 14px;
-}
+  /* ===== DASHBOARD ===== */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpi-card { background: #fff; border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow); text-align: center; border: 1px solid var(--gray-border); border-top: 4px solid var(--blue); transition: box-shadow .2s; }
+  .kpi-card:hover { box-shadow: var(--shadow-md); }
+  .kpi-card.kpi-green { background: var(--green-light); border-top-color: var(--green); border-color: #bbf7d0; }
+  .kpi-card.kpi-green .kpi-val { color: var(--green); }
+  .kpi-card.kpi-red { background: var(--red-light); border-top-color: var(--red); border-color: #fecaca; }
+  .kpi-card.kpi-red .kpi-val { color: var(--red); }
+  .kpi-val { font-size: 38px; font-weight: 800; color: var(--blue); line-height: 1.1; }
+  .kpi-label { font-size: 14px; color: var(--text-muted); margin-top: 6px; font-weight: 600; }
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+  .bar-label { width: 80px; text-align: right; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-bg { flex: 1; background: var(--gray-border); border-radius: 6px; height: 20px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; background: var(--blue); display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 12px; font-weight: 700; min-width: 36px; }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.yellow { background: var(--yellow); }
 
-@media (max-width: 600px) {
-  .hero h1 { font-size: 24px; }
-  .cards-grid { grid-template-columns: 1fr; }
-  .header-date { display: none; }
-  .header-name { font-size: 14px; }
-  .card-stat-bar { flex-wrap: wrap; gap: 10px; }
-}
+  /* ===== ALERT BOX ===== */
+  .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 15px; display: flex; align-items: flex-start; gap: 10px; }
+  .alert-info { background: var(--blue-light); color: var(--primary-dark); border: 1px solid var(--blue-mid); }
+  .alert-success { background: var(--green-light); color: var(--green); border: 1px solid #bbf7d0; }
+  .alert-warning { background: var(--yellow-light); color: var(--yellow); border: 1px solid #fde68a; }
+  .alert-error { background: var(--red-light); color: var(--red); border: 1px solid #fecaca; }
+
+  /* ===== HOSXP BRIDGE ===== */
+  .hosxp-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .hosxp-status { font-size:14px; padding:5px 12px; border-radius:10px; font-weight:700; }
+  .hosxp-status.ok  { background:#dcfce7; color:#16a34a; }
+  .hosxp-status.err { background:#fee2e2; color:#dc2626; }
+  .hosxp-status.idle{ background:var(--gray-light); color:var(--gray); }
+  #hosxp-panel { margin-top:10px; display:none; }
+  #hosxp-panel.open { display:block; }
+
+  /* ===== MISC ===== */
+  .section-title { font-size: 16px; font-weight: 700; color: var(--blue); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--blue-light); border-radius: 6px; border-left: 3px solid var(--blue); }
+  .divider { height: 1px; background: var(--gray-border); margin: 16px 0; }
+  .text-right { text-align: right; }
+  .text-muted { color: var(--text-muted); }
+  .mt-8 { margin-top: 8px; }
+  .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--primary-dark); color: #fff; padding: 14px 24px; border-radius: 10px; font-size: 16px; font-weight: 700; z-index: 9999; box-shadow: var(--shadow-md); border-left: 4px solid var(--gold); transform: translateY(100px); transition: transform .3s; }
+  .toast.show { transform: translateY(0); }
+
+  /* ===== MODAL ===== */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:500; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#fff; border-radius:var(--radius); width:90%; max-width:520px; box-shadow:0 8px 32px rgba(0,0,0,.25); overflow:hidden; }
+  .modal-header { padding:16px 22px; background:linear-gradient(135deg, var(--primary-dark), var(--blue)); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+  .modal-header h3 { font-size:18px; font-weight:700; }
+  .modal-close { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; opacity:.8; line-height:1; }
+  .modal-close:hover { opacity:1; }
+  .modal-body { padding:22px; }
+  .modal-footer { padding:14px 22px; border-top:1px solid var(--gray-border); display:flex; gap:10px; justify-content:flex-end; }
+
+  /* ===== PATIENT CARD (manage page) ===== */
+  .pt-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .pt-card { background:#fff; border:1.5px solid var(--gray-border); border-radius:var(--radius); padding:16px 18px; display:flex; align-items:center; gap:12px; transition: box-shadow .2s; }
+  .pt-card:hover { box-shadow: var(--shadow-md); }
+  .pt-card-avatar { width:44px; height:44px; border-radius:50%; background:var(--blue-light); color:var(--blue); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; flex-shrink:0; }
+  .pt-card-info { flex:1; min-width:0; }
+  .pt-card-name { font-weight:700; font-size:16px; }
+  .pt-card-sub { font-size:14px; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pt-card-actions { display:flex; gap:6px; }
+  .icon-btn { background:none; border:1px solid var(--gray-border); border-radius:6px; cursor:pointer; padding:6px 10px; font-size:14px; transition:all .15s; font-family:inherit; }
+  .icon-btn:hover { border-color:var(--blue); color:var(--blue); background: var(--blue-light); }
+  .icon-btn.danger:hover { border-color:var(--red); color:var(--red); background:var(--red-light); }
+
+  @media (max-width: 640px) {
+    .g4, .g5 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: 1fr 1fr; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .dash-grid { grid-template-columns: 1fr; }
+    .pt-cards { grid-template-columns: 1fr; }
+  }
+  /* ===== OCR DROP ZONE ===== */
+  .ocr-zone { border: 2px dashed var(--gray-border); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all .2s; background: var(--gray-light); }
+  .ocr-zone:hover, .ocr-zone.drag { border-color: var(--blue); background: var(--blue-light); }
+  .ocr-zone .icon { font-size: 30px; margin-bottom: 6px; }
+  .ocr-zone p { font-size: 15px; color: var(--text-muted); margin: 0; }
+  .ocr-progress { display:none; margin-top:10px; }
+  .ocr-bar { height: 6px; background: var(--gray-border); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .ocr-bar-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width .3s; width: 0%; }
+  .ocr-img-queue { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .ocr-thumb { position:relative; width:90px; height:70px; border-radius:8px; overflow:hidden; border:2px solid var(--gray-border); background:#000; flex-shrink:0; }
+  .ocr-thumb img { width:100%; height:100%; object-fit:cover; }
+  .ocr-thumb .remove-btn { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .ocr-thumb .status-badge { position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; font-size:9px; text-align:center; border-radius:3px; padding:1px 3px; }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="header">
-  <div class="header-left">
-    <div class="header-pill">💊</div>
-    <div>
-      <div class="header-name">กลุ่มงานเภสัชกรรม</div>
-      <div class="header-sub">โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
-    </div>
+<div class="app-header">
+  <div>
+    <h1>🏥 DM Remission Clinic</h1>
+    <div class="sub">รพ.ถ้ำพรรณา · คลินิกทุกวันศุกร์สุดท้ายของเดือน</div>
   </div>
-  <div class="header-date" id="hdr-date"></div>
-</header>
-
-<!-- Hero -->
-<section class="hero">
-  <div class="hero-badge">🏥 ระบบสารสนเทศเภสัชกรรม</div>
-  <h1>ระบบจัดการข้อมูล<br><span>กลุ่มงานเภสัชกรรม</span></h1>
-  <p>รวมเครื่องมือดิจิทัลสำหรับงานเภสัชกรรมคลินิก<br>โรงพยาบาลถ้ำพรรณรา</p>
-</section>
-
-<!-- Cards -->
-<div class="cards-wrap">
-  <div class="section-label" style="margin-top:0">เครื่องมือที่ใช้งานได้</div>
-  <div class="cards-grid">
-
-    <!-- ME Dashboard -->
-    <div class="app-card" onclick="window.location.href='ME_Dashboard.html'">
-      <div class="card-stripe"></div>
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon icon-me">⚠️</div>
-          <div class="card-title-wrap">
-            <h2>ME Dashboard</h2>
-            <div class="en">MEDICATION ERROR MONITORING</div>
-          </div>
-        </div>
-        <p class="card-desc">ระบบบันทึกและวิเคราะห์ความคลาดเคลื่อนทางยา สำหรับแผนก ER, OPD และ IPD พร้อม dashboard อัตโนมัติตามมาตรฐาน NCC MERP</p>
-        <div class="card-tags">
-          <span class="tag tag-red">ER</span>
-          <span class="tag tag-blue">OPD</span>
-          <span class="tag tag-purple">IPD</span>
-          <span class="tag tag-gold">NCC MERP</span>
-          <span class="tag tag-green">ME Rate</span>
-        </div>
-      </div>
-      <div class="card-stat-bar" id="me-statbar">
-        <div class="stat-item">
-          <div class="stat-val" id="me-total">—</div>
-          <div class="stat-lbl">รายการ ME สะสม</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <div class="stat-val" id="me-er">—</div>
-          <div class="stat-lbl">ER</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <div class="stat-val" id="me-opd">—</div>
-          <div class="stat-lbl">OPD</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <div class="stat-val" id="me-ipd">—</div>
-          <div class="stat-lbl">IPD</div>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="last-update" id="me-updated"></span>
-        <a href="ME_Dashboard.html" class="open-btn" onclick="event.stopPropagation()">เปิดแอป →</a>
-      </div>
-    </div>
-
-    <!-- DM Remission -->
-    <div class="app-card" onclick="window.location.href='dm/index.html'">
-      <div class="card-stripe gold"></div>
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon icon-dm">🩺</div>
-          <div class="card-title-wrap">
-            <h2>DM Remission Clinic</h2>
-            <div class="en">DIABETES MANAGEMENT</div>
-          </div>
-        </div>
-        <p class="card-desc">ระบบติดตามผู้ป่วยเบาหวาน บันทึกประวัติการรักษา ติดตาม HbA1c และประเมินผลลัพธ์การเข้าสู่ภาวะ Remission</p>
-        <div class="card-tags">
-          <span class="tag tag-green">เบาหวาน</span>
-          <span class="tag tag-gold">DM Remission</span>
-          <span class="tag tag-green">HbA1c</span>
-          <span class="tag tag-blue">ติดตามผล</span>
-        </div>
-      </div>
-      <div class="card-stat-bar gold-bar">
-        <div class="stat-item">
-          <div class="stat-val gold-val" id="dm-patients">—</div>
-          <div class="stat-lbl">ผู้ป่วยทั้งหมด</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <div class="stat-val gold-val" id="dm-visits">—</div>
-          <div class="stat-lbl">การเยี่ยมสะสม</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <div class="stat-val gold-val" id="dm-remission">—</div>
-          <div class="stat-lbl">Remission</div>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="last-update" id="dm-updated"></span>
-        <a href="dm/index.html" class="open-btn gold-btn" onclick="event.stopPropagation()">เปิดแอป →</a>
-      </div>
-    </div>
-
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('entry')">📝 บันทึกข้อมูล</button>
+    <button class="nav-tab" onclick="showPage('history')">📋 ประวัติ</button>
+    <button class="nav-tab" onclick="showPage('dashboard')">📊 สรุปภาพรวม</button>
+    <button class="nav-tab" onclick="showPage('patients')">👥 คนไข้</button>
+    <button class="nav-tab" onclick="showPage('summary')">📋 สรุปผล</button>
+    <button class="nav-tab" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
   </div>
+</div>
 
-  <!-- Coming soon -->
-  <div class="section-label" style="margin-top:36px">กำลังพัฒนา</div>
-  <div class="cards-grid">
-    <div class="app-card card-soon">
-      <div class="card-stripe"></div>
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon icon-soon">📦</div>
-          <div class="card-title-wrap">
-            <h2>คลังยา / Inventory</h2>
-            <div class="en">DRUG INVENTORY MANAGEMENT</div>
-          </div>
-        </div>
-        <p class="card-desc">ระบบจัดการสต็อกยา ติดตามยาใกล้หมดอายุ และรายงานการเบิกจ่าย</p>
-      </div>
-      <div class="card-footer" style="justify-content:flex-end">
-        <span class="soon-badge">🔧 กำลังพัฒนา</span>
-      </div>
+<!-- ── Firebase Sync Modal ── -->
+<div id="sync-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:94%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;">☁️ Firebase Realtime Sync</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">ให้ทุกเครื่องในคลินิกซิงค์ข้อมูลแบบ Realtime<br>ต้องสร้าง Firebase Project ก่อน (<a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">console.firebase.google.com</a>)</div>
+    <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">Firebase Config (JSON)</div>
+    <textarea id="fb-config-input" rows="8" style="width:100%;font-family:monospace;font-size:11px;padding:8px;border:1px solid var(--gray-border);border-radius:6px;box-sizing:border-box;resize:vertical;" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project-id",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123...:web:abc..."
+}'></textarea>
+    <div id="fb-config-status" style="font-size:11px;margin-top:6px;min-height:16px;"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="closeSyncModal()">ยกเลิก</button>
+      <button class="btn btn-danger btn-sm" onclick="disconnectFirebase()">ตัดการเชื่อมต่อ</button>
+      <button class="btn btn-primary btn-sm" onclick="connectFirebase()">เชื่อมต่อ</button>
     </div>
-    <div class="app-card card-soon">
-      <div class="card-stripe"></div>
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon icon-soon">🔴</div>
-          <div class="card-title-wrap">
-            <h2>รายงาน ADR</h2>
-            <div class="en">ADVERSE DRUG REACTION</div>
-          </div>
-        </div>
-        <p class="card-desc">ระบบรายงานอาการไม่พึงประสงค์จากยา ตามมาตรฐาน WHO-UMC</p>
-      </div>
-      <div class="card-footer" style="justify-content:flex-end">
-        <span class="soon-badge">🔧 กำลังพัฒนา</span>
-      </div>
+    <div style="margin-top:14px;padding:10px;background:#f0fdf4;border-radius:6px;font-size:11px;color:#065f46;">
+      <b>วิธีตั้งค่า (ทำครั้งเดียว):</b><br>
+      1. ไป <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console</a> → สร้าง Project ใหม่<br>
+      2. เพิ่ม Web App → Copy firebaseConfig<br>
+      3. ไป Firestore Database → สร้าง Database (Test mode)<br>
+      4. วาง Config ด้านบน แล้วกด "เชื่อมต่อ"<br>
+      5. ทำซ้ำขั้นตอนที่ 4 ทุกเครื่องในคลินิก
     </div>
   </div>
 </div>
 
-<footer>
-  <div class="footer-logo">💊 กลุ่มงานเภสัชกรรม โรงพยาบาลถ้ำพรรณรา</div>
-  <div>จ.นครศรีธรรมราช · พัฒนาเพื่อใช้ภายในหน่วยงาน</div>
-</footer>
+<div class="container">
 
+  <!-- =========== PAGE: ENTRY =========== -->
+  <div id="page-entry" class="page active">
+
+    <!-- Patient Select -->
+    <div class="card">
+      <div class="card-header">👤 เลือกคนไข้</div>
+      <div class="card-body">
+        <div class="patient-strip" id="patient-strip"></div>
+        <div class="form-grid g3" style="margin-top:10px;">
+          <div class="field">
+            <label>วันที่ตรวจ (วว/ดด/ปปปป)</label>
+            <input type="text" id="visit-date" placeholder="28/06/2568" maxlength="10" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>HN</label>
+            <input type="text" id="pt-hn" readonly class="auto">
+          </div>
+          <div class="field">
+            <label>โรคประจำตัว</label>
+            <input type="text" id="pt-dx" readonly class="auto">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HosXP Bridge -->
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between;">
+        <span>🔗 ดึงข้อมูลจาก HosXP</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="hosxp-status idle" id="hosxp-status">ยังไม่ได้เชื่อมต่อ</span>
+          <button class="btn btn-outline btn-sm" onclick="checkHosXPBridge()">🔌 ทดสอบการเชื่อมต่อ</button>
+          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;" onclick="toggleHosXPPanel()">📥 ดึงข้อมูล</button>
+        </div>
+      </div>
+      <div id="hosxp-panel" class="card-body">
+        <div class="alert alert-info" style="margin-bottom:10px;">
+          <span>ℹ️</span>
+          <div>ต้องรัน <b>hosxp_bridge.py</b> ไว้ใน background ก่อน แล้วกด "ทดสอบการเชื่อมต่อ"</div>
+        </div>
+        <div class="form-grid g2" style="max-width:480px;">
+          <div class="field">
+            <label>HN คนไข้</label>
+            <input type="text" id="hosxp-hn" placeholder="เช่น 5300001">
+          </div>
+          <div class="field">
+            <label>วันที่ตรวจ (ใน HosXP)</label>
+            <input type="date" id="hosxp-date">
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;" onclick="fetchFromHosXP()">📥 ดึงข้อมูลและกรอกฟอร์ม</button>
+          <span id="hosxp-msg" style="font-size:12px;color:var(--text-muted);"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paste & Parse -->
+    <div class="card" id="parse-card">
+      <div class="card-header">📋 วาง & แยกข้อมูลจาก HosXP</div>
+      <div class="card-body">
+        <div class="field">
+          <label>Copy ข้อมูลจาก HosXP แล้ววางที่นี่</label>
+          <textarea id="paste-input" rows="8" placeholder="วางข้อมูลจาก HosXP ได้เลย (Vital Signs + Lab + Medication)" style="font-size:12px; font-family:monospace;"></textarea>
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="parseAndPreview()">🔍 แยกข้อมูล</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('paste-input').value=''; document.getElementById('parse-preview').style.display='none'">ล้าง</button>
+        </div>
+        <!-- Preview -->
+        <div id="parse-preview" style="display:none; margin-top:12px;">
+          <div class="divider"></div>
+          <div class="section-title">✅ ข้อมูลที่แยกได้</div>
+          <div id="parse-preview-body"></div>
+          <div class="btn-row" style="margin-top:10px;">
+            <button class="btn btn-green btn-sm" onclick="applyParsedData()">📥 กรอกลงฟอร์ม</button>
+            <span style="font-size:11px;color:var(--text-muted);">ตรวจสอบข้อมูลก่อนกด</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vital Signs -->
+    <div class="card">
+      <div class="card-header">🩺 Vital Signs & Lab</div>
+      <div class="card-body">
+        <div class="form-grid g5">
+          <div class="field">
+            <label>น้ำหนัก (kg)</label>
+            <input type="number" id="weight" step="0.1" oninput="calcBMI()">
+          </div>
+          <div class="field">
+            <label>ส่วนสูง (cm)</label>
+            <input type="number" id="height" step="0.1" oninput="calcBMI()">
+          </div>
+          <div class="field">
+            <label>BMI <span class="badge badge-blue" style="font-size:9px;">AUTO</span></label>
+            <input type="text" id="bmi" readonly class="auto">
+          </div>
+          <div class="field">
+            <label>ความดัน (mmHg)</label>
+            <input type="text" id="bp" placeholder="120/80" oninput="flagBP(this)">
+          </div>
+          <div class="field">
+            <label>DTX</label>
+            <input type="number" id="dtx" step="0.1">
+          </div>
+        </div>
+        <div class="form-grid g5 mt-8">
+          <div class="field">
+            <label>FBS (mg/dL)</label>
+            <input type="number" id="fbs" step="0.01" oninput="flagVal(this,130,'red')">
+          </div>
+          <div class="field">
+            <label>HbA1c (%)</label>
+            <input type="number" id="hba1c" step="0.01" oninput="flagHbA1c(this)">
+          </div>
+          <div class="field">
+            <label>LDL (mg/dL)</label>
+            <input type="number" id="ldl" step="0.01" oninput="flagVal(this,100,'yellow')">
+          </div>
+          <div class="field">
+            <label>Triglyceride</label>
+            <input type="number" id="tg" step="0.01" oninput="flagVal(this,150,'yellow')">
+          </div>
+          <div class="field">
+            <label>Cr</label>
+            <input type="number" id="cr" step="0.01">
+          </div>
+        </div>
+        <div class="form-grid g5 mt-8">
+          <div class="field">
+            <label>eGFR (mL/min)</label>
+            <input type="number" id="egfr" step="0.1" oninput="flagEGFR(this)">
+          </div>
+          <div class="field">
+            <label>Urine Albumin</label>
+            <input type="number" id="urine-alb" step="0.01" oninput="flagVal(this,30,'yellow')">
+          </div>
+          <div class="field" style="grid-column: span 3;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drugs -->
+    <div class="card">
+      <div class="card-header">💊 รายการยา</div>
+      <div class="card-body">
+        <div class="drug-table-wrap">
+          <table class="drug-tbl" id="drug-table">
+            <thead>
+              <tr>
+                <th style="width:28%">ชื่อยา</th>
+                <th style="width:15%">วิธีใช้/Dose</th>
+                <th style="width:8%">หน่วย</th>
+                <th style="width:9%">ราคา/หน่วย</th>
+                <th style="width:8%">จำนวน</th>
+                <th style="width:10%">คงเหลือ</th>
+                <th style="width:11%">รวม (บาท)</th>
+                <th style="width:7%"></th>
+              </tr>
+            </thead>
+            <tbody id="drug-tbody"></tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="6" style="text-align:right; padding-right:14px; font-size:12px;">ค่ายารวมทั้งหมด</td>
+                <td class="total-cell"><input type="text" id="grand-total" readonly style="font-weight:800; font-size:13px; color:var(--blue); text-align:right;"></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <button class="btn btn-outline btn-sm mt-8" onclick="addDrugRow()">+ เพิ่มรายการยา</button>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card">
+      <div class="card-header">📝 บันทึกเพิ่มเติม</div>
+      <div class="card-body">
+        <div class="form-grid g3">
+          <div class="field">
+            <label>การเปลี่ยนแปลงการใช้ยา</label>
+            <textarea id="drug-change" rows="2" placeholder="เช่น ปรับลด Metformin, เพิ่ม Amlodipine 5"></textarea>
+          </div>
+          <div class="field">
+            <label>ปัญหาในการใช้ยา
+              <label style="font-weight:400; font-size:11px; margin-left:8px; cursor:pointer;">
+                <input type="checkbox" id="drug-no-problem" onchange="toggleNoProblem(this)"> ไม่มีปัญหา
+              </label>
+            </label>
+            <textarea id="drug-problem" rows="2" placeholder="เช่น ลืมกินยา, อาการข้างเคียง"></textarea>
+          </div>
+          <div class="field">
+            <label>หมายเหตุ</label>
+            <textarea id="note" rows="2" placeholder="บันทึกอื่นๆ"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="clearForm()">🗑️ ล้างข้อมูล</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-green" onclick="saveVisit()">💾 บันทึกการตรวจ</button>
+    </div>
+
+  </div><!-- end page-entry -->
+
+  <!-- =========== PAGE: HISTORY =========== -->
+  <div id="page-history" class="page">
+    <div class="card">
+      <div class="card-header">📋 ประวัติการตรวจ</div>
+      <div class="card-body">
+        <div class="patient-strip" id="hist-patient-strip"></div>
+        <div id="hist-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========== PAGE: DASHBOARD =========== -->
+  <div id="page-dashboard" class="page">
+    <div id="dash-content"></div>
+  </div>
+
+  <!-- =========== PAGE: SUMMARY =========== -->
+  <div id="page-summary" class="page">
+    <div id="sum-content"></div>
+  </div>
+
+  <!-- =========== PAGE: PATIENTS =========== -->
+  <div id="page-patients" class="page">
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between;">
+        <span>👥 รายชื่อคนไข้ทั้งหมด</span>
+        <button class="btn btn-primary btn-sm" onclick="openPatientModal()">+ เพิ่มคนไข้</button>
+      </div>
+      <div class="card-body">
+        <div class="pt-cards" id="pt-cards"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<!-- ===== PATIENT MODAL ===== -->
+<div class="modal-overlay" id="patient-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">เพิ่มคนไข้ใหม่</h3>
+      <button class="modal-close" onclick="closePatientModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="modal-patient-id">
+      <div class="form-grid g2" style="gap:12px;">
+        <div class="field">
+          <label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>
+          <input type="text" id="modal-name" placeholder="เช่น นางสาวมาลี ดีใจ">
+        </div>
+        <div class="field">
+          <label>ชื่อย่อ (แสดงบน chip) <span style="color:var(--red)">*</span></label>
+          <input type="text" id="modal-short" placeholder="เช่น มาลี">
+        </div>
+        <div class="field">
+          <label>HN</label>
+          <input type="text" id="modal-hn" placeholder="เช่น 5300099">
+        </div>
+        <div class="field">
+          <label>อายุ (ปี)</label>
+          <input type="number" id="modal-age" placeholder="เช่น 55">
+        </div>
+        <div class="field" style="grid-column:span 2;">
+          <label>โรคประจำตัว</label>
+          <input type="text" id="modal-dx" placeholder="เช่น DM type 2, HT, DLP">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePatientModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="savePatientModal()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== VISIT EDIT MODAL ===== -->
+<div class="modal-overlay" id="visit-modal">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-header">
+      <h3>แก้ไข Visit</h3>
+      <button class="modal-close" onclick="closeVisitModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">การแก้ไข visit จะโหลดข้อมูลกลับไปยังฟอร์มบันทึก</p>
+      <div class="alert alert-info"><span>ℹ️</span><div id="visit-modal-info" style="font-size:12px;"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeVisitModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmEditVisit()">✏️ แก้ไข Visit นี้</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script>
-// Header date
-(function(){
-  const d = new Date();
-  const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  document.getElementById('hdr-date').textContent =
-    'วัน'+days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543);
-})();
+// ===== DRUG DATA =====
+const DRUGS = [{"name":"(0.5) HALOPERIDOL","price":0.5,"unit":"เม็ด"},{"name":"(100 ml) UNISON ENEMA","price":60.0,"unit":"ขวด"},{"name":"(100) PHENYTOIN(dilantin) promt","price":1.0,"unit":"แค็บซูล"},{"name":"(2) Benzhexol","price":1.0,"unit":"เม็ด"},{"name":"(2) DIAZEPAM(valium)","price":0.5,"unit":"เม็ด"},{"name":"(2) HALOPERIDOL","price":1.0,"unit":"เม็ด"},{"name":"(200) Acyclovir","price":5.5,"unit":"เม็ด"},{"name":"(30) oseltamivir","price":20.0,"unit":"เม็ด"},{"name":"(325) paracetamol","price":0.5,"unit":"เม็ด"},{"name":"(45) oseltamivir","price":30.0,"unit":"เม็ด"},{"name":"(5) Benzhexol","price":1.0,"unit":"เม็ด"},{"name":"(5) DIAZEPAM(valium)","price":1.0,"unit":"เม็ด"},{"name":"(5) HALOPERIDOL","price":1.5,"unit":"เม็ด"},{"name":"(50) Phenytoin(Dilantin)","price":3.5,"unit":"เม็ด"},{"name":"(500) PARACETAMOL","price":0.5,"unit":"เม็ด"},{"name":"(75) oseltamivir","price":40.0,"unit":"แค็บซูล"},{"name":"(800) ACYCLOVIR","price":20.0,"unit":"เม็ด"},{"name":"(Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg","price":50.0,"unit":"Vial"},{"name":"(ยาใช้เฉพาะราย) Penicillin G Sodium","price":46.0,"unit":"Vial"},{"name":"10%D/N/2","price":50.0,"unit":"ถุง (1,000 ml.)"},{"name":"3%Sodium Chloride(NaCl)","price":45.0,"unit":"ขวด (500 ml.)"},{"name":"[ 81] aspirin(asa)","price":1.0,"unit":"เม็ด"},{"name":"[125] amoxycillin SYR","price":25.0,"unit":"ขวด (60 ซีซี)"},{"name":"[20] ENALAPRIL","price":2.0,"unit":"เม็ด"},{"name":"[250] Amoxy dry SYRUP","price":25.0,"unit":"bot"},{"name":"[250] AmoxyCillin","price":2.0,"unit":"แค็บซูล"},{"name":"[250] diCloxacillin  cap","price":3.0,"unit":"แค็บซูล"},{"name":"[300] ASPIRIN(ASA/aspent)","price":1.0,"unit":"เม็ด"},{"name":"[500] AMOXICILLIN","price":4.0,"unit":"แค็บซูล"},{"name":"[500] DICLOXACILLIN CAP","price":5.0,"unit":"แค็บซูล"},{"name":"[5] eNAlapril","price":1.0,"unit":"เม็ด"},{"name":"ACETATE RINGER","price":70.0,"unit":"ถุง (1,000 ซีซี)"},{"name":"ACTIVATED CHARCOAL","price":25.0,"unit":"ซอง"},{"name":"Adenosine (adenocor)","price":535.0,"unit":"Amphule (2 ml.)"},{"name":"ADRENALINE","price":10.0,"unit":"Amp(1ml)"},{"name":"Albendazole (FALBEN)susp","price":15.0,"unit":"ขวด (20 ml.)"},{"name":"ALBENDAZOLE(zentel)","price":10.0,"unit":"เม็ด"},{"name":"ALCOHOL","price":40.0,"unit":"450 ml"},{"name":"ALCOHOL  60 ml","price":15.0,"unit":"ขวด"},{"name":"ALLOPURINOL(zyloric)","price":1.5,"unit":"เม็ด"},{"name":"AMIODARONE(Cordarone) (NL)","price":100.0,"unit":"Amphule (3ml.)"},{"name":"amitriptyline(A10/tripta)","price":0.5,"unit":"เม็ด"},{"name":"Amlodipine","price":1.0,"unit":"เม็ด"},{"name":"AMMONIUM CARBONATE","price":10.0,"unit":"ขวด (60 ซีซี)"},{"name":"AMPICILLIN   1 g","price":20.0,"unit":"ไวอัล"},{"name":"ANTACID SUSP(alum milk)","price":25.0,"unit":"ขวด (240ซีซี.)"},{"name":"ANTIVENUM SERA,(งูเห่า)","price":1300.0,"unit":"Amp(10ml)"},{"name":"ANTIVENUM SERUM (กะปะ)","price":1300.0,"unit":"Amp(10ml)"},{"name":"aP Acellular Pertussis (ไอกรน)","price":455.0,"unit":"dose"},{"name":"Atarax(hydroxyzine)","price":1.0,"unit":"เม็ด"},{"name":"ATENOLOL","price":1.0,"unit":"เม็ด"},{"name":"ATROPINE","price":25.0,"unit":"แอมป์"},{"name":"Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg)","price":10.0,"unit":"เม็ด"},{"name":"Augmentin Susp","price":250.0,"unit":"ขวด"},{"name":"BCG(bacillus calmette-gue rin)","price":20.0,"unit":"Vial"},{"name":"BENZATHINE PENICILLIN","price":100.0,"unit":"ไวอัล"},{"name":"BENZYL BENZOATE","price":20.0,"unit":"ขวด (60 ซีซี)"},{"name":"BERODUAL","price":20.0,"unit":"dose"},{"name":"BERODUAL","price":120.0,"unit":"ขวด"},{"name":"BERODUAL ( MDI ) inhaler","price":300.0,"unit":"กล่อง"},{"name":"BETADINE (IODINE)","price":30.0,"unit":"ขวด (30 ml.)"},{"name":"BETADINE (IODINE)","price":110.0,"unit":"ขวด (450 ml.)"},{"name":"BETAMETHASONE(5g)","price":20.0,"unit":"หลอด (5 กรัม)"},{"name":"Bromhexine elixir","price":21.0,"unit":"ขวด (60 ml.)"},{"name":"BUDESONIDE  (MDI)","price":300.0,"unit":"ขวด MDI (200 dose)"},{"name":"Buscopan inj (HYOSCINE  INJ)","price":25.0,"unit":"Amp. (1 ml.)"},{"name":"CAFERGOT (NL)","price":2.0,"unit":"เม็ด"},{"name":"CALAMINE","price":20.0,"unit":"ขวด (60 ml.)"},{"name":"calcium carbonate(CaCO3)","price":1.0,"unit":"เม็ด"},{"name":"CALCIUM GLUCONATE","price":10.0,"unit":"Amphule (10 ml.)"},{"name":"CAPTOPRIL  25 mg","price":5.0,"unit":"tab"},{"name":"CARBAMAZEPINE(tegretol)","price":2.0,"unit":"เม็ด"},{"name":"Carbocisteine","price":26.0,"unit":"ขวด"},{"name":"CeFaZOLIN injection","price":23.0,"unit":"Vial"},{"name":"CefTaZidime injection","price":26.0,"unit":"Vial"},{"name":"CefTRIAXone 1 g injection (CEF-3)","price":15.0,"unit":"ไวอัล"},{"name":"CETIRIZINE (Alerest)","price":0.5,"unit":"เม็ด"},{"name":"CHLORAMPHENICOL EAR DROP","price":25.0,"unit":"ขวด (10ซีซี)"},{"name":"Chlorhexidine mouth wash","price":45.0,"unit":"ขวด (250 ml)"},{"name":"CHLORPROMAZINE(CPZ)","price":1.5,"unit":"เม็ด"},{"name":"CHLORTETRACYCLINE","price":20.0,"unit":"หลอด"},{"name":"Ciprofloxacin","price":2.5,"unit":"เม็ด"},{"name":"CLINDAMYCIIN","price":10.0,"unit":"เม็ด"},{"name":"clindamycin  600 mg/vial.","price":25.0,"unit":"Vial"},{"name":"CLONAZEPAM(rivotril)","price":2.0,"unit":"เม็ด"},{"name":"Clopidogrel (Plavix)","price":5.0,"unit":"เม็ด"},{"name":"CLOTRIMAZOLE VAG TAB(canesten)","price":10.0,"unit":"เม็ด"},{"name":"CLOTRIMAZOLE(canesten)","price":8.0,"unit":"หลอด (5 g.)"},{"name":"CLOXACILLIN INJ  1  g","price":20.0,"unit":"Vial"},{"name":"COLCHICINE","price":2.0,"unit":"เม็ด"},{"name":"COTRIMOXAZOLE(bactrim)","price":1.5,"unit":"เม็ด"},{"name":"COTRIMOXAZOLE(bactrim)","price":15.0,"unit":"ขวด (60 ซีซี)"},{"name":"Covid Vaccine(SARS-CoV-2)","price":640.0,"unit":"Vial"},{"name":"CPM","price":10.0,"unit":"ขวด (60 ซีซี)"},{"name":"CPM   tab.","price":0.5,"unit":"เม็ด"},{"name":"CPM(piriton)","price":5.0,"unit":"Amphule (1 ml.)"},{"name":"CYPROHEPTADINE(periactin)","price":0.5,"unit":"เม็ด"},{"name":"Cytotec","price":15.0,"unit":"เม็ด"},{"name":"D-5-S","price":50.0,"unit":"ถุง (1,000 ซีซี)"},{"name":"D-5-S/2","price":40.0,"unit":"ถุง (1,000 ซีซี)"},{"name":"D-5-S/3","price":40.0,"unit":"ถุง (500 ซีซี)"},{"name":"D-5-S/4","price":40.0,"unit":"ถุง (500 ml.)"},{"name":"D-5-S/5","price":40.0,"unit":"ถุง (500 ml.)"},{"name":"D-5-W","price":30.0,"unit":"ถุง (100 ซีซี)"},{"name":"D-5-W","price":50.0,"unit":"ถุง (500 ซีซี)"},{"name":"D-5-W","price":40.0,"unit":"ถุง(250 cc)"},{"name":"D-5-W","price":50.0,"unit":"ถุง (1,000 ซีซี)"},{"name":"D-W-10","price":40.0,"unit":"ขวด (500 ml.)"},{"name":"Depakin (sodium valproate)","price":4.0,"unit":"เม็ด"},{"name":"DEXAMETHASONE","price":8.0,"unit":"Amphule"},{"name":"DEXTRAN","price":560.0,"unit":"ถุง (500 ซีซี)"},{"name":"DEXTROMETHORPHAN 15","price":1.0,"unit":"เม็ด"},{"name":"DEXTROSE (glucose)","price":50.0,"unit":"ขวด (50 ซีซี)"},{"name":"DIAZEPAM(valium)","price":10.0,"unit":"Amp.(2ml)"},{"name":"DICLOFENAC (voltaren/fenac)","price":1.0,"unit":"เม็ด"},{"name":"Dicloxacillin syp.","price":25.0,"unit":"ขวด (60 ml.)"},{"name":"DIGOXIN","price":50.0,"unit":"Amphule"},{"name":"DIGOXIN(lanoxin)","price":0.5,"unit":"เม็ด"},{"name":"DIMENHYDRINATE(dramamine)","price":0.5,"unit":"เม็ด"},{"name":"DIMENHYDRINATE(Dramamine)","price":30.0,"unit":"Amp."},{"name":"DIP. CLORAZEPATE(trancon/T5)","price":2.0,"unit":"เม็ด"},{"name":"Dolutegravir","price":12.0,"unit":"เม็ด"},{"name":"DOMPERIDONE(motilium)","price":1.0,"unit":"เม็ด"},{"name":"DOMPERIDONE(motilium)","price":10.0,"unit":"ขวด (30 ซีซี)"},{"name":"DOPAMINE","price":50.0,"unit":"Amphule"},{"name":"Doxazosin","price":1.0,"unit":"เม็ด"},{"name":"DOXYCYCLINE","price":2.0,"unit":"แค็บซูล"},{"name":"DT(diphtheria tetanus) vaccines","price":10.0,"unit":"ครั้ง"},{"name":"DTP","price":15.0,"unit":"Vial (5 ml.)"},{"name":"DTP-HB","price":55.0,"unit":"Vial (5 ml.)"},{"name":"DTP-HB-Hib vaccine","price":33.0,"unit":"ซีซี"},{"name":"EFAVIRENZ(EFV)","price":30.0,"unit":"แค็บซูล"},{"name":"ERIG (vinrab)","price":850.0,"unit":"Vial (5 ml.)"},{"name":"ERYTHROMYCIN","price":25.0,"unit":"ขวด (60 ซีซี)"},{"name":"ETHAMBUTOL","price":2.0,"unit":"เม็ด"},{"name":"Favipiravir (covid-19)","price":16.0,"unit":"เม็ด"},{"name":"FERROUS  DROP","price":55.0,"unit":"ขวด (15 ml.)"},{"name":"FERROUS  FUMARATE","price":0.5,"unit":"เม็ด"},{"name":"Ferrous fumarate Susp.","price":30.0,"unit":"ขวด (60 ml.)"},{"name":"FLUCONAZOLE","price":12.0,"unit":"แคปซูล"},{"name":"FLUNARIZINE(sibelium)","price":2.0,"unit":"แค็บซูล"},{"name":"Fluoxetine","price":1.0,"unit":"เม็ด"},{"name":"Fluphenazine(DECA)","price":60.0,"unit":"Amphule (2 ml.)"},{"name":"FLUPHENAZINE(deca)","price":60.0,"unit":"Amphule (2 ml.)"},{"name":"FOLIC  ACID","price":0.5,"unit":"เม็ด"},{"name":"FUROSEMIDE(lasix)","price":10.0,"unit":"Amp. (2 ml.)"},{"name":"FUROSEMIDE(lasix)","price":0.5,"unit":"เม็ด"},{"name":"GEMFIBROZIL(Lopid)","price":4.0,"unit":"แค็บซูล"},{"name":"GENTAMICIN  80 mg/amp.","price":15.0,"unit":"Amphule (2 ml.)"},{"name":"gliPIZIDE(minidiab)","price":3.0,"unit":"เม็ด"},{"name":"Glyceryl guaiacolate (GG)","price":0.5,"unit":"เม็ด"},{"name":"GPO vir S30","price":25.3,"unit":"เม็ด"},{"name":"GPO VIR Z 250","price":35.0,"unit":"TAB"},{"name":"Guaifenesin syrup (GG)","price":12.0,"unit":"ขวด (60 ml.)"},{"name":"HALOPERIDOL","price":110.0,"unit":"Amphule (1 ml.)"},{"name":"HCTZ(hydrochlorothiazide)","price":0.3,"unit":"เม็ด"},{"name":"HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้","price":300.0,"unit":"Vial"},{"name":"HI SET","price":1000.0,"unit":"กล่อง"},{"name":"HISTA OPH(opsil A)","price":20.0,"unit":"ขวด ED (5 ml.)"},{"name":"HPV vaccine","price":364.0,"unit":"dose"},{"name":"Hydralazine  Hcl","price":320.0,"unit":"Amphule"},{"name":"Hydralazine HCl","price":2.0,"unit":"เม็ด"},{"name":"Hydrocortisone sodium  succinate","price":62.0,"unit":"Vial"},{"name":"HYOSCINE(buscopan)","price":3.0,"unit":"เม็ด"},{"name":"HYOSICNE(buscopan)","price":10.0,"unit":"ขวด (30 ซีซี)"},{"name":"Ibuprofen (brufen)","price":15.0,"unit":"ขวด"},{"name":"IBUPROFEN(brufen)","price":1.0,"unit":"เม็ด"},{"name":"IMIPRAMINE(tofranil)","price":2.0,"unit":"เม็ด"},{"name":"IMPLANON  implant","price":2380.0,"unit":"แท่ง"},{"name":"Inactivated Poliomyelitis Vaccine(IPV)","price":130.0,"unit":"Vial"},{"name":"influenza ตามฤดูกาล","price":200.0,"unit":"Amphule"},{"name":"INH(isoniazid)","price":1.0,"unit":"เม็ด"},{"name":"ISODIL  SL","price":1.0,"unit":"เม็ด"},{"name":"ISODIL  TAB","price":1.0,"unit":"เม็ด"},{"name":"Isoniazid 300 mg","price":1.0,"unit":"เม็ด"},{"name":"Isoniazid+Rifapentine","price":0,"unit":"เม็ด"},{"name":"JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml","price":180.0,"unit":"Vial"},{"name":"JE VACCINE(0.5 ML)","price":90.0,"unit":"Vial"},{"name":"K Y jelly sack","price":8.0,"unit":"ซอง (5 g.)"},{"name":"KALIMATE","price":30.0,"unit":"ซอง (5 g.)"},{"name":"KETOCONAZOLE(nizoral)","price":5.0,"unit":"เม็ด"},{"name":"KOCITAF (DTG50mg+FTC200mg+TAF25mg)","price":26.0,"unit":"เม็ด"},{"name":"Lamivudine","price":110.0,"unit":"เม็ด"},{"name":"Lamivudine 3TC","price":8.0,"unit":"เม็ด"},{"name":"Levodopa250 + carbidopa 25","price":10.0,"unit":"เม็ด"},{"name":"LevoFloxacin","price":13.0,"unit":"เม็ด"},{"name":"Lidocain injection","price":1.0,"unit":"CC"},{"name":"LIDOCAINE","price":45.0,"unit":"Vial (50 ml.)"},{"name":"LITHIUM CARBONATE(LiCO3) (NL)","price":2.5,"unit":"แค็บซูล"},{"name":"Lopinavir/Ritonavir","price":10.0,"unit":"เม็ด"},{"name":"Lorazepam","price":0.5,"unit":"เม็ด"},{"name":"Losartan (cozaar)","price":3.0,"unit":"tab"},{"name":"M tussis ( brown mixt )","price":25.0,"unit":"ขวด"},{"name":"M. CARMINATIVE","price":20.0,"unit":"ขวด"},{"name":"M.tussis (brown mixt)","price":10.0,"unit":"ขวด"},{"name":"MAGNESIUM SULFATE","price":15.0,"unit":"Amphule (10 ml.)"},{"name":"MAGNESIUM SULFATE","price":10.0,"unit":"Amphule (2 ml.)"},{"name":"MEDROXYPROGESTERONE ACETATE(depo)","price":30.0,"unit":"ไวอัล"},{"name":"METFORMIN(glucophage)","price":2.0,"unit":"เม็ด"},{"name":"Methimazole","price":1.0,"unit":"เม็ด"},{"name":"METHYLDOPA(aldomet)","price":3.0,"unit":"เม็ด"},{"name":"METHYLERGOMETRINE(Methergin)","price":10.0,"unit":"Amp."},{"name":"METOCLOPRAMIDE(plasil)","price":1.0,"unit":"เม็ด"},{"name":"METOCLOPRAMIDE(plasil)","price":10.0,"unit":"Amphule"},{"name":"Metoprolol tartrate","price":0.7,"unit":"เม็ด"},{"name":"METRONIDAZOLE(flagyl)","price":1.0,"unit":"เม็ด"},{"name":"METRONIDAZOLE(flagyl) 500 mg/vial.","price":70.0,"unit":"Vial (100 ml.)"},{"name":"Micronised progesterone","price":15.0,"unit":"เม็ด (VG.)"},{"name":"MILK OF MAGNESIA(MOM)","price":10.0,"unit":"ขวด (60 ซีซี)"},{"name":"Mixtard (ขวด)","price":250.0,"unit":"Vial (10 ml.)"},{"name":"mixtard STAT","price":1.0,"unit":"Stat"},{"name":"MMR","price":190.0,"unit":"Vial"},{"name":"Molnupiravir","price":12.0,"unit":"เม็ด"},{"name":"MORPHINE","price":25.0,"unit":"Amphule (1 ml.)"},{"name":"Morphine MST","price":15.0,"unit":"tablet"},{"name":"Morphine Solution","price":80.0,"unit":"ขวด (60ml)"},{"name":"MR","price":105.0,"unit":"Vial"},{"name":"MTV-MULTIVITAMINS","price":0.5,"unit":"เม็ด"},{"name":"NaCl (Sodium Chloride)","price":1.0,"unit":"เม็ด"},{"name":"NALOXONE(narcan)","price":300.0,"unit":"แอมป์"},{"name":"Nevirapine","price":15.0,"unit":"แค็บซูล"},{"name":"NIFEDIPINE SR","price":1.0,"unit":"เม็ด"},{"name":"Norepinephrine bitartrate 4 ml/","price":65.0,"unit":"Amphule"},{"name":"NORFLOXACIN(lexinor)","price":3.0,"unit":"เม็ด"},{"name":"Norgesic(Orphenadrine35mg/paracetamol500mg)","price":1.5,"unit":"เม็ด"},{"name":"NPH (ขวด)","price":300.0,"unit":"Vial (10 ml.)"},{"name":"NPH INSULIN","price":1.0,"unit":"Stat"},{"name":"NSS 5 ml","price":6.0,"unit":"Amphule"},{"name":"NSS INJ.","price":50.0,"unit":"ขวด (1,000 ml.)"},{"name":"NSS INJ.","price":25.0,"unit":"ถุง (100 ซีซี)"},{"name":"OLIVE OIL","price":15.0,"unit":"ขวด"},{"name":"Omeprazole 10 ml","price":35.0,"unit":"Vial"},{"name":"OMEPRAZOLE(losec/miracid)","price":1.0,"unit":"เม็ด"},{"name":"Ondansetron inj","price":20.0,"unit":"Amphule"},{"name":"OPV vaccine","price":10.0,"unit":"dose"},{"name":"ORS(รสส้ม) 75","price":5.0,"unit":"ซอง"},{"name":"OXYTOCIN","price":20.0,"unit":"Amp."},{"name":"PARACETAMOL  SYR","price":25.0,"unit":"ขวด (60 ml.)"},{"name":"PARACETAMOL SYRUP","price":15.0,"unit":"ขวด (60 ซีซี)"},{"name":"PCEC (ID)","price":150.0,"unit":"Vial"},{"name":"PCEC (IM)","price":400.0,"unit":"Vial"},{"name":"PERPHENAZINE(สีไข่ไก่)","price":2.0,"unit":"เม็ด"},{"name":"PETHIDINE","price":25.0,"unit":"Amphule"},{"name":"PHENOBARBITAL(1 GRAIN)","price":1.0,"unit":"เม็ด"},{"name":"Phenytoin inj","price":330.0,"unit":"Vial (5 ml.)"},{"name":"Pioglitazone","price":1.0,"unit":"เม็ด"},{"name":"PolyOPH","price":40.0,"unit":"ขวด"},{"name":"POTASSIUM (KCL elixir)","price":0.35,"unit":"ซีซี"},{"name":"Potassium Chloride tab","price":2.0,"unit":"เม็ด"},{"name":"POTASSIUM CHLORIDE(KCl)","price":15.0,"unit":"Amphule (10 ml.)"},{"name":"PREDNISOLONE","price":0.5,"unit":"เม็ด"},{"name":"prednisolone cream","price":10.0,"unit":"หลอด (5 g.)"},{"name":"Primolut-N(norethisterone 5 mg)","price":10.0,"unit":"เม็ด"},{"name":"PROCTOSEDYL","price":10.0,"unit":"เม็ด (SP.)"},{"name":"propranolol(inderal)","price":1.0,"unit":"เม็ด"},{"name":"PTU(propylthiouracil)","price":1.0,"unit":"เม็ด"},{"name":"PZA(pyrazinamide)","price":4.0,"unit":"เม็ด"},{"name":"QUININE SULFATE","price":2.5,"unit":"เม็ด"},{"name":"R-DEN(คุมเม็ด)","price":40.0,"unit":"แผง"},{"name":"RABIES ANTISERUM(ERIG)","price":150.0,"unit":"UNIT"},{"name":"RI  STAT (REGULAR INSULIN )","price":1.0,"unit":"cc"},{"name":"RIFAMPICIN","price":5.0,"unit":"แค็บซูล"},{"name":"RIFAMPICIN","price":7.0,"unit":"แค็บซูล"},{"name":"Rifapentine","price":0,"unit":"เม็ด"},{"name":"Rifinah (Rifam+INH)","price":10.0,"unit":"ขวด"},{"name":"Risperidone","price":3.5,"unit":"เม็ด"},{"name":"ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง)","price":370.0,"unit":"dose"},{"name":"ROXITHROMYCIN(rulid)","price":5.0,"unit":"เม็ด"},{"name":"SALBUTAMOL","price":0.5,"unit":"เม็ด"},{"name":"SALBUTAMOL","price":15.0,"unit":"ขวด (60 ซีซี)"},{"name":"SALBUTAMOL  NB (ER)","price":10.0,"unit":"1 CC"},{"name":"SALBUTAMOL NB.","price":115.0,"unit":"20 ml"},{"name":"SALBUTAMOL(ventolin) MDI","price":150.0,"unit":"ขวด MDI (200 dose)"},{"name":"Saline IRRIGATE","price":40.0,"unit":"ถุง (1,000 ml.)"},{"name":"SELENIUM shampoo","price":120.0,"unit":"ขวด"},{"name":"SeRoflo   (MDI)","price":500.0,"unit":"กล่อง"},{"name":"Sertraline","price":3.5,"unit":"เม็ด"},{"name":"SILVER SULFADIAZINE (25g)","price":50.0,"unit":"หลอด"},{"name":"SIMETHICONE  (air-x)","price":1.0,"unit":"เม็ด"},{"name":"SIMETHICONE DROP SUS","price":25.0,"unit":"ขวด (15 ml.)"},{"name":"SimVastatin(zocor) (NL)","price":2.0,"unit":"เม็ด"},{"name":"Sodamint (Sodium bicarbonate)","price":0.5,"unit":"เม็ด"},{"name":"SODIUM BICARBONATE 7.5%(NaHCO3)","price":40.0,"unit":"Amphule"},{"name":"SODIUM BICARBONATE(NaHCO3)","price":10.0,"unit":"ขวด (60 ml.)"},{"name":"spironolactone (Aldactone)","price":3.0,"unit":"เม็ด"},{"name":"STERILEWATER (SWI)","price":30.0,"unit":"ถุง"},{"name":"Streptokinase","price":8000.0,"unit":"Vial"},{"name":"STREPTOMYCIN SULPHATE","price":18.0,"unit":"Vial"},{"name":"Teevir","price":31.0,"unit":"เม็ด"},{"name":"Tenofovia disoproxil","price":500.0,"unit":"เม็ด"},{"name":"TERBUTALINE SULFATE(bricanyl)","price":20.0,"unit":"Amphule"},{"name":"tetracain eye drop","price":100.0,"unit":"ขวด (5 ml.)"},{"name":"Theophylline-CR","price":3.0,"unit":"แค็บซูล"},{"name":"THYROXINE-L","price":1.0,"unit":"เม็ด"},{"name":"TLD (TDF300mg+3TC300mg+DTG50mg)","price":29.0,"unit":"เม็ด"},{"name":"TRAMADOL HCl(tramal)","price":6.0,"unit":"แค็บซูล"},{"name":"TRAMADOL inj","price":25.0,"unit":"Amphule (1 ml.)"},{"name":"Tranexamic acid","price":3.5,"unit":"แค็บซูล"},{"name":"TRIAMCINOLONE","price":10.0,"unit":"หลอด (5 g)"},{"name":"TRIAMCINOLONE","price":10.0,"unit":"หลอด (5 g.)"},{"name":"Triamcinolone Oral Paste","price":10.0,"unit":"ซอง"},{"name":"TRIAMCINOLONE+XYLOCAINE(IL)(kenacort)","price":30.0,"unit":"ซีซี"},{"name":"Triferdine","price":1.0,"unit":"เม็ด"},{"name":"UNISON","price":10.0,"unit":"ขวด (10 ml.)"},{"name":"UNISON ENEMA","price":30.0,"unit":"ขวด (20 ml.)"},{"name":"Varenicline Tartrate","price":2.0,"unit":"เม็ด"},{"name":"VERORAB ( ID )","price":150.0,"unit":"Vial"},{"name":"VERORAB ( IM )","price":400.0,"unit":"Vial"},{"name":"VIT B6(pyridoxine)","price":0.5,"unit":"เม็ด"},{"name":"VITAMIN B 1/6/12","price":1.0,"unit":"เม็ด"},{"name":"VITAMIN B COMPLEX","price":15.0,"unit":"Amphule (1 ml.)"},{"name":"vitamin c","price":0.5,"unit":"เม็ด"},{"name":"VITAMIN K1","price":15.0,"unit":"Ampule"},{"name":"WATER FOR INJECTION","price":10.0,"unit":"Amphule (5 ml.)"},{"name":"Whitfields ointment","price":26.0,"unit":"หลอด (15 g.)"},{"name":"Zidovudine  (AZT)","price":35.0,"unit":"เม็ด"},{"name":"Zidovudine (AZT)","price":50.0,"unit":"ขวด"},{"name":"Zidovudine (AZT)","price":15.0,"unit":"เม็ด"},{"name":"Zilarvir (Lamivudine150mg+Zidovudine300mg)","price":12.0,"unit":"เม็ด"},{"name":"กานพลู","price":10.0,"unit":"ถุง"},{"name":"ขมิ้นชัน แคปซูล KMC","price":3.0,"unit":"เม็ด"},{"name":"ขวดยา","price":2.0,"unit":"ขวด (120 ml.)"},{"name":"ขวดยา","price":1.6,"unit":"ขวด (30 ml.)"},{"name":"ขวดยา","price":2.0,"unit":"ขวด (60 ml.)"},{"name":"ขิง","price":2.0,"unit":"แค็บซูล"},{"name":"ครีมพญายอ","price":60.0,"unit":"1"},{"name":"จันทน์ลีลา ซองละ 24 แคปซูล","price":2.0,"unit":"แค็บซูล"},{"name":"เจลว่านหางจระเข้","price":55.0,"unit":"หลอด (30 g.)"},{"name":"ชุมเห็ดเทศ","price":10.0,"unit":"ซอง"},{"name":"ตรีผลาTPL","price":1.0,"unit":"แค็บซูล"},{"name":"เถาวัลย์เปรียง TWP","price":5.0,"unit":"แค็บซูล"},{"name":"น้ำมันกัญชา","price":0,"unit":"ขวด (10 ml.)"},{"name":"น้ำมันไพลPLI","price":32.0,"unit":"ขวด"},{"name":"เพชรสังฆาต PSK","price":2.0,"unit":"แค็บซูล"},{"name":"ฟ้าทะลายโจร FTJ","price":2.0,"unit":"เม็ด"},{"name":"มะขามป้อม MKP","price":33.0,"unit":"ขวด"},{"name":"ยาแก้ลมจับเส้น","price":0,"unit":"แค็บซูล"},{"name":"ยาแก้ลมอัมพฤกษ์AMP","price":130.0,"unit":"ขวด"},{"name":"ยาเขียวหอมKH","price":1.5,"unit":"แค็บซูล"},{"name":"ยาเดิม(Amlodipine)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Atorvastatin)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Betahistine)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Carvedilol)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Gabapentin)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Hydralazine)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Lorazepam)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Risperidone)","price":0,"unit":"เม็ด"},{"name":"ยาเดิม(Warfarin)","price":0,"unit":"เม็ด"},{"name":"ยาธาตุบรรจบ","price":0,"unit":"แค็บซูล"},{"name":"ยาธาตุอบเชยOS","price":33.0,"unit":"ขวด"},{"name":"ยาประสะจันทน์แดง ซองละ 12 แคปซูล","price":2.0,"unit":"แค็บซูล"},{"name":"ยาประสะไพลPSP","price":1.5,"unit":"แค็บซูล"},{"name":"ยามันทธาตุ","price":0,"unit":"แค็บซูล"},{"name":"ยาระบายมะขามแขก(senokot)","price":2.0,"unit":"เม็ด"},{"name":"ยาเลือดงามLH","price":1.3,"unit":"แค็บซูล"},{"name":"ยาศุขไสยาศน์","price":5.0,"unit":"แค็บซูล"},{"name":"ยาสหัสธาราSHTR","price":1.5,"unit":"แค็บซูล"},{"name":"ยาหอมเทพจิตรTPJ","price":12.0,"unit":"ซอง"},{"name":"ยาหอมนวโกฐNVK","price":40.0,"unit":"ขวด"},{"name":"ยาห้าราก ซองละ 9 แคปซูล","price":2.0,"unit":"แค็บซูล"},{"name":"ยาเหลืองปิดสมุทร","price":1.5,"unit":"เม็ด"},{"name":"ยาอมมะแว้ง MW","price":10.0,"unit":"ซอง"},{"name":"รางจืด RJ","price":1.0,"unit":"แค็บซูล"},{"name":"ลูกประคบสมุนไพร","price":95.0,"unit":"ถุง"}];
 
-// Quick stats from localStorage (same origin — works when all files in same folder)
-try {
-  const meER  = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
-  const meHX  = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
-  const meOPD = meHX.filter(r => r.dept === 'OPD');
-  const meIPD = meHX.filter(r => r.dept === 'IPD');
-  const meTotal = meER.length + meHX.length;
+// ===== PATIENTS (dynamic, stored in localStorage) =====
+const DEFAULT_PATIENTS = [
+  { id:'bungha',   name:'บุหงา',         hn:'5300001', dx:'DM type 2', shortName:'บุหงา' },
+  { id:'dusit',    name:'ดุสิต เวียงชัย', hn:'5300002', dx:'DM type 2, HT', shortName:'ดุสิต' },
+  { id:'yokhai',   name:'ยกห้าย',         hn:'5300003', dx:'DM type 2', shortName:'ยกห้าย' },
+  { id:'panu',     name:'ภาณุพงศ์',       hn:'5300004', dx:'DM type 2, DLP', shortName:'ภาณุพงศ์' },
+  { id:'sirinda',  name:'สิรินดา',        hn:'5300005', dx:'DM type 2', shortName:'สิรินดา' },
+  { id:'areerat',  name:'อารีย์รัตน์',    hn:'5300066', dx:'DM, HT, DLP', shortName:'อารีย์รัตน์' },
+  { id:'pattiya',  name:'ภัททิยา',        hn:'5300007', dx:'DM type 2', shortName:'ภัททิยา' },
+  { id:'warin',    name:'วรินทร',         hn:'5300008', dx:'DM type 2, HT', shortName:'วรินทร' },
+];
 
-  const g = id => document.getElementById(id);
-  if (meTotal) {
-    g('me-total').textContent = meTotal.toLocaleString();
-    g('me-er').textContent    = meER.length.toLocaleString();
-    g('me-opd').textContent   = meOPD.length.toLocaleString();
-    g('me-ipd').textContent   = meIPD.length.toLocaleString();
-    // last record date
-    const allDates = [...meER, ...meHX].map(r=>r.date).filter(Boolean).sort();
-    if (allDates.length) {
-      const ld = allDates[allDates.length-1].split('-');
-      const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-      g('me-updated').textContent = 'ข้อมูลล่าสุด '+parseInt(ld[2])+' '+months[parseInt(ld[1])-1]+' '+(parseInt(ld[0])+543);
+let PATIENTS = [];
+function getPatients() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('dm_patients') || 'null');
+    return stored || DEFAULT_PATIENTS;
+  } catch(e) { return DEFAULT_PATIENTS; }
+}
+function savePatients(list) { localStorage.setItem('dm_patients', JSON.stringify(list)); }
+
+let currentPatient = null;
+let currentHistPatient = null;
+let drugRowCounter = 0;
+let activeDropdown = null;
+let focusedDrugIdx = -1;
+let editingVisitIdx = null; // index in visits array being edited
+
+// ===== DATA STORE =====
+// ===== STORAGE LAYER (localStorage + Firebase) =====
+let _db = null;
+let _visitsCache = [];
+let _unsubscribeSync = null;
+
+function getVisits() { return _visitsCache; }
+
+// ── localStorage fallback ──
+function _localLoad() {
+  try { _visitsCache = JSON.parse(localStorage.getItem('dm_visits') || '[]'); } catch(e) { _visitsCache = []; }
+}
+function _localSave() {
+  localStorage.setItem('dm_visits', JSON.stringify(_visitsCache));
+}
+
+// ── Firestore helpers ──
+function _col() { return _db ? _db.collection('dm_visits') : null; }
+
+async function saveVisitDoc(visit) {
+  const col = _col();
+  if (col) {
+    await col.doc(visit.id).set(visit);
+    // onSnapshot will update cache
+  } else {
+    const idx = _visitsCache.findIndex(v => v.id === visit.id);
+    if (idx >= 0) _visitsCache[idx] = visit; else _visitsCache.push(visit);
+    _localSave();
+    _afterChange();
+  }
+}
+
+async function deleteVisitsByPatient(patientId) {
+  const col = _col();
+  if (col) {
+    const snap = await col.where('patientId','==',patientId).get();
+    const batch = _db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  } else {
+    _visitsCache = _visitsCache.filter(v => v.patientId !== patientId);
+    _localSave();
+    _afterChange();
+  }
+}
+
+async function deleteVisitDoc(visitId) {
+  const col = _col();
+  if (col) {
+    await col.doc(visitId).delete();
+  } else {
+    _visitsCache = _visitsCache.filter(v => v.id !== visitId);
+    _localSave();
+    _afterChange();
+  }
+}
+
+async function clearAllVisitDocs() {
+  const col = _col();
+  if (col) {
+    const snap = await col.get();
+    const batch = _db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  } else {
+    _visitsCache = [];
+    localStorage.removeItem('dm_visits');
+    _afterChange();
+  }
+}
+
+function _afterChange() {
+  renderDashboard();
+  if (currentHistPatient) renderHistory(currentHistPatient);
+}
+
+// ── Firebase connect/disconnect ──
+function _setSyncStatus(status) {
+  const btn = document.getElementById('sync-status-btn');
+  if (!btn) return;
+  const MAP = {
+    offline:     ['⚫','Offline',  '#6b7280'],
+    connecting:  ['🔵','กำลังเชื่อมต่อ...','#3b82f6'],
+    online:      ['🟢','Realtime', '#10b981'],
+    error:       ['🔴','Error',    '#ef4444'],
+  };
+  const [icon, label, color] = MAP[status] || MAP.offline;
+  btn.innerHTML = `${icon} ${label}`;
+  btn.style.color = color;
+}
+
+function _startSync() {
+  if (_unsubscribeSync) _unsubscribeSync();
+  _setSyncStatus('connecting');
+
+  // Migration: ถ้า Firestore ว่างแต่มีข้อมูลใน localStorage → ย้ายขึ้น Firebase
+  const localData = JSON.parse(localStorage.getItem('dm_visits') || '[]');
+  if (localData.length) {
+    _col().limit(1).get().then(snap => {
+      if (snap.empty) {
+        // Firestore ยังว่าง → migrate
+        const batch = _db.batch();
+        localData.forEach(v => { if (v.id) batch.set(_col().doc(v.id), v); });
+        batch.commit().then(() => {
+          localStorage.removeItem('dm_visits');
+          showToast(`✅ ย้ายข้อมูลเก่า ${localData.length} รายการขึ้น Firebase เรียบร้อย`);
+        }).catch(e => console.warn('Migration failed', e));
+      } else {
+        // Firestore มีข้อมูลแล้ว → ลบ local เพื่อหลีกเลี่ยง conflict
+        localStorage.removeItem('dm_visits');
+      }
+    }).catch(() => {});
+  }
+
+  _unsubscribeSync = _col().onSnapshot(
+    snap => {
+      _visitsCache = snap.docs.map(d => d.data());
+      _setSyncStatus('online');
+      _afterChange();
+    },
+    err => {
+      console.error('Firestore sync error', err);
+      _setSyncStatus('error');
     }
-  } else {
-    g('me-total').textContent = '—';
-    g('me-er').textContent = '—'; g('me-opd').textContent = '—'; g('me-ipd').textContent = '—';
-    g('me-updated').textContent = 'ยังไม่มีข้อมูล';
-  }
-} catch(e) {}
+  );
+}
 
-try {
-  const dmPt = JSON.parse(localStorage.getItem('dm_patients') || '[]');
-  const dmVs = JSON.parse(localStorage.getItem('dm_visits')   || '[]');
-  const g = id => document.getElementById(id);
-  if (dmPt.length) {
-    g('dm-patients').textContent  = dmPt.length.toLocaleString();
-    g('dm-visits').textContent    = dmVs.length.toLocaleString();
-    const remission = dmPt.filter(p => p.remission || p.status === 'remission').length;
-    g('dm-remission').textContent = remission > 0 ? remission : '—';
-    g('dm-updated').textContent   = 'ผู้ป่วย '+dmPt.length+' ราย';
-  } else {
-    g('dm-patients').textContent = '—';
-    g('dm-visits').textContent   = '—';
-    g('dm-remission').textContent= '—';
-    g('dm-updated').textContent  = 'ยังไม่มีข้อมูล';
+function openSyncModal() {
+  const saved = localStorage.getItem('fb_config');
+  if (saved) document.getElementById('fb-config-input').value = saved;
+  document.getElementById('fb-config-status').textContent = '';
+  document.getElementById('sync-modal').style.display = 'flex';
+}
+function closeSyncModal() { document.getElementById('sync-modal').style.display = 'none'; }
+
+function connectFirebase() {
+  const raw = document.getElementById('fb-config-input').value.trim();
+  const statusEl = document.getElementById('fb-config-status');
+  // แปลง JS object notation → JSON (Firebase console ให้มาแบบนี้)
+  const toJson = s => s
+    .replace(/\/\/.*$/gm, '')                                        // ลบ comments
+    .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":') // ใส่ " รอบ keys
+    .replace(/,\s*([}\]])/g, '$1');                                  // ลบ trailing comma
+  let config;
+  try { config = JSON.parse(raw); } catch(e1) {
+    try { config = JSON.parse(toJson(raw)); } catch(e2) {
+      statusEl.textContent = '❌ Config ไม่ถูกต้อง — ตรวจสอบอีกครั้ง';
+      statusEl.style.color = '#e74c3c';
+      return;
+    }
   }
-} catch(e) {}
+  if (!config.apiKey || !config.projectId) {
+    statusEl.textContent = '❌ ไม่พบ apiKey หรือ projectId';
+    statusEl.style.color = '#e74c3c';
+    return;
+  }
+  try {
+    if (firebase.apps.length) firebase.apps.forEach(a => a.delete());
+    firebase.initializeApp(config);
+    _db = firebase.firestore();
+    localStorage.setItem('fb_config', raw);
+    statusEl.textContent = '✅ กำลังเชื่อมต่อ...';
+    statusEl.style.color = '#10b981';
+    _startSync();
+    setTimeout(closeSyncModal, 1200);
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#e74c3c';
+  }
+}
+
+function disconnectFirebase() {
+  if (_unsubscribeSync) { _unsubscribeSync(); _unsubscribeSync = null; }
+  if (_db) { try { firebase.apps.forEach(a => a.delete()); } catch(e){} _db = null; }
+  localStorage.removeItem('fb_config');
+  _localLoad();
+  _setSyncStatus('offline');
+  closeSyncModal();
+  showToast('ตัดการเชื่อมต่อ Firebase แล้ว — ใช้ข้อมูลเฉพาะเครื่องนี้');
+}
+
+// ── Firebase config ฝังในโค้ด — ทุกเครื่องเชื่อมต่ออัตโนมัติ ──
+const DEFAULT_FB_CONFIG = {
+  apiKey: "AIzaSyC55V7QC4fftxEr5TSqO2E40LYf1LMGtXU",
+  authDomain: "dm-remission-8766b.firebaseapp.com",
+  projectId: "dm-remission-8766b",
+  storageBucket: "dm-remission-8766b.firebasestorage.app",
+  messagingSenderId: "514685529651",
+  appId: "1:514685529651:web:751f1b5c99d76d785abd46",
+  measurementId: "G-J84DMVCHNG"
+};
+
+// ── Init on page load ──
+function initStorage() {
+  let config = DEFAULT_FB_CONFIG;
+  const saved = localStorage.getItem('fb_config');
+  if (saved) { try { config = JSON.parse(saved); } catch(e) {} }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    _db = firebase.firestore();
+    _startSync();
+    return;
+  } catch(e) {
+    console.warn('Firebase auto-connect failed', e);
+  }
+  _localLoad();
+  _setSyncStatus('offline');
+}
+
+// Legacy shim (for any remaining direct calls)
+function saveVisits(v) {
+  _visitsCache = v;
+  if (!_db) _localSave();
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  PATIENTS = getPatients();
+  initStorage(); // load localStorage or connect Firebase
+  rebuildAllStrips();
+  // Default date = today (แสดงเป็นวันที่ไทย วว/ดด/ปปปป)
+  const d = new Date();
+  document.getElementById('visit-date').value = isoToThaiDate(d.toISOString().split('T')[0]);
+  // Auto-format slashes เมื่อพิมพ์
+  document.getElementById('visit-date').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/[^\d\/]/g, '');
+    const digits = v.replace(/\//g, '');
+    let formatted = digits;
+    if (digits.length > 2) formatted = digits.slice(0,2) + '/' + digits.slice(2);
+    if (digits.length > 4) formatted = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4,8);
+    e.target.value = formatted;
+  });
+  addDrugRow();
+  addDrugRow();
+  addDrugRow();
+  renderDashboard();
+  renderPatientsPage();
+});
+
+function rebuildAllStrips() {
+  buildPatientStrip('patient-strip', selectPatient);
+  buildPatientStrip('hist-patient-strip', selectHistPatient);
+}
+
+function buildPatientStrip(stripId, handler) {
+  const strip = document.getElementById(stripId);
+  if (!strip) return;
+  strip.innerHTML = '';
+  PATIENTS.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'p-chip';
+    chip.textContent = p.shortName;
+    chip.dataset.pid = p.id;
+    chip.onclick = () => handler(p, chip, stripId);
+    strip.appendChild(chip);
+  });
+}
+
+function selectPatient(p, chip, stripId) {
+  document.querySelectorAll(`#${stripId} .p-chip`).forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  currentPatient = p;
+  document.getElementById('pt-hn').value = p.hn;
+  document.getElementById('pt-dx').value = p.dx;
+  // ล้างฟอร์มเมื่อเปลี่ยนผู้ป่วย เพื่อไม่ให้ค่า vitals/lab ของคนก่อนค้างอยู่
+  resetForm();
+}
+
+// ===== PATIENT MANAGEMENT =====
+function renderPatientsPage() {
+  const el = document.getElementById('pt-cards');
+  if (!el) return;
+  el.innerHTML = PATIENTS.map(p => `
+    <div class="pt-card">
+      <div class="pt-card-avatar">${p.shortName.charAt(0)}</div>
+      <div class="pt-card-info">
+        <div class="pt-card-name">${p.name}</div>
+        <div class="pt-card-sub">HN: ${p.hn||'-'} · ${p.dx||'-'}</div>
+      </div>
+      <div class="pt-card-actions">
+        <button class="icon-btn" title="แก้ไข" onclick="openPatientModal('${p.id}')">✏️</button>
+        <button class="icon-btn danger" title="ลบ" onclick="deletePatient('${p.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openPatientModal(patientId) {
+  const modal = document.getElementById('patient-modal');
+  document.getElementById('modal-patient-id').value = patientId || '';
+  if (patientId) {
+    const p = PATIENTS.find(x => x.id === patientId);
+    document.getElementById('modal-title').textContent = 'แก้ไขข้อมูลคนไข้';
+    document.getElementById('modal-name').value = p.name || '';
+    document.getElementById('modal-short').value = p.shortName || '';
+    document.getElementById('modal-hn').value = p.hn || '';
+    document.getElementById('modal-age').value = p.age || '';
+    document.getElementById('modal-dx').value = p.dx || '';
+  } else {
+    document.getElementById('modal-title').textContent = 'เพิ่มคนไข้ใหม่';
+    document.getElementById('modal-name').value = '';
+    document.getElementById('modal-short').value = '';
+    document.getElementById('modal-hn').value = '';
+    document.getElementById('modal-age').value = '';
+    document.getElementById('modal-dx').value = '';
+  }
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('modal-name').focus(), 100);
+}
+
+function closePatientModal() {
+  document.getElementById('patient-modal').classList.remove('open');
+}
+
+function savePatientModal() {
+  const name = document.getElementById('modal-name').value.trim();
+  const shortName = document.getElementById('modal-short').value.trim();
+  if (!name || !shortName) { showToast('⚠️ กรุณากรอกชื่อและชื่อย่อ'); return; }
+  const pid = document.getElementById('modal-patient-id').value;
+  const patientData = {
+    name, shortName,
+    hn: document.getElementById('modal-hn').value.trim(),
+    age: document.getElementById('modal-age').value,
+    dx: document.getElementById('modal-dx').value.trim(),
+  };
+  if (pid) {
+    // Edit existing
+    const idx = PATIENTS.findIndex(x => x.id === pid);
+    if (idx >= 0) PATIENTS[idx] = { ...PATIENTS[idx], ...patientData };
+    showToast('✅ แก้ไขข้อมูลคนไข้เรียบร้อย');
+  } else {
+    // Add new
+    patientData.id = 'pt_' + Date.now();
+    PATIENTS.push(patientData);
+    showToast('✅ เพิ่มคนไข้ใหม่เรียบร้อย');
+  }
+  savePatients(PATIENTS);
+  closePatientModal();
+  rebuildAllStrips();
+  renderPatientsPage();
+  renderDashboard();
+}
+
+function deletePatient(patientId) {
+  const p = PATIENTS.find(x => x.id === patientId);
+  if (!p) return;
+  const visits = getVisits().filter(v => v.patientId === patientId);
+  const msg = visits.length
+    ? `ลบ "${p.name}" และข้อมูลการตรวจ ${visits.length} รายการ?\nไม่สามารถกู้คืนได้`
+    : `ลบ "${p.name}" ออกจากระบบ?`;
+  if (!confirm(msg)) return;
+  PATIENTS = PATIENTS.filter(x => x.id !== patientId);
+  savePatients(PATIENTS);
+  if (visits.length) {
+    deleteVisitsByPatient(patientId);
+  }
+  rebuildAllStrips();
+  renderPatientsPage();
+  renderDashboard();
+  showToast('🗑️ ลบคนไข้เรียบร้อย');
+}
+
+// ===== VITAL SIGN FLAGS =====
+function calcBMI() {
+  const w = parseFloat(document.getElementById('weight').value);
+  const h = parseFloat(document.getElementById('height').value) / 100;
+  if (w && h) {
+    const bmi = (w / (h * h)).toFixed(2);
+    const el = document.getElementById('bmi');
+    el.value = bmi;
+    el.className = 'auto';
+    if (bmi < 18.5 || bmi >= 25) el.className += ' flag-yellow';
+  }
+}
+
+function flagVal(el, threshold, color) {
+  const v = parseFloat(el.value);
+  el.className = '';
+  if (!isNaN(v) && v > threshold) el.className = `flag-${color}`;
+}
+
+function flagHbA1c(el) {
+  const v = parseFloat(el.value);
+  el.className = '';
+  if (!isNaN(v)) {
+    if (v >= 7) el.className = 'flag-red';
+    else if (v < 6) el.className = 'flag-green';
+  }
+}
+
+function flagEGFR(el) {
+  const v = parseFloat(el.value);
+  el.className = '';
+  if (!isNaN(v) && v < 60) el.className = 'flag-red';
+}
+
+function flagBP(el) {
+  const val = el.value;
+  const m = val.match(/(\d+)\/(\d+)/);
+  el.className = '';
+  if (m) {
+    const sys = parseInt(m[1]), dia = parseInt(m[2]);
+    if (sys >= 140 || dia >= 90) el.className = 'flag-red';
+    else if (sys >= 130) el.className = 'flag-yellow';
+  }
+}
+
+// ===== DRUG ROWS =====
+function addDrugRow() {
+  const tbody = document.getElementById('drug-tbody');
+  const id = ++drugRowCounter;
+  const tr = document.createElement('tr');
+  tr.id = `drug-row-${id}`;
+  tr.innerHTML = `
+    <td>
+      <div class="drug-search-wrap">
+        <input class="drug-search-input" id="drug-name-${id}" placeholder="พิมพ์ค้นหายา..." autocomplete="off"
+          oninput="filterDrugs(${id})" onkeydown="handleDrugKey(event,${id})" onfocus="filterDrugs(${id})" onblur="closeDrugDD(${id})">
+        <div class="drug-dropdown" id="drug-dd-${id}"></div>
+      </div>
+    </td>
+    <td><input type="text" id="drug-dose-${id}" placeholder="เช่น 1x1 pc"></td>
+    <td><input type="text" id="drug-unit-${id}" placeholder="เม็ด"></td>
+    <td class="price-cell"><input type="number" id="drug-price-${id}" step="0.01" oninput="calcRowTotal(${id})"></td>
+    <td><input type="number" id="drug-qty-${id}" min="1" oninput="calcRowTotal(${id})"></td>
+    <td><input type="number" id="drug-stock-${id}" min="0" placeholder="เม็ด" title="ยาคงเหลือจากครั้งก่อน"></td>
+    <td class="total-cell"><input type="number" id="drug-total-${id}" readonly></td>
+    <td><button class="del-btn" onclick="removeDrugRow(${id})">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function removeDrugRow(id) {
+  const row = document.getElementById(`drug-row-${id}`);
+  if (row) row.remove();
+  calcGrandTotal();
+}
+
+function filterDrugs(id) {
+  const input = document.getElementById(`drug-name-${id}`);
+  const dd = document.getElementById(`drug-dd-${id}`);
+  const q = input.value.toLowerCase().trim();
+  focusedDrugIdx = -1;
+  if (!q) { dd.classList.remove('open'); return; }
+  const matches = DRUGS.filter(d => d.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.map((d, i) =>
+    `<div class="drug-opt" data-idx="${i}" onmousedown="selectDrug(${id},'${d.name.replace(/'/g,"\\'")}',${d.price},'${d.unit.replace(/'/g,"\\'")}')">
+      <span class="drug-name">${d.name}</span>
+      <span>
+        <span class="drug-unit">${d.unit}</span>&nbsp;
+        <span class="drug-price">${d.price > 0 ? d.price.toFixed(2) + ' ฿' : '-'}</span>
+      </span>
+    </div>`
+  ).join('');
+  dd.classList.add('open');
+  activeDropdown = id;
+}
+
+function handleDrugKey(e, id) {
+  const dd = document.getElementById(`drug-dd-${id}`);
+  const opts = dd.querySelectorAll('.drug-opt');
+  if (!opts.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); focusedDrugIdx = Math.min(focusedDrugIdx+1, opts.length-1); updateDDFocus(opts); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); focusedDrugIdx = Math.max(focusedDrugIdx-1, 0); updateDDFocus(opts); }
+  else if (e.key === 'Enter' && focusedDrugIdx >= 0) { opts[focusedDrugIdx].dispatchEvent(new MouseEvent('mousedown')); }
+  else if (e.key === 'Escape') { dd.classList.remove('open'); }
+}
+
+function updateDDFocus(opts) {
+  opts.forEach((o, i) => o.classList.toggle('focused', i === focusedDrugIdx));
+  if (focusedDrugIdx >= 0) opts[focusedDrugIdx].scrollIntoView({block:'nearest'});
+}
+
+function selectDrug(id, name, price, unit) {
+  document.getElementById(`drug-name-${id}`).value = name;
+  document.getElementById(`drug-price-${id}`).value = price > 0 ? price : '';
+  document.getElementById(`drug-unit-${id}`).value = unit;
+  document.getElementById(`drug-dd-${id}`).classList.remove('open');
+  document.getElementById(`drug-qty-${id}`).focus();
+  calcRowTotal(id);
+}
+
+function closeDrugDD(id) {
+  setTimeout(() => {
+    const dd = document.getElementById(`drug-dd-${id}`);
+    if (dd) dd.classList.remove('open');
+  }, 200);
+}
+
+function calcRowTotal(id) {
+  const price = parseFloat(document.getElementById(`drug-price-${id}`).value) || 0;
+  const qty = parseFloat(document.getElementById(`drug-qty-${id}`).value) || 0;
+  const total = price * qty;
+  document.getElementById(`drug-total-${id}`).value = total > 0 ? total.toFixed(2) : '';
+  calcGrandTotal();
+}
+
+function calcGrandTotal() {
+  let total = 0;
+  document.querySelectorAll('[id^="drug-total-"]').forEach(el => {
+    total += parseFloat(el.value) || 0;
+  });
+  document.getElementById('grand-total').value = total > 0 ? total.toFixed(2) : '';
+}
+
+// ===== COLLECT DRUG ROWS =====
+function collectDrugs() {
+  const drugs = [];
+  document.querySelectorAll('[id^="drug-row-"]').forEach(row => {
+    const id = row.id.replace('drug-row-', '');
+    const name = document.getElementById(`drug-name-${id}`)?.value?.trim();
+    if (!name) return;
+    drugs.push({
+      name,
+      dose: document.getElementById(`drug-dose-${id}`)?.value?.trim() || '',
+      unit: document.getElementById(`drug-unit-${id}`)?.value?.trim() || '',
+      price: parseFloat(document.getElementById(`drug-price-${id}`)?.value) || 0,
+      qty: parseFloat(document.getElementById(`drug-qty-${id}`)?.value) || 0,
+      stock: (() => { const s = parseFloat(document.getElementById(`drug-stock-${id}`)?.value); return isNaN(s) ? null : s; })(),
+      total: parseFloat(document.getElementById(`drug-total-${id}`)?.value) || 0,
+    });
+  });
+  return drugs;
+}
+
+// ===== SAVE =====
+function saveVisit() {
+  if (!currentPatient) { showToast('⚠️ กรุณาเลือกคนไข้ก่อน'); return; }
+  const dateRaw = document.getElementById('visit-date').value;
+  if (!dateRaw) { showToast('⚠️ กรุณาระบุวันที่ตรวจ'); return; }
+  // แปลงวันที่ไทย วว/ดด/ปปปป → ISO YYYY-MM-DD สำหรับเก็บใน localStorage
+  const date = dateRaw.includes('/') ? thaiDateToISO(dateRaw) : dateRaw;
+  if (!date || date.length < 8) { showToast('⚠️ วันที่ไม่ถูกต้อง กรุณาใส่ในรูปแบบ วว/ดด/ปปปป เช่น 28/06/2568'); return; }
+
+  const visit = {
+    id: editingVisitIdx !== null ? getVisits()[editingVisitIdx]?.id || ('v_'+Date.now()) : ('v_'+Date.now()),
+    patientId: currentPatient.id,
+    patientName: currentPatient.name,
+    date,
+    weight: document.getElementById('weight').value,
+    height: document.getElementById('height').value,
+    bmi: document.getElementById('bmi').value,
+    bp: document.getElementById('bp').value,
+    dtx: document.getElementById('dtx').value,
+    fbs: document.getElementById('fbs').value,
+    hba1c: document.getElementById('hba1c').value,
+    ldl: document.getElementById('ldl').value,
+    tg: document.getElementById('tg').value,
+    cr: document.getElementById('cr').value,
+    egfr: document.getElementById('egfr').value,
+    urineAlb: document.getElementById('urine-alb').value,
+    drugs: collectDrugs(),
+    drugChange: document.getElementById('drug-change').value,
+    drugProblem: document.getElementById('drug-problem').value,
+    note: document.getElementById('note').value,
+    grandTotal: parseFloat(document.getElementById('grand-total').value) || 0,
+    savedAt: new Date().toISOString(),
+  };
+
+  const isEdit = editingVisitIdx !== null;
+  if (isEdit) {
+    editingVisitIdx = null;
+    document.querySelector('.btn-green').textContent = '💾 บันทึกการตรวจ';
+  }
+  saveVisitDoc(visit).then(() => {
+    showToast(isEdit ? '✅ แก้ไข Visit เรียบร้อย' : '✅ บันทึกข้อมูลเรียบร้อย');
+    renderDashboard();
+    if (currentHistPatient) renderHistory(currentHistPatient);
+  }).catch(e => showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message));
+}
+
+function clearForm() {
+  if (!confirm('ล้างข้อมูลทั้งหมดในฟอร์มนี้?')) return;
+  resetForm();
+}
+
+function toggleNoProblem(cb) {
+  const ta = document.getElementById('drug-problem');
+  if (cb.checked) {
+    ta.value = 'ไม่มีปัญหา';
+    ta.disabled = true;
+    ta.style.opacity = '0.5';
+  } else {
+    ta.value = '';
+    ta.disabled = false;
+    ta.style.opacity = '';
+    ta.focus();
+  }
+}
+
+function resetForm() {
+  ['weight','height','bmi','bp','dtx','fbs','hba1c','ldl','tg','cr','egfr','urine-alb','drug-change','drug-problem','note','grand-total'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.disabled = false; el.style.opacity = ''; el.className = el.className.replace(/flag-\w+|auto/g,'').trim(); }
+  });
+  const cb = document.getElementById('drug-no-problem');
+  if (cb) cb.checked = false;
+  document.getElementById('drug-tbody').innerHTML = '';
+  drugRowCounter = 0;
+  editingVisitIdx = null;
+  document.querySelector('.btn-green').textContent = '💾 บันทึกการตรวจ';
+  addDrugRow(); addDrugRow(); addDrugRow();
+}
+
+// ===== HISTORY PAGE =====
+function selectHistPatient(p, chip, stripId) {
+  document.querySelectorAll(`#${stripId} .p-chip`).forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  currentHistPatient = p;
+  renderHistory(p);
+}
+
+function renderHistory(p) {
+  const allVisits = getVisits();
+  const visits = allVisits
+    .map((v, globalIdx) => ({...v, _globalIdx: globalIdx}))
+    .filter(v => v.patientId === p.id)
+    .sort((a,b) => b.date.localeCompare(a.date));
+  const el = document.getElementById('hist-content');
+  if (!visits.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>ยังไม่มีข้อมูลการตรวจ</div></div>';
+    return;
+  }
+  el.innerHTML = `
+    <table class="hist-tbl">
+      <thead><tr>
+        <th>วันที่</th><th>น้ำหนัก</th><th>BMI</th><th>ความดัน</th>
+        <th>FBS</th><th>HbA1c</th><th>eGFR</th>
+        <th>รายการยา</th><th>ค่ายา (บาท)</th><th>บันทึก</th>
+        <th style="width:80px;">จัดการ</th>
+      </tr></thead>
+      <tbody>
+        ${visits.map(v => `
+          <tr>
+            <td><strong>${formatDate(v.date)}</strong></td>
+            <td>${v.weight||'-'} kg</td>
+            <td>${v.bmi||'-'}</td>
+            <td ${flagBPClass(v.bp)}>${v.bp||'-'}</td>
+            <td ${flagNumClass(v.fbs,130)}>${v.fbs||'-'}</td>
+            <td ${flagHbA1cClass(v.hba1c)}>${v.hba1c||'-'}${v.hba1c?'%':''}</td>
+            <td ${flagNumClass(v.egfr,60,'low')}>${v.egfr||'-'}</td>
+            <td><div class="drug-pills">${(v.drugs||[]).map(d=>`<span class="drug-pill">${d.name.substring(0,18)}</span>`).join('')}</div></td>
+            <td><strong>${v.grandTotal > 0 ? v.grandTotal.toFixed(2) : '-'}</strong></td>
+            <td style="font-size:11px;">${v.drugChange||v.note||''}</td>
+            <td>
+              <div style="display:flex;gap:3px;">
+                <button class="icon-btn" title="แก้ไข" onclick="openEditVisit(${v._globalIdx})">✏️</button>
+                <button class="icon-btn danger" title="ลบ" onclick="deleteVisit(${v._globalIdx})">🗑️</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ===== VISIT EDIT/DELETE =====
+let pendingEditIdx = null;
+
+function openEditVisit(globalIdx) {
+  const v = getVisits()[globalIdx];
+  if (!v) return;
+  pendingEditIdx = globalIdx;
+  document.getElementById('visit-modal-info').innerHTML =
+    `<strong>${v.patientName}</strong> · ${formatDate(v.date)}<br>ยา ${(v.drugs||[]).length} รายการ · ค่ายา ${v.grandTotal||0} บาท`;
+  document.getElementById('visit-modal').classList.add('open');
+}
+
+function closeVisitModal() {
+  document.getElementById('visit-modal').classList.remove('open');
+  pendingEditIdx = null;
+}
+
+function confirmEditVisit() {
+  if (pendingEditIdx === null) return;
+  const idx = pendingEditIdx; // เก็บก่อน closeVisitModal จะ reset pendingEditIdx เป็น null
+  const v = getVisits()[idx];
+  if (!v) return;
+  closeVisitModal();
+  loadVisitToForm(v, idx);
+  showPage('entry', document.querySelector('.nav-tab'));
+}
+
+function loadVisitToForm(v, globalIdx) {
+  // Select patient chip
+  const p = PATIENTS.find(x => x.id === v.patientId);
+  if (p) {
+    document.querySelectorAll('#patient-strip .p-chip').forEach(c => {
+      if (c.dataset.pid === p.id) { c.classList.add('active'); currentPatient = p; }
+      else c.classList.remove('active');
+    });
+    document.getElementById('pt-hn').value = p.hn || '';
+    document.getElementById('pt-dx').value = p.dx || '';
+  }
+  // Fill vitals
+  document.getElementById('visit-date').value = isoToThaiDate(v.date || '');
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('weight', v.weight); setVal('height', v.height); setVal('bmi', v.bmi);
+  setVal('bp', v.bp); setVal('dtx', v.dtx); setVal('fbs', v.fbs);
+  setVal('hba1c', v.hba1c); setVal('ldl', v.ldl); setVal('tg', v.tg);
+  setVal('cr', v.cr); setVal('egfr', v.egfr); setVal('urine-alb', v.urineAlb);
+  setVal('drug-change', v.drugChange); setVal('note', v.note);
+  // Drug problem + no-problem checkbox
+  const noCb = document.getElementById('drug-no-problem');
+  const dpEl = document.getElementById('drug-problem');
+  const isNoProblem = v.drugProblem === 'ไม่มีปัญหา';
+  if (noCb) noCb.checked = isNoProblem;
+  dpEl.value = v.drugProblem || '';
+  dpEl.disabled = isNoProblem;
+  dpEl.style.opacity = isNoProblem ? '0.5' : '';
+  // Re-run flags
+  ['fbs','hba1c','ldl','tg','egfr','urine-alb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || !el.value) return;
+    if (id==='hba1c') flagHbA1c(el);
+    else if (id==='egfr') flagEGFR(el);
+    else if (id==='fbs') flagVal(el,130,'red');
+    else if (id==='ldl') flagVal(el,100,'yellow');
+    else if (id==='tg') flagVal(el,150,'yellow');
+    else if (id==='urine-alb') flagVal(el,30,'yellow');
+  });
+  if (v.bp) flagBP(document.getElementById('bp'));
+  // Fill drugs
+  document.getElementById('drug-tbody').innerHTML = '';
+  drugRowCounter = 0;
+  (v.drugs || []).forEach(d => {
+    addDrugRow();
+    const id = drugRowCounter;
+    document.getElementById(`drug-name-${id}`).value = d.name || '';
+    document.getElementById(`drug-dose-${id}`).value = d.dose || '';
+    document.getElementById(`drug-unit-${id}`).value = d.unit || '';
+    document.getElementById(`drug-price-${id}`).value = d.price || '';
+    document.getElementById(`drug-qty-${id}`).value = d.qty || '';
+    if (d.stock != null) document.getElementById(`drug-stock-${id}`).value = d.stock;
+    document.getElementById(`drug-total-${id}`).value = d.total || '';
+  });
+  if (!v.drugs || !v.drugs.length) { addDrugRow(); addDrugRow(); addDrugRow(); }
+  calcGrandTotal();
+  // Mark as editing
+  editingVisitIdx = globalIdx;
+  document.querySelector('.btn-green').textContent = '💾 บันทึกการแก้ไข';
+  window.scrollTo({top:0, behavior:'smooth'});
+  showToast('✏️ โหลด Visit เพื่อแก้ไขแล้ว');
+}
+
+function deleteVisit(globalIdx) {
+  const v = getVisits()[globalIdx];
+  if (!v) return;
+  if (!confirm(`ลบข้อมูลการตรวจวันที่ ${formatDate(v.date)} ของ ${v.patientName}?\nไม่สามารถกู้คืนได้`)) return;
+  deleteVisitDoc(v.id).then(() => {
+    if (currentHistPatient) renderHistory(currentHistPatient);
+    renderDashboard();
+    showToast('🗑️ ลบ Visit เรียบร้อย');
+  }).catch(e => showToast('⚠️ ลบไม่สำเร็จ: ' + e.message));
+}
+
+function flagBPClass(bp) {
+  if (!bp) return '';
+  const m = bp.match(/(\d+)\/(\d+)/);
+  if (!m) return '';
+  return parseInt(m[1]) >= 140 ? 'style="color:var(--red);font-weight:600"' : '';
+}
+function flagNumClass(val, threshold, mode='high') {
+  const v = parseFloat(val);
+  if (isNaN(v)) return '';
+  const triggered = mode === 'low' ? v < threshold : v > threshold;
+  return triggered ? 'style="color:var(--red);font-weight:600"' : '';
+}
+function flagHbA1cClass(val) {
+  const v = parseFloat(val);
+  if (isNaN(v)) return '';
+  return v >= 7 ? 'style="color:var(--red);font-weight:600"' : 'style="color:var(--green);font-weight:600"';
+}
+
+// แปลง ISO "2025-06-28" → วันที่ไทย "28/06/2568"
+function isoToThaiDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${parseInt(y)+543}`;
+}
+
+// แปลงวันที่ไทย "28/06/2568" → ISO "2025-06-28"
+function thaiDateToISO(thaiDate) {
+  if (!thaiDate) return '';
+  const parts = thaiDate.trim().replace(/-/g,'/').split('/');
+  if (parts.length !== 3) return thaiDate; // ถ้าไม่ตรงรูปแบบ คืนค่าเดิม
+  const [dd, mm, yyyy_be] = parts;
+  const yyyy_ce = parseInt(yyyy_be) - (parseInt(yyyy_be) > 2400 ? 543 : 0); // รองรับทั้ง BE และ CE
+  if (isNaN(yyyy_ce)) return '';
+  return `${yyyy_ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  // รับทั้ง ISO "2025-06-28" และวันที่ไทย "28/06/2568"
+  let iso = d.includes('/') ? thaiDateToISO(d) : d;
+  const [y, m, day] = iso.split('-');
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${parseInt(y)+543}`;
+}
+
+// ===== DASHBOARD =====
+// ─── SVG sparkline ───────────────────────────────────────────────
+function sparkline(values, dates, opts = {}) {
+  const { w = 200, h = 50, color = '#3498db', refLine = null } = opts;
+  if (!values || values.length === 0) return '<span style="color:#aaa;font-size:11px;">ไม่มีข้อมูล</span>';
+  if (values.length === 1) {
+    return `<span style="font-size:12px;color:${color};font-weight:600;">${values[0]}</span>`;
+  }
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const range = maxV - minV || 1;
+  const pad = 4;
+  const xStep = (w - pad*2) / (values.length - 1);
+  const toY = v => pad + (h - pad*2) * (1 - (v - minV) / range);
+  const pts = values.map((v, i) => `${pad + i*xStep},${toY(v)}`).join(' ');
+  let refSvg = '';
+  if (refLine !== null && refLine >= minV - range*0.2 && refLine <= maxV + range*0.2) {
+    const ry = toY(refLine);
+    refSvg = `<line x1="${pad}" y1="${ry}" x2="${w-pad}" y2="${ry}" stroke="#e74c3c" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>`;
+  }
+  const dots = values.map((v, i) => {
+    const cx = pad + i*xStep, cy = toY(v);
+    const isLast = i === values.length - 1;
+    const tip = dates[i] ? `${v} (${formatDate(dates[i])})` : v;
+    return `<circle cx="${cx}" cy="${cy}" r="${isLast ? 4 : 3}" fill="${color}" title="${tip}" opacity="${isLast ? 1 : 0.6}"/>`;
+  }).join('');
+  return `<svg width="${w}" height="${h}" style="display:block;overflow:visible;">
+    ${refSvg}
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+  </svg>`;
+}
+
+function renderDashboard() {
+  const visits = getVisits();
+  const el = document.getElementById('dash-content');
+
+  // Total per patient
+  const patientTotals = {};
+  const patientLastHbA1c = {};
+  PATIENTS.forEach(p => { patientTotals[p.id] = 0; patientLastHbA1c[p.id] = null; });
+  visits.forEach(v => {
+    if (patientTotals[v.patientId] !== undefined) patientTotals[v.patientId] += v.grandTotal || 0;
+    // track latest HbA1c
+    const hba = parseFloat(v.hba1c);
+    if (!isNaN(hba)) {
+      if (!patientLastHbA1c[v.patientId] || v.date > patientLastHbA1c[v.patientId].date) {
+        patientLastHbA1c[v.patientId] = { val: hba, date: v.date };
+      }
+    }
+  });
+
+  const totalAll = Object.values(patientTotals).reduce((a,b)=>a+b,0);
+  const totalVisits = visits.length;
+  const goodHbA1c = PATIENTS.filter(p => patientLastHbA1c[p.id] && patientLastHbA1c[p.id].val < 7).length;
+
+  // Next last friday
+  const nextFri = nextLastFriday();
+
+  el.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-val">${PATIENTS.length}</div><div class="kpi-label">คนไข้ทั้งหมด</div></div>
+      <div class="kpi-card"><div class="kpi-val">${totalVisits}</div><div class="kpi-label">การตรวจทั้งหมด</div></div>
+      <div class="kpi-card"><div class="kpi-val">${goodHbA1c}/${PATIENTS.length}</div><div class="kpi-label">HbA1c &lt;7% (ควบคุมได้)</div></div>
+      <div class="kpi-card"><div class="kpi-val">${totalAll.toLocaleString('th-TH',{maximumFractionDigits:0})}</div><div class="kpi-label">ค่ายารวมทั้งหมด (บาท)</div></div>
+    </div>
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-header">📉 HbA1c ล่าสุดรายคน (เป้าหมาย &lt;7%)</div>
+        <div class="card-body">
+          ${PATIENTS.map(p => {
+            const hba = patientLastHbA1c[p.id];
+            const val = hba ? hba.val : null;
+            const pct = val ? Math.min((val/10)*100, 100) : 0;
+            const color = val ? (val >= 7 ? 'red' : val >= 6.5 ? 'yellow' : 'green') : '';
+            return `<div class="bar-row">
+              <span class="bar-label">${p.shortName}</span>
+              <div class="bar-bg">
+                ${val ? `<div class="bar-fill ${color}" style="width:${pct}%">${val}%</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">ไม่มีข้อมูล</div>'}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">💰 ค่ายาสะสมรายคน (บาท)</div>
+        <div class="card-body">
+          ${(() => {
+            const maxVal = Math.max(...Object.values(patientTotals), 1);
+            return PATIENTS.map(p => {
+              const val = patientTotals[p.id];
+              const pct = (val/maxVal)*100;
+              return `<div class="bar-row">
+                <span class="bar-label">${p.shortName}</span>
+                <div class="bar-bg">
+                  ${val > 0 ? `<div class="bar-fill" style="width:${pct}%">${val.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">-</div>'}
+                </div>
+              </div>`;
+            }).join('');
+          })()}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">🗓️ คลินิกครั้งถัดไป</div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <span style="font-size:18px">📅</span>
+            <div>
+              <strong>วันศุกร์สุดท้าย: ${formatDate(nextFri)}</strong><br>
+              <span class="text-muted" style="font-size:11px;">ในอีก ${daysUntil(nextFri)} วัน</span>
+            </div>
+          </div>
+          <div style="margin-top:10px; font-size:12px; line-height:2;">
+            ${PATIENTS.map(p => {
+              const hba = patientLastHbA1c[p.id];
+              const icon = !hba ? '⬜' : hba.val >= 7 ? '🔴' : hba.val >= 6.5 ? '🟡' : '🟢';
+              return `${icon} ${p.name}${hba && hba.val >= 7 ? ' — <span class="badge badge-red">HbA1c สูง</span>' : ''}`;
+            }).join('<br>')}
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">⚙️ จัดการข้อมูล</div>
+        <div class="card-body">
+          <div class="alert alert-info" style="margin-bottom:10px;">
+            <span>💾</span>
+            <div>ข้อมูลบันทึกในเครื่องนี้ (${visits.length} รายการ)</div>
+          </div>
+          <div class="btn-row" style="flex-wrap:wrap; gap:8px;">
+            <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑️ ลบข้อมูลทั้งหมด</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Lab Trends (Interactive) ── -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">📈 แนวโน้ม Lab รายคน</div>
+      <div class="card-body">
+        <div id="dash-pt-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
+        <div id="dash-lab-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
+      </div>
+    </div>
+  `;
+  // Init interactive lab chart after DOM is ready
+  setTimeout(initLabDashboard, 0);
+}
+
+// ===== INTERACTIVE LAB DASHBOARD =====
+let _dashCharts = [];
+
+const LAB_FIELDS_DASH = [
+  { key:'fbs',   label:'FBS',        unit:'mg/dl', color:'#e67e22', bg:'rgba(230,126,34,0.1)',  ref:120, refLabel:'<120' },
+  { key:'hba1c', label:'HbA1c',      unit:'%',     color:'#e74c3c', bg:'rgba(231,76,60,0.1)',   ref:7,   refLabel:'<7%' },
+  { key:'ldl',   label:'LDL',        unit:'mg/dl', color:'#9b59b6', bg:'rgba(155,89,182,0.1)',  ref:100, refLabel:'<100' },
+  { key:'tg',    label:'TG',         unit:'mg/dl', color:'#f39c12', bg:'rgba(243,156,18,0.1)',  ref:150, refLabel:'<150' },
+  { key:'cr',    label:'Creatinine', unit:'mg/dl', color:'#1abc9c', bg:'rgba(26,188,156,0.1)',  ref:null,refLabel:'' },
+  { key:'egfr',  label:'eGFR',       unit:'',      color:'#27ae60', bg:'rgba(39,174,96,0.1)',   ref:60,  refLabel:'>60' },
+];
+
+function initLabDashboard() {
+  const strip = document.getElementById('dash-pt-strip');
+  if (!strip) return;
+
+  // Destroy any existing chart instances
+  _dashCharts.forEach(c => { try { c.destroy(); } catch(e) {} });
+  _dashCharts = [];
+
+  // Patient selector chips
+  strip.innerHTML = PATIENTS.map((p, i) =>
+    `<button class="p-chip${i===0?' active':''}" onclick="selectDashPatient('${p.id}',this)">${p.shortName}</button>`
+  ).join('');
+
+  if (PATIENTS.length) {
+    const firstChip = strip.querySelector('.p-chip');
+    selectDashPatient(PATIENTS[0].id, firstChip);
+  }
+}
+
+function selectDashPatient(pid, chip) {
+  // Update chips
+  document.querySelectorAll('#dash-pt-strip .p-chip').forEach(c => c.classList.remove('active'));
+  if (chip) chip.classList.add('active');
+
+  // Destroy old charts
+  _dashCharts.forEach(c => { try { c.destroy(); } catch(e) {} });
+  _dashCharts = [];
+
+  const allVisits = getVisits()
+    .filter(v => v.patientId === pid)
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  const container = document.getElementById('dash-lab-container');
+  if (!container) return;
+
+  if (!allVisits.length) {
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#aaa;">ยังไม่มีข้อมูลการตรวจสำหรับผู้ป่วยนี้</div>`;
+    return;
+  }
+
+  // X-axis labels (Thai BE date)
+  const xLabels = allVisits.map(v => {
+    const [y,m,d] = v.date.split('-');
+    return `${d}/${m}/${parseInt(y)+543}`;
+  });
+
+  // Build chart cards
+  container.innerHTML = LAB_FIELDS_DASH.map(f => {
+    const vals = allVisits.map(v => { const n = parseFloat(v[f.key]); return isNaN(n) ? null : n; });
+    if (vals.every(v => v === null)) return '';
+    const last = [...vals].reverse().find(v => v !== null);
+    const prevArr = vals.filter(v => v !== null);
+    const prev = prevArr.length >= 2 ? prevArr[prevArr.length-2] : null;
+    const trend = prev !== null ? (last > prev ? '↑' : last < prev ? '↓' : '→') : '';
+    const trendCol = f.ref ? (last > (f.key==='egfr'?f.ref:f.ref) ? '#e74c3c' : '#27ae60') : '#555';
+    const badgeOk = f.ref ? (f.key==='egfr' ? last >= f.ref : last <= f.ref) : true;
+    return `
+      <div style="background:#fff;border:1px solid var(--gray-border);border-radius:10px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:700;color:#444;">${f.label}${f.unit?' ('+f.unit+')':''}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;
+            background:${badgeOk?'#d1fae5':'#fee2e2'};color:${badgeOk?'#065f46':'#991b1b'};">
+            ${last} ${trend}
+          </span>
+        </div>
+        ${f.refLabel?`<div style="font-size:10px;color:#aaa;margin-bottom:6px;">เป้าหมาย ${f.refLabel}</div>`:''}
+        <div style="position:relative;height:110px;">
+          <canvas id="chart-${f.key}"></canvas>
+        </div>
+      </div>`;
+  }).filter(Boolean).join('') || `<div style="grid-column:1/-1;text-align:center;padding:20px;color:#aaa;">ยังไม่มีข้อมูล Lab</div>`;
+
+  // Render Chart.js charts
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = 'inherit';
+
+  LAB_FIELDS_DASH.forEach(f => {
+    const canvas = document.getElementById(`chart-${f.key}`);
+    if (!canvas) return;
+
+    const vals = allVisits.map(v => { const n = parseFloat(v[f.key]); return isNaN(n) ? null : n; });
+    if (vals.every(v => v === null)) return;
+
+    const datasets = [{
+      data: vals,
+      borderColor: f.color,
+      backgroundColor: f.bg,
+      borderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      pointBackgroundColor: vals.map(v => {
+        if (v === null || !f.ref) return f.color;
+        return (f.key==='egfr' ? v < f.ref : v > f.ref) ? '#e74c3c' : f.color;
+      }),
+      fill: true,
+      tension: 0.35,
+      spanGaps: true,
+    }];
+
+    // Reference line as second dataset
+    if (f.ref) {
+      datasets.push({
+        data: vals.map(() => f.ref),
+        borderColor: 'rgba(231,76,60,0.45)',
+        borderWidth: 1.5,
+        borderDash: [5,4],
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+        label: `เป้า ${f.ref}`,
+      });
+    }
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: xLabels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: item => item.datasetIndex === 0,
+            callbacks: {
+              label: ctx => {
+                if (ctx.parsed.y === null) return 'ไม่มีข้อมูล';
+                const ok = !f.ref || (f.key==='egfr' ? ctx.parsed.y >= f.ref : ctx.parsed.y <= f.ref);
+                return `${f.label}: ${ctx.parsed.y} ${f.unit} ${ok ? '✓' : '⚠️'}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { font: { size: 10 }, maxRotation: 40, autoSkip: true, maxTicksLimit: 6 },
+            grid: { color: 'rgba(0,0,0,0.04)' },
+          },
+          y: {
+            ticks: { font: { size: 10 }, maxTicksLimit: 5 },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            beginAtZero: false,
+          }
+        }
+      }
+    });
+    _dashCharts.push(chart);
+  });
+}
+
+function nextLastFriday() {
+  const today = new Date();
+  // Find last friday of current month, if passed find next month's
+  const check = (year, month) => {
+    const last = new Date(year, month+1, 0); // last day of month
+    const dow = last.getDay(); // 0=Sun, 5=Fri
+    const diff = (dow >= 5) ? dow - 5 : dow + 2;
+    return new Date(year, month, last.getDate() - diff);
+  };
+  let candidate = check(today.getFullYear(), today.getMonth());
+  if (candidate <= today) candidate = check(today.getFullYear(), today.getMonth()+1);
+  return candidate.toISOString().split('T')[0];
+}
+
+function daysUntil(dateStr) {
+  const target = new Date(dateStr);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.ceil((target - today) / 86400000);
+}
+
+function exportCSV() {
+  const visits = getVisits();
+  if (!visits.length) { showToast('ไม่มีข้อมูลให้ export'); return; }
+  const header = ['ชื่อ','วันที่','น้ำหนัก','ส่วนสูง','BMI','ความดัน','FBS','HbA1c','LDL','TG','Cr','eGFR','Urine Albumin','รายการยา','วิธีใช้','ค่ายา(บาท)','การเปลี่ยนแปลง','ปัญหา','หมายเหตุ'];
+  const rows = [];
+  visits.forEach(v => {
+    const baseCols = [v.patientName,v.date,v.weight,v.height,v.bmi,v.bp,v.fbs,v.hba1c,v.ldl,v.tg,v.cr,v.egfr,v.urineAlb];
+    if (v.drugs && v.drugs.length) {
+      v.drugs.forEach((d,i) => {
+        rows.push([...baseCols, d.name, d.dose, d.total, i===0?v.drugChange:'', i===0?v.drugProblem:'', i===0?v.note:'']);
+      });
+    } else {
+      rows.push([...baseCols, '', '', v.grandTotal, v.drugChange, v.drugProblem, v.note]);
+    }
+  });
+  const csv = [header, ...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='DM_Remission_Data.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 Export CSV เสร็จแล้ว');
+}
+
+function clearAllData() {
+  if (!confirm('ลบข้อมูลการตรวจทั้งหมด? ไม่สามารถกู้คืนได้')) return;
+  clearAllVisitDocs().then(() => {
+    renderDashboard();
+    showToast('🗑️ ลบข้อมูลเรียบร้อย');
+  });
+}
+
+// ===== NAV =====
+function showPage(name, tabEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  const tab = tabEl || (event && event.target);
+  if (tab) tab.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'history' && currentHistPatient) renderHistory(currentHistPatient);
+  if (name === 'patients') renderPatientsPage();
+  if (name === 'summary') renderSummary();
+  if (name === 'entry') {
+    // Highlight correct nav tab
+    document.querySelectorAll('.nav-tab').forEach(t => {
+      if (t.textContent.includes('บันทึก')) t.classList.add('active');
+    });
+  }
+}
+
+// ===== OCR (Multi-image) =====
+let ocrQueue = []; // [{file, url, status:'pending'|'done'|'error', text:''}]
+
+function addOcrFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    const url = URL.createObjectURL(f);
+    const id = Date.now() + Math.random();
+    ocrQueue.push({ id, file: f, url, status: 'pending', text: '' });
+  }
+  renderOcrQueue();
+}
+
+function renderOcrQueue() {
+  const container = document.getElementById('ocr-img-queue');
+  const runRow = document.getElementById('ocr-run-row');
+  container.innerHTML = '';
+  for (const item of ocrQueue) {
+    const badge = item.status === 'done' ? '✅ อ่านแล้ว'
+                : item.status === 'error' ? '❌ ผิดพลาด'
+                : '⏳ รอ';
+    container.innerHTML += `
+      <div class="ocr-thumb" id="thumb-${item.id}">
+        <img src="${item.url}">
+        <button class="remove-btn" onclick="removeOcrItem('${item.id}')">✕</button>
+        <div class="status-badge">${badge}</div>
+      </div>`;
+  }
+  runRow.style.display = ocrQueue.length ? 'flex' : 'none';
+}
+
+function removeOcrItem(id) {
+  const idx = ocrQueue.findIndex(x => x.id == id);
+  if (idx >= 0) { URL.revokeObjectURL(ocrQueue[idx].url); ocrQueue.splice(idx, 1); }
+  renderOcrQueue();
+}
+
+function clearOcrQueue() {
+  ocrQueue.forEach(x => URL.revokeObjectURL(x.url));
+  ocrQueue = [];
+  renderOcrQueue();
+  document.getElementById('ocr-progress').style.display = 'none';
+}
+
+async function runAllOCR() {
+  if (!ocrQueue.length) return;
+  const prog = document.getElementById('ocr-progress');
+  const statusEl = document.getElementById('ocr-status');
+  const barEl = document.getElementById('ocr-bar-fill');
+  prog.style.display = 'block';
+
+  const total = ocrQueue.length;
+  let allText = '';
+
+  for (let i = 0; i < total; i++) {
+    const item = ocrQueue[i];
+    statusEl.textContent = `กำลังอ่านรูปที่ ${i+1}/${total}${i===0?' (โหลด model ครั้งแรกอาจช้า)':''}...`;
+    barEl.style.width = ((i / total) * 90).toFixed(0) + '%';
+    try {
+      const result = await Tesseract.recognize(item.url, 'tha+eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            const overall = ((i + m.progress) / total * 90).toFixed(0);
+            barEl.style.width = overall + '%';
+          }
+        }
+      });
+      item.text = result.data.text;
+      item.status = 'done';
+    } catch (e) {
+      item.status = 'error';
+    }
+    renderOcrQueue();
+    allText += '\n' + item.text;
+  }
+
+  barEl.style.width = '100%';
+  statusEl.textContent = `✅ อ่านครบ ${total} รูป — กำลังแยกข้อมูล...`;
+  document.getElementById('paste-input').value = allText.trim();
+  setTimeout(() => { prog.style.display = 'none'; parseAndPreview(); }, 600);
+}
+
+function handleOcrDrop(e) {
+  e.preventDefault();
+  document.getElementById('ocr-zone').classList.remove('drag');
+  addOcrFiles(e.dataTransfer.files);
+}
+
+function handleImagePaste(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  let found = false;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      found = true;
+      addOcrFiles([item.getAsFile()]);
+    }
+  }
+  if (found) e.preventDefault();
+}
+
+// ===== PASTE & PARSE =====
+let _parsedData = null;
+
+// ─── Mapping จาก Book2.xlsx ของรพ.ถ้ำพรรณรา ───────────────────────
+// opi_frequency_code → จำนวนครั้ง/วัน
+const HOSXP_FREQ = {
+  OD:1, BD:2, BID:2, TID:3, QID:4,
+  Q12:2, Q8:3, Q6:4, Q4:6, 'Q4-6':4, 'Q6-8':3,
+  AD:1,   // วันเว้นวัน (เพิ่ม alt flag)
+  QW:1,   // สัปดาห์ละครั้ง
+  MWF:3,  // จันทร์-พุธ-ศุกร์
+  E2D:1,  // ทุก 2 วัน
+  FID:5, STAT:1, PRN:1, Q30:1, Q2:12, Q3:8, Q1:1,
+  QW2:4, QW4:4, day:2,
+};
+// opi_time_code → timing shorthand
+const HOSXP_TIME = {
+  P1:'pc',      // หลังอาหารเช้า
+  P2:'pc',      // หลังอาหารเช้า เย็น
+  P3:'pc',      // หลังอาหารเช้า กลางวัน เย็น
+  P5:'dpc',     // หลังอาหารเย็น
+  P6:'noon pc', // หลังอาหารเช้า เที่ยง
+  P1H:'pc',     // หลังอาหารเช้า+ก่อนนอน
+  P2H:'pc',     // หลังอาหารเช้า เย็น+ก่อนนอน
+  P5H:'dpc',    // หลังอาหารเย็น+ก่อนนอน
+  P7H:'pc',     // หลังเที่ยง+ก่อนนอน
+  A1:'ac',      // ก่อนอาหารเช้า
+  A2:'ac',      // ก่อนอาหาร เช้า เย็น
+  A3:'ac',      // ก่อนอาหาร เช้า กลางวัน เย็น
+  A1H:'ac',     // ก่อนอาหารเช้า+ก่อนนอน
+  HS:'hs',      // ก่อนนอน
+  HS1:'hs prn', // ก่อนนอน เวลานอนไม่หลับ
+  T1:'',T2:'',T3:'',T4:'',T6:'', // ไม่ระบุมื้ออาหาร
+  W1:'prn',W2:'prn',W4:'prn',W5:'prn',W7:'prn',W8:'prn',WC:'prn',WH:'prn',TT:'prn',
+};
+// opi_frequency_code ที่หมายถึงวันเว้นวัน
+const ALT_CODES = new Set(['AD','E2D']);
+
+// แปลง HosXP codes (freqCode, timeCode) → dosage shorthand
+// เช่น amount="1", freqCode="OD", timeCode="P1" → "1x1 pc"
+function convertDosage(thaiText, usageAmt, freqCode, timeCode) {
+  // ─── Amount ───
+  let amount = usageAmt || '1';
+  // เม็ดครึ่ง จาก Thai text
+  if (/เม็ดครึ่ง/.test(thaiText)) {
+    let m = thaiText.match(/ครั้งละ\s*([\d\.]+)/);
+    if (!m) m = thaiText.match(/รับประทาน\s*([\d\.]+)/);
+    const base = m ? parseFloat(m[1]) : parseFloat(usageAmt||'1');
+    amount = (base + 0.5).toString();
+  }
+
+  // ─── Frequency (ใช้ HosXP code เป็นหลัก) ───
+  let freq = '1';
+  const fUpper = (freqCode||'').toUpperCase();
+  if (HOSXP_FREQ[fUpper] !== undefined) {
+    freq = String(HOSXP_FREQ[fUpper]);
+  } else {
+    // fallback: parse Thai text
+    const m = thaiText.match(/วันละ\s*(\d+)\s*ครั้ง/);
+    if (m) freq = m[1];
+  }
+
+  // ─── Alt day ───
+  const isAlt = ALT_CODES.has(fUpper) || /วันเว้นวัน/.test(thaiText);
+
+  // ─── Timing (ใช้ HosXP time code เป็นหลัก) ───
+  const tUpper = (timeCode||'').toUpperCase();
+  let timing = HOSXP_TIME[tUpper]; // อาจเป็น undefined
+  if (timing === undefined) {
+    // fallback: parse Thai text
+    if (/ก่อนนอน/.test(thaiText))           timing = 'hs';
+    else if (/ก่อนอาหาร/.test(thaiText)) {
+      const eve = /เย็น/.test(thaiText), noon = /กลางวัน/.test(thaiText), morn = /เช้า/.test(thaiText);
+      timing = (morn && noon && eve) ? 'ac' : (morn && eve) ? 'ac' : eve ? 'ac eve' : noon ? 'ac noon' : 'ac';
+    }
+    else if (/หลังอาหาร/.test(thaiText)) {
+      // ตรวจว่ามีกี่มื้อ เพื่อหลีกเลี่ยงการแปล "เช้า+เย็น" หรือ "เช้า+กลางวัน+เย็น" เป็น dpc
+      const eve = /เย็น/.test(thaiText), noon = /กลางวัน/.test(thaiText), morn = /เช้า/.test(thaiText);
+      timing = (morn || noon) ? 'pc' : eve ? 'dpc' : 'pc';
+    }
+    else timing = 'pc';
+  }
+
+  return `${amount}x${freq}${timing ? ' '+timing : ''}${isAlt ? ' alt' : ''}`;
+}
+
+function matchDrug(rawName) {
+  // Strip "50 mg." from end
+  const clean = rawName.replace(/\s+[\d\.]+\s*mg\.?$/i, '').trim();
+  // Remove brackets/parens AND trim — สำคัญ: ต้อง trim ก่อน split
+  // ไม่อย่างนั้น "[ 81] aspirin" → " 81  aspirin" → split()[0] = "" → includes("") = true เสมอ!
+  const cleanLow = clean.toLowerCase().replace(/[\[\]()]/g, '').trim();
+  // ใช้เฉพาะคำที่ยาวพอ (≥3 ตัวอักษร) เพื่อป้องกัน "81", "" ทำให้ match ผิด
+  const inputWords = cleanLow.split(/\s+/).filter(w => w.length >= 3);
+  const firstInputWord = inputWords[0] || '';
+
+  const norm = s => s.toLowerCase().replace(/[\[\]()]/g, '').trim();
+
+  // 1. Full name contains (both directions)
+  let found = DRUGS.find(d => {
+    if (cleanLow.length < 3) return false;
+    const dl = norm(d.name);
+    return dl === cleanLow || dl.includes(cleanLow) || (cleanLow.length >= 5 && cleanLow.includes(dl));
+  });
+
+  // 2. First meaningful word of registered drug matches input (or vice versa)
+  if (!found && firstInputWord.length >= 3) {
+    found = DRUGS.find(d => {
+      const dl = norm(d.name);
+      const dlWords = dl.split(/\s+/).filter(w => w.length >= 3);
+      const firstDlWord = dlWords[0] || '';
+      if (firstDlWord.length < 3) return false;
+      return dl.includes(firstInputWord) || cleanLow.includes(firstDlWord);
+    });
+  }
+
+  // 3. Fallback: drug name starts with first input word
+  if (!found && firstInputWord.length >= 3) {
+    found = DRUGS.find(d => norm(d.name).startsWith(firstInputWord));
+  }
+
+  return found;
+}
+
+function parseHosXPText(text) {
+  const r = { visitDate:null, weight:null, height:null, bp:null, dtx:null,
+               fbs:null, hba1c:null, ldl:null, tg:null, cr:null, egfr:null, urineAlb:null,
+               drugs:[] };
+  let m;
+
+  // ── Visit Date ──
+  // รูปแบบที่พบใน HosXP: "27/06/2568", "27-06-2568", "วันที่ 27/06/2568",
+  // "Date : 27/06/2025", หรือชื่อเดือนไทย "27 มิถุนายน 2568"
+  const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                       'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const SHORT_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  const allMonths = [...THAI_MONTHS, ...SHORT_MONTHS];
+  const monthPat = allMonths.map(n => n.replace(/\./g,'\\.')).join('|');
+
+  // Priority 1: ชื่อเดือนไทยที่มี label "วันที่ให้บริการ" / "วันที่บริการ" / "วันที่"
+  // e.g. "ส่วนวันที่ให้บริการ : 27 ตุลาคม 2025"
+  {
+    const re = new RegExp(`(?:วันที่ให้บริการ|วันที่บริการ|วันที่)[^\\n\\d]*(\\d{1,2})\\s+(${monthPat})\\s+(\\d{4})`);
+    const dm = text.match(re);
+    if (dm) {
+      const dd = dm[1].padStart(2,'0');
+      let mi = THAI_MONTHS.indexOf(dm[2]);
+      if (mi < 0) mi = SHORT_MONTHS.indexOf(dm[2]);
+      const mm = String(mi + 1).padStart(2,'0');
+      const yyyy = parseInt(dm[3]) > 2400 ? parseInt(dm[3]) - 543 : parseInt(dm[3]);
+      r.visitDate = `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  // Priority 2: "วันที่ 27/06/2568" หรือ "Date : 27/06/2025" (labeled DD/MM/YYYY)
+  if (!r.visitDate) {
+    m = text.match(/(?:วันที่ให้บริการ|วันที่บริการ|วันที่|Date\s*[:\-]?\s*)(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+    if (m) {
+      const dd = m[1].padStart(2,'0'), mm = m[2].padStart(2,'0');
+      const yyyy = parseInt(m[3]) > 2400 ? parseInt(m[3]) - 543 : parseInt(m[3]);
+      r.visitDate = `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  // Priority 3: ชื่อเดือนไทยไม่มี label e.g. "27 มิถุนายน 2568"
+  if (!r.visitDate) {
+    const dm = text.match(new RegExp(`(\\d{1,2})\\s+(${monthPat})\\s+(\\d{4})`));
+    if (dm) {
+      const dd = dm[1].padStart(2,'0');
+      let mi = THAI_MONTHS.indexOf(dm[2]);
+      if (mi < 0) mi = SHORT_MONTHS.indexOf(dm[2]);
+      const mm = String(mi + 1).padStart(2,'0');
+      const yyyy = parseInt(dm[3]) > 2400 ? parseInt(dm[3]) - 543 : parseInt(dm[3]);
+      r.visitDate = `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  // Priority 4: DD/MM/YYYY ไม่มี label (fallback สุดท้าย — ใช้เฉพาะเมื่อไม่พบรูปแบบอื่น)
+  if (!r.visitDate) {
+    m = text.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+    if (m) {
+      const dd = m[1].padStart(2,'0'), mm = m[2].padStart(2,'0');
+      const yyyy = parseInt(m[3]) > 2400 ? parseInt(m[3]) - 543 : parseInt(m[3]);
+      r.visitDate = `${yyyy}-${mm}-${dd}`;
+    }
+  }
+
+  // ── Vitals ──
+  // BW = 82 Kgs.  /  น้ำหนัก 65
+  m = text.match(/BW\s*=\s*([\d\.]+)/i) || text.match(/น้ำหนัก[:\s]*([\d\.]+)/);
+  if (m) r.weight = parseFloat(m[1]);
+
+  m = text.match(/Height\s*=\s*([\d\.]+)/i) || text.match(/ส่วนสูง[:\s]*([\d\.]+)/);
+  if (m) r.height = parseFloat(m[1]);
+
+  // BP = 117/51  or  130/80
+  m = text.match(/BP\s*=\s*(\d{2,3})\s*\/\s*(\d{2,3})/i) || text.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+  if (m) r.bp = `${m[1]}/${m[2]}`;
+
+  m = text.match(/DTX\s*[=:]\s*([\d\.]+)/i);
+  if (m) r.dtx = parseFloat(m[1]);
+
+  // ── Labs: FBS = 112.68 mg/dl ──
+  const labPat = [
+    ['fbs',      /FBS\s*=\s*([\d\.]+)/i],
+    ['hba1c',    /HbA1c\s*=\s*([\d\.]+)/i],
+    ['ldl',      /LDL\s*=\s*([\d\.]+)/i],
+    ['tg',       /(?:TG|Triglyceride)\s*=\s*([\d\.]+)/i],
+    ['cr',       /(?:\bCr\b|Creatinine)\s*=\s*([\d\.]+)/i],
+    ['egfr',     /(?:eGFR|GFR)\s*=\s*([\d\.]+)/i],
+    ['urineAlb', /(?:Urine Albumin|Microalbumin|U-Alb|ACR)\s*=\s*([\d\.]+)/i],
+  ];
+  for (const [field, pat] of labPat) {
+    m = text.match(pat);
+    if (m) r[field] = parseFloat(m[1]);
+  }
+
+  // ── Drugs ──
+  // Format: N.   [doctor] DRUGNAME mg. Usage ... รับประทาน ... x QTY เม็ด
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const dm = line.match(/^\s*\d+\.\s+\[.*?\]\s+(.+?)\s+Usage\b/i);
+    if (!dm) continue;
+
+    const rawName = dm[1].trim();
+
+    // ดึง "Usage 1.5 OR1 OD P1" → amount=1.5, route=OR1, freqCode=OD, timeCode=P1
+    // Format: Usage {amount} {route} {freqCode} {timeCode}
+    const usageMatch = line.match(/Usage\s+([\d\.]+)\s+(\S+)\s+(\S+)\s+(\S+)/i);
+    const usageAmt   = usageMatch ? usageMatch[1] : (line.match(/Usage\s+([\d\.]+)/i)||[])[1] || null;
+    const freqCode   = usageMatch ? usageMatch[3].toUpperCase() : null; // OD, BID, TID, QID, AD...
+    const timeCode   = usageMatch ? usageMatch[4].toUpperCase() : null; // P1, P5, A1, HS...
+
+    // Thai instructions: after "รับประทาน/ฉีด/พ่น" up to "x QTY"
+    const instrMatch = line.match(/(?:รับประทาน|ฉีด|พ่น)(.*?)x\s*(\d+)\s*(เม็ด|แค็บซูล|ซีซี|ช้อนชา|ขวด|หลอด|ซอง|amp|tab|cap)?/i);
+    const thaiInstr = instrMatch ? instrMatch[1].trim() : '';
+    const qty = instrMatch ? parseInt(instrMatch[2]) : 0;
+
+    const dosage = convertDosage(thaiInstr, usageAmt, freqCode, timeCode);
+    const matched = matchDrug(rawName);
+
+    r.drugs.push({
+      name:   matched ? matched.name : rawName.replace(/\s+[\d\.]+\s*mg\.?$/i, '').trim(),
+      qty,
+      price:  matched ? matched.price : 0,
+      unit:   matched ? matched.unit  : 'เม็ด',
+      dosage,
+    });
+  }
+
+  return r;
+}
+
+function parseAndPreview() {
+  const text = document.getElementById('paste-input').value.trim();
+  if (!text) { showToast('กรุณาวางข้อมูลก่อน'); return; }
+
+  _parsedData = parseHosXPText(text);
+  const d = _parsedData;
+
+  const vitals = [
+    d.visitDate        ? `📅 วันที่ <b>${isoToThaiDate(d.visitDate)}</b>` : null,
+    d.weight   != null ? `น้ำหนัก <b>${d.weight}</b> kg` : null,
+    d.height   != null ? `ส่วนสูง <b>${d.height}</b> cm` : null,
+    d.bp               ? `ความดัน <b>${d.bp}</b>` : null,
+    d.dtx      != null ? `DTX <b>${d.dtx}</b>` : null,
+    d.fbs      != null ? `FBS <b>${d.fbs}</b>` : null,
+    d.hba1c    != null ? `HbA1c <b>${d.hba1c}</b>` : null,
+    d.ldl      != null ? `LDL <b>${d.ldl}</b>` : null,
+    d.tg       != null ? `TG <b>${d.tg}</b>` : null,
+    d.cr       != null ? `Cr <b>${d.cr}</b>` : null,
+    d.egfr     != null ? `eGFR <b>${d.egfr}</b>` : null,
+    d.urineAlb != null ? `Urine Albumin <b>${d.urineAlb}</b>` : null,
+  ].filter(Boolean);
+
+  let html = '';
+  if (vitals.length) {
+    html += `<div style="margin-bottom:8px;font-size:12px;">${vitals.join(' &nbsp;|&nbsp; ')}</div>`;
+  }
+  if (d.drugs.length) {
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr style="background:var(--gray-light);">
+        <th style="padding:5px 8px;border:1px solid var(--gray-border);text-align:left;">ชื่อยา</th>
+        <th style="padding:5px 8px;border:1px solid var(--gray-border);">วิธีใช้</th>
+        <th style="padding:5px 8px;border:1px solid var(--gray-border);">จำนวน</th>
+        <th style="padding:5px 8px;border:1px solid var(--gray-border);">ราคา/หน่วย</th>
+      </tr>`;
+    for (const dr of d.drugs) {
+      html += `<tr>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);">${dr.name}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${dr.dosage||'-'}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${dr.qty||'-'}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:right;">${dr.price > 0 ? dr.price.toFixed(2)+' ฿' : '-'}</td>
+      </tr>`;
+    }
+    html += '</table>';
+  }
+  if (!vitals.length && !d.drugs.length) {
+    html = '<div class="alert alert-warning"><span>⚠️</span><div>ไม่พบข้อมูลที่แยกได้ — ลองวางข้อมูลในรูปแบบอื่น หรือตรวจสอบว่า copy มาครบ</div></div>';
+  }
+
+  document.getElementById('parse-preview-body').innerHTML = html;
+  document.getElementById('parse-preview').style.display = 'block';
+}
+
+function applyParsedData() {
+  const d = _parsedData;
+  if (!d) return;
+
+  // วันที่ตรวจ
+  if (d.visitDate) document.getElementById('visit-date').value = isoToThaiDate(d.visitDate);
+
+  // ล้างค่า vitals/lab ก่อนเติมข้อมูลใหม่ เพื่อไม่ให้ค่าเก่าค้างอยู่
+  ['weight','height','bmi','bp','dtx','fbs','hba1c','ldl','tg','cr','egfr','urine-alb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.className = el.className.replace(/flag-\w+/g,'').trim(); }
+  });
+
+  if (d.weight   != null) document.getElementById('weight').value = d.weight;
+  if (d.height   != null) document.getElementById('height').value = d.height;
+  if (d.bp)               { const el = document.getElementById('bp'); el.value = d.bp; flagBP(el); }
+  if (d.dtx      != null) document.getElementById('dtx').value = d.dtx;
+  calcBMI();
+
+  const labMap = {fbs:'fbs', hba1c:'hba1c', ldl:'ldl', tg:'tg', cr:'cr', egfr:'egfr', urineAlb:'urine-alb'};
+  for (const [k, domId] of Object.entries(labMap)) {
+    if (d[k] != null) {
+      const el = document.getElementById(domId);
+      if (el) { el.value = d[k]; el.dispatchEvent(new Event('input')); }
+    }
+  }
+
+  if (d.drugs.length) {
+    document.getElementById('drug-tbody').innerHTML = '';
+    drugRowCounter = 0;
+    for (const dr of d.drugs) {
+      addDrugRow();
+      const id = drugRowCounter;
+      document.getElementById(`drug-name-${id}`).value  = dr.name;
+      document.getElementById(`drug-unit-${id}`).value  = dr.unit;
+      document.getElementById(`drug-price-${id}`).value = dr.price;
+      document.getElementById(`drug-dose-${id}`).value  = dr.dosage;
+      document.getElementById(`drug-qty-${id}`).value   = dr.qty;
+      calcRowTotal(id);
+    }
+  }
+
+  document.getElementById('parse-preview').style.display = 'none';
+  document.getElementById('paste-input').value = '';
+  const counts = [];
+  if (d.visitDate) counts.push(`วันที่ ${isoToThaiDate(d.visitDate)}`);
+  const labFilled = Object.keys(labMap).filter(k => d[k] != null).length;
+  if (labFilled) counts.push(`${labFilled} lab`);
+  if (d.drugs.length) counts.push(`${d.drugs.length} รายการยา`);
+  showToast(`✅ กรอกข้อมูลเรียบร้อย (${counts.join(', ')})`);
+}
+
+// ===== HOSXP BRIDGE =====
+const BRIDGE_URL = 'http://localhost:5678';
+
+function toggleHosXPPanel() {
+  const panel = document.getElementById('hosxp-panel');
+  panel.classList.toggle('open');
+  // Pre-fill date from visit-date field
+  if (panel.classList.contains('open')) {
+    const d = document.getElementById('hosxp-date');
+    if (!d.value) {
+      const vd = document.getElementById('visit-date').value;
+      d.value = vd ? thaiDateToISO(vd) : new Date().toISOString().split('T')[0];
+    }
+    // Pre-fill HN from selected patient
+    const hnEl = document.getElementById('pt-hn');
+    const hnField = document.getElementById('hosxp-hn');
+    if (!hnField.value && hnEl.value) hnField.value = hnEl.value;
+  }
+}
+
+async function checkHosXPBridge() {
+  const statusEl = document.getElementById('hosxp-status');
+  statusEl.className = 'hosxp-status idle';
+  statusEl.textContent = 'กำลังตรวจสอบ...';
+  try {
+    const res = await fetch(`${BRIDGE_URL}/health`, { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      statusEl.className = 'hosxp-status ok';
+      statusEl.textContent = `✅ เชื่อมต่อแล้ว (${data.db})`;
+      showToast('✅ เชื่อมต่อ HosXP สำเร็จ');
+    } else {
+      throw new Error(data.message || 'DB error');
+    }
+  } catch (e) {
+    const statusEl2 = document.getElementById('hosxp-status');
+    statusEl2.className = 'hosxp-status err';
+    statusEl2.textContent = '❌ ไม่สามารถเชื่อมต่อได้';
+    showToast('❌ ไม่พบ hosxp_bridge.py — กรุณารัน script ก่อน');
+  }
+}
+
+async function fetchFromHosXP() {
+  const hn   = document.getElementById('hosxp-hn').value.trim();
+  const date = document.getElementById('hosxp-date').value.trim();
+  const msgEl = document.getElementById('hosxp-msg');
+
+  if (!hn || !date) { msgEl.textContent = 'กรุณากรอก HN และวันที่'; return; }
+
+  msgEl.textContent = '⏳ กำลังดึงข้อมูล...';
+  try {
+    const res = await fetch(`${BRIDGE_URL}/visit?hn=${encodeURIComponent(hn)}&date=${encodeURIComponent(date)}`,
+      { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      msgEl.textContent = `❌ ${data.error || 'ไม่พบข้อมูล'}`;
+      return;
+    }
+
+    // ── Fill date ──
+    if (data.date) document.getElementById('visit-date').value = isoToThaiDate(data.date);
+
+    // ── Fill vitals ──
+    if (data.weight != null) document.getElementById('weight').value = data.weight;
+    if (data.height != null) document.getElementById('height').value = data.height;
+    if (data.bp)    { const el = document.getElementById('bp'); el.value = data.bp; flagBP(el); }
+    if (data.dtx != null) document.getElementById('dtx').value = data.dtx;
+    calcBMI();
+
+    // ── Fill labs ──
+    const labMap = {fbs:'fbs', hba1c:'hba1c', ldl:'ldl', tg:'tg', cr:'cr', egfr:'egfr', urine_alb:'urine-alb'};
+    if (data.labs) {
+      for (const [k, domId] of Object.entries(labMap)) {
+        if (data.labs[k] != null) {
+          const el = document.getElementById(domId);
+          if (el) { el.value = data.labs[k]; el.dispatchEvent(new Event('input')); }
+        }
+      }
+    }
+
+    // ── Fill drugs ──
+    if (data.drugs && data.drugs.length) {
+      // Clear existing rows
+      document.getElementById('drug-tbody').innerHTML = '';
+      drugRowCounter = 0;
+      // Add rows from HosXP
+      data.drugs.forEach(d => {
+        addDrugRow();
+        const id = drugRowCounter; // id of the row just added
+        // Try to match drug in local registry (for price/unit)
+        const matched = DRUGS.find(dr => dr.name.toLowerCase() === d.name.toLowerCase());
+        const price = matched ? matched.price : (d.price || 0);
+        const unit  = matched ? matched.unit  : (d.unit  || '');
+        // Fill fields using id-based selectors
+        document.getElementById(`drug-name-${id}`).value  = d.name;
+        document.getElementById(`drug-unit-${id}`).value  = unit;
+        document.getElementById(`drug-price-${id}`).value = price;
+        document.getElementById(`drug-dose-${id}`).value  = d.dosage || '';
+        document.getElementById(`drug-qty-${id}`).value   = d.qty || 0;
+        calcRowTotal(id);
+      });
+    }
+
+    // Close panel
+    document.getElementById('hosxp-panel').classList.remove('open');
+    msgEl.textContent = '';
+    const counts = [];
+    if (data.labs && Object.keys(data.labs).length) counts.push(`${Object.keys(data.labs).length} lab`);
+    if (data.drugs) counts.push(`${data.drugs.length} รายการยา`);
+    showToast(`✅ ดึงข้อมูลสำเร็จ (${counts.join(', ')})`);
+
+  } catch (e) {
+    msgEl.textContent = `❌ ${e.message}`;
+  }
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ===== SUMMARY PAGE =====
+function loadBaseline() {
+  try { return JSON.parse(localStorage.getItem('dm_baseline') || '{}'); } catch(e) { return {}; }
+}
+function saveBaseline(obj) { localStorage.setItem('dm_baseline', JSON.stringify(obj)); }
+
+let _sumChart = null;
+
+function renderSummary() {
+  const visits = getVisits();
+  const baseline = loadBaseline();
+  const el = document.getElementById('sum-content');
+  if (!el) return;
+
+  // Group & sort visits by patient
+  const byPatient = {};
+  PATIENTS.forEach(p => { byPatient[p.id] = []; });
+  visits.forEach(v => { if (byPatient[v.patientId] !== undefined) byPatient[v.patientId].push(v); });
+  PATIENTS.forEach(p => byPatient[p.id].sort((a,b) => a.date.localeCompare(b.date)));
+
+  // Per-patient stats
+  const stats = PATIENTS.map(p => {
+    const pvs = byPatient[p.id];
+    const last = pvs[pvs.length - 1];
+    const baseCost = parseFloat(baseline[p.id] || 0);
+    const lastCost = last?.grandTotal || 0;
+    const diff = baseCost - lastCost; // positive = cost reduced
+    const pctChange = baseCost > 0 ? ((lastCost - baseCost) / baseCost * 100) : null;
+    return { p, pvs, last, baseCost, lastCost, diff, pctChange };
+  });
+
+  // KPIs
+  const enrolled = PATIENTS.length;
+  const withBase = stats.filter(s => s.baseCost > 0 && s.pvs.length > 0);
+  const reduced = withBase.filter(s => s.diff > 0).length;
+  const pctReduced = withBase.length > 0 ? (reduced / withBase.length * 100).toFixed(1) : null;
+  const totalSaved = withBase.reduce((sum, s) => sum + Math.max(0, s.diff), 0);
+  const totalVisits = visits.length;
+
+  // All visits sorted newest first
+  const allVisits = [...visits]
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .map(v => ({ ...v, _pname: PATIENTS.find(p => p.id === v.patientId)?.name || v.ptName || '-' }));
+
+  const kpiColor = pctReduced === null ? '' : parseFloat(pctReduced) >= 10 ? 'kpi-green' : 'kpi-red';
+  const kpiTarget = pctReduced === null ? '-' : pctReduced + '%';
+
+  el.innerHTML = `
+    <!-- KPI Row -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-val">${enrolled}</div>
+        <div class="kpi-label">คนไข้ทั้งหมด</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val">${totalVisits}</div>
+        <div class="kpi-label">การตรวจทั้งหมด</div>
+      </div>
+      <div class="kpi-card ${kpiColor}">
+        <div class="kpi-val">${kpiTarget}</div>
+        <div class="kpi-label">% ปรับลดค่ายา (เกณฑ์ ≥10%)</div>
+      </div>
+      <div class="kpi-card ${totalSaved > 0 ? 'kpi-green' : ''}">
+        <div class="kpi-val">${totalSaved.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>
+        <div class="kpi-label">ค่ายาที่ประหยัดได้รวม (บาท)</div>
+      </div>
+    </div>
+
+    <!-- Baseline input -->
+    <div class="card">
+      <div class="card-header">⚙️ ตั้งค่าฐาน — ค่าใช้จ่ายยาก่อนเข้าคลินิก (บาท/ครั้ง)</div>
+      <div class="card-body">
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่าใช้จ่ายยาเฉลี่ยต่อครั้งของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
+          ${PATIENTS.map(p => `
+            <div class="field">
+              <label>${p.shortName}</label>
+              <input type="number" min="0" step="0.01" value="${baseline[p.id] || ''}"
+                placeholder="บาท/ครั้ง"
+                onchange="updateBaseline('${p.id}', this.value)"
+                style="text-align:right;">
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="card">
+      <div class="card-header">📊 เปรียบเทียบค่าใช้จ่ายยา — ก่อนเข้าคลินิก vs ล่าสุด</div>
+      <div class="card-body">
+        <div style="position:relative;height:260px;">
+          <canvas id="sum-bar-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-patient table -->
+    <div class="card">
+      <div class="card-header">👥 สรุปรายผู้ป่วย</div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="drug-tbl" style="width:100%;">
+          <thead>
+            <tr>
+              <th>ชื่อ-สกุล</th>
+              <th style="text-align:center;">visits</th>
+              <th style="text-align:right;">ค่ายาก่อน (บาท)</th>
+              <th style="text-align:right;">ค่ายาล่าสุด (บาท)</th>
+              <th style="text-align:right;">ประหยัดได้ (บาท)</th>
+              <th style="text-align:center;">% เปลี่ยน</th>
+              <th style="text-align:center;">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stats.map(s => {
+              const pct = s.pctChange !== null ? s.pctChange.toFixed(1) + '%' : '-';
+              const pctCol = s.pctChange !== null ? (s.pctChange < 0 ? 'var(--green)' : 'var(--red)') : 'var(--gray)';
+              const saved = s.diff > 0 ? s.diff.toLocaleString('th-TH',{maximumFractionDigits:2}) : (s.diff < 0 ? '−' + Math.abs(s.diff).toLocaleString('th-TH',{maximumFractionDigits:2}) : '-');
+              const savedCol = s.diff > 0 ? 'var(--green)' : s.diff < 0 ? 'var(--red)' : 'var(--gray)';
+              const badge = s.pvs.length === 0 ? '<span style="color:#aaa">ยังไม่มีข้อมูล</span>'
+                          : s.baseCost === 0 ? '<span style="color:#aaa">ไม่มีค่าฐาน</span>'
+                          : s.diff > 0 ? '<span class="badge badge-green">✅ ลดลง</span>'
+                          : s.diff < 0 ? '<span class="badge badge-red">⚠️ เพิ่มขึ้น</span>'
+                          : '<span class="badge badge-yellow">→ เท่าเดิม</span>';
+              return `<tr>
+                <td>${s.p.name}</td>
+                <td style="text-align:center;">${s.pvs.length}</td>
+                <td style="text-align:right;">${s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
+                <td style="text-align:right;">${s.lastCost > 0 ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
+                <td style="text-align:right;color:${savedCol};font-weight:700;">${saved}</td>
+                <td style="text-align:center;color:${pctCol};font-weight:700;">${pct}</td>
+                <td style="text-align:center;">${badge}</td>
+              </tr>`;
+            }).join('')}
+            <tr class="total-row">
+              <td colspan="2"><strong>รวม</strong></td>
+              <td style="text-align:right;"><strong>${stats.reduce((s,r)=>s+r.baseCost,0).toLocaleString('th-TH',{maximumFractionDigits:2})}</strong></td>
+              <td style="text-align:right;"><strong>${stats.reduce((s,r)=>s+r.lastCost,0).toLocaleString('th-TH',{maximumFractionDigits:2})}</strong></td>
+              <td style="text-align:right;color:var(--green);"><strong>${totalSaved.toLocaleString('th-TH',{maximumFractionDigits:2})}</strong></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All visits drug count -->
+    <div class="card">
+      <div class="card-header">💊 รายการยาต่อ Visit ทั้งหมด</div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="drug-tbl" style="width:100%;">
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>ชื่อผู้ป่วย</th>
+              <th style="text-align:center;">จำนวนรายการยา</th>
+              <th style="text-align:right;">ค่ายารวม (บาท)</th>
+              <th>รายการยา</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allVisits.length ? allVisits.map(v => {
+              const [y,mo,d] = (v.date||'').split('-');
+              const dateStr = y ? `${d}/${mo}/${parseInt(y)+543}` : '-';
+              const drugCount = (v.drugs || []).length;
+              const drugNames = (v.drugs || []).map(d => d.name).filter(Boolean).join(', ');
+              return `<tr>
+                <td>${dateStr}</td>
+                <td>${v._pname}</td>
+                <td style="text-align:center;">
+                  <span style="background:var(--blue-light);color:var(--blue);padding:2px 10px;border-radius:10px;font-weight:700;">${drugCount} รายการ</span>
+                </td>
+                <td style="text-align:right;font-weight:700;color:var(--blue);">${(v.grandTotal||0).toLocaleString('th-TH',{maximumFractionDigits:2})}</td>
+                <td style="font-size:11px;color:var(--text-muted);">${drugNames || '-'}</td>
+              </tr>`;
+            }).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:#aaa;">ยังไม่มีข้อมูล Visit</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => drawSumChart(stats), 0);
+}
+
+function drawSumChart(stats) {
+  if (_sumChart) { try { _sumChart.destroy(); } catch(e) {} _sumChart = null; }
+  const ctx = document.getElementById('sum-bar-chart');
+  if (!ctx) return;
+  const labels = stats.map(s => s.p.shortName);
+  _sumChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'ก่อนเข้าคลินิก', data: stats.map(s => s.baseCost || 0), backgroundColor: 'rgba(220,38,38,0.7)', borderRadius: 5 },
+        { label: 'ค่ายาล่าสุด', data: stats.map(s => s.lastCost || 0), backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 5 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'บาท/ครั้ง' } } }
+    }
+  });
+}
+
+function updateBaseline(pid, val) {
+  const bl = loadBaseline();
+  bl[pid] = parseFloat(val) || 0;
+  saveBaseline(bl);
+  renderSummary();
+}
 </script>
 </body>
 </html>
