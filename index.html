@@ -469,7 +469,7 @@ footer {
       <div class="card-stat-bar">
         <div class="stat-item">
           <div class="stat-val" id="me-total">—</div>
-          <div class="stat-lbl">เหตุการณ์ทั้งหมด</div>
+          <div class="stat-lbl">ME เดือนนี้</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
@@ -629,7 +629,7 @@ footer {
       <div class="card-stat-bar" style="background:#fff1f2">
         <div class="stat-item">
           <div class="stat-val" style="color:#b91c1c" id="adr-total">—</div>
-          <div class="stat-lbl">รายงานทั้งหมด</div>
+          <div class="stat-lbl">ADR เดือนนี้</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
@@ -715,73 +715,70 @@ setInterval(updateDate, 60000);
 function g(id) { return document.getElementById(id); }
 
 function updateStats() {
-  // ME Dashboard
+  // Current month prefix: "YYYY-MM"
+  const now = new Date();
+  const mPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const inMonth = r => r.date && r.date.startsWith(mPrefix);
+
+  // ME Dashboard — show current month ME events + harmful
   try {
-    const meRecs = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
-    if (meRecs.length) {
-      g('me-total').textContent = meRecs.length.toLocaleString();
-      const harm = meRecs.filter(r => r.harm && r.harm !== 'ไม่มีอันตราย' && r.harm !== 'none' && r.harm !== 'A').length;
-      g('me-harm').textContent = harm;
-      const now = new Date();
-      const thisMonth = meRecs.filter(r => {
-        if (!r.date) return false;
-        const d = new Date(r.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      }).length;
-      g('me-month').textContent = thisMonth;
-    }
+    const meRecs = JSON.parse(localStorage.getItem('me_records_v2') || '[]').filter(inMonth);
+    const meCount = meRecs.length;
+    g('me-total').textContent = meCount.toLocaleString();
+    const harm = meRecs.filter(r => r.harm && r.harm !== 'ไม่มีอันตราย' && r.harm !== 'none' && r.harm !== 'A').length;
+    g('me-harm').textContent = meCount ? harm : '—';
+    g('me-month').textContent = meCount || '—';
   } catch(e) {}
 
-  // Waiting Time
+  // Waiting Time — current month only
   try {
-    const wtStat = JSON.parse(localStorage.getItem('wt_stat') || '[]');
-    const wtCart = JSON.parse(localStorage.getItem('wt_cart') || '[]');
-    g('wt-stat-count').textContent = wtStat.length.toLocaleString();
-    g('wt-cart-count').textContent = wtCart.length.toLocaleString();
+    const wtStat = JSON.parse(localStorage.getItem('wt_stat') || '[]').filter(inMonth);
+    const wtCart = JSON.parse(localStorage.getItem('wt_cart') || '[]').filter(inMonth);
+    g('wt-stat-count').textContent = wtStat.length || '—';
+    g('wt-cart-count').textContent = wtCart.length || '—';
     if (wtStat.length) {
-      const avg = wtStat.reduce((s,r) => s + (parseFloat(r.minutes)||parseFloat(r.wait)||0), 0) / wtStat.length;
+      const avg = wtStat.reduce((s,r) => s + (parseFloat(r.minutes)||parseFloat(r.mins)||0), 0) / wtStat.length;
       g('wt-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
+    } else {
+      g('wt-avg').textContent = '—';
     }
   } catch(e) {}
 
-  // DM Remission
+  // DM Remission — visits this month / total patients
   try {
     const dmPts = JSON.parse(localStorage.getItem('dm_patients') || '[]');
-    const dmVisits = JSON.parse(localStorage.getItem('dm_visits') || '[]');
+    const dmVisits = JSON.parse(localStorage.getItem('dm_visits') || '[]').filter(inMonth);
     g('dm-patients').textContent = dmPts.length.toLocaleString();
-    g('dm-visits').textContent = dmVisits.length.toLocaleString();
+    g('dm-visits').textContent = dmVisits.length || '—';
     const remit = dmPts.filter(p => p.remission || (p.a1c && parseFloat(p.a1c) < 6.5)).length;
     g('dm-remit').textContent = remit > 0 ? remit : '—';
   } catch(e) {}
 
-  // Clinic HT/DM/COPD
+  // Clinic — current month only
   try {
-    const clinicVisits = JSON.parse(localStorage.getItem('clinic_visits') || '[]');
-    if (clinicVisits.length) {
-      g('clinic-visits').textContent = clinicVisits.length.toLocaleString();
+    const clinicVisits = JSON.parse(localStorage.getItem('clinic_visits') || '[]').filter(inMonth);
+    const count = clinicVisits.length;
+    g('clinic-visits').textContent = count || '—';
+    if (count) {
       const withDRP = clinicVisits.filter(r => r.drps && r.drps.length > 0);
-      const drpPct = Math.round(withDRP.length / clinicVisits.length * 100);
+      const drpPct = Math.round(withDRP.length / count * 100);
       g('clinic-drp').textContent = drpPct + '%';
       const saving = clinicVisits.reduce((s,r) => s + (r.totalSaving||0), 0);
       g('clinic-saving').textContent = saving > 0 ? '฿' + Math.round(saving).toLocaleString() : '—';
+    } else {
+      g('clinic-drp').textContent = '—';
+      g('clinic-saving').textContent = '—';
     }
   } catch(e) {}
 
-  // ADR
+  // ADR — current month only
   try {
-    const adrRecs = JSON.parse(localStorage.getItem('adr_records') || '[]');
-    if (adrRecs.length) {
-      g('adr-total').textContent = adrRecs.length.toLocaleString();
-      const serious = adrRecs.filter(r => r.causality === 'Probable' || r.causality === 'Certain').length;
-      g('adr-serious').textContent = serious;
-      const now = new Date();
-      const thisMonth = adrRecs.filter(r => {
-        if (!r.date) return false;
-        const d = new Date(r.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      }).length;
-      g('adr-month').textContent = thisMonth;
-    }
+    const adrRecs = JSON.parse(localStorage.getItem('adr_records') || '[]').filter(inMonth);
+    const adrCount = adrRecs.length;
+    g('adr-total').textContent = adrCount || '—';
+    const serious = adrRecs.filter(r => r.causality === 'Probable' || r.causality === 'Certain').length;
+    g('adr-serious').textContent = adrCount ? serious : '—';
+    g('adr-month').textContent = adrCount || '—';
   } catch(e) {}
 }
 

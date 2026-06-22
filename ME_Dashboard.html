@@ -2700,7 +2700,19 @@ function showSection(name) {
     er:   'ER — ห้องฉุกเฉิน',
   };
   document.getElementById('main-topbar-title').textContent = titles[name] || '';
-  if (name === 'er') renderDashboard();
+  if (name === 'er') {
+    // Reset to dashboard tab on section entry
+    const _erSec = document.getElementById('section-er');
+    if (_erSec) {
+      _erSec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      _erSec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const _dashPage = document.getElementById('page-dashboard');
+      if (_dashPage) _dashPage.classList.add('active');
+      const _dashBtn = _erSec.querySelector('.tab-btn');
+      if (_dashBtn) _dashBtn.classList.add('active');
+    }
+    renderDashboard();
+  }
   if (name === 'opd') { updateHosXPStatus(); renderHosXPDashboard('OPD'); }
   if (name === 'ipd') { updateHosXPStatus(); renderHosXPDashboard('IPD'); }
   updateLandingCounts();
@@ -3199,17 +3211,6 @@ function exportHosXPCSV(dept) {
 }
 
 // ======= PATCHED showPage (scope to ER section) =======
-function showPage(name, btn) {
-  const erSec = document.getElementById('section-er');
-  if (!erSec) return;
-  erSec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  erSec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (name === 'dashboard')  renderDashboard();
-  if (name === 'records')    renderTable();
-  if (name === 'rx-monthly') initRxMonthly();
-}
 
 // ======= showDetailModal (unified — ER + HosXP OPD/IPD) =======
 function _buildHosXPDetailTable(recs) {
