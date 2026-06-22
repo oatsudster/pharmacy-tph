@@ -1235,6 +1235,18 @@
   <!-- ========== DASHBOARD ========== -->
 <div class="page active" id="page-dashboard">
 
+  <!-- Filter Bar -->
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; padding:12px 16px; background:var(--surface); border-radius:10px; border:1px solid var(--border);">
+    <span style="font-size:14px; font-weight:600; color:var(--text-mid);">📅 ปีงบประมาณ:</span>
+    <select id="er-dash-fy" onchange="populateERFilter(); renderDashboard();" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:7px; font-size:14px; font-family:inherit; background:var(--bg);">
+      <option value="">ทั้งหมด</option>
+    </select>
+    <select id="er-dash-month" onchange="renderDashboard();" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:7px; font-size:14px; font-family:inherit; background:var(--bg);">
+      <option value="">ทุกเดือน</option>
+    </select>
+    <span id="er-dash-count" style="font-size:13px; color:var(--text-light);"></span>
+  </div>
+
   <!-- KPI Row 1: ME Summary -->
   <div class="kpi-grid">
     <div class="kpi-card">
@@ -1243,7 +1255,7 @@
       <div class="kpi-sub">รายการสะสม</div>
     </div>
     <div class="kpi-card warn">
-      <div class="kpi-label">เดือนนี้</div>
+      <div class="kpi-label" id="kpi-month-title">เดือนนี้</div>
       <div class="kpi-value" id="kpi-month">0</div>
       <div class="kpi-sub" id="kpi-month-label">รายการ</div>
     </div>
@@ -2164,9 +2176,21 @@ function renderDashboard() {
   const monthStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
 
   // hasME backward-compat: old records (no hasME field) = treated as ME records
-  const meRecs    = records.filter(r => r.hasME !== false);
+  populateERFilter();
+  let meRecs = records.filter(r => r.hasME !== false);
+  const selFY    = parseInt((document.getElementById('er-dash-fy')||{}).value||'') || 0;
+  const selMonth = ((document.getElementById('er-dash-month')||{}).value||'');
+  if (selFY)    meRecs = meRecs.filter(r => getFiscalYear(r.date) === selFY);
+  if (selMonth) meRecs = meRecs.filter(r => r.date.startsWith(selMonth));
+
+  const periodLabel = selMonth
+    ? (() => { const thM=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; const [y,mo]=selMonth.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); })()
+    : selFY ? 'ปีงบ '+selFY : 'ทั้งหมด';
+  const countEl = document.getElementById('er-dash-count');
+  if (countEl) countEl.textContent = '('+meRecs.length+' รายการ)';
+
   const total     = meRecs.length;
-  const thisMonth = meRecs.filter(r => r.date.startsWith(monthStr)).length;
+  const thisMonth = selMonth ? meRecs.length : meRecs.filter(r => r.date.startsWith(monthStr)).length;
   const severe    = meRecs.filter(r => ['E','F','G','H','I'].includes(r.severity)).length;
   const safe      = meRecs.filter(r => ['A','B','C','D'].includes(r.severity)).length;
 
@@ -2190,9 +2214,11 @@ function renderDashboard() {
     ? (meOffHours.length / totalRx * 100).toFixed(2) + '%'
     : '—';
 
+  const kpiTitle = document.getElementById('kpi-month-title');
+  if (kpiTitle) kpiTitle.textContent = (selMonth || selFY) ? 'ช่วงที่เลือก' : 'เดือนนี้';
   document.getElementById('kpi-total').textContent   = total;
   document.getElementById('kpi-month').textContent   = thisMonth;
-  document.getElementById('kpi-month-label').textContent = now.toLocaleString('th-TH', {month:'long', year:'numeric'});
+  document.getElementById('kpi-month-label').textContent = (selMonth || selFY) ? periodLabel : now.toLocaleString('th-TH', {month:'long', year:'numeric'});
   document.getElementById('kpi-severe').textContent  = severe;
   document.getElementById('kpi-safe').textContent    = safe;
   document.getElementById('kpi-rate').textContent    = rateVal;
@@ -3006,6 +3032,32 @@ function getFiscalYear(dateStr) {
   if (!dateStr) return null;
   const [y, m] = dateStr.substring(0,7).split('-').map(Number);
   return m >= 10 ? (y + 544) : (y + 543);
+}
+
+function populateERFilter() {
+  const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
+  const meRecs = records.filter(r => r.hasME !== false);
+  const months = [...new Set(meRecs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
+
+  const fyEl = document.getElementById('er-dash-fy');
+  if (fyEl) {
+    const prev = fyEl.value;
+    const fys = [...new Set(months.map(m => getFiscalYear(m+'-01')).filter(Boolean))].sort().reverse();
+    fyEl.innerHTML = '<option value="">ทั้งหมด</option>' + fys.map(fy=>`<option value="${fy}">ปีงบ ${fy}</option>`).join('');
+    if (prev && fys.includes(parseInt(prev))) fyEl.value = prev;
+  }
+
+  const selFY = fyEl ? parseInt(fyEl.value) : NaN;
+  const filteredMonths = (isNaN(selFY) || !selFY) ? months : months.filter(m => getFiscalYear(m+'-01') === selFY);
+
+  ['er-dash-month','filter-month'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
+    if (prev && filteredMonths.includes(prev)) el.value = prev;
+  });
 }
 
 function populateHosXPMonthFilter(dept) {
