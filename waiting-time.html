@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระยะเวลารอคอยยา — รพ.ถ้ำพรรณรา</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --primary: #1A5E38;
+  --primary-dark: #124228;
+  --primary-mid: #237A4A;
+  --primary-light: #EAF4EE;
+  --gold: #C49A22;
+  --gold-light: #FBF3DC;
+  --success: #16a34a;
+  --danger: #b91c1c;
+  --warning: #b45309;
+  --bg: #F4F7F5;
+  --surface: #ffffff;
+  --border: #D6E4DA;
+  --text: #1C2B22;
+  --text-mid: #3D5A47;
+  --text-light: #7A9A85;
+  font-family: 'Noto Sans Thai', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); flex-shrink: 0; position: sticky; top: 0; z-index: 100;
+}
+.topbar-home {
+  display: flex; align-items: center; gap: 6px; text-decoration: none;
+  background: var(--primary); color: #fff;
+  padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;
+  transition: background .2s;
+}
+.topbar-home:hover { background: var(--primary-dark); }
+.topbar-title { font-size: 17px; font-weight: 700; color: var(--primary-dark); flex: 1; }
+.topbar-badge { background: var(--gold); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 20px; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 0; background: var(--surface);
+  border-bottom: 2px solid var(--border); padding: 0 24px;
+}
+.tab-btn {
+  padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer;
+  border: none; background: none; color: var(--text-mid);
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .18s; font-family: inherit;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-btn:hover:not(.active) { color: var(--primary); }
+
+/* ── LAYOUT ── */
+.page-wrap { display: flex; flex: 1; gap: 0; }
+.sidebar-form {
+  width: 320px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); padding: 20px;
+  overflow-y: auto; max-height: calc(100vh - 56px - 48px);
+  position: sticky; top: 104px;
+}
+.main-content { flex: 1; padding: 20px; overflow-y: auto; }
+
+/* ── FORM ── */
+.form-title { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 14px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-mid); margin-bottom: 4px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 8px 10px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 14px; font-family: inherit;
+  background: var(--bg); color: var(--text); outline: none; transition: border .15s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); background: #fff; }
+.calc-display {
+  background: var(--primary-light); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; text-align: center;
+  font-size: 20px; font-weight: 800; color: var(--primary);
+}
+.calc-display.over { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
+.calc-label { font-size: 11px; color: var(--text-mid); margin-top: 2px; }
+.btn-submit {
+  width: 100%; padding: 10px; background: var(--primary); color: #fff;
+  border: none; border-radius: 9px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit; margin-top: 4px; transition: background .2s;
+}
+.btn-submit:hover { background: var(--primary-dark); }
+.btn-clear {
+  width: 100%; padding: 7px; background: none; color: var(--text-mid);
+  border: 1.5px solid var(--border); border-radius: 9px; font-size: 13px;
+  font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 6px; transition: all .2s;
+}
+.btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── KPI GRID ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.kpi-card {
+  background: var(--surface); border-radius: 12px; padding: 16px 18px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+}
+.kpi-label { font-size: 12px; color: var(--text-mid); font-weight: 600; margin-bottom: 4px; }
+.kpi-val { font-size: 28px; font-weight: 800; color: var(--primary); line-height: 1.1; }
+.kpi-val.gold { color: var(--gold); }
+.kpi-val.danger { color: var(--danger); }
+.kpi-val.success { color: var(--success); }
+.kpi-sub { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+/* ── GAUGE ── */
+.gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gauge-bar { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+.gauge-fill { height: 100%; border-radius: 4px; background: var(--success); transition: width .5s; }
+.gauge-fill.warn { background: var(--warning); }
+.gauge-fill.bad { background: var(--danger); }
+
+/* ── CHART GRID ── */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-card {
+  background: var(--surface); border-radius: 12px; padding: 18px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+}
+.chart-card.wide { grid-column: span 2; }
+.chart-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 14px; }
+.chart-wrap { position: relative; height: 200px; }
+.chart-wrap.tall { height: 260px; }
+
+/* ── TABLE ── */
+.table-card {
+  background: var(--surface); border-radius: 12px; padding: 18px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.table-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); }
+.filter-row { display: flex; gap: 8px; }
+.filter-row select, .filter-row input {
+  padding: 5px 9px; border: 1.5px solid var(--border); border-radius: 7px;
+  font-size: 13px; font-family: inherit; background: var(--bg); outline: none;
+}
+.filter-row select:focus, .filter-row input:focus { border-color: var(--primary); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; padding: 9px 10px; text-align: left; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+}
+.badge-ok { background: #d1fae5; color: #065f46; }
+.badge-over { background: #fee2e2; color: #991b1b; }
+.btn-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 16px; padding: 2px 6px; border-radius: 5px; }
+.btn-del:hover { background: #fee2e2; }
+
+/* ── MONTH FILTER ── */
+.month-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.month-btn {
+  padding: 5px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+  font-size: 13px; font-weight: 600; cursor: pointer; background: var(--surface);
+  color: var(--text-mid); font-family: inherit; transition: all .15s;
+}
+.month-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── EMPTY ── */
+.empty-state { text-align: center; padding: 40px; color: var(--text-light); }
+.empty-icon { font-size: 36px; margin-bottom: 8px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #1e293b; color: #fff; padding: 10px 18px;
+  border-radius: 10px; font-size: 14px; font-weight: 600;
+  z-index: 9999; opacity: 0; transition: opacity .3s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+#toast.show { opacity: 1; }
+
+/* ── SYNC BADGE ── */
+#sync-badge {
+  font-size: 12px; font-weight: 600; padding: 4px 12px;
+  border-radius: 20px; background: #fef9c3; color: #78350f;
+  transition: opacity .4s;
+}
+
+@media (max-width: 900px) {
+  .page-wrap { flex-direction: column; }
+  .sidebar-form { width: 100%; position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-card.wide { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="https://oatsudster.github.io/pharmacy-tph/" class="topbar-home">🏠 หน้าหลัก</a>
+  <div class="topbar-title" id="topbar-title">ระยะเวลารอคอยยา Stat Dose</div>
+  <div id="sync-badge">☁️ ...</div>
+  <div class="topbar-badge">ปีงบประมาณ <span id="badge-year">2569</span></div>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-stat" onclick="switchTab('stat')">💊 Stat Dose</button>
+  <button class="tab-btn" id="tab-cart" onclick="switchTab('cart')">🛒 รถยา IPD</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="page-wrap">
+
+  <!-- ══════════════ STAT DOSE SIDEBAR ══════════════ -->
+  <div class="sidebar-form" id="form-stat">
+    <div class="form-title">➕ บันทึก Stat Dose</div>
+
+    <div class="form-group">
+      <label>วันที่</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+      <button type="button" onclick="document.getElementById('s-date').value=todayTH()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>เวลารับ Copy Order</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="s-time-in" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcStat()" style="flex:1">
+      <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('s-time-in');calcStat()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>เวลาจ่ายยา</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="s-time-out" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcStat()" style="flex:1">
+      <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('s-time-out');calcStat()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>AN ผู้ป่วย</label>
+      <input type="text" id="s-an" placeholder="เช่น 6612345">
+    </div>
+    <div class="form-group">
+      <label>ชื่อยา (สูงสุด 3 รายการ)</label>
+      <input type="text" id="s-drug-1" placeholder="ยาที่ 1" list="drug-list" autocomplete="off" style="margin-bottom:5px">
+      <input type="text" id="s-drug-2" placeholder="ยาที่ 2 (ถ้ามี)" list="drug-list" autocomplete="off" style="margin-bottom:5px">
+      <input type="text" id="s-drug-3" placeholder="ยาที่ 3 (ถ้ามี)" list="drug-list" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>ระยะเวลารอคอย</label>
+      <div class="calc-display" id="s-calc">— นาที</div>
+      <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 10 นาที</div>
+    </div>
+
+    <button class="btn-submit" onclick="submitStat()">✅ บันทึก</button>
+    <button class="btn-clear" onclick="clearStat()">ล้างฟอร์ม</button>
+  </div>
+
+  <!-- ══════════════ CART SIDEBAR ══════════════ -->
+  <div class="sidebar-form" id="form-cart" style="display:none">
+    <div class="form-title">➕ บันทึกรถยา IPD</div>
+
+    <div class="form-group">
+      <label>วันที่</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="c-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+      <button type="button" onclick="document.getElementById('c-date').value=todayTH()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>เวลาส่งรถยา (เริ่มจัด)</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="c-time-sent" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcCart()" style="flex:1">
+      <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('c-time-sent');calcCart()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>เวลาโทรให้มารับรถยา</label>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="text" id="c-time-called" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcCart()" style="flex:1">
+      <span style="color:var(--text-mid);font-weight:600;white-space:nowrap">น.</span>
+      <button type="button" onclick="stampNow('c-time-called');calcCart()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
+    </div>
+    </div>
+    <div class="form-group">
+      <label>ระยะเวลารอคอย</label>
+      <div class="calc-display" id="c-calc">— นาที</div>
+      <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 60 นาที</div>
+    </div>
+
+    <button class="btn-submit" onclick="submitCart()">✅ บันทึก</button>
+    <button class="btn-clear" onclick="clearCart()">ล้างฟอร์ม</button>
+  </div>
+
+  <!-- ══════════════ MAIN CONTENT ══════════════ -->
+  <div class="main-content">
+
+    <!-- Month filter -->
+    <div class="month-filter" id="month-filter"></div>
+
+    <!-- ── STAT KPI ── -->
+    <div id="stat-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">รายการ Stat ทั้งหมด</div>
+          <div class="kpi-val" id="s-kpi-total">—</div>
+          <div class="kpi-sub" id="s-kpi-month-sub">เดือนที่เลือก</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ค่าเฉลี่ยรอคอย</div>
+          <div class="kpi-val gold" id="s-kpi-avg">—</div>
+          <div class="kpi-sub">นาที (เกณฑ์ ≤ 10)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ผ่านเกณฑ์ (≤10 นาที)</div>
+          <div class="kpi-val success" id="s-kpi-pass">—</div>
+          <div class="gauge-wrap" style="margin-top:6px">
+            <div class="gauge-bar"><div class="gauge-fill" id="s-gauge"></div></div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">นานที่สุด</div>
+          <div class="kpi-val danger" id="s-kpi-max">—</div>
+          <div class="kpi-sub" id="s-kpi-max-drug">—</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">📈 ค่าเฉลี่ยรายเดือน (นาที)</div>
+          <div class="chart-wrap"><canvas id="s-chart-monthly"></canvas></div>
+        </div>
+
+        <div class="chart-card wide">
+          <div class="chart-title">💊 ยาที่ใช้เวลานานที่สุด (Top 10)</div>
+          <div class="chart-wrap tall"><canvas id="s-chart-drug"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">📋 รายการ Stat Dose</div>
+          <div class="filter-row">
+            <input type="text" id="s-search" placeholder="🔍 ค้นหายา / AN / ward" oninput="renderStatTable()" style="width:200px">
+          </div>
+        </div>
+        <div id="s-table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- ── CART DASHBOARD ── -->
+    <div id="cart-dashboard" style="display:none">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">รายการรถยาทั้งหมด</div>
+          <div class="kpi-val" id="c-kpi-total">—</div>
+          <div class="kpi-sub" id="c-kpi-month-sub">เดือนที่เลือก</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ค่าเฉลี่ยรอคอย</div>
+          <div class="kpi-val gold" id="c-kpi-avg">—</div>
+          <div class="kpi-sub">นาที (เกณฑ์ ≤ 60)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">ผ่านเกณฑ์ (≤60 นาที)</div>
+          <div class="kpi-val success" id="c-kpi-pass">—</div>
+          <div class="gauge-wrap" style="margin-top:6px">
+            <div class="gauge-bar"><div class="gauge-fill" id="c-gauge"></div></div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">นานที่สุด</div>
+          <div class="kpi-val danger" id="c-kpi-max">—</div>
+          <div class="kpi-sub" id="c-kpi-max-ward">—</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">📈 ค่าเฉลี่ยรายเดือน (นาที)</div>
+          <div class="chart-wrap"><canvas id="c-chart-monthly"></canvas></div>
+        </div>
+
+      </div>
+
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">📋 รายการรถยา IPD</div>
+          <div class="filter-row">
+            <input type="text" id="c-search" placeholder="🔍 ค้นหา ward" oninput="renderCartTable()" style="width:180px">
+          </div>
+        </div>
+        <div id="c-table-wrap"></div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /page-wrap -->
+
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+let statRecords = JSON.parse(localStorage.getItem('wt_stat') || '[]');
+let cartRecords = JSON.parse(localStorage.getItem('wt_cart') || '[]');
+let activeTab = 'stat';
+let activeMonth = 'all';
+const STAT_LIMIT = 15;
+const CART_LIMIT = 120;
+
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+let chartInstances = {};
+
+// ── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('s-date').value = todayTH();
+  document.getElementById('c-date').value = todayTH();
+  document.getElementById('badge-year').textContent = new Date().getFullYear() + 543;
+  buildMonthFilter();
+  renderAll();
+});
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('form-stat').style.display   = tab === 'stat' ? '' : 'none';
+  document.getElementById('form-cart').style.display   = tab === 'cart' ? '' : 'none';
+  document.getElementById('stat-dashboard').style.display = tab === 'stat' ? '' : 'none';
+  document.getElementById('cart-dashboard').style.display = tab === 'cart' ? '' : 'none';
+  document.getElementById('tab-stat').classList.toggle('active', tab === 'stat');
+  document.getElementById('tab-cart').classList.toggle('active', tab === 'cart');
+  document.getElementById('topbar-title').textContent =
+    tab === 'stat' ? 'ระยะเวลารอคอยยา Stat Dose' : 'ระยะเวลารอคอยรถยา IPD';
+  buildMonthFilter();
+  renderAll();
+}
+
+// ── MONTH FILTER ─────────────────────────────────────────
+function buildMonthFilter() {
+  const recs = activeTab === 'stat' ? statRecords : cartRecords;
+  const months = [...new Set(recs.map(r => r.date ? r.date.slice(0,7) : ''))].filter(Boolean).sort().reverse();
+  const el = document.getElementById('month-filter');
+  el.innerHTML = `<button class="month-btn ${activeMonth==='all'?'active':''}" onclick="setMonth('all')">ทั้งหมด</button>`;
+  months.forEach(m => {
+    const [y,mo] = m.split('-');
+    const label = THAI_MONTHS[parseInt(mo)-1] + ' ' + (parseInt(y)+543);
+    el.innerHTML += `<button class="month-btn ${activeMonth===m?'active':''}" onclick="setMonth('${m}')">${label}</button>`;
+  });
+}
+function setMonth(m) {
+  activeMonth = m;
+  buildMonthFilter();
+  renderAll();
+}
+function filterByMonth(recs) {
+  if (activeMonth === 'all') return recs;
+  return recs.filter(r => r.date && r.date.startsWith(activeMonth));
+}
+
+
+// ── Thai Date Helpers (พ.ศ. DD/MM/YY) ────────
+function todayTH() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thToISO(s) {
+  if (!s || !s.includes('/')) return s||'';
+  const [dd,mm,yy] = s.trim().split('/');
+  if (!dd||!mm||!yy) return '';
+  const ce = (yy.length<=2 ? 2500+parseInt(yy) : parseInt(yy)) - 543;
+  return `${ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function autoDateTH(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+// ─────────────────────────────────────────────
+// ── TIME CALC ────────────────────────────────────────────
+function stampNow(id) {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById(id).value = h + ':' + m;
+}
+function autoTime(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 4);
+  if (v.length >= 3) v = v.slice(0,2) + ':' + v.slice(2);
+  el.value = v;
+}
+function timeDiff(t1, t2) {
+  if (!t1 || !t2) return null;
+  const [h1,m1] = t1.split(':').map(Number);
+  const [h2,m2] = t2.split(':').map(Number);
+  let diff = (h2*60+m2) - (h1*60+m1);
+  if (diff < 0) diff += 1440;
+  return diff;
+}
+function calcStat() {
+  const diff = timeDiff(
+    document.getElementById('s-time-in').value,
+    document.getElementById('s-time-out').value
+  );
+  const el = document.getElementById('s-calc');
+  if (diff === null) { el.textContent = '— นาที'; el.className = 'calc-display'; return; }
+  el.textContent = diff + ' นาที';
+  el.className = 'calc-display' + (diff > STAT_LIMIT ? ' over' : '');
+}
+function calcCart() {
+  const diff = timeDiff(
+    document.getElementById('c-time-sent').value,
+    document.getElementById('c-time-called').value
+  );
+  const el = document.getElementById('c-calc');
+  if (diff === null) { el.textContent = '— นาที'; el.className = 'calc-display'; return; }
+  el.textContent = diff + ' นาที';
+  el.className = 'calc-display' + (diff > CART_LIMIT ? ' over' : '');
+}
+
+// ── SUBMIT STAT ──────────────────────────────────────────
+function submitStat() {
+  const date   = thToISO(document.getElementById('s-date').value);
+  const tIn    = document.getElementById('s-time-in').value;
+  const tOut   = document.getElementById('s-time-out').value;
+  const an     = document.getElementById('s-an').value.trim();
+  const drug   = [1,2,3].map(n=>document.getElementById('s-drug-'+n).value.trim()).filter(Boolean).join(', ');
+  if (!date || !tIn || !tOut) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
+  const mins = timeDiff(tIn, tOut);
+  if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const rec = { id: 'stat_'+Date.now(), date, timeIn: tIn, timeOut: tOut, an, drug, mins };
+  statRecords.push(rec);
+  saveStatLocal();
+  fbSaveStat();
+  buildMonthFilter();
+  renderAll();
+  showToast('✅ บันทึกแล้ว — ' + mins + ' นาที' + (mins <= STAT_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+}
+
+// ── SUBMIT CART ──────────────────────────────────────────
+function submitCart() {
+  const date    = thToISO(document.getElementById('c-date').value);
+  const tSent   = document.getElementById('c-time-sent').value;
+  const tCalled = document.getElementById('c-time-called').value;
+  if (!date || !tSent || !tCalled) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
+  const mins = timeDiff(tSent, tCalled);
+  if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const rec = { id: 'cart_'+Date.now(), date, timeSent: tSent, timeCalled: tCalled, mins };
+  cartRecords.push(rec);
+  saveCartLocal();
+  fbSaveCart();
+  buildMonthFilter();
+  renderAll();
+  showToast('✅ บันทึกแล้ว — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+}
+
+// ── DELETE ───────────────────────────────────────────────
+function deleteStat(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  statRecords = statRecords.filter(r => r.id !== id);
+  saveStatLocal(); fbSaveStat(); buildMonthFilter(); renderAll();
+}
+function deleteCart(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  cartRecords = cartRecords.filter(r => r.id !== id);
+  saveCartLocal(); fbSaveCart(); buildMonthFilter(); renderAll();
+}
+
+// ── CLEAR ────────────────────────────────────────────────
+function clearStat() {
+  document.getElementById('s-date').value = todayTH();
+  document.getElementById('s-time-in').value = '';
+  document.getElementById('s-time-out').value = '';
+  document.getElementById('s-an').value = '';
+  [1,2,3].forEach(n=>{ document.getElementById('s-drug-'+n).value=''; });
+  document.getElementById('s-calc').textContent = '— นาที';
+  document.getElementById('s-calc').className = 'calc-display';
+}
+function clearCart() {
+  document.getElementById('c-date').value = todayTH();
+  document.getElementById('c-time-sent').value = '';
+  document.getElementById('c-time-called').value = '';
+  document.getElementById('c-calc').textContent = '— นาที';
+  document.getElementById('c-calc').className = 'calc-display';
+}
+
+// ── LOCAL SAVE ───────────────────────────────────────────
+function saveStatLocal() { localStorage.setItem('wt_stat', JSON.stringify(statRecords)); }
+function saveCartLocal() { localStorage.setItem('wt_cart', JSON.stringify(cartRecords)); }
+
+// ── RENDER ALL ───────────────────────────────────────────
+function renderAll() {
+  if (activeTab === 'stat') { renderStatKPI(); renderStatCharts(); renderStatTable(); }
+  else { renderCartKPI(); renderCartCharts(); renderCartTable(); }
+}
+
+// ── STAT KPI ─────────────────────────────────────────────
+function renderStatKPI() {
+  const recs = filterByMonth(statRecords);
+  const g = id => document.getElementById(id);
+  if (!recs.length) {
+    ['s-kpi-total','s-kpi-avg','s-kpi-pass','s-kpi-max'].forEach(id => g(id).textContent = '—');
+    g('s-kpi-max-drug').textContent = '—';
+    g('s-gauge').style.width = '0%'; g('s-gauge').className = 'gauge-fill';
+    return;
+  }
+  const total = recs.length;
+  const avg   = Math.round(recs.reduce((s,r)=>s+r.mins,0)/total*10)/10;
+  const pass  = recs.filter(r=>r.mins<=STAT_LIMIT).length;
+  const pct   = Math.round(pass/total*100);
+  const max   = Math.max(...recs.map(r=>r.mins));
+  const maxRec = recs.find(r=>r.mins===max);
+  const sub   = activeMonth === 'all' ? 'รายการทั้งหมด' : labelMonth(activeMonth);
+
+  g('s-kpi-total').textContent = total;
+  g('s-kpi-month-sub').textContent = sub;
+  g('s-kpi-avg').textContent = avg + ' นาที';
+  g('s-kpi-avg').className = 'kpi-val ' + (avg > STAT_LIMIT ? 'danger' : 'gold');
+  g('s-kpi-pass').textContent = pct + '%';
+  g('s-kpi-max').textContent = max + ' นาที';
+  g('s-kpi-max-drug').textContent = maxRec ? (maxRec.drug || maxRec.ward || '—') : '—';
+
+  const gauge = g('s-gauge');
+  gauge.style.width = pct + '%';
+  gauge.className = 'gauge-fill' + (pct >= 80 ? '' : pct >= 60 ? ' warn' : ' bad');
+}
+
+// ── CART KPI ─────────────────────────────────────────────
+function renderCartKPI() {
+  const recs = filterByMonth(cartRecords);
+  const g = id => document.getElementById(id);
+  if (!recs.length) {
+    ['c-kpi-total','c-kpi-avg','c-kpi-pass','c-kpi-max'].forEach(id => g(id).textContent = '—');
+    g('c-kpi-max-ward').textContent = '—';
+    g('c-gauge').style.width = '0%'; g('c-gauge').className = 'gauge-fill';
+    return;
+  }
+  const total = recs.length;
+  const avg   = Math.round(recs.reduce((s,r)=>s+r.mins,0)/total*10)/10;
+  const pass  = recs.filter(r=>r.mins<=CART_LIMIT).length;
+  const pct   = Math.round(pass/total*100);
+  const max   = Math.max(...recs.map(r=>r.mins));
+  const maxRec = recs.find(r=>r.mins===max);
+  const sub   = activeMonth === 'all' ? 'รายการทั้งหมด' : labelMonth(activeMonth);
+
+  g('c-kpi-total').textContent = total;
+  g('c-kpi-month-sub').textContent = sub;
+  g('c-kpi-avg').textContent = avg + ' นาที';
+  g('c-kpi-avg').className = 'kpi-val ' + (avg > CART_LIMIT ? 'danger' : 'gold');
+  g('c-kpi-pass').textContent = pct + '%';
+  g('c-kpi-max').textContent = max + ' นาที';
+  g('c-kpi-max-ward').textContent = maxRec ? (maxRec.ward || '—') : '—';
+
+  const gauge = g('c-gauge');
+  gauge.style.width = pct + '%';
+  gauge.className = 'gauge-fill' + (pct >= 80 ? '' : pct >= 60 ? ' warn' : ' bad');
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+function renderStatCharts() {
+  // Monthly avg
+  const monthly = groupByMonth(statRecords);
+  destroyChart('s-monthly');
+  chartInstances['s-monthly'] = new Chart(document.getElementById('s-chart-monthly'), {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => labelMonth(m.key)),
+      datasets: [{
+        label: 'ค่าเฉลี่ย (นาที)',
+        data: monthly.map(m => m.avg),
+        backgroundColor: monthly.map(m => m.avg <= STAT_LIMIT ? '#16a34a' : '#ef4444'),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#e5e7eb' },
+          ticks: { font: { family: 'Noto Sans Thai' } } },
+        x: { ticks: { font: { family: 'Noto Sans Thai' } } }
+      }
+    }
+  });
+
+
+  // Drug avg (top 10)
+  const drugData = groupByField(statRecords, 'drug', 10);
+  destroyChart('s-drug');
+  chartInstances['s-drug'] = new Chart(document.getElementById('s-chart-drug'), {
+    type: 'bar',
+    data: {
+      labels: drugData.map(d => d.key || 'ไม่ระบุ'),
+      datasets: [{
+        label: 'ค่าเฉลี่ย (นาที)',
+        data: drugData.map(d => d.avg),
+        backgroundColor: drugData.map(d => d.avg <= STAT_LIMIT ? '#1A5E38' : '#ef4444'),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { font: { family: 'Noto Sans Thai' } } },
+        y: { ticks: { font: { family: 'Noto Sans Thai', size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderCartCharts() {
+  const monthly = groupByMonth(cartRecords);
+  destroyChart('c-monthly');
+  chartInstances['c-monthly'] = new Chart(document.getElementById('c-chart-monthly'), {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => labelMonth(m.key)),
+      datasets: [{
+        label: 'ค่าเฉลี่ย (นาที)',
+        data: monthly.map(m => m.avg),
+        backgroundColor: monthly.map(m => m.avg <= CART_LIMIT ? '#16a34a' : '#ef4444'),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { family: 'Noto Sans Thai' } } },
+        x: { ticks: { font: { family: 'Noto Sans Thai' } } }
+      }
+    }
+  });
+
+}
+
+// ── TABLES ───────────────────────────────────────────────
+function renderStatTable() {
+  const q = (document.getElementById('s-search').value||'').toLowerCase();
+  let recs = filterByMonth(statRecords).slice().reverse();
+  if (q) recs = recs.filter(r =>
+    (r.drug||'').toLowerCase().includes(q) ||
+    (r.an||'').toLowerCase().includes(q) ||
+    (r.ward||'').toLowerCase().includes(q)
+  );
+  const wrap = document.getElementById('s-table-wrap');
+  if (!recs.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>ยังไม่มีรายการ</div></div>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>วันที่</th><th>รับ Copy</th><th>จ่ายยา</th>
+      <th>AN</th><th>ชื่อยา</th>
+      <th>นาที</th><th>ผล</th><th></th>
+    </tr></thead>
+    <tbody>${recs.map(r => `<tr>
+      <td>${formatDate(r.date)}</td>
+      <td>${r.timeIn ? r.timeIn+' น.' : '—'}</td>
+      <td>${r.timeOut ? r.timeOut+' น.' : '—'}</td>
+      <td>${r.an||'—'}</td>
+      <td>${r.drug||'—'}</td>
+      <td style="font-weight:700;color:${r.mins<=STAT_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
+      <td><span class="badge ${r.mins<=STAT_LIMIT?'badge-ok':'badge-over'}">${r.mins<=STAT_LIMIT?'ผ่าน':'เกิน'}</span></td>
+      <td><button class="btn-del" onclick="deleteStat('${r.id}')">🗑</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderCartTable() {
+  const q = (document.getElementById('c-search').value||'').toLowerCase();
+  let recs = filterByMonth(cartRecords).slice().reverse();
+  if (q) recs = recs.filter(r => (r.ward||'').toLowerCase().includes(q));
+  const wrap = document.getElementById('c-table-wrap');
+  if (!recs.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><div>ยังไม่มีรายการ</div></div>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>วันที่</th><th>เวลาส่งรถยา</th><th>เวลาโทรรับ</th>
+      <th>นาที</th><th>ผล</th><th></th>
+    </tr></thead>
+    <tbody>${recs.map(r => `<tr>
+      <td>${formatDate(r.date)}</td>
+      <td>${r.timeSent ? r.timeSent+' น.' : '—'}</td>
+      <td>${r.timeCalled ? r.timeCalled+' น.' : '—'}</td>
+      <td style="font-weight:700;color:${r.mins<=CART_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
+      <td><span class="badge ${r.mins<=CART_LIMIT?'badge-ok':'badge-over'}">${r.mins<=CART_LIMIT?'ผ่าน':'เกิน'}</span></td>
+      <td><button class="btn-del" onclick="deleteCart('${r.id}')">🗑</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function groupByMonth(recs) {
+  const map = {};
+  recs.forEach(r => {
+    if (!r.date) return;
+    const k = r.date.slice(0,7);
+    if (!map[k]) map[k] = [];
+    map[k].push(r.mins);
+  });
+  return Object.keys(map).sort().map(k => ({
+    key: k,
+    avg: Math.round(map[k].reduce((s,v)=>s+v,0)/map[k].length * 10)/10
+  }));
+}
+
+function groupByField(recs, field, limit = 999) {
+  const map = {};
+  recs.forEach(r => {
+    // Support comma-separated drug names (up to 3 per record)
+    const keys = (r[field] || '').split(',').map(s=>s.trim()).filter(Boolean);
+    (keys.length ? keys : ['']).forEach(k => {
+      if (!map[k]) map[k] = [];
+      map[k].push(r.mins);
+    });
+  });
+  return Object.keys(map)
+    .map(k => ({ key: k, avg: Math.round(map[k].reduce((s,v)=>s+v,0)/map[k].length*10)/10, count: map[k].length }))
+    .sort((a,b) => b.avg - a.avg)
+    .slice(0, limit);
+}
+
+function labelMonth(ym) {
+  const [y,m] = ym.split('-');
+  return THAI_MONTHS[parseInt(m)-1] + ' ' + (parseInt(y)+543);
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return parseInt(day) + ' ' + THAI_MONTHS[parseInt(m)-1] + ' ' + (parseInt(y)+543);
+}
+
+// ── TOAST ────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── FIREBASE ─────────────────────────────────────────────
+(function() {
+  const config = {
+    apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+    authDomain: "pharmacy-tph.firebaseapp.com",
+    projectId: "pharmacy-tph",
+    storageBucket: "pharmacy-tph.firebasestorage.app",
+    messagingSenderId: "617328257113",
+    appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+  };
+  let db;
+  const COL = 'pharmacy_tph';
+  const badge = document.getElementById('sync-badge');
+  function setSyncBadge(txt, ok) {
+    badge.textContent = txt;
+    badge.style.background = ok === true ? '#d1fae5' : ok === false ? '#fee2e2' : '#fef9c3';
+    badge.style.color = ok === true ? '#065f46' : ok === false ? '#991b1b' : '#78350f';
+    if (ok === true) setTimeout(() => badge.style.opacity = '0.5', 3000);
+    else badge.style.opacity = '1';
+  }
+
+  window.fbSaveStat = async function() {
+    if (!db) return;
+    try { await db.collection(COL).doc('wt_stat').set({ records: statRecords, updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveStat:', e.message); }
+  };
+  window.fbSaveCart = async function() {
+    if (!db) return;
+    try { await db.collection(COL).doc('wt_cart').set({ records: cartRecords, updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveCart:', e.message); }
+  };
+
+  async function fbLoadAll() {
+    setSyncBadge('🔄 กำลังโหลด...', null);
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(config);
+      db = firebase.firestore();
+      let changed = false;
+
+      const statSnap = await db.collection(COL).doc('wt_stat').get();
+      if (statSnap.exists) {
+        const fbStat = statSnap.data().records || [];
+        if (fbStat.length > statRecords.length) {
+          statRecords = fbStat; saveStatLocal(); changed = true;
+        }
+      } else if (statRecords.length) { window.fbSaveStat(); }
+
+      const cartSnap = await db.collection(COL).doc('wt_cart').get();
+      if (cartSnap.exists) {
+        const fbCart = cartSnap.data().records || [];
+        if (fbCart.length > cartRecords.length) {
+          cartRecords = fbCart; saveCartLocal(); changed = true;
+        }
+      } else if (cartRecords.length) { window.fbSaveCart(); }
+
+      setSyncBadge('☁️ ซิงค์แล้ว', true);
+      if (changed) { buildMonthFilter(); renderAll(); }
+    } catch(e) {
+      console.warn('fbLoadAll:', e.message);
+      setSyncBadge('⚠️ ออฟไลน์', false);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fbLoadAll);
+  } else { fbLoadAll(); }
+})();
+</script>
+<datalist id="drug-list">
+  <option value="(0.5) HALOPERIDOL">
+  <option value="(Sol.) (100 ml) UNISON ENEMA">
+  <option value="(Cap.) (100) PHENYTOIN(dilantin) promt">
+  <option value="(Tab.) (2) Benzhexol">
+  <option value="(Tab.) (2) DIAZEPAM(valium)">
+  <option value="(Tab.) (2) HALOPERIDOL">
+  <option value="(Tab.) (200) Acyclovir">
+  <option value="(Cap.) (30) oseltamivir">
+  <option value="(Tab.) (325) paracetamol">
+  <option value="(Cap.) (45) oseltamivir">
+  <option value="(Tab.) (5) Benzhexol">
+  <option value="(Tab.) (5) DIAZEPAM(valium)">
+  <option value="(Tab.) (5) HALOPERIDOL">
+  <option value="(Tab.) (50) Phenytoin(Dilantin)">
+  <option value="(Tab.) (500) PARACETAMOL">
+  <option value="(Cap.) (75) oseltamivir">
+  <option value="(Tab.) (800) ACYCLOVIR">
+  <option value="(Inj.) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg">
+  <option value="(Inj.) (ยาใช้เฉพาะราย) Penicillin G Sodium">
+  <option value="(Inj.) 10%D/N/2">
+  <option value="(Inj.) 3%Sodium Chloride(NaCl)">
+  <option value="(Tab.) [ 81] aspirin(asa)">
+  <option value="(Powder) [125] amoxycillin SYR">
+  <option value="(Tab.) [20] ENALAPRIL">
+  <option value="(Susp.) [250] Amoxy dry SYRUP">
+  <option value="(Cap.) [250] AmoxyCillin">
+  <option value="(Cap.) [250] diCloxacillin  cap">
+  <option value="(Tab.) [300] ASPIRIN(ASA/aspent)">
+  <option value="(Cap.) [500] AMOXICILLIN">
+  <option value="(Cap.) [500] DICLOXACILLIN CAP">
+  <option value="(Tab.) [5] eNAlapril">
+  <option value="(IV) ACETATE RINGER">
+  <option value="(Powder) ACTIVATED CHARCOAL">
+  <option value="(Inj.) Adenosine (adenocor)">
+  <option value="(Inj.) ADRENALINE">
+  <option value="(Susp.) Albendazole (FALBEN)susp">
+  <option value="(Tab.) ALBENDAZOLE(zentel)">
+  <option value="(Sol.) ALCOHOL">
+  <option value="(Sol.) ALCOHOL  60 ml">
+  <option value="(Tab.) ALLOPURINOL(zyloric)">
+  <option value="(Inj.) AMIODARONE(Cordarone) (NL)">
+  <option value="(Tab.) amitriptyline(A10/tripta)">
+  <option value="(Tab.) Amlodipine">
+  <option value="(Sol.) AMMONIUM CARBONATE">
+  <option value="(Powder) AMPICILLIN   1 g">
+  <option value="(Susp.) ANTACID SUSP(alum milk)">
+  <option value="(Inj.) ANTIVENUM SERA,(งูเห่า)">
+  <option value="(Powder) ANTIVENUM SERUM (กะปะ)">
+  <option value="(Inj.) aP Acellular Pertussis (ไอกรน)">
+  <option value="(Tab.) Atarax(hydroxyzine)">
+  <option value="(Tab.) ATENOLOL">
+  <option value="(Inj.) ATROPINE">
+  <option value="(Tab.) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg)">
+  <option value="(Susp.) Augmentin Susp">
+  <option value="(Inj.) BCG(bacillus calmette-gue rin)">
+  <option value="(Inj.) BENZATHINE PENICILLIN">
+  <option value="(Lotion) BENZYL BENZOATE">
+  <option value="(Sol.) BERODUAL">
+  <option value="(Sol.) BERODUAL">
+  <option value="(Powder) BERODUAL ( MDI ) inhaler">
+  <option value="(Sol.) BETADINE (IODINE)">
+  <option value="(Sol.) BETADINE (IODINE)">
+  <option value="(Cream) BETAMETHASONE(5g)">
+  <option value="(Elixir) Bromhexine elixir">
+  <option value="BUDESONIDE  (MDI)">
+  <option value="(Inj.) Buscopan inj (HYOSCINE  INJ)">
+  <option value="(Tab.) CAFERGOT (NL)">
+  <option value="(Susp.) CALAMINE">
+  <option value="(Tab.) calcium carbonate(CaCO3)">
+  <option value="(Inj.) CALCIUM GLUCONATE">
+  <option value="(Tab.) CAPTOPRIL  25 mg">
+  <option value="(Tab.) CARBAMAZEPINE(tegretol)">
+  <option value="Carbocisteine">
+  <option value="(Powder) CeFaZOLIN injection">
+  <option value="(Powder) CefTaZidime injection">
+  <option value="(Inj.) CefTRIAXone 1 g injection (CEF-3)">
+  <option value="(Tab.) CETIRIZINE (Alerest)">
+  <option value="(Ear Drop) CHLORAMPHENICOL EAR DROP">
+  <option value="(Sol.) Chlorhexidine mouth wash">
+  <option value="(Tab.) CHLORPROMAZINE(CPZ)">
+  <option value="(Oint.) CHLORTETRACYCLINE">
+  <option value="(Tab.) Ciprofloxacin">
+  <option value="(Cap.) CLINDAMYCIIN">
+  <option value="(Inj.) clindamycin  600 mg/vial.">
+  <option value="(Tab.) CLONAZEPAM(rivotril)">
+  <option value="(Tab.) Clopidogrel (Plavix)">
+  <option value="(Vag.Tab.) CLOTRIMAZOLE VAG TAB(canesten)">
+  <option value="(Cream) CLOTRIMAZOLE(canesten)">
+  <option value="(Inj.) CLOXACILLIN INJ  1  g">
+  <option value="(Tab.) COLCHICINE">
+  <option value="(Tab.) COTRIMOXAZOLE(bactrim)">
+  <option value="(Susp.) COTRIMOXAZOLE(bactrim)">
+  <option value="(Inj.) Covid Vaccine(SARS-CoV-2)">
+  <option value="(Syr.) CPM">
+  <option value="(Tab.) CPM   tab.">
+  <option value="(Inj.) CPM(piriton)">
+  <option value="(Tab.) CYPROHEPTADINE(periactin)">
+  <option value="(Tab.) Cytotec">
+  <option value="(IV) D-5-S">
+  <option value="(IV) D-5-S/2">
+  <option value="(IV) D-5-S/3">
+  <option value="(IV) D-5-S/4">
+  <option value="(Inj.) D-5-S/5">
+  <option value="(IV) D-5-W">
+  <option value="(IV) D-5-W">
+  <option value="(Inj.) D-5-W">
+  <option value="(IV) D-5-W">
+  <option value="(Inj.) D-W-10">
+  <option value="(Tab.) Depakin (sodium valproate)">
+  <option value="(Inj.) DEXAMETHASONE">
+  <option value="(IV) DEXTRAN">
+  <option value="(Tab.) DEXTROMETHORPHAN 15">
+  <option value="(Inj.) DEXTROSE (glucose)">
+  <option value="(Inj.) DIAZEPAM(valium)">
+  <option value="(Tab.) DICLOFENAC (voltaren/fenac)">
+  <option value="(Powder) Dicloxacillin syp.">
+  <option value="(Inj.) DIGOXIN">
+  <option value="(Tab.) DIGOXIN(lanoxin)">
+  <option value="(Tab.) DIMENHYDRINATE(dramamine)">
+  <option value="(Inj.) DIMENHYDRINATE(Dramamine)">
+  <option value="(Cap.) DIP. CLORAZEPATE(trancon/T5)">
+  <option value="(Tab.) Dolutegravir">
+  <option value="(Tab.) DOMPERIDONE(motilium)">
+  <option value="(Susp.) DOMPERIDONE(motilium)">
+  <option value="(Inj.) DOPAMINE">
+  <option value="(Tab.) Doxazosin">
+  <option value="(Cap.) DOXYCYCLINE">
+  <option value="(Inj.) DT(diphtheria tetanus) vaccines">
+  <option value="(Inj.) DTP">
+  <option value="(Inj.) DTP-HB">
+  <option value="(Inj.) DTP-HB-Hib vaccine">
+  <option value="(Tab.) EFAVIRENZ(EFV)">
+  <option value="(Inj.) ERIG (vinrab)">
+  <option value="(Powder) ERYTHROMYCIN">
+  <option value="(Tab.) ETHAMBUTOL">
+  <option value="(Tab.) Favipiravir (covid-19)">
+  <option value="(Sol.) FERROUS  DROP">
+  <option value="(Tab.) FERROUS  FUMARATE">
+  <option value="(Susp.) Ferrous fumarate Susp.">
+  <option value="(Cap.) FLUCONAZOLE">
+  <option value="(Cap.) FLUNARIZINE(sibelium)">
+  <option value="(Tab.) Fluoxetine">
+  <option value="(Inj.) Fluphenazine(DECA)">
+  <option value="(Inj.) FLUPHENAZINE(deca)">
+  <option value="(Tab.) FOLIC  ACID">
+  <option value="(Inj.) FUROSEMIDE(lasix)">
+  <option value="(Tab.) FUROSEMIDE(lasix)">
+  <option value="(Cap.) GEMFIBROZIL(Lopid)">
+  <option value="(Inj.) GENTAMICIN  80 mg/amp.">
+  <option value="(Tab.) gliPIZIDE(minidiab)">
+  <option value="(Tab.) Glyceryl guaiacolate (GG)">
+  <option value="(Tab.) GPO vir S30">
+  <option value="(Tab.) GPO VIR Z 250">
+  <option value="(Syr.) Guaifenesin syrup (GG)">
+  <option value="(Inj.) HALOPERIDOL">
+  <option value="(Tab.) HCTZ(hydrochlorothiazide)">
+  <option value="(Inj.) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้">
+  <option value="HI SET">
+  <option value="(Sol.) HISTA OPH(opsil A)">
+  <option value="(Inj.) HPV vaccine">
+  <option value="(Inj.) Hydralazine  Hcl">
+  <option value="(Tab.) Hydralazine HCl">
+  <option value="(Inj.) Hydrocortisone sodium  succinate">
+  <option value="(Tab.) HYOSCINE(buscopan)">
+  <option value="(Syr.) HYOSICNE(buscopan)">
+  <option value="(Susp.) Ibuprofen (brufen)">
+  <option value="(Tab.) IBUPROFEN(brufen)">
+  <option value="(Tab.) IMIPRAMINE(tofranil)">
+  <option value="(Inj.) IMPLANON  implant">
+  <option value="(Inj.) Inactivated Poliomyelitis Vaccine(IPV)">
+  <option value="(Inj.) influenza ตามฤดูกาล">
+  <option value="(Tab.) INH(isoniazid)">
+  <option value="(Tab.) ISODIL  SL">
+  <option value="(Tab.) ISODIL  TAB">
+  <option value="(Tab.) Isoniazid 300 mg">
+  <option value="(Tab.) Isoniazid+Rifapentine">
+  <option value="(Inj.) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml">
+  <option value="(Inj.) JE VACCINE(0.5 ML)">
+  <option value="(Emul.) K Y jelly sack">
+  <option value="(Powder) KALIMATE">
+  <option value="(Tab.) KETOCONAZOLE(nizoral)">
+  <option value="(Tab.) KOCITAF (DTG50mg+FTC200mg+TAF25mg)">
+  <option value="(Tab.) Lamivudine">
+  <option value="(Tab.) Lamivudine 3TC">
+  <option value="(Tab.) Levodopa250 + carbidopa 25">
+  <option value="(Tab.) LevoFloxacin">
+  <option value="Lidocain injection">
+  <option value="(Inj.) LIDOCAINE">
+  <option value="(Cap.) LITHIUM CARBONATE(LiCO3) (NL)">
+  <option value="(Tab.) Lopinavir/Ritonavir">
+  <option value="(Tab.) Lorazepam">
+  <option value="(Tab.) Losartan (cozaar)">
+  <option value="(Sol.) M tussis ( brown mixt )">
+  <option value="(Sol.) M. CARMINATIVE">
+  <option value="(Sol.) M.tussis (brown mixt)">
+  <option value="(Inj.) MAGNESIUM SULFATE">
+  <option value="(Inj.) MAGNESIUM SULFATE">
+  <option value="(Inj.) MEDROXYPROGESTERONE ACETATE(depo)">
+  <option value="(Tab.) METFORMIN(glucophage)">
+  <option value="(Tab.) Methimazole">
+  <option value="(Tab.) METHYLDOPA(aldomet)">
+  <option value="(Inj.) METHYLERGOMETRINE(Methergin)">
+  <option value="(Tab.) METOCLOPRAMIDE(plasil)">
+  <option value="(Inj.) METOCLOPRAMIDE(plasil)">
+  <option value="(Tab.) Metoprolol tartrate">
+  <option value="(Tab.) METRONIDAZOLE(flagyl)">
+  <option value="(Inj.) METRONIDAZOLE(flagyl) 500 mg/vial.">
+  <option value="(Tab.) Micronised progesterone">
+  <option value="(Susp.) MILK OF MAGNESIA(MOM)">
+  <option value="(Inj.) Mixtard (ขวด)">
+  <option value="(Inj.) mixtard STAT">
+  <option value="(Inj.) MMR">
+  <option value="(Cap.) Molnupiravir">
+  <option value="(Inj.) MORPHINE">
+  <option value="(Tab.) Morphine MST">
+  <option value="(Sol.) Morphine Solution">
+  <option value="(Inj.) MR">
+  <option value="(Tab.) MTV-MULTIVITAMINS">
+  <option value="(Tab.) NaCl (Sodium Chloride)">
+  <option value="(Inj.) NALOXONE(narcan)">
+  <option value="(Tab.) Nevirapine">
+  <option value="(Tab.) NIFEDIPINE SR">
+  <option value="(Inj.) Norepinephrine bitartrate 4 ml/">
+  <option value="(Tab.) NORFLOXACIN(lexinor)">
+  <option value="(Tab.) Norgesic(Orphenadrine35mg/paracetamol500mg)">
+  <option value="(Inj.) NPH (ขวด)">
+  <option value="(Inj.) NPH INSULIN">
+  <option value="(Inj.) NSS 5 ml">
+  <option value="(Inj.) NSS INJ.">
+  <option value="(Inj.) NSS INJ.">
+  <option value="(Sol.) OLIVE OIL">
+  <option value="(Inj.) Omeprazole 10 ml">
+  <option value="(Cap.) OMEPRAZOLE(losec/miracid)">
+  <option value="(Inj.) Ondansetron inj">
+  <option value="(Drop) OPV vaccine">
+  <option value="(Powder) ORS(รสส้ม) 75">
+  <option value="(Inj.) OXYTOCIN">
+  <option value="(Syr.) PARACETAMOL  SYR">
+  <option value="(Syr.) PARACETAMOL SYRUP">
+  <option value="(Inj.) PCEC (ID)">
+  <option value="(Inj.) PCEC (IM)">
+  <option value="(Tab.) PERPHENAZINE(สีไข่ไก่)">
+  <option value="(Inj.) PETHIDINE">
+  <option value="(Tab.) PHENOBARBITAL(1 GRAIN)">
+  <option value="(Inj.) Phenytoin inj">
+  <option value="(Tab.) Pioglitazone">
+  <option value="(Eye Drop) PolyOPH">
+  <option value="(Sol.) POTASSIUM (KCL elixir)">
+  <option value="(Tab.) Potassium Chloride tab">
+  <option value="(Inj.) POTASSIUM CHLORIDE(KCl)">
+  <option value="(Tab.) PREDNISOLONE">
+  <option value="(Cream) prednisolone cream">
+  <option value="(Tab.) Primolut-N(norethisterone 5 mg)">
+  <option value="(Suppo.) PROCTOSEDYL">
+  <option value="(Tab.) propranolol(inderal)">
+  <option value="(Tab.) PTU(propylthiouracil)">
+  <option value="(Tab.) PZA(pyrazinamide)">
+  <option value="(Tab.) QUININE SULFATE">
+  <option value="(Tab.) R-DEN(คุมเม็ด)">
+  <option value="(Inj.) RABIES ANTISERUM(ERIG)">
+  <option value="(Inj.) RI  STAT (REGULAR INSULIN )">
+  <option value="(Cap.) RIFAMPICIN">
+  <option value="(Cap.) RIFAMPICIN">
+  <option value="(Tab.) Rifapentine">
+  <option value="(Cap.) Rifinah (Rifam+INH)">
+  <option value="(Tab.) Risperidone">
+  <option value="(Susp.) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง)">
+  <option value="(Tab.) ROXITHROMYCIN(rulid)">
+  <option value="(Tab.) SALBUTAMOL">
+  <option value="(Syr.) SALBUTAMOL">
+  <option value="(Sol.) SALBUTAMOL  NB (ER)">
+  <option value="(Sol.) SALBUTAMOL NB.">
+  <option value="(Sol.) SALBUTAMOL(ventolin) MDI">
+  <option value="(Sol.) Saline IRRIGATE">
+  <option value="(Sol.) SELENIUM shampoo">
+  <option value="(MDI) SeRoflo   (MDI)">
+  <option value="(Tab.) Sertraline">
+  <option value="(Cream) SILVER SULFADIAZINE (25g)">
+  <option value="(Tab.) SIMETHICONE  (air-x)">
+  <option value="(Susp.) SIMETHICONE DROP SUS">
+  <option value="(Tab.) SimVastatin(zocor) (NL)">
+  <option value="(Tab.) Sodamint (Sodium bicarbonate)">
+  <option value="(Inj.) SODIUM BICARBONATE 7.5%(NaHCO3)">
+  <option value="(Susp.) SODIUM BICARBONATE(NaHCO3)">
+  <option value="(Tab.) spironolactone (Aldactone)">
+  <option value="(Inj.) STERILEWATER (SWI)">
+  <option value="(Inj.) Streptokinase">
+  <option value="(Inj.) STREPTOMYCIN SULPHATE">
+  <option value="(Tab.) Teevir">
+  <option value="(Tab.) Tenofovia disoproxil">
+  <option value="(Inj.) TERBUTALINE SULFATE(bricanyl)">
+  <option value="(Sol.) tetracain eye drop">
+  <option value="(Cap.) Theophylline-CR">
+  <option value="(Tab.) THYROXINE-L">
+  <option value="(Tab.) TLD (TDF300mg+3TC300mg+DTG50mg)">
+  <option value="(Cap.) TRAMADOL HCl(tramal)">
+  <option value="(Inj.) TRAMADOL inj">
+  <option value="(Cap.) Tranexamic acid">
+  <option value="(Cream) TRIAMCINOLONE">
+  <option value="(Cream) TRIAMCINOLONE">
+  <option value="(Oint.) Triamcinolone Oral Paste">
+  <option value="(Inj.) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort)">
+  <option value="(Tab.) Triferdine">
+  <option value="(Sol.) UNISON">
+  <option value="UNISON ENEMA">
+  <option value="Varenicline Tartrate">
+  <option value="Varenicline Tartrate">
+  <option value="(Inj.) VERORAB ( ID )">
+  <option value="(Inj.) VERORAB ( IM )">
+  <option value="(Tab.) VIT B6(pyridoxine)">
+  <option value="(Tab.) VITAMIN B 1/6/12">
+  <option value="(Inj.) VITAMIN B COMPLEX">
+  <option value="vitamin c">
+  <option value="(Inj.) VITAMIN K1">
+  <option value="(Inj.) WATER FOR INJECTION">
+  <option value="Whitfields ointment">
+  <option value="(Cap.) Zidovudine  (AZT)">
+  <option value="(Syr.) Zidovudine (AZT)">
+  <option value="(Cap.) Zidovudine (AZT)">
+  <option value="(Tab.) Zilarvir (Lamivudine150mg+Zidovudine300mg)">
+  <option value="กานพลู">
+  <option value="(Cap.) ขมิ้นชัน แคปซูล KMC">
+  <option value="ขวดยา">
+  <option value="ขวดยา">
+  <option value="ขวดยา">
+  <option value="(Cap.) ขิง">
+  <option value="ครีมพญายอ">
+  <option value="(Cap.) จันทน์ลีลา ซองละ 24 แคปซูล">
+  <option value="เจลว่านหางจระเข้">
+  <option value="ชุมเห็ดเทศ">
+  <option value="(Cap.) ตรีผลาTPL">
+  <option value="เถาวัลย์เปรียง TWP">
+  <option value="น้ำมันกัญชา">
+  <option value="น้ำมันไพลPLI">
+  <option value="(Cap.) เพชรสังฆาต PSK">
+  <option value="(Cap.) ฟ้าทะลายโจร FTJ">
+  <option value="(Syr.) มะขามป้อม MKP">
+  <option value="(Cap.) ยาแก้ลมจับเส้น">
+  <option value="(Powder) ยาแก้ลมอัมพฤกษ์AMP">
+  <option value="(Cap.) ยาเขียวหอมKH">
+  <option value="(Tab.) ยาเดิม (Manidipine )">
+  <option value="(Sol.) ยาเดิม (Natear(Artificial Tears))">
+  <option value="(Powder) ยาเดิม(Acetylcysteine)">
+  <option value="(Tab.) ยาเดิม(Amlodipine)">
+  <option value="(Tab.) ยาเดิม(Atorvastatin)">
+  <option value="(Tab.) ยาเดิม(Azithromycin)">
+  <option value="(Syr.) ยาเดิม(Azitromycin Dry syrup)">
+  <option value="(Tab.) ยาเดิม(Betahistine)">
+  <option value="(Tab.) ยาเดิม(Carvedilol)">
+  <option value="(Cap.) ยาเดิม(Gabapentin)">
+  <option value="(Tab.) ยาเดิม(Hydralazine)">
+  <option value="(Inj.) ยาเดิม(Hypercrit)">
+  <option value="(Tab.) ยาเดิม(Lorazepam)">
+  <option value="(Powder) ยาเดิม(Meropenem inj.)">
+  <option value="(Tab.) ยาเดิม(Risperidone)">
+  <option value="(Inj.) ยาเดิม(Vancomycin inj.)">
+  <option value="(Tab.) ยาเดิม(Warfarin)">
+  <option value="(Tab.) ยาเดิม.............................">
+  <option value="ยาธาตุบรรจบ">
+  <option value="ยาธาตุอบเชยOS">
+  <option value="ยาประสะจันทน์แดง ซองละ 12 แคปซูล">
+  <option value="(Cap.) ยาประสะไพลPSP">
+  <option value="(Cap.) ยามันทธาตุ">
+  <option value="(Tab.) ยาระบายมะขามแขก(senokot)">
+  <option value="(Cap.) ยาเลือดงามLH">
+  <option value="(Cap.) ยาศุขไสยาศน์">
+  <option value="(Cap.) ยาสหัสธาราSHTR">
+  <option value="(Powder) ยาหอมเทพจิตรTPJ">
+  <option value="(Powder) ยาหอมนวโกฐNVK">
+  <option value="(Cap.) ยาห้าราก ซองละ 9 แคปซูล">
+  <option value="(Cap.) ยาเหลืองปิดสมุทร">
+  <option value="(Tab.) ยาอมมะแว้ง MW">
+  <option value="(Cap.) รางจืด RJ">
+  <option value="(Powder) ลูกประคบสมุนไพร">
+</datalist>
+</body>
+</html>
