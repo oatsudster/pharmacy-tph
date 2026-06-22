@@ -264,7 +264,8 @@ tr:hover td { background: var(--bg); }
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 15 นาที</div>
     </div>
 
-    <button class="btn-submit" onclick="submitStat()">✅ บันทึก</button>
+    <button class="btn-submit" onclick="submitStat()">✅ บันทึก (ครบทั้งสองเวลา)</button>
+    <button class="btn-submit" onclick="submitStatPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลารับ (รอจ่าย)</button>
     <button class="btn-clear" onclick="clearStat()">ล้างฟอร์ม</button>
   </div>
 
@@ -301,7 +302,8 @@ tr:hover td { background: var(--bg); }
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 120 นาที</div>
     </div>
 
-    <button class="btn-submit" onclick="submitCart()">✅ บันทึก</button>
+    <button class="btn-submit" onclick="submitCart()">✅ บันทึก (ครบทั้งสองเวลา)</button>
+    <button class="btn-submit" onclick="submitCartPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลาส่งรถ (รอรับ)</button>
     <button class="btn-clear" onclick="clearCart()">ล้างฟอร์ม</button>
   </div>
 
@@ -310,6 +312,26 @@ tr:hover td { background: var(--bg); }
 
     <!-- Month filter -->
     <div class="month-filter" id="month-filter"></div>
+
+    <!-- ── PENDING STAT ── -->
+    <div id="pending-stat-panel" style="display:none; margin-bottom:16px;">
+      <div class="table-card" style="border-left:4px solid var(--gold);">
+        <div class="table-head">
+          <div class="table-title">⏳ Stat รอจ่าย <span id="pending-stat-count" style="background:var(--gold);color:#fff;font-size:12px;padding:2px 8px;border-radius:12px;margin-left:6px;">0</span></div>
+        </div>
+        <div id="pending-stat-list"></div>
+      </div>
+    </div>
+
+    <!-- ── PENDING CART ── -->
+    <div id="pending-cart-panel" style="display:none; margin-bottom:16px;">
+      <div class="table-card" style="border-left:4px solid var(--gold);">
+        <div class="table-head">
+          <div class="table-title">⏳ รถยา IPD รอรับ <span id="pending-cart-count" style="background:var(--gold);color:#fff;font-size:12px;padding:2px 8px;border-radius:12px;margin-left:6px;">0</span></div>
+        </div>
+        <div id="pending-cart-list"></div>
+      </div>
+    </div>
 
     <!-- ── STAT KPI ── -->
     <div id="stat-dashboard">
@@ -416,6 +438,8 @@ tr:hover td { background: var(--bg); }
 // ── DATA ──────────────────────────────────────────────────
 let statRecords = JSON.parse(localStorage.getItem('wt_stat') || '[]');
 let cartRecords = JSON.parse(localStorage.getItem('wt_cart') || '[]');
+let pendingStatRecords = JSON.parse(localStorage.getItem('wt_stat_pending') || '[]');
+let pendingCartRecords = JSON.parse(localStorage.getItem('wt_cart_pending') || '[]');
 let activeTab = 'stat';
 let activeMonth = 'all';
 const STAT_LIMIT = 15;
@@ -431,6 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('badge-year').textContent = new Date().getFullYear() + 543;
   buildMonthFilter();
   renderAll();
+  renderPending();
+  // อัปเดต elapsed time ทุก 1 นาที
+  setInterval(renderPending, 60000);
 });
 
 // ── TABS ─────────────────────────────────────────────────
@@ -567,6 +594,129 @@ function submitCart() {
   showToast('✅ บันทึกแล้ว — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
 }
 
+// ── PENDING STAT ─────────────────────────────────────────
+function submitStatPending() {
+  const date  = thToISO(document.getElementById('s-date').value);
+  const tIn   = document.getElementById('s-time-in').value;
+  const an    = document.getElementById('s-an').value.trim();
+  const drug  = [1,2,3].map(n=>document.getElementById('s-drug-'+n).value.trim()).filter(Boolean).join(', ');
+  if (!date || !tIn) { showToast('❌ กรุณากรอกวันที่และเวลารับ'); return; }
+  const rec = { id: 'sp_'+Date.now(), date, timeIn: tIn, an, drug, createdAt: new Date().toISOString() };
+  pendingStatRecords.push(rec);
+  savePendingStatLocal(); window.fbSaveStatPending && fbSaveStatPending();
+  renderPending();
+  clearStat();
+  showToast('🕐 บันทึกเวลารับแล้ว — รอจ่ายยา');
+}
+
+function submitCartPending() {
+  const date  = thToISO(document.getElementById('c-date').value);
+  const tSent = document.getElementById('c-time-sent').value;
+  if (!date || !tSent) { showToast('❌ กรุณากรอกวันที่และเวลาส่งรถ'); return; }
+  const rec = { id: 'cp_'+Date.now(), date, timeSent: tSent, createdAt: new Date().toISOString() };
+  pendingCartRecords.push(rec);
+  savePendingCartLocal(); window.fbSaveCartPending && fbSaveCartPending();
+  renderPending();
+  clearCart();
+  showToast('🕐 บันทึกเวลาส่งรถแล้ว — รอรับยา');
+}
+
+function completeStat(id) {
+  const rec = pendingStatRecords.find(r => r.id === id);
+  if (!rec) return;
+  const tOut = prompt('กรอกเวลาจ่ายยา (HH:MM):', '');
+  if (!tOut || !/^\d{1,2}:\d{2}$/.test(tOut)) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const mins = timeDiff(rec.timeIn, tOut);
+  if (mins === null || mins < 0) { showToast('❌ เวลาจ่ายน้อยกว่าเวลารับ'); return; }
+  const full = { id: 'stat_'+Date.now(), date: rec.date, timeIn: rec.timeIn, timeOut: tOut, an: rec.an||'', drug: rec.drug||'', mins };
+  statRecords.push(full);
+  pendingStatRecords = pendingStatRecords.filter(r => r.id !== id);
+  saveStatLocal(); fbSaveStat();
+  savePendingStatLocal(); window.fbSaveStatPending && fbSaveStatPending();
+  buildMonthFilter(); renderAll(); renderPending();
+  showToast('✅ บันทึกเสร็จ — ' + mins + ' นาที' + (mins <= STAT_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+}
+
+function completeCart(id) {
+  const rec = pendingCartRecords.find(r => r.id === id);
+  if (!rec) return;
+  const tCalled = prompt('กรอกเวลาโทรให้มารับรถยา (HH:MM):', '');
+  if (!tCalled || !/^\d{1,2}:\d{2}$/.test(tCalled)) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const mins = timeDiff(rec.timeSent, tCalled);
+  if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const full = { id: 'cart_'+Date.now(), date: rec.date, timeSent: rec.timeSent, timeCalled: tCalled, mins };
+  cartRecords.push(full);
+  pendingCartRecords = pendingCartRecords.filter(r => r.id !== id);
+  saveCartLocal(); fbSaveCart();
+  savePendingCartLocal(); window.fbSaveCartPending && fbSaveCartPending();
+  buildMonthFilter(); renderAll(); renderPending();
+  showToast('✅ บันทึกเสร็จ — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+}
+
+function deletePendingStat(id) {
+  if (!confirm('ยกเลิกรายการนี้?')) return;
+  pendingStatRecords = pendingStatRecords.filter(r => r.id !== id);
+  savePendingStatLocal(); window.fbSaveStatPending && fbSaveStatPending(); renderPending();
+}
+function deletePendingCart(id) {
+  if (!confirm('ยกเลิกรายการนี้?')) return;
+  pendingCartRecords = pendingCartRecords.filter(r => r.id !== id);
+  savePendingCartLocal(); window.fbSaveCartPending && fbSaveCartPending(); renderPending();
+}
+
+function elapsedMin(createdAt) {
+  const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+  return diff;
+}
+
+function renderPending() {
+  // Stat pending
+  const sp = pendingStatRecords;
+  const spPanel = document.getElementById('pending-stat-panel');
+  const spList  = document.getElementById('pending-stat-list');
+  const spCount = document.getElementById('pending-stat-count');
+  if (spPanel) spPanel.style.display = sp.length ? '' : 'none';
+  if (spCount) spCount.textContent = sp.length;
+  if (spList) {
+    spList.innerHTML = sp.length === 0 ? '' : sp.map(r => {
+      const el = elapsedMin(r.createdAt);
+      const over = el > STAT_LIMIT;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <span style="font-size:22px;font-weight:800;color:${over?'var(--danger)':'var(--success)'};">${el} <span style="font-size:13px;font-weight:600">นาที</span></span>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:13px;font-weight:700">${r.drug||'—'}</div>
+          <div style="font-size:12px;color:var(--text-light)">รับ ${r.timeIn} น. ${r.an?'AN:'+r.an:''}</div>
+        </div>
+        <button onclick="completeStat('${r.id}')" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ จ่ายแล้ว</button>
+        <button onclick="deletePendingStat('${r.id}')" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Cart pending
+  const cp = pendingCartRecords;
+  const cpPanel = document.getElementById('pending-cart-panel');
+  const cpList  = document.getElementById('pending-cart-list');
+  const cpCount = document.getElementById('pending-cart-count');
+  if (cpPanel) cpPanel.style.display = cp.length ? '' : 'none';
+  if (cpCount) cpCount.textContent = cp.length;
+  if (cpList) {
+    cpList.innerHTML = cp.length === 0 ? '' : cp.map(r => {
+      const el = elapsedMin(r.createdAt);
+      const over = el > CART_LIMIT;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <span style="font-size:22px;font-weight:800;color:${over?'var(--danger)':'var(--success)'};">${el} <span style="font-size:13px;font-weight:600">นาที</span></span>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:13px;font-weight:700">ส่งรถยา ${r.timeSent} น.</div>
+          <div style="font-size:12px;color:var(--text-light)">${r.date}</div>
+        </div>
+        <button onclick="completeCart('${r.id}')" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ รับแล้ว</button>
+        <button onclick="deletePendingCart('${r.id}')" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
+      </div>`;
+    }).join('');
+  }
+}
+
 // ── DELETE ───────────────────────────────────────────────
 function deleteStat(id) {
   if (!confirm('ลบรายการนี้?')) return;
@@ -600,6 +750,8 @@ function clearCart() {
 // ── LOCAL SAVE ───────────────────────────────────────────
 function saveStatLocal() { localStorage.setItem('wt_stat', JSON.stringify(statRecords)); }
 function saveCartLocal() { localStorage.setItem('wt_cart', JSON.stringify(cartRecords)); }
+function savePendingStatLocal() { localStorage.setItem('wt_stat_pending', JSON.stringify(pendingStatRecords)); }
+function savePendingCartLocal() { localStorage.setItem('wt_cart_pending', JSON.stringify(pendingCartRecords)); }
 
 // ── RENDER ALL ───────────────────────────────────────────
 function renderAll() {
@@ -890,6 +1042,16 @@ function showToast(msg) {
     try { await db.collection(COL).doc('wt_cart').set({ records: cartRecords, updated: new Date().toISOString() }); }
     catch(e) { console.warn('fbSaveCart:', e.message); }
   };
+  window.fbSaveStatPending = async function() {
+    if (!db) return;
+    try { await db.collection(COL).doc('wt_stat_pending').set({ records: pendingStatRecords, updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveStatPending:', e.message); }
+  };
+  window.fbSaveCartPending = async function() {
+    if (!db) return;
+    try { await db.collection(COL).doc('wt_cart_pending').set({ records: pendingCartRecords, updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveCartPending:', e.message); }
+  };
 
   async function fbLoadAll() {
     setSyncBadge('🔄 กำลังโหลด...', null);
@@ -916,9 +1078,28 @@ function showToast(msg) {
 
       setSyncBadge('☁️ ซิงค์แล้ว', true);
       if (changed) { buildMonthFilter(); renderAll(); }
+
+      // Real-time listeners for pending records
+      db.collection(COL).doc('wt_stat_pending').onSnapshot(snap => {
+        if (snap.exists) {
+          pendingStatRecords = snap.data().records || [];
+          savePendingStatLocal();
+          renderPending();
+        }
+      });
+      db.collection(COL).doc('wt_cart_pending').onSnapshot(snap => {
+        if (snap.exists) {
+          pendingCartRecords = snap.data().records || [];
+          savePendingCartLocal();
+          renderPending();
+        }
+      });
+      renderPending();
+
     } catch(e) {
       console.warn('fbLoadAll:', e.message);
       setSyncBadge('⚠️ ออฟไลน์', false);
+      renderPending();
     }
   }
 
