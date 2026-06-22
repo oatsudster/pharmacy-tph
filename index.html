@@ -426,6 +426,75 @@ footer {
 </style>
 </head>
 <body>
+<!-- ── LOGIN OVERLAY ─────────────────────────────────── -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--primary-dark);align-items:center;justify-content:center;flex-direction:column;gap:24px;">
+  <div style="text-align:center;color:#fff;margin-bottom:8px;">
+    <div style="font-size:52px;margin-bottom:8px;">💊</div>
+    <div style="font-size:20px;font-weight:800;">กลุ่มงานเภสัชกรรม</div>
+    <div style="font-size:14px;opacity:.7;margin-top:4px;">รพ.ถ้ำพรรณรา</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:28px 32px;width:min(320px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center;">
+    <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:20px;">🔒 กรอก PIN เพื่อเข้าใช้งาน</div>
+    <div id="pin-dots" style="display:flex;gap:12px;justify-content:center;margin-bottom:20px;">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div id="pin-error" style="color:var(--danger);font-size:13px;font-weight:600;margin-bottom:12px;min-height:18px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+      <button class="pin-btn" onclick="pinPress('1')">1</button>
+      <button class="pin-btn" onclick="pinPress('2')">2</button>
+      <button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button>
+      <button class="pin-btn" onclick="pinPress('5')">5</button>
+      <button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button>
+      <button class="pin-btn" onclick="pinPress('8')">8</button>
+      <button class="pin-btn" onclick="pinPress('9')">9</button>
+      <button class="pin-btn pin-btn-sm" onclick="pinClear()">ล้าง</button>
+      <button class="pin-btn" onclick="pinPress('0')">0</button>
+      <button class="pin-btn pin-btn-sm" onclick="pinBack()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.pin-dot { width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:#fff;transition:background .15s; }
+.pin-dot.filled { background:var(--primary);border-color:var(--primary); }
+.pin-btn { padding:16px;font-size:22px;font-weight:700;font-family:inherit;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer;transition:all .12s; }
+.pin-btn:hover { background:var(--primary-light);border-color:var(--primary);color:var(--primary); }
+.pin-btn:active { transform:scale(.94); }
+.pin-btn-sm { font-size:14px !important;font-weight:600;color:var(--text-mid); }
+</style>
+
+<script>
+const PIN_CORRECT = '11339';
+const AUTH_KEY = 'tph_auth_v1';
+let pinValue = '';
+function pinPress(d) {
+  if (pinValue.length >= 5) return;
+  pinValue += d; updateDots();
+  if (pinValue.length === 5) setTimeout(checkPin, 120);
+}
+function pinBack() { pinValue = pinValue.slice(0,-1); updateDots(); }
+function pinClear() { pinValue = ''; updateDots(); document.getElementById('pin-error').textContent = ''; }
+function updateDots() {
+  document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pinValue.length));
+}
+function checkPin() {
+  if (pinValue === PIN_CORRECT) {
+    localStorage.setItem(AUTH_KEY, '1');
+    document.getElementById('login-overlay').style.display = 'none';
+  } else {
+    document.getElementById('pin-error').textContent = '❌ PIN ไม่ถูกต้อง';
+    pinValue = ''; updateDots();
+  }
+}
+(function() {
+  if (!localStorage.getItem(AUTH_KEY)) {
+    document.getElementById('login-overlay').style.display = 'flex';
+  }
+})();
+</script>
+
 
 <!-- Header -->
 <header class="header">
@@ -437,6 +506,7 @@ footer {
     </div>
   </div>
   <div class="header-date" id="hdr-date"></div>
+  <button onclick="localStorage.removeItem('tph_auth_v1');location.reload()" style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">🔒 ออก</button>
 </header>
 
 <!-- Hero -->
