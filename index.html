@@ -433,64 +433,36 @@ footer {
     <div style="font-size:20px;font-weight:800;">กลุ่มงานเภสัชกรรม</div>
     <div style="font-size:14px;opacity:.7;margin-top:4px;">รพ.ถ้ำพรรณรา</div>
   </div>
-  <div style="background:#fff;border-radius:16px;padding:28px 32px;width:min(320px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center;">
-    <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:20px;">🔒 กรอก PIN เพื่อเข้าใช้งาน</div>
-    <div id="pin-dots" style="display:flex;gap:12px;justify-content:center;margin-bottom:20px;">
-      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
-    </div>
-    <div id="pin-error" style="color:var(--danger);font-size:13px;font-weight:600;margin-bottom:12px;min-height:18px;"></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-      <button class="pin-btn" onclick="pinPress('1')">1</button>
-      <button class="pin-btn" onclick="pinPress('2')">2</button>
-      <button class="pin-btn" onclick="pinPress('3')">3</button>
-      <button class="pin-btn" onclick="pinPress('4')">4</button>
-      <button class="pin-btn" onclick="pinPress('5')">5</button>
-      <button class="pin-btn" onclick="pinPress('6')">6</button>
-      <button class="pin-btn" onclick="pinPress('7')">7</button>
-      <button class="pin-btn" onclick="pinPress('8')">8</button>
-      <button class="pin-btn" onclick="pinPress('9')">9</button>
-      <button class="pin-btn pin-btn-sm" onclick="pinClear()">ล้าง</button>
-      <button class="pin-btn" onclick="pinPress('0')">0</button>
-      <button class="pin-btn pin-btn-sm" onclick="pinBack()">⌫</button>
-    </div>
+  <div style="background:#fff;border-radius:16px;padding:32px;width:min(340px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center;">
+    <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:20px;">🔒 กรอกรหัสเพื่อเข้าใช้งาน</div>
+    <input id="pin-input" type="password" placeholder="รหัสผ่าน"
+      onkeydown="if(event.key==='Enter') checkPin()"
+      style="width:100%;padding:12px 16px;font-size:18px;font-family:inherit;border:2px solid var(--border);border-radius:10px;outline:none;text-align:center;letter-spacing:.1em;margin-bottom:12px;"
+      onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+    <div id="pin-error" style="color:var(--danger);font-size:13px;font-weight:600;margin-bottom:14px;min-height:18px;"></div>
+    <button onclick="checkPin()" style="width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">เข้าสู่ระบบ</button>
   </div>
 </div>
-
-<style>
-.pin-dot { width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:#fff;transition:background .15s; }
-.pin-dot.filled { background:var(--primary);border-color:var(--primary); }
-.pin-btn { padding:16px;font-size:22px;font-weight:700;font-family:inherit;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer;transition:all .12s; }
-.pin-btn:hover { background:var(--primary-light);border-color:var(--primary);color:var(--primary); }
-.pin-btn:active { transform:scale(.94); }
-.pin-btn-sm { font-size:14px !important;font-weight:600;color:var(--text-mid); }
-</style>
 
 <script>
 const PIN_CORRECT = '11339';
 const AUTH_KEY = 'tph_auth_v1';
-let pinValue = '';
-function pinPress(d) {
-  if (pinValue.length >= 5) return;
-  pinValue += d; updateDots();
-  if (pinValue.length === 5) setTimeout(checkPin, 120);
-}
-function pinBack() { pinValue = pinValue.slice(0,-1); updateDots(); }
-function pinClear() { pinValue = ''; updateDots(); document.getElementById('pin-error').textContent = ''; }
-function updateDots() {
-  document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pinValue.length));
-}
 function checkPin() {
-  if (pinValue === PIN_CORRECT) {
+  const val = document.getElementById('pin-input').value;
+  if (val === PIN_CORRECT) {
     localStorage.setItem(AUTH_KEY, '1');
     document.getElementById('login-overlay').style.display = 'none';
   } else {
-    document.getElementById('pin-error').textContent = '❌ PIN ไม่ถูกต้อง';
-    pinValue = ''; updateDots();
+    document.getElementById('pin-error').textContent = '❌ รหัสไม่ถูกต้อง';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
   }
 }
 (function() {
   if (!localStorage.getItem(AUTH_KEY)) {
-    document.getElementById('login-overlay').style.display = 'flex';
+    const ov = document.getElementById('login-overlay');
+    ov.style.display = 'flex';
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
   }
 })();
 </script>
