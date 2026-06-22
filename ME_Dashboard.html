@@ -1222,11 +1222,11 @@
 <!-- ========== ER SECTION ========== -->
 <div class="section" id="section-er">
   <div class="section-header tab-bar">
-    <button class="tab-btn active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
-  <button class="tab-btn" onclick="showPage('entry',this)">➕ บันทึก ME</button>
-  <button class="tab-btn" onclick="showPage('rx-monthly',this)">💊 Rx รายเดือน</button>
-  <button class="tab-btn" onclick="showPage('records',this)">📋 รายการทั้งหมด</button>
-  <button class="tab-btn" onclick="showPage('guide',this)">📖 คู่มือ</button>
+    <button class="tab-btn active" onclick="erShowPage('dashboard',this)">📊 Dashboard</button>
+  <button class="tab-btn" onclick="erShowPage('entry',this)">➕ บันทึก ME</button>
+  <button class="tab-btn" onclick="erShowPage('rx-monthly',this)">💊 Rx รายเดือน</button>
+  <button class="tab-btn" onclick="erShowPage('records',this)">📋 รายการทั้งหมด</button>
+  <button class="tab-btn" onclick="erShowPage('guide',this)">📖 คู่มือ</button>
   </div>
   <!-- ========== DASHBOARD ========== -->
 <div class="page active" id="page-dashboard">
@@ -1609,7 +1609,41 @@
 
 </style>
 
-
+<!-- ========== GUIDE ========== -->
+<div class="page" id="page-guide">
+  <div class="card">
+    <div class="card-title">📖 ระดับความรุนแรง NCC MERP (A–I)</div>
+    <div class="sev-guide">
+      <div class="sev-item sev-A"><strong>A</strong> – ยังไม่ถึงผู้ป่วย (Capacity for error)</div>
+      <div class="sev-item sev-B"><strong>B</strong> – เกิดแล้ว แต่ไม่ถึงผู้ป่วย</div>
+      <div class="sev-item sev-C"><strong>C</strong> – ถึงผู้ป่วยแต่ไม่มีผลใดๆ</div>
+      <div class="sev-item sev-D"><strong>D</strong> – ถึงผู้ป่วย ต้องติดตามเพิ่ม</div>
+      <div class="sev-item sev-E"><strong>E</strong> – มีผลต่อผู้ป่วยชั่วคราว ต้องรักษา</div>
+      <div class="sev-item sev-F"><strong>F</strong> – มีผลชั่วคราว ต้องนอน รพ. นาน</div>
+      <div class="sev-item sev-G"><strong>G</strong> – มีผลถาวรต่อผู้ป่วย</div>
+      <div class="sev-item sev-H"><strong>H</strong> – เกือบเสียชีวิต ต้องช่วยชีวิต</div>
+      <div class="sev-item sev-I"><strong>I</strong> – ผู้ป่วยเสียชีวิต</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📌 ขั้นตอนการบันทึก</div>
+    <ol style="padding-left:20px; line-height:2.2">
+      <li>กรอกวันที่ และเวลาที่พบ ME</li>
+      <li>กรอกจำนวนใบสั่งยาทั้งหมดในวันนั้น (ใช้คำนวณ ME Rate)</li>
+      <li>เลือกขั้นตอนที่เกิด ME และประเภทความคลาดเคลื่อน</li>
+      <li>ประเมินระดับความรุนแรง NCC MERP (A–I)</li>
+      <li>บันทึกชื่อยา Ward และรายละเอียด</li>
+      <li>กด "บันทึก ME"</li>
+    </ol>
+  </div>
+  <div class="card">
+    <div class="card-title">💡 สูตรคำนวณ</div>
+    <p style="line-height:2; color:var(--gray-700)">
+      <strong>ME Rate</strong> = (จำนวน ME ÷ จำนวนใบสั่งยาทั้งหมด) × 1,000 ใบ<br>
+      <strong>% ME นอกเวลา</strong> = คำนวณอัตโนมัติจากเวลาที่บันทึก (16.00–08.00 น. = นอกเวลาราชการ)
+    </p>
+  </div>
+</div>
 </div>
 
 <script>
@@ -1827,6 +1861,20 @@ function showPage(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'dashboard') renderDashboard();
   if (name === 'records') renderTable();
+  if (name === 'rx-monthly') initRxMonthly();
+}
+
+// ── ER navigation (scoped to section-er only) ──────────────────────────
+function erShowPage(name, btn) {
+  const sec = document.getElementById('section-er');
+  if (!sec) return;
+  sec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  sec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'records')   renderTable();
   if (name === 'rx-monthly') initRxMonthly();
 }
 
@@ -2700,19 +2748,7 @@ function showSection(name) {
     er:   'ER — ห้องฉุกเฉิน',
   };
   document.getElementById('main-topbar-title').textContent = titles[name] || '';
-  if (name === 'er') {
-    // Reset to dashboard tab on section entry
-    const _erSec = document.getElementById('section-er');
-    if (_erSec) {
-      _erSec.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      _erSec.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      const _dashPage = document.getElementById('page-dashboard');
-      if (_dashPage) _dashPage.classList.add('active');
-      const _dashBtn = _erSec.querySelector('.tab-btn');
-      if (_dashBtn) _dashBtn.classList.add('active');
-    }
-    renderDashboard();
-  }
+  if (name === 'er') erShowPage('dashboard', document.querySelector('#section-er .tab-btn'));
   if (name === 'opd') { updateHosXPStatus(); renderHosXPDashboard('OPD'); }
   if (name === 'ipd') { updateHosXPStatus(); renderHosXPDashboard('IPD'); }
   updateLandingCounts();
@@ -3318,42 +3354,6 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <!-- ========== GUIDE ========== -->
-<div class="page" id="page-guide">
-  <div class="card">
-    <div class="card-title">📖 ระดับความรุนแรง NCC MERP (A–I)</div>
-    <div class="sev-guide">
-      <div class="sev-item sev-A"><strong>A</strong> – ยังไม่ถึงผู้ป่วย (Capacity for error)</div>
-      <div class="sev-item sev-B"><strong>B</strong> – เกิดแล้ว แต่ไม่ถึงผู้ป่วย</div>
-      <div class="sev-item sev-C"><strong>C</strong> – ถึงผู้ป่วยแต่ไม่มีผลใดๆ</div>
-      <div class="sev-item sev-D"><strong>D</strong> – ถึงผู้ป่วย ต้องติดตามเพิ่ม</div>
-      <div class="sev-item sev-E"><strong>E</strong> – มีผลต่อผู้ป่วยชั่วคราว ต้องรักษา</div>
-      <div class="sev-item sev-F"><strong>F</strong> – มีผลชั่วคราว ต้องนอน รพ. นาน</div>
-      <div class="sev-item sev-G"><strong>G</strong> – มีผลถาวรต่อผู้ป่วย</div>
-      <div class="sev-item sev-H"><strong>H</strong> – เกือบเสียชีวิต ต้องช่วยชีวิต</div>
-      <div class="sev-item sev-I"><strong>I</strong> – ผู้ป่วยเสียชีวิต</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📌 ขั้นตอนการบันทึก</div>
-    <ol style="padding-left:20px; line-height:2.2">
-      <li>กรอกวันที่ และเวลาที่พบ ME</li>
-      <li>กรอกจำนวนใบสั่งยาทั้งหมดในวันนั้น (ใช้คำนวณ ME Rate)</li>
-      <li>เลือกขั้นตอนที่เกิด ME และประเภทความคลาดเคลื่อน</li>
-      <li>ประเมินระดับความรุนแรง NCC MERP (A–I)</li>
-      <li>บันทึกชื่อยา Ward และรายละเอียด</li>
-      <li>กด "บันทึก ME"</li>
-    </ol>
-  </div>
-  <div class="card">
-    <div class="card-title">💡 สูตรคำนวณ</div>
-    <p style="line-height:2; color:var(--gray-700)">
-      <strong>ME Rate</strong> = (จำนวน ME ÷ จำนวนใบสั่งยาทั้งหมด) × 1,000 ใบ<br>
-      <strong>% ME นอกเวลา</strong> = คำนวณอัตโนมัติจากเวลาที่บันทึก (16.00–08.00 น. = นอกเวลาราชการ)
-    </p>
-  </div>
-</div>
-
-
 </div>
 
 </div>
