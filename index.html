@@ -1,15 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค รพ.ถ้ำพรรณรา</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
 <style>
 :root {
   --primary:      #1A5E38;
@@ -445,24 +445,65 @@ footer {
 </div>
 
 <script>
-const PIN_CORRECT = '11339';
-const AUTH_KEY = 'tph_auth_v1';
-function checkPin() {
-  const val = document.getElementById('pin-input').value;
-  if (val === PIN_CORRECT) {
+const PIN_HASH = 'a6def126ab5e799f31daddcde6d28e219daf99413142195a7569a8f4b07ca256';
+const AUTH_KEY  = 'tph_auth_v1';
+const FAIL_KEY  = 'tph_fail_v1';
+const MAX_TRIES = 5;
+const LOCK_MS   = 5 * 60 * 1000;
+
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getFailState() {
+  try { return JSON.parse(localStorage.getItem(FAIL_KEY)) || { count:0, lockUntil:0 }; }
+  catch { return { count:0, lockUntil:0 }; }
+}
+
+function setError(msg) {
+  document.getElementById('pin-error').textContent = msg;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-input').focus();
+}
+
+async function checkPin() {
+  const state = getFailState();
+  const now   = Date.now();
+  if (state.lockUntil > now) {
+    const mins = Math.ceil((state.lockUntil - now) / 60000);
+    setError(`🔒 ล็อกชั่วคราว กรุณารอ ${mins} นาที`);
+    return;
+  }
+  const val  = document.getElementById('pin-input').value;
+  const hash = await sha256(val);
+  if (hash === PIN_HASH) {
+    localStorage.removeItem(FAIL_KEY);
     localStorage.setItem(AUTH_KEY, '1');
     document.getElementById('login-overlay').style.display = 'none';
   } else {
-    document.getElementById('pin-error').textContent = '❌ รหัสไม่ถูกต้อง';
-    document.getElementById('pin-input').value = '';
-    document.getElementById('pin-input').focus();
+    const newCount  = (state.count || 0) + 1;
+    const lockUntil = newCount >= MAX_TRIES ? now + LOCK_MS : 0;
+    localStorage.setItem(FAIL_KEY, JSON.stringify({ count: newCount, lockUntil }));
+    if (newCount >= MAX_TRIES) {
+      setError(`🔒 ล็อก 5 นาที (กรอกผิดเกิน ${MAX_TRIES} ครั้ง)`);
+    } else {
+      setError(`❌ รหัสไม่ถูกต้อง (เหลืออีก ${MAX_TRIES - newCount} ครั้ง)`);
+    }
   }
 }
+
 (function() {
   if (!localStorage.getItem(AUTH_KEY)) {
     const ov = document.getElementById('login-overlay');
     ov.style.display = 'flex';
-    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+    const state = getFailState();
+    if (state.lockUntil > Date.now()) {
+      const mins = Math.ceil((state.lockUntil - Date.now()) / 60000);
+      document.getElementById('pin-error').textContent = `🔒 ล็อกชั่วคราว กรุณารอ ${mins} นาที`;
+    } else {
+      setTimeout(() => document.getElementById('pin-input').focus(), 100);
+    }
   }
 })();
 </script>
@@ -730,11 +771,9 @@ function checkPin() {
   <div>โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
 </footer>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
   authDomain: "pharmacy-tph.firebaseapp.com",
@@ -744,8 +783,9 @@ const firebaseConfig = {
   appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence().catch(() => {});
 
 // ── Header date ──
 function updateDate() {
@@ -830,13 +870,13 @@ function updateStats() {
 updateStats();
 
 // ── Suggest (Firebase) ──
-const SUGGEST_DOC = doc(db, 'pharmacy_tph', 'suggestions');
+const SUGGEST_DOC = db.collection('pharmacy_tph').doc('suggestions');
 let suggests = [];
 
 async function loadSuggests() {
   try {
-    const snap = await getDoc(SUGGEST_DOC);
-    suggests = snap.exists() ? (snap.data().list || []) : [];
+    const snap = await SUGGEST_DOC.get();
+    suggests = snap.exists ? (snap.data().list || []) : [];
     renderSuggests();
   } catch(e) { console.warn('Suggest load failed', e); }
 }
@@ -863,7 +903,7 @@ function renderSuggests() {
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function saveSuggests() {
-  await setDoc(SUGGEST_DOC, { list: suggests });
+  await SUGGEST_DOC.set({ list: suggests });
   renderSuggests();
 }
 
@@ -894,5 +934,6 @@ window.delItem = async function(idx) {
 
 loadSuggests();
 </script>
+
 </body>
 </html>

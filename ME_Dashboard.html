@@ -1,15 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบบันทึก ME — รพ.ถ้ำพรรณรา</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/chart.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
 <style>
 
   :root {
@@ -3440,8 +3443,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <!-- ========== FIREBASE SYNC ========== -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
 <script>
 
 // ======= DATA EXPORT / IMPORT =======
@@ -3502,6 +3505,7 @@ function importData(input) {
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  db.enablePersistence().catch(() => {});
   const COL = 'pharmacy_tph';
 
   // ── Status badge ──────────────────────────────────────────
@@ -3528,67 +3532,48 @@ function importData(input) {
     return Object.values(map);
   }
 
-  // ── Load from Firebase on start ───────────────────────────
-  async function fbLoadAll() {
-    setSyncStatus('🔄 กำลังโหลดข้อมูล...', 'loading');
-    try {
-      // Reload from localStorage first (in case page init ran before data was set)
-      const lsER = JSON.parse(localStorage.getItem('me_records_v2')||'[]');
-      if (lsER.length > records.length) { records = lsER; }
-      const lsHX = JSON.parse(localStorage.getItem('hosxp_records')||'[]');
-      if (lsHX.length > hosxpRecords.length) { hosxpRecords = lsHX; }
-      let changed = false;
+  // ── Real-time listeners ───────────────────────────────────
+  function fbStartListeners() {
+    setSyncStatus('🔄 กำลังเชื่อมต่อ...', 'loading');
 
-      // ER records
-      const erSnap = await db.collection(COL).doc('er_records').get();
-      if (erSnap.exists) {
-        const fbER = erSnap.data().records || [];
+    db.collection(COL).doc('er_records').onSnapshot(snap => {
+      if (snap.exists) {
+        const fbER = snap.data().records || [];
         if (fbER.length) {
-          const merged = mergeById(records, fbER, 'id');
-          if (merged.length !== records.length) {
-            records = merged;
-            localStorage.setItem('me_records_v2', JSON.stringify(records));
-            changed = true;
-          }
+          records = mergeById(records, fbER, 'id');
+          localStorage.setItem('me_records_v2', JSON.stringify(records));
+          if (typeof renderTable === 'function') renderTable();
+          if (typeof renderDashboard === 'function') renderDashboard();
+          if (typeof updateLandingCounts === 'function') updateLandingCounts();
         }
       }
+      setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
+    }, e => {
+      console.warn('[Firebase] er_records:', e.message);
+      setSyncStatus('⚠️ ออฟไลน์ — ใช้ข้อมูลในเครื่อง', 'err');
+    });
 
-      // HosXP records
-      const hxSnap = await db.collection(COL).doc('hosxp_records').get();
-      if (hxSnap.exists) {
-        const fbHX = hxSnap.data().records || [];
+    db.collection(COL).doc('hosxp_records').onSnapshot(snap => {
+      if (snap.exists) {
+        const fbHX = snap.data().records || [];
         if (fbHX.length) {
-          const merged = mergeById(hosxpRecords, fbHX, 'id');
-          if (merged.length !== hosxpRecords.length) {
-            hosxpRecords = merged;
-            localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
-            changed = true;
+          hosxpRecords = mergeById(hosxpRecords, fbHX, 'id');
+          localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
+          if (typeof renderHosXPDashboard === 'function') {
+            renderHosXPDashboard('OPD');
+            renderHosXPDashboard('IPD');
           }
         }
       }
+    });
 
-      // Denom
-      const denomSnap = await db.collection(COL).doc('hosxp_denom').get();
-      if (denomSnap.exists) {
-        const fbDenom = denomSnap.data().data || {};
+    db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
+      if (snap.exists) {
+        const fbDenom = snap.data().data || {};
         hosxpDenom = Object.assign({}, fbDenom, hosxpDenom);
         localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
       }
-
-      // Re-render if new data arrived
-      if (changed) {
-        if (typeof renderDashboard === 'function') renderDashboard();
-        if (typeof renderHosXPDashboard === 'function') {
-          renderHosXPDashboard('OPD');
-          renderHosXPDashboard('IPD');
-        }
-        if (typeof updateLandingCounts === 'function') updateLandingCounts();
-      }
-      setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
-    } catch(e) {
-      console.warn('[Firebase] Load error:', e.message);
-      setSyncStatus('⚠️ ออฟไลน์ — ใช้ข้อมูลในเครื่อง', 'err');
-    }
+    });
   }
 
   // ── Save to Firebase (async, non-blocking) ────────────────
@@ -3618,11 +3603,11 @@ function importData(input) {
   const _sd = window.saveHosXPDenomStorage;
   window.saveHosXPDenomStorage = function() { _sd(); window._fbSaveDenom(); };
 
-  // ── Load on DOMContentLoaded ──────────────────────────────
+  // ── Start listeners on DOMContentLoaded ──────────────────
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fbLoadAll);
+    document.addEventListener('DOMContentLoaded', fbStartListeners);
   } else {
-    fbLoadAll();
+    fbStartListeners();
   }
 })();
 </script>

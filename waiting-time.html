@@ -1,16 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระยะเวลารอคอยยา — รพ.ถ้ำพรรณรา</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/chart.min.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
 <style>
 :root {
   --primary: #1A5E38;
@@ -1053,59 +1056,54 @@ function showToast(msg) {
     catch(e) { console.warn('fbSaveCartPending:', e.message); }
   };
 
-  async function fbLoadAll() {
-    setSyncBadge('🔄 กำลังโหลด...', null);
+  function fbInit() {
     try {
       if (!firebase.apps.length) firebase.initializeApp(config);
       db = firebase.firestore();
-      let changed = false;
+      db.enablePersistence().catch(() => {});
+      setSyncBadge('🔄 กำลังเชื่อมต่อ...', null);
 
-      const statSnap = await db.collection(COL).doc('wt_stat').get();
-      if (statSnap.exists) {
-        const fbStat = statSnap.data().records || [];
-        if (fbStat.length > statRecords.length) {
-          statRecords = fbStat; saveStatLocal(); changed = true;
-        }
-      } else if (statRecords.length) { window.fbSaveStat(); }
+      // Real-time listeners for main records
+      db.collection(COL).doc('wt_stat').onSnapshot(snap => {
+        if (snap.exists) {
+          statRecords = snap.data().records || [];
+          saveStatLocal(); buildMonthFilter(); renderAll();
+          setSyncBadge('☁️ ซิงค์แล้ว', true);
+        } else if (statRecords.length) { window.fbSaveStat(); }
+      }, () => setSyncBadge('⚠️ ออฟไลน์', false));
 
-      const cartSnap = await db.collection(COL).doc('wt_cart').get();
-      if (cartSnap.exists) {
-        const fbCart = cartSnap.data().records || [];
-        if (fbCart.length > cartRecords.length) {
-          cartRecords = fbCart; saveCartLocal(); changed = true;
-        }
-      } else if (cartRecords.length) { window.fbSaveCart(); }
-
-      setSyncBadge('☁️ ซิงค์แล้ว', true);
-      if (changed) { buildMonthFilter(); renderAll(); }
+      db.collection(COL).doc('wt_cart').onSnapshot(snap => {
+        if (snap.exists) {
+          cartRecords = snap.data().records || [];
+          saveCartLocal(); buildMonthFilter(); renderAll();
+        } else if (cartRecords.length) { window.fbSaveCart(); }
+      });
 
       // Real-time listeners for pending records
       db.collection(COL).doc('wt_stat_pending').onSnapshot(snap => {
         if (snap.exists) {
           pendingStatRecords = snap.data().records || [];
-          savePendingStatLocal();
-          renderPending();
+          savePendingStatLocal(); renderPending();
         }
       });
       db.collection(COL).doc('wt_cart_pending').onSnapshot(snap => {
         if (snap.exists) {
           pendingCartRecords = snap.data().records || [];
-          savePendingCartLocal();
-          renderPending();
+          savePendingCartLocal(); renderPending();
         }
       });
       renderPending();
 
     } catch(e) {
-      console.warn('fbLoadAll:', e.message);
+      console.warn('fbInit:', e.message);
       setSyncBadge('⚠️ ออฟไลน์', false);
       renderPending();
     }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fbLoadAll);
-  } else { fbLoadAll(); }
+    document.addEventListener('DOMContentLoaded', fbInit);
+  } else { fbInit(); }
 })();
 </script>
 <datalist id="drug-list">
