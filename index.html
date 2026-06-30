@@ -519,6 +519,7 @@ async function checkPin() {
     </div>
   </div>
   <div class="header-date" id="hdr-date"></div>
+  <span id="idx-sync" style="font-size:11px;color:rgba(255,255,255,.5);display:none"></span>
   <button onclick="localStorage.removeItem('tph_auth_v1');location.reload()" style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">🔒 ออก</button>
 </header>
 
@@ -933,6 +934,42 @@ window.delItem = async function(idx) {
 };
 
 loadSuggests();
+
+// ── Realtime stats from Firestore ──
+const COL = 'pharmacy_tph';
+const syncEl = document.getElementById('idx-sync');
+
+function setIdxSync(ok) {
+  if (!syncEl) return;
+  const t = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+  syncEl.textContent = ok ? `☁️ ${t}` : '⚠️ ออฟไลน์';
+  syncEl.style.color = ok ? 'rgba(255,255,255,.6)' : '#fca5a5';
+  syncEl.style.display = 'inline';
+}
+
+db.collection(COL).doc('er_records').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('me_records_v2', JSON.stringify(snap.data().records||[])); updateStats(); setIdxSync(true); }
+}, () => setIdxSync(false));
+
+db.collection(COL).doc('adr_records').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('adr_records', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('wt_stat').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('wt_stat', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('wt_cart').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('wt_cart', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('clinic_data').onSnapshot(snap => {
+  if (snap.exists) {
+    const d = snap.data();
+    if (d.visitRecords) localStorage.setItem('clinic_visits', JSON.stringify(d.visitRecords));
+    updateStats();
+  }
+});
 </script>
 
 </body>

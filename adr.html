@@ -209,7 +209,7 @@ tr.missing-symptom:hover td { background: #fef3c7; }
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <a href="https://oatsudster.github.io/pharmacy-tph/" class="topbar-home">🏠 หน้าหลัก</a>
+  <a href="index.html" class="topbar-home">🏠 หน้าหลัก</a>
   <div class="topbar-title">⚠️ ระบบรายงาน ADR</div>
   <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
   <div class="topbar-btns">
@@ -951,11 +951,15 @@ function renderTable(fRecs) {
   const COL = 'pharmacy_tph';
   let db;
   const badge = document.getElementById('sync-badge');
+  let lastSyncTime = null;
+  function nowTH() { return new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}); }
   function setBadge(txt, ok) {
-    badge.textContent = txt;
+    if (ok === true) { lastSyncTime = nowTH(); badge.textContent = `☁️ ซิงค์แล้ว ${lastSyncTime}`; }
+    else if (ok === false) { badge.textContent = lastSyncTime ? `⚠️ ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '⚠️ ออฟไลน์'; }
+    else { badge.textContent = txt; }
     badge.style.background = ok===true?'#d1fae5':ok===false?'#fee2e2':'#fef9c3';
     badge.style.color = ok===true?'#065f46':ok===false?'#991b1b':'#78350f';
-    badge.style.opacity = ok===true ? '0.7' : '1';
+    badge.style.opacity = '1';
   }
 
   window.fbSaveADR = async function() {

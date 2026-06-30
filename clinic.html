@@ -1284,18 +1284,22 @@ function initFirebase() {
     db = firebase.firestore();
     db.enablePersistence().catch(() => {});
     const badge = document.getElementById('sync-badge');
+    let lastSyncTime = null;
+    const nowTH = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
     db.collection('pharmacy_tph').doc('clinic_data').onSnapshot(snap => {
       if (snap.exists) {
         const d = snap.data();
         if (d.visitRecords) visitRecords = d.visitRecords;
         if (d.sessionRecords) sessionRecords = d.sessionRecords;
         saveLocal(); renderAll();
-        badge.textContent='☁️ ซิงค์แล้ว'; badge.style.background='#dcfce7'; badge.style.color='#15803d';
+        lastSyncTime = nowTH();
+        badge.textContent=`☁️ ซิงค์แล้ว ${lastSyncTime}`; badge.style.background='#dcfce7'; badge.style.color='#15803d';
       } else {
         badge.textContent='⚠️ ไม่พบข้อมูล'; badge.style.background='#fef9c3'; badge.style.color='#854d0e';
       }
     }, err => {
-      badge.textContent='📴 ออฟไลน์'; badge.style.background='#fee2e2'; badge.style.color='#991b1b';
+      badge.textContent = lastSyncTime ? `📴 ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '📴 ออฟไลน์';
+      badge.style.background='#fee2e2'; badge.style.color='#991b1b';
     });
   } catch(e) { console.warn('Firebase:',e); }
 }

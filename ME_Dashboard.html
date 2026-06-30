@@ -520,7 +520,7 @@
 
 <div class="main-area">
   <div class="main-topbar">
-    <a href="https://oatsudster.github.io/pharmacy-tph/" title="กลับหน้าหลัก" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
+    <a href="index.html" title="กลับหน้าหลัก" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
       🏠 หน้าหลัก
     </a>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
@@ -3509,6 +3509,8 @@ function importData(input) {
   const COL = 'pharmacy_tph';
 
   // ── Status badge ──────────────────────────────────────────
+  let lastSyncTime = null;
+  const nowTH = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
   function setSyncStatus(msg, color) {
     let el = document.getElementById('fb-sync-badge');
     if (!el) {
@@ -3517,11 +3519,13 @@ function importData(input) {
       el.style.cssText = 'position:fixed;bottom:16px;right:16px;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .4s';
       document.body.appendChild(el);
     }
-    el.textContent = msg;
+    if (color === 'ok') { lastSyncTime = nowTH(); el.textContent = `☁️ ซิงค์แล้ว ${lastSyncTime}`; }
+    else if (color === 'err') { el.textContent = lastSyncTime ? `⚠️ ออฟไลน์ (ล่าสุด ${lastSyncTime})` : msg; }
+    else { el.textContent = msg; }
     el.style.background = color === 'ok' ? '#d1fae5' : color === 'err' ? '#fee2e2' : '#fef9c3';
     el.style.color = color === 'ok' ? '#065f46' : color === 'err' ? '#991b1b' : '#78350f';
     el.style.opacity = '1';
-    if (color === 'ok') setTimeout(() => { el.style.opacity = '0'; }, 3000);
+    if (color === 'ok') setTimeout(() => { el.style.opacity = '0.4'; }, 4000);
   }
 
   // ── Merge arrays by id key (union, no duplicates) ─────────
