@@ -2,31 +2,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Suggestions (pharmacy_tph/suggestions) ──────────────────────
-    // ข้อมูลที่ index.html เขียน/อ่าน
-    match /pharmacy_tph/suggestions {
-      // อ่านได้ทุกคน (แสดงรายการข้อเสนอแนะ)
+    // ── pharmacy_tph collection ──────────────────────────────────────
+    // ครอบคลุม documents ทั้งหมดที่แอปใช้งาน:
+    // suggestions, adr_records, clinic_data,
+    // wt_stat, wt_cart, wt_stat_pending, wt_cart_pending,
+    // er_records, hosxp_records, hosxp_denom
+    match /pharmacy_tph/{docId} {
+      // อ่านได้ทุกคน (ข้อมูลภายในโรงพยาบาล ผ่าน PIN แล้ว)
       allow read: if true;
 
-      // เขียนได้เฉพาะถ้า:
-      // 1. field ที่เขียนคือ list เท่านั้น (ไม่มี field แปลกปลอม)
-      // 2. จำนวน items ไม่เกิน 200 รายการ
-      // 3. แต่ละ item ต้องมี topic และ detail เป็น string ความยาวไม่เกิน 500 ตัวอักษร
-      allow write: if request.resource.data.keys().hasOnly(['list'])
-        && request.resource.data.list is list
-        && request.resource.data.list.size() <= 200
-        && request.resource.data.list.size() >= 0;
+      // เขียนได้เฉพาะ document IDs ที่แอปใช้งานจริง
+      allow write: if docId in [
+        'suggestions',
+        'adr_records',
+        'clinic_data',
+        'wt_stat',
+        'wt_cart',
+        'wt_stat_pending',
+        'wt_cart_pending',
+        'er_records',
+        'hosxp_records',
+        'hosxp_denom'
+      ];
     }
 
-    // ── ADR / Clinic Firestore collections (ถ้ามีในอนาคต) ──────────
-    // ตอนนี้ข้อมูลเหล่านี้อยู่ใน localStorage
-    // เมื่อย้ายมา Firestore ให้ uncomment และปรับ path ตามจริง
-    //
-    // match /adr_records/{docId} {
-    //   allow read, write: if false; // จะเปิดเมื่อมี Firebase Auth
-    // }
-
-    // ── Deny all other paths ────────────────────────────────────────
+    // ── Deny all other collections / paths ──────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
