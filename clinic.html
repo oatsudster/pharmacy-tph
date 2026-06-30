@@ -344,8 +344,6 @@ tr:hover td{background:#f8faf9;}
         <textarea id="f-pharmnote" rows="2" placeholder="ข้อสังเกต แผนการดูแล หรือนัดติดตาม..."></textarea>
       </div>
 
-      <button class="btn-submit" onclick="submitVisit()">✅ บันทึกการให้คำปรึกษา</button>
-      <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
     </div>
 
     <!-- RIGHT COL: DRP + Leftover -->
@@ -394,6 +392,9 @@ tr:hover td{background:#f8faf9;}
         <div class="lo-summary-val" id="lo-total">฿0</div>
       </div>
       </div><!-- /lo-section-wrap -->
+
+      <button class="btn-submit" onclick="submitVisit()" style="margin-top:14px">✅ บันทึกการให้คำปรึกษา</button>
+      <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
     </div>
 
   </div><!-- /entry-grid -->
@@ -575,6 +576,21 @@ function fiscalInfo(iso) {
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function cleanDrugName(raw) {
+  if (!raw) return '';
+  let s = raw.trim();
+  // ลบ prefix รูปแบบ (tab.) (cap.) (syr.) (inj.) ฯลฯ ที่อยู่ข้างหน้า
+  s = s.replace(/^\s*\(\s*(?:tab|cap|syr|inj|susp|sol|amp|vial|liq|drops?|oint|cream|gel|patch|inh)\s*\.?\s*\)\s*/i, '');
+  // ลบตัวย่อในวงเล็บ เช่น (CaCO3) (HCTZ) — ต้องไม่มีช่องว่างข้างใน (ต่างจาก dosage เช่น (50 mg))
+  s = s.replace(/\(\s*[A-Za-z][A-Za-z0-9]*\s*\)/g, '');
+  // ลบจุดท้าย
+  s = s.replace(/\.\s*$/, '');
+  // ลบช่องว่างซ้ำ
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  // Capitalize ตัวแรก
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
 
 // ── TOAST ────────────────────────────────────────────────
 function showToast(msg,dur=2800) {
@@ -1091,12 +1107,12 @@ function filterLeftoverCards() {
       <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;
         border-radius:10px;padding:10px 14px;min-width:0">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#065f46;word-break:break-word;line-height:1.4">${l.drug||''}</div>
+          <div style="font-size:13px;font-weight:700;color:#065f46;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4">${cleanDrugName(l.drug)}</div>
           ${l.priceUnit>0?`<div style="font-size:11px;color:#6b7280">฿${l.priceUnit}/หน่วย</div>`:''}
         </div>
         <div style="text-align:center;flex-shrink:0">
-          <div style="font-size:26px;font-weight:900;color:#15803d;line-height:1">${l.qty}</div>
-          <div style="font-size:11px;color:#059669;font-weight:600">${l.unit||'เม็ด'}</div>
+          <div style="font-size:26px;font-weight:900;color:#dc2626;line-height:1">${l.qty}</div>
+          <div style="font-size:11px;color:#b91c1c;font-weight:600">${l.unit||'เม็ด'}</div>
         </div>
         ${l.total>0?`<div style="font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;border-radius:6px;padding:4px 8px;flex-shrink:0">฿${l.total}</div>`:''}
       </div>`).join('');
@@ -1142,9 +1158,9 @@ function renderTable() {
     const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+d.type+(d.cause?' → '+d.cause:'')+'</span>').join('');
     const loList = (r.leftovers||[]).length
       ? (r.leftovers||[]).map(l=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:4px 8px;min-width:0">
-          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.drug||''}</span>
-          <span style="font-size:16px;font-weight:800;color:#15803d;flex-shrink:0">${l.qty}</span>
-          <span style="font-size:11px;color:#065f46;flex-shrink:0">${l.unit||''}</span>
+          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cleanDrugName(l.drug)}</span>
+          <span style="font-size:16px;font-weight:800;color:#dc2626;flex-shrink:0">${l.qty}</span>
+          <span style="font-size:11px;color:#b91c1c;flex-shrink:0">${l.unit||''}</span>
         </div>`).join('')
       : '<span style="color:var(--text-light);font-size:11px">-</span>';
     const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
@@ -1316,6 +1332,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   document.getElementById('f-date').value = todayTH();
   document.getElementById('s-date').value = todayTH();
+  // วันพุธ (3) → HT อัตโนมัติ, วันพฤหัสบดี (4) → DM อัตโนมัติ
+  const dow = new Date().getDay();
+  if (dow === 3) selectClinic('HT');
+  else if (dow === 4) selectClinic('DM');
   renderAll();
 });
 </script>
