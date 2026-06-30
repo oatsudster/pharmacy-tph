@@ -103,6 +103,10 @@
   .kpi-label { font-size: 16px; font-weight: 600; color: var(--text-light); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
   .kpi-value { font-size: 44px; font-weight: 800; color: var(--text); line-height: 1; }
   .kpi-sub { font-size: 15px; color: var(--text-light); margin-top: 6px; }
+  .kpi-trend { font-size: 13px; font-weight: 700; margin-top: 6px; min-height: 18px; }
+  .kpi-trend.up   { color: var(--danger); }
+  .kpi-trend.down { color: var(--success); }
+  .kpi-trend.same { color: var(--text-light); font-weight: 400; }
 
   /* ── CHARTS ──────────────────────────────────── */
   .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 22px; }
@@ -588,11 +592,12 @@
         <label style="margin-left:8px">เดือน:</label>
         <select id="opd-dash-month" onchange="renderHosXPDashboard('OPD')"><option value="">ทั้งหมด</option></select>
         <span id="opd-dash-month-count" style="font-size:15px;color:var(--text-light)"></span>
+        <button onclick="exportHosXPCSV('OPD')" style="margin-left:auto;padding:5px 13px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 ส่งออก CSV</button>
       </div>
       <div class="kpi-grid">
         <div class="kpi-card"><div class="kpi-label">ME สะสมทั้งหมด (OPD)</div><div class="kpi-value" id="kpi-opd-total">0</div><div class="kpi-sub">รายการสะสม</div></div>
-        <div class="kpi-card warn"><div class="kpi-label">ช่วงที่เลือก</div><div class="kpi-value" id="kpi-opd-month">0</div><div class="kpi-sub" id="kpi-opd-month-label">รายการ</div></div>
-        <div class="kpi-card danger"><div class="kpi-label">ระดับ E ขึ้นไป</div><div class="kpi-value" id="kpi-opd-severe">0</div><div class="kpi-sub">มีผลต่อผู้ป่วย</div></div>
+        <div class="kpi-card warn"><div class="kpi-label">ช่วงที่เลือก</div><div class="kpi-value" id="kpi-opd-month">0</div><div class="kpi-sub" id="kpi-opd-month-label">รายการ</div><div class="kpi-trend" id="kpi-opd-month-trend"></div></div>
+        <div class="kpi-card danger"><div class="kpi-label">ระดับ E ขึ้นไป</div><div class="kpi-value" id="kpi-opd-severe">0</div><div class="kpi-sub">มีผลต่อผู้ป่วย</div><div class="kpi-trend" id="kpi-opd-severe-trend"></div></div>
         <div class="kpi-card success"><div class="kpi-label">ระดับ A–D</div><div class="kpi-value" id="kpi-opd-safe">0</div><div class="kpi-sub">ไม่มีผลต่อผู้ป่วย</div></div>
         <div class="kpi-card purple"><div class="kpi-label">อัตรา ME</div><div class="kpi-value" id="opd-rate-kpi">—</div><div class="kpi-sub">/ 1,000 ใบสั่งยา (≤20)</div></div>
       </div>
@@ -919,11 +924,12 @@
         <label style="margin-left:8px">เดือน:</label>
         <select id="ipd-dash-month" onchange="renderHosXPDashboard('IPD')"><option value="">ทั้งหมด</option></select>
         <span id="ipd-dash-month-count" style="font-size:15px;color:var(--text-light)"></span>
+        <button onclick="exportHosXPCSV('IPD')" style="margin-left:auto;padding:5px 13px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 ส่งออก CSV</button>
       </div>
       <div class="kpi-grid">
         <div class="kpi-card"><div class="kpi-label">ME สะสมทั้งหมด (IPD)</div><div class="kpi-value" id="kpi-ipd-total">0</div><div class="kpi-sub">รายการสะสม</div></div>
-        <div class="kpi-card warn"><div class="kpi-label">ช่วงที่เลือก</div><div class="kpi-value" id="kpi-ipd-month">0</div><div class="kpi-sub" id="kpi-ipd-month-label">รายการ</div></div>
-        <div class="kpi-card danger"><div class="kpi-label">ระดับ E ขึ้นไป</div><div class="kpi-value" id="kpi-ipd-severe">0</div><div class="kpi-sub">มีผลต่อผู้ป่วย</div></div>
+        <div class="kpi-card warn"><div class="kpi-label">ช่วงที่เลือก</div><div class="kpi-value" id="kpi-ipd-month">0</div><div class="kpi-sub" id="kpi-ipd-month-label">รายการ</div><div class="kpi-trend" id="kpi-ipd-month-trend"></div></div>
+        <div class="kpi-card danger"><div class="kpi-label">ระดับ E ขึ้นไป</div><div class="kpi-value" id="kpi-ipd-severe">0</div><div class="kpi-sub">มีผลต่อผู้ป่วย</div><div class="kpi-trend" id="kpi-ipd-severe-trend"></div></div>
         <div class="kpi-card success"><div class="kpi-label">ระดับ A–D</div><div class="kpi-value" id="kpi-ipd-safe">0</div><div class="kpi-sub">ไม่มีผลต่อผู้ป่วย</div></div>
         <div class="kpi-card purple"><div class="kpi-label">อัตรา ME</div><div class="kpi-value" id="ipd-rate-kpi">—</div><div class="kpi-sub">/ 1,000 วันนอน (≤10)</div></div>
       </div>
@@ -1248,6 +1254,7 @@
       <option value="">ทุกเดือน</option>
     </select>
     <span id="er-dash-count" style="font-size:13px; color:var(--text-light);"></span>
+    <button onclick="exportCSV()" style="margin-left:auto;padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 ส่งออก CSV</button>
   </div>
 
   <!-- KPI Row 1: ME Summary -->
@@ -1261,11 +1268,13 @@
       <div class="kpi-label" id="kpi-month-title">เดือนนี้</div>
       <div class="kpi-value" id="kpi-month">0</div>
       <div class="kpi-sub" id="kpi-month-label">รายการ</div>
+      <div class="kpi-trend" id="kpi-month-trend"></div>
     </div>
     <div class="kpi-card danger">
       <div class="kpi-label">ระดับ E ขึ้นไป</div>
       <div class="kpi-value" id="kpi-severe">0</div>
       <div class="kpi-sub">มีผลต่อผู้ป่วย</div>
+      <div class="kpi-trend" id="kpi-severe-trend"></div>
     </div>
     <div class="kpi-card success">
       <div class="kpi-label">ระดับ A–D</div>
@@ -2385,6 +2394,28 @@ function renderDashboard() {
       }
     });
   }
+
+  // ── KPI trend vs prev month (only when no filter active) ──
+  if (!selMonth && !selFY) {
+    const allMEFull = records.filter(r => r.hasME !== false);
+    const prevD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevStr = prevD.getFullYear() + '-' + String(prevD.getMonth()+1).padStart(2,'0');
+    setKpiTrend('kpi-month-trend', thisMonth, allMEFull.filter(r => r.date && r.date.startsWith(prevStr)).length);
+    setKpiTrend('kpi-severe-trend', severe, allMEFull.filter(r => r.date && r.date.startsWith(prevStr) && ['E','F','G','H','I'].includes(r.severity)).length);
+  } else {
+    ['kpi-month-trend','kpi-severe-trend'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+  }
+}
+
+function setKpiTrend(id, curr, prev) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (prev === undefined || prev === null) { el.textContent = ''; return; }
+  const delta = curr - prev;
+  if (delta === 0) { el.textContent = '→ เท่าเดิมจากเดือนก่อน'; el.className = 'kpi-trend same'; return; }
+  const sign = delta > 0 ? '+' : '';
+  el.textContent = (delta > 0 ? '↑ ' : '↓ ') + sign + delta + ' จากเดือนก่อน';
+  el.className = 'kpi-trend ' + (delta > 0 ? 'up' : 'down');
 }
 
 function count(arr) {
@@ -2967,13 +2998,25 @@ function updateHosXPStatus() {
 }
 
 function updateLandingCounts() {
-  const opdN = hosxpRecords.filter(r => r.dept === 'OPD').length;
-  const ipdN = hosxpRecords.filter(r => r.dept === 'IPD').length;
-  const erN  = records.filter(r => r.hasME !== false).length;
-  const s = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n + ' รายการ'; };
-  s('land-opd-count', opdN);
-  s('land-ipd-count', ipdN);
-  s('land-er-count',  erN);
+  const now = new Date();
+  const mPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const thaiMonth = now.toLocaleString('th-TH', {month:'short', timeZone:'Asia/Bangkok'});
+
+  const opdAll   = hosxpRecords.filter(r => r.dept === 'OPD');
+  const opdMonth = opdAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
+  const ipdAll   = hosxpRecords.filter(r => r.dept === 'IPD');
+  const ipdMonth = ipdAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
+  const erAll    = records.filter(r => r.hasME !== false);
+  const erMonth  = erAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
+
+  const s = (id, total, month) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<span style="font-weight:700">${total} รายการ</span><span style="display:block;font-size:12px;opacity:.75;margin-top:2px">${thaiMonth} นี้: ${month} รายการ</span>`;
+  };
+  s('land-opd-count', opdAll.length, opdMonth);
+  s('land-ipd-count', ipdAll.length, ipdMonth);
+  s('land-er-count',  erAll.length,  erMonth);
 }
 
 // ======= CLEAR DEPT =======
@@ -3200,6 +3243,19 @@ function renderHosXPDashboard(dept) {
   }
   renderChart('chart-'+p+'-trend','line',trendLabels,trendData,['#2563eb']);
   renderHosXPKPI(dept);
+
+  // ── KPI trend vs prev month ──
+  if (selMonth) {
+    const prevD = new Date(selMonth + '-01');
+    prevD.setMonth(prevD.getMonth() - 1);
+    const prevStr = prevD.getFullYear() + '-' + String(prevD.getMonth()+1).padStart(2,'0');
+    setKpiTrend('kpi-'+p+'-month-trend', recs.length, allRecs.filter(r=>r.date&&r.date.startsWith(prevStr)).length);
+    setKpiTrend('kpi-'+p+'-severe-trend',
+      recs.filter(r=>['E','F','G','H','I'].includes(r.severity)).length,
+      allRecs.filter(r=>r.date&&r.date.startsWith(prevStr)&&['E','F','G','H','I'].includes(r.severity)).length);
+  } else {
+    ['kpi-'+p+'-month-trend','kpi-'+p+'-severe-trend'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  }
 }
 
 // ======= KPI TAB =======
