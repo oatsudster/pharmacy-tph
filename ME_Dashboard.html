@@ -13,6 +13,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
 <style>
 
   :root {
@@ -285,6 +286,10 @@
   .modal h3 { font-size:20px; margin-bottom:12px; color:var(--danger); }
   .modal p { color:var(--text-mid); margin-bottom:24px; line-height:1.7; }
   .modal-actions { display:flex; gap:12px; justify-content:center; }
+  .modal-box { background:var(--surface); border-radius:14px; padding:22px; width:min(460px,95vw); max-height:88vh; overflow-y:auto; box-shadow:0 16px 48px rgba(0,0,0,.18); }
+  .modal-title { font-size:15px; font-weight:700; color:var(--primary-dark); margin-bottom:14px; }
+  .modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+  .btn-cancel { padding:8px 16px; background:none; border:1.5px solid var(--border); border-radius:8px; font-size:13px; color:var(--text-mid); cursor:pointer; font-family:inherit; }
 
   /* ── DIVIDER ─────────────────────────────────── */
   .section-divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
@@ -528,6 +533,7 @@
       🏠 หน้าหลัก
     </a>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
+    <button onclick="expModalOpen(f=>expFilter(records,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
     <div class="main-topbar-badge">ปีงบประมาณ 2569</div>
   </div>
   
@@ -3670,5 +3676,91 @@ function importData(input) {
     fbStartListeners();
   }
 })();
+
+// ── EXPORT (ME Dashboard) ────────────────────────────────
+function pageDoExport(fmt) {
+  const f    = expGetFilter();
+  const recs = expFilter(records, f);
+  if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+  const label = expFilterLabel(f);
+
+  const drugStr = r => {
+    const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
+    return list.map(d => (d.form ? '['+d.form+'] ' : '') + d.name).join(' / ');
+  };
+
+  if (fmt === 'excel') {
+    const data = recs.map((r,i) => ({
+      'ลำดับ':           i+1,
+      'วันที่':          expISOtoTH(r.date),
+      'เวลา':            r.time||'',
+      'ขั้นตอนที่พบ':   r.stage||'',
+      'ประเภท ME':       r.meType||'',
+      'ระดับความรุนแรง': r.severity||'',
+      'ยา':              drugStr(r),
+      'Ward':            r.ward||'',
+      'Rx/วัน':          r.rxDaily||'',
+      'รายละเอียด':      r.detail||'',
+      'Intervention':    r.intervention||'',
+      'ผู้บันทึก':       r.reporter||'',
+    }));
+    expExcel([{ name:'ME Report (ER)', data }], `ME_Dashboard_${label}`);
+  }
+
+  if (fmt === 'pdf') {
+    const headers = ['ลำดับ','วันที่','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','รายละเอียด'];
+    const rows = recs.map((r,i) => [
+      i+1, expISOtoTH(r.date), r.stage||'', r.meType||'', r.severity||'',
+      drugStr(r), r.ward||'', r.detail||'',
+    ]);
+    expPDF({ title:'รายงาน Medication Error (ER)', subtitle: label, headers, rows, landscape:true });
+  }
+  expModalClose();
+}
 </script>
+
+<!-- ══ EXPORT MODAL ══════════════════════════════════════════ -->
+<div id="export-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title">📊 Export รายงาน ME</div>
+    <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <button id="exp-tab-date"  onclick="expSetTab('date')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">📅 ช่วงวันที่</button>
+      <button id="exp-tab-month" onclick="expSetTab('month')" style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📆 รายเดือน</button>
+      <button id="exp-tab-year"  onclick="expSetTab('year')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📋 ปีงบฯ</button>
+    </div>
+    <div id="exp-pane-date">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ตั้งแต่วันที่</label>
+          <input id="exp-from" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ถึงวันที่</label>
+          <input id="exp-to" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+      </div>
+    </div>
+    <div id="exp-pane-month" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">เดือน</label>
+          <select id="exp-month" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none">
+            <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option>
+            <option value="04">เมษายน</option><option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option>
+            <option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option><option value="09">กันยายน</option>
+            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปี (พ.ศ.)</label>
+          <select id="exp-month-year" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select></div>
+      </div>
+    </div>
+    <div id="exp-pane-year" style="display:none">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปีงบประมาณ (พ.ศ.)</label>
+      <select id="exp-fy" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select>
+    </div>
+    <div id="exp-preview" style="margin-top:12px;padding:10px 14px;background:var(--primary-light);border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark)">📊 เลือกช่วงเวลาด้านบน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button onclick="pageDoExport('excel')" style="padding:12px;background:#217346;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel (.xlsx)</button>
+      <button onclick="pageDoExport('pdf')"   style="padding:12px;background:#c0392b;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF (พิมพ์)</button>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="expModalClose()">ปิด</button></div>
+  </div>
+</div>
 </body>

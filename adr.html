@@ -13,6 +13,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <style>
@@ -214,7 +215,8 @@ tr.missing-symptom:hover td { background: #fef3c7; }
   <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
   <div class="topbar-btns">
     <div class="tbtn"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
-    <button class="tbtn" onclick="exportJSON()">💾 Export</button>
+    <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
+    <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <div class="tbtn"><label>📂 Import JSON<input type="file" accept=".json" onchange="importJSON(this)"></label></div>
   </div>
   <span class="sync-badge" id="sync-badge">⏳ กำลังเชื่อมต่อ...</span>
@@ -1002,6 +1004,90 @@ document.addEventListener('DOMContentLoaded', () => {
   onTypeChange('');
   renderAll();
 });
+
+// ── EXPORT (ADR) ──────────────────────────────────────────
+function pageDoExport(fmt) {
+  const f    = expGetFilter();
+  const recs = expFilter(records, f);
+  if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+  const label = expFilterLabel(f);
+
+  const SEV_SHORT = s => s ? s.replace(/\s*\(.*?\)\s*/g,'').trim() : '';
+
+  if (fmt === 'excel') {
+    const data = recs.map((r,i) => ({
+      'ลำดับ':           i+1,
+      'วันที่':          expISOtoTH(r.date),
+      'ชนิดรายงาน':     r.type||'',
+      'HN':              r.hn||'',
+      'ชื่อผู้ป่วย':     r.name||'',
+      'แผนก/ห้อง':       r.dept||'',
+      'ชื่อยา/ผลิตภัณฑ์': r.drug||'',
+      'ประเภทผลิตภัณฑ์': r.productType||'',
+      'ความรุนแรง':      SEV_SHORT(r.severity),
+      'อาการ/อาการแสดง': r.symptom||'',
+      'การวินิจฉัย':     r.diagnosis||'',
+      'ผู้รายงาน':       r.reporter||'',
+    }));
+    expExcel([{ name:'รายงาน ADR', data }], `ADR_${label}`);
+  }
+
+  if (fmt === 'pdf') {
+    const headers = ['ลำดับ','วันที่','ชนิด','HN','ชื่อผู้ป่วย','แผนก','ยา/ผลิตภัณฑ์','ความรุนแรง'];
+    const rows = recs.map((r,i) => [
+      i+1, expISOtoTH(r.date), r.type||'', r.hn||'', r.name||'',
+      r.dept||'', r.drug||'', SEV_SHORT(r.severity),
+    ]);
+    expPDF({ title:'รายงานการเฝ้าระวัง ADR', subtitle: label, headers, rows, landscape:true });
+  }
+  expModalClose();
+}
 </script>
+
+<!-- ══ EXPORT MODAL ══════════════════════════════════════════ -->
+<div id="export-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title">📊 Export รายงาน ADR</div>
+    <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <button id="exp-tab-date"  onclick="expSetTab('date')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">📅 ช่วงวันที่</button>
+      <button id="exp-tab-month" onclick="expSetTab('month')" style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📆 รายเดือน</button>
+      <button id="exp-tab-year"  onclick="expSetTab('year')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📋 ปีงบฯ</button>
+    </div>
+    <div id="exp-pane-date">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ตั้งแต่วันที่</label>
+          <input id="exp-from" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ถึงวันที่</label>
+          <input id="exp-to" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+      </div>
+    </div>
+    <div id="exp-pane-month" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">เดือน</label>
+          <select id="exp-month" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none">
+            <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option>
+            <option value="04">เมษายน</option><option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option>
+            <option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option><option value="09">กันยายน</option>
+            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปี (พ.ศ.)</label>
+          <select id="exp-month-year" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select></div>
+      </div>
+    </div>
+    <div id="exp-pane-year" style="display:none">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปีงบประมาณ (พ.ศ.)</label>
+      <select id="exp-fy" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select>
+    </div>
+    <div id="exp-preview" style="margin-top:12px;padding:10px 14px;background:var(--primary-light);border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark)">📊 เลือกช่วงเวลาด้านบน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button onclick="pageDoExport('excel')" style="padding:12px;background:#217346;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel (.xlsx)</button>
+      <button onclick="pageDoExport('pdf')"   style="padding:12px;background:#c0392b;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF (พิมพ์)</button>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="expModalClose()">ปิด</button></div>
+  </div>
+</div>
+
 </body>
 </html>
