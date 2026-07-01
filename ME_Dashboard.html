@@ -14,6 +14,7 @@
 <script src="lib/chart.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
+<script src="lib/session-timeout.js"></script>
 <style>
 
   :root {
@@ -502,6 +503,9 @@
     <a class="sidebar-item active" id="nav-home" onclick="showSection('home')">
       <span class="si-icon">🏠</span> หน้าหลัก
     </a>
+    <a class="sidebar-item" id="nav-overview" onclick="showSection('overview')">
+      <span class="si-icon">📈</span> ภาพรวมทั้งโรงพยาบาล
+    </a>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section-label">เลือกแผนก</div>
     <a class="sidebar-item" id="nav-opd" onclick="showSection('opd')">
@@ -573,6 +577,50 @@
 </div>
 
   
+<!-- ========== OVERVIEW SECTION ========== -->
+<div class="section" id="section-overview">
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;">
+    <label style="font-size:14px;font-weight:700;color:var(--text-mid)">📅 ปีงบประมาณ:</label>
+    <select id="ov-fy" onchange="populateOverviewFilter();renderOverview();" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;background:var(--bg);"><option value="">ทั้งหมด</option></select>
+    <label style="font-size:14px;font-weight:700;color:var(--text-mid)">เดือน:</label>
+    <select id="ov-month" onchange="renderOverview();" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;background:var(--bg);"><option value="">ทุกเดือน</option></select>
+    <span id="ov-count" style="font-size:14px;color:var(--text-light);margin-left:4px;"></span>
+  </div>
+  <div style="padding:24px;overflow-y:auto;background:var(--bg);flex:1;">
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px;">
+      <div class="kpi-card"><div class="kpi-label">ME รวมทั้งโรงพยาบาล</div><div class="kpi-value" id="ov-kpi-total" style="color:var(--primary)">0</div><div class="kpi-sub">ทุกแผนก</div></div>
+      <div class="kpi-card" style="border-top-color:#2563eb"><div class="kpi-label">OPD ผู้ป่วยนอก</div><div class="kpi-value" id="ov-kpi-opd" style="color:#2563eb">0</div><div class="kpi-sub">รายการ</div></div>
+      <div class="kpi-card" style="border-top-color:#16a34a"><div class="kpi-label">IPD ผู้ป่วยใน</div><div class="kpi-value" id="ov-kpi-ipd" style="color:#16a34a">0</div><div class="kpi-sub">รายการ</div></div>
+      <div class="kpi-card" style="border-top-color:#dc2626"><div class="kpi-label">ER ห้องฉุกเฉิน</div><div class="kpi-value" id="ov-kpi-er" style="color:#dc2626">0</div><div class="kpi-sub">รายการ</div></div>
+      <div class="kpi-card danger"><div class="kpi-label">ระดับ E+ (มีผลต่อผู้ป่วย)</div><div class="kpi-value" id="ov-kpi-severe">0</div><div class="kpi-sub">ระดับ E–I</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:16px;margin-bottom:20px;">
+      <div class="chart-box"><div class="card-title">จำนวน ME แยกแผนก</div><canvas id="chart-ov-dept"></canvas></div>
+      <div class="chart-box"><div class="card-title">ระดับความรุนแรง (NCC MERP) รวม</div><canvas id="chart-ov-severity"></canvas></div>
+      <div class="chart-box"><div class="card-title">ยาที่พบบ่อยสุด (Top 10 รวม)</div><canvas id="chart-ov-drug"></canvas></div>
+    </div>
+    <div class="chart-box" style="margin-bottom:20px;">
+      <div class="card-title">แนวโน้ม ME รายเดือน 12 เดือนล่าสุด (OPD / IPD / ER)</div>
+      <canvas id="chart-ov-trend" style="max-height:260px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">20 รายการล่าสุด (ทั้งโรงพยาบาล)</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px">
+          <thead><tr>
+            <th style="background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:12px">วันที่</th>
+            <th style="background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:12px">แผนก</th>
+            <th style="background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:12px">ยา</th>
+            <th style="background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:12px">ระดับ</th>
+            <th style="background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:12px">รายละเอียด</th>
+          </tr></thead>
+          <tbody id="ov-recent-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ========== OPD SECTION ========== -->
 <div class="section" id="section-opd">
   <div class="section-header tab-bar">
@@ -2812,15 +2860,17 @@ function showSection(name) {
   const nav = document.getElementById('nav-' + name);
   if (nav) nav.classList.add('active');
   const titles = {
-    home: 'ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา',
-    opd:  'OPD — ผู้ป่วยนอก',
-    ipd:  'IPD — ผู้ป่วยใน',
-    er:   'ER — ห้องฉุกเฉิน',
+    home:     'ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา',
+    overview: 'ภาพรวม ME ทั้งโรงพยาบาล (OPD + IPD + ER)',
+    opd:      'OPD — ผู้ป่วยนอก',
+    ipd:      'IPD — ผู้ป่วยใน',
+    er:       'ER — ห้องฉุกเฉิน',
   };
   document.getElementById('main-topbar-title').textContent = titles[name] || '';
-  if (name === 'er') erShowPage('dashboard', document.querySelector('#section-er .tab-btn'));
-  if (name === 'opd') { updateHosXPStatus(); renderHosXPDashboard('OPD'); }
-  if (name === 'ipd') { updateHosXPStatus(); renderHosXPDashboard('IPD'); }
+  if (name === 'er')       erShowPage('dashboard', document.querySelector('#section-er .tab-btn'));
+  if (name === 'opd')      { updateHosXPStatus(); renderHosXPDashboard('OPD'); }
+  if (name === 'ipd')      { updateHosXPStatus(); renderHosXPDashboard('IPD'); }
+  if (name === 'overview') { populateOverviewFilter(); renderOverview(); }
   updateLandingCounts();
 }
 
@@ -3556,6 +3606,139 @@ function importData(input) {
 }
 
 
+// ======= OVERVIEW DASHBOARD (OPD + IPD + ER รวม) =======
+function populateOverviewFilter() {
+  const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
+  const allSrc = [...records.filter(r=>r.hasME!==false), ...hosxpRecords];
+  const months = [...new Set(allSrc.map(r=>r.date?r.date.substring(0,7):'').filter(Boolean))].sort().reverse();
+  const fyEl = document.getElementById('ov-fy');
+  if (fyEl) {
+    const prev = fyEl.value;
+    const fys = [...new Set(months.map(m=>getFiscalYear(m+'-01')).filter(Boolean))].sort().reverse();
+    fyEl.innerHTML = '<option value="">ทั้งหมด</option>' + fys.map(fy=>`<option value="${fy}">ปีงบ ${fy}</option>`).join('');
+    if (prev && fys.includes(parseInt(prev))) fyEl.value = prev;
+  }
+  const selFY = fyEl ? parseInt(fyEl.value) : NaN;
+  const filteredMonths = (isNaN(selFY)||!selFY) ? months : months.filter(m=>getFiscalYear(m+'-01')===selFY);
+  const moEl = document.getElementById('ov-month');
+  if (moEl) {
+    const prev = moEl.value;
+    moEl.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
+    if (prev && filteredMonths.includes(prev)) moEl.value = prev;
+  }
+}
+
+function renderOverview() {
+  const _lsER = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
+  if (_lsER.length > records.length) records = _lsER;
+  const _lsHX = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
+  if (_lsHX.length > hosxpRecords.length) hosxpRecords = _lsHX;
+
+  const selFY    = parseInt((document.getElementById('ov-fy')||{}).value||'') || 0;
+  const selMonth = ((document.getElementById('ov-month')||{}).value||'');
+  const applyFilter = recs => {
+    if (selFY)    recs = recs.filter(r => getFiscalYear(r.date) === selFY);
+    if (selMonth) recs = recs.filter(r => r.date && r.date.startsWith(selMonth));
+    return recs;
+  };
+
+  let erRecs  = applyFilter(records.filter(r => r.hasME !== false));
+  let opdRecs = applyFilter(hosxpRecords.filter(r => r.dept === 'OPD'));
+  let ipdRecs = applyFilter(hosxpRecords.filter(r => r.dept === 'IPD'));
+  const allRecs = [...opdRecs, ...ipdRecs, ...erRecs];
+
+  const g = id => document.getElementById(id);
+  if(g('ov-kpi-total'))  g('ov-kpi-total').textContent  = allRecs.length;
+  if(g('ov-kpi-opd'))    g('ov-kpi-opd').textContent    = opdRecs.length;
+  if(g('ov-kpi-ipd'))    g('ov-kpi-ipd').textContent    = ipdRecs.length;
+  if(g('ov-kpi-er'))     g('ov-kpi-er').textContent     = erRecs.length;
+  if(g('ov-kpi-severe')) g('ov-kpi-severe').textContent = allRecs.filter(r=>['E','F','G','H','I'].includes(r.severity)).length;
+  if(g('ov-count'))      g('ov-count').textContent      = allRecs.length ? `(${allRecs.length} รายการ)` : '';
+
+  // Dept comparison bar
+  renderChart('chart-ov-dept','bar',
+    ['OPD ผู้ป่วยนอก','IPD ผู้ป่วยใน','ER ห้องฉุกเฉิน'],
+    [opdRecs.length, ipdRecs.length, erRecs.length],
+    ['#2563eb','#16a34a','#dc2626']
+  );
+
+  // Severity combined doughnut
+  const sevOrder=['A','B','C','D','E','F','G','H','I'];
+  const sevColors=['#86efac','#4ade80','#fde68a','#fcd34d','#fdba74','#fb923c','#f87171','#ef4444','#7f1d1d'];
+  const sevCount={};
+  allRecs.forEach(r=>{ if(r.severity) sevCount[r.severity]=(sevCount[r.severity]||0)+1; });
+  const nzSev=sevOrder.filter(s=>sevCount[s]);
+  renderChart('chart-ov-severity','doughnut',
+    nzSev.length?nzSev:['ยังไม่มีข้อมูล'],
+    nzSev.length?nzSev.map(s=>sevCount[s]):[1],
+    nzSev.length?nzSev.map(s=>sevColors[sevOrder.indexOf(s)]):['#e5e7eb']
+  );
+
+  // Top drugs (combined)
+  const drugCount={};
+  allRecs.forEach(r=>{
+    if(r.drug) drugCount[r.drug]=(drugCount[r.drug]||0)+1;
+    else if(r.drugs&&r.drugs.length) r.drugs.forEach(d=>{ if(d.name) drugCount[d.name]=(drugCount[d.name]||0)+1; });
+  });
+  const topDrugs=Object.entries(drugCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(topDrugs.length) renderChart('chart-ov-drug','bar',topDrugs.map(d=>d[0]),topDrugs.map(d=>d[1]),palette(topDrugs.length),true);
+
+  // 12-month trend multi-line
+  const thMini=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const trendLabels=[], opdT=[], ipdT=[], erT=[];
+  const erAll=records.filter(r=>r.hasME!==false);
+  for(let i=11;i>=0;i--){
+    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
+    const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    trendLabels.push(thMini[d.getMonth()]+' '+(d.getFullYear()+543).toString().slice(-2));
+    opdT.push(hosxpRecords.filter(r=>r.dept==='OPD'&&r.date&&r.date.startsWith(k)).length);
+    ipdT.push(hosxpRecords.filter(r=>r.dept==='IPD'&&r.date&&r.date.startsWith(k)).length);
+    erT.push(erAll.filter(r=>r.date&&r.date.startsWith(k)).length);
+  }
+  const tId='chart-ov-trend';
+  if(chartInstances[tId]) chartInstances[tId].destroy();
+  const tEl=document.getElementById(tId);
+  if(tEl) {
+    chartInstances[tId]=new Chart(tEl.getContext('2d'),{
+      type:'line',
+      data:{ labels:trendLabels, datasets:[
+        {label:'OPD',data:opdT,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointRadius:4},
+        {label:'IPD',data:ipdT,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.4,pointRadius:4},
+        {label:'ER', data:erT, borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.4,pointRadius:4},
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,position:'top'}},
+        scales:{
+          x:{ticks:{maxRotation:45,font:{size:12}}},
+          y:{beginAtZero:true,ticks:{stepSize:1,precision:0}}
+        }
+      }
+    });
+  }
+
+  // Recent 20 records table
+  const sorted=allRecs.filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  const tbody=document.getElementById('ov-recent-tbody');
+  if(tbody){
+    tbody.innerHTML=sorted.map(r=>{
+      const dept=r.dept||'ER';
+      const deptColor=dept==='OPD'?'#2563eb':dept==='IPD'?'#16a34a':'#dc2626';
+      const drugStr=r.drug||(r.drugs&&r.drugs.length?r.drugs.map(d=>d.name).join(', '):'—');
+      const sev=r.severity||'—';
+      const detail=r.detail||r.stageRaw||'—';
+      return `<tr>
+        <td style="white-space:nowrap;color:var(--text-light);font-size:12px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${formatDateThai(r.date)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span style="background:${deptColor}22;color:${deptColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">${dept}</span></td>
+        <td style="font-size:13px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${drugStr}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span class="badge sev-${sev}">${sev}</span></td>
+        <td style="font-size:13px;color:var(--text-mid);padding:7px 10px;border-bottom:1px solid #f0f4f2;max-width:260px">${detail}</td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:32px 0">ยังไม่มีข้อมูล</td></tr>';
+  }
+}
+
 (function() {
   const firebaseConfig = {
     apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
@@ -3611,6 +3794,7 @@ function importData(input) {
           if (typeof renderTable === 'function') renderTable();
           if (typeof renderDashboard === 'function') renderDashboard();
           if (typeof updateLandingCounts === 'function') updateLandingCounts();
+          if (typeof renderOverview === 'function') renderOverview();
         }
       }
       setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
@@ -3629,6 +3813,7 @@ function importData(input) {
             renderHosXPDashboard('OPD');
             renderHosXPDashboard('IPD');
           }
+          if (typeof renderOverview === 'function') renderOverview();
         }
       }
     });
