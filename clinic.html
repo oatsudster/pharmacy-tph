@@ -610,7 +610,7 @@ function switchView(view) {
   document.getElementById('view-report').style.display = isEntry ? 'none' : 'block';
   document.getElementById('vbtn-entry').classList.toggle('active', isEntry);
   document.getElementById('vbtn-report').classList.toggle('active', !isEntry);
-  if (!isEntry) { renderMain(); }
+  if (!isEntry) { renderCurrentView(); }
 }
 
 function selectClinic(c) {
@@ -929,7 +929,22 @@ function saveModal() {
 // ── RENDER ───────────────────────────────────────────────
 function renderAll() {
   renderRecentRecords();
-  renderMain();
+  renderCurrentView();
+}
+
+// รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)
+// เพื่อไม่ให้หน้า "ยาคงเหลือ" ถูกรีเซ็ตทุกครั้งที่มีการบันทึก/ซิงค์ข้อมูล
+function renderCurrentView() {
+  const main = document.getElementById('main-content');
+  const view = window.reportView || 'main';
+  if (view === 'leftover') {
+    if (document.getElementById('lo-cards-wrap')) filterLeftoverCards();
+    else renderLeftoverReport(main);
+  } else if (view === 'session') {
+    renderSessionTab(main);
+  } else {
+    renderMain();
+  }
 }
 
 function getFilteredVisits(clinic) {
@@ -971,7 +986,8 @@ function renderMain() {
     const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
                   : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
                   : `renderMain()`;
-    return `<button class="clinic-tab ${colors[c]} ${c===clinic?'active':''}" onclick="window.reportClinic='${c}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
+    return `<button class="clinic-tab ${colors[c]} ${c===clinic?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
   }).join('');
 
   main.innerHTML = `
@@ -1036,7 +1052,8 @@ function renderLeftoverReport(main) {
     const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
                   : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
                   : `renderMain()`;
-    return `<button class="clinic-tab ${colors[c]} ${'leftover'===c?'active':''}" onclick="window.reportClinic='${c}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
+    return `<button class="clinic-tab ${colors[c]} ${'leftover'===c?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
   }).join('');
 
   // Get all visits with leftovers, sorted newest first
