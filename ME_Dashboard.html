@@ -619,6 +619,13 @@
         </table>
       </div>
     </div>
+    <div id="ov-detail-panel" style="display:none;margin-top:20px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:20px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 id="ov-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
+        <button onclick="document.getElementById('ov-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+      </div>
+      <div id="ov-detail-body" class="table-wrap"></div>
+    </div>
   </div>
 </div>
 
@@ -1390,6 +1397,13 @@
       <div class="card-title">⏰ % ME นอกเวลาราชการ (16.00–08.00 น.) รายเดือน</div>
       <canvas id="chart-offhours-monthly"></canvas>
     </div>
+  </div>
+  <div id="er-detail-panel" style="display:none;margin-top:20px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:20px 24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 id="er-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
+      <button onclick="document.getElementById('er-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div id="er-detail-body" class="table-wrap"></div>
   </div>
   </div>
 <!-- ========== ENTRY FORM ========== -->
@@ -2530,40 +2544,32 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
 }
 
 // ======= DETAIL MODAL =======
-function _showDetailModalER(title, recs) {
-  document.getElementById('detail-modal-title').textContent = title + '  (' + recs.length + ' รายการ)';
-  const body = document.getElementById('detail-modal-body');
-  if (!recs.length) {
-    body.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
-  } else {
-    body.innerHTML = '<table><thead><tr>' +
-      '<th>#</th><th>วันที่</th><th>เวลา</th><th>ยา</th>' +
-      '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
-      '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
-      '</tr></thead><tbody>' +
-      recs.map((r,i) => {
-        const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
-        const drugStr = list.length
-          ? list.map(d => (d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+d.form+'</span> '+d.name : d.name)).join('<br>')
-          : '—';
-        return '<tr>' +
-          '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
-          '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-          '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
-          '<td>'+drugStr+'</td>' +
-          '<td>'+((r.stage||'').split(' ')[0]||'—')+'</td>' +
-          '<td>'+(r.meType||'—')+'</td>' +
-          '<td><span class="badge sev-'+r.severity+'">'+(r.severity||'—')+'</span></td>' +
-          '<td style="font-size:14px;min-width:160px">'+(r.detail||'—')+'</td>' +
-          '<td style="font-size:14px;min-width:120px">'+(r.intervention||'—')+'</td>' +
-          '<td style="white-space:nowrap;font-size:14px">'+(r.reporter||'—')+'</td>' +
-          '</tr>';
-      }).join('') +
-      '</tbody></table>';
-  }
-  const modal = document.getElementById('detail-modal');
-  modal.style.display = 'flex';
-  modal.scrollTop = 0;
+function _buildERDetailTable(recs) {
+  if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
+  return '<table><thead><tr>' +
+    '<th>#</th><th>วันที่</th><th>เวลา</th><th>ยา</th>' +
+    '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
+    '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
+    '</tr></thead><tbody>' +
+    recs.map((r,i) => {
+      const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
+      const drugStr = list.length
+        ? list.map(d => (d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+d.form+'</span> '+d.name : d.name)).join('<br>')
+        : '—';
+      return '<tr>' +
+        '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
+        '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
+        '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
+        '<td>'+drugStr+'</td>' +
+        '<td>'+((r.stage||'').split(' ')[0]||'—')+'</td>' +
+        '<td>'+(r.meType||'—')+'</td>' +
+        '<td><span class="badge sev-'+r.severity+'">'+(r.severity||'—')+'</span></td>' +
+        '<td style="font-size:14px;min-width:160px">'+(r.detail||'—')+'</td>' +
+        '<td style="font-size:14px;min-width:120px">'+(r.intervention||'—')+'</td>' +
+        '<td style="white-space:nowrap;font-size:14px">'+(r.reporter||'—')+'</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
 }
 function closeDetailModal() {
   document.getElementById('detail-modal').style.display = 'none';
@@ -3466,34 +3472,36 @@ function _buildOverviewDetailTable(recs) {
 }
 
 function showOverviewDetail(title, recs) {
-  document.getElementById('detail-modal-title').textContent = title + '  (' + recs.length + ' รายการ)';
-  document.getElementById('detail-modal-body').innerHTML = _buildOverviewDetailTable(recs);
-  const modal = document.getElementById('detail-modal');
-  modal.style.display = 'flex';
-  modal.scrollTop = 0;
+  // แสดงเป็น panel ด้านล่าง dashboard เหมือน OPD/IPD/ER แทนที่จะเป็น popup
+  document.getElementById('ov-detail-title').textContent = title + '  (' + recs.length + ' รายการ)';
+  document.getElementById('ov-detail-body').innerHTML = _buildOverviewDetailTable(recs);
+  const panel = document.getElementById('ov-detail-panel');
+  panel.style.display = 'block';
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
 
 function showDetailModal(title, recs) {
-  const isHosXP = recs.length > 0 && (
-    recs[0].dept === 'OPD' || recs[0].dept === 'IPD' ||
-    recs[0].source === 'hosxp' || recs[0].source === 'hosxp_manual'
-  );
-  if (isHosXP) {
-    // Show inline panel inside OPD/IPD dashboard — no popup, no z-index issues
-    const dept = (recs[0] && recs[0].dept) || 'OPD';
-    const p = dept.toLowerCase();
-    const panel = document.getElementById(p + '-detail-panel');
-    const titleEl = document.getElementById(p + '-detail-title');
-    const bodyEl  = document.getElementById(p + '-detail-body');
-    if (panel && bodyEl) {
-      if (titleEl) titleEl.textContent = title + '  (' + recs.length + ' รายการ)';
-      bodyEl.innerHTML = _buildHosXPDetailTable(recs);
-      panel.style.display = 'block';
-      setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-      return;
-    }
+  // OPD/IPD/ER ทุกแผนกแสดงรายละเอียดเป็น panel ด้านล่าง dashboard ของแผนกนั้นๆ (pattern เดียวกันทั้งหมด)
+  const dept = (recs.length && recs[0].dept) || 'ER';
+  const p = dept.toLowerCase();
+  const panel = document.getElementById(p + '-detail-panel');
+  const titleEl = document.getElementById(p + '-detail-title');
+  const bodyEl  = document.getElementById(p + '-detail-body');
+  if (panel && bodyEl) {
+    if (titleEl) titleEl.textContent = title + '  (' + recs.length + ' รายการ)';
+    bodyEl.innerHTML = dept === 'ER' ? _buildERDetailTable(recs) : _buildHosXPDetailTable(recs);
+    panel.style.display = 'block';
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    return;
   }
   _showDetailModalER(title, recs);
+}
+function _showDetailModalER(title, recs) {
+  document.getElementById('detail-modal-title').textContent = title + '  (' + recs.length + ' รายการ)';
+  document.getElementById('detail-modal-body').innerHTML = _buildERDetailTable(recs);
+  const modal = document.getElementById('detail-modal');
+  modal.style.display = 'flex';
+  modal.scrollTop = 0;
 }
 
 
