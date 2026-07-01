@@ -429,7 +429,8 @@
     font-size: 13px; font-weight: 700; padding: 3px 12px; border-radius: 12px; margin-top: 10px; }
 
   /* ── SECTION LAYOUT: vertical tabs on left ───────────── */
-  .section.active { display: flex !important; flex-direction: row; }
+  /* ภาพรวมทั้งโรงพยาบาล ไม่มีแท็บแนวตั้ง (แค่แถบตัวกรอง) จึงต้อง exclude ไว้ ไม่งั้นแถบตัวกรองจะถูกบีบเป็นคอลัมน์แนวตั้งเต็มความสูง */
+  .section.active:not(#section-overview) { display: flex !important; flex-direction: row; }
 
   .section-header {
     background: var(--surface);
