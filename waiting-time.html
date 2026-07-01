@@ -1594,9 +1594,10 @@ function pageDoExport(fmt) {
       i+1, expISOtoTH(r.date), r.timeSent||'', r.timeCalled||'',
       r.mins??'', r.mins!=null && r.mins<=PASS_CART ? '✓' : '✗',
     ]);
-    const allRows = statRows.length ? statRows : cartRows;
-    const allHeaders = statRows.length ? headers : cartHeaders;
-    expPDF({ title:'รายงานระยะเวลารอคอยยา', subtitle: label, headers: allHeaders, rows: allRows, landscape:true });
+    expPDF({ title:'รายงานระยะเวลารอคอยยา', subtitle: label, landscape:true, sections: [
+      { title:'⏱ Stat Dose', headers, rows: statRows },
+      { title:'🛒 รถยา IPD', headers: cartHeaders, rows: cartRows },
+    ] });
   }
   expModalClose();
 }
