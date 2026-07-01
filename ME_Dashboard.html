@@ -965,7 +965,7 @@
   </div>
 
   <!-- IPD DASHBOARD -->
-  <div class="page" id="page-ipd-dash" style="padding:24px;overflow-y:auto;background:var(--bg)">
+  <div class="page active" id="page-ipd-dash" style="padding:24px;overflow-y:auto;background:var(--bg)">
     <div id="ipd-no-data" style="display:none;text-align:center;padding:80px 20px;color:var(--text-light)">
       <div style="font-size:56px;margin-bottom:16px">📭</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:8px">ยังไม่มีข้อมูล ผู้ป่วยใน</div>
@@ -3440,6 +3440,39 @@ function _buildHosXPDetailTable(recs) {
       '<td style="font-size:14px">'+(r.doctor||'—')+'</td></tr>'
     ).join('') + '</tbody></table>';
 }
+// ภาพรวมทั้งโรงพยาบาลรวมข้อมูล OPD/IPD/ER เข้าด้วยกัน จึงต้องมีตารางรายละเอียดกลางที่รองรับทุกแผนก
+// (ต่างจาก _buildHosXPDetailTable ที่สมมติว่าเป็น OPD/IPD อย่างเดียว)
+function _buildOverviewDetailTable(recs) {
+  if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:30px">ไม่มีข้อมูล</p>';
+  return '<table><thead><tr><th>#</th><th>แผนก</th><th>วันที่</th><th>เวลา</th>' +
+    '<th>ยา</th><th>ขั้นตอน</th><th>ระดับ</th><th>รายละเอียด</th><th>ผู้บันทึก</th></tr></thead><tbody>' +
+    recs.map((r,i) => {
+      const dept = r.dept || 'ER';
+      const deptColor = dept==='OPD'?'#2563eb':dept==='IPD'?'#16a34a':'#dc2626';
+      const drugStr = r.drug || (r.drugs && r.drugs.length ? r.drugs.map(d=>d.name).join(', ') : '—');
+      const stage = ((r.stage||r.stageRaw||'').split(' ')[0]) || '—';
+      const who = r.doctor || r.reporter || '—';
+      return '<tr>' +
+        '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
+        '<td><span style="background:'+deptColor+'22;color:'+deptColor+';font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">'+dept+'</span></td>' +
+        '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
+        '<td>'+(r.time||'—')+'</td>' +
+        '<td>'+drugStr+'</td>' +
+        '<td style="font-size:14px">'+stage+'</td>' +
+        '<td><span class="badge sev-'+(r.severity||'')+'">'+(r.severity||'—')+'</span></td>' +
+        '<td style="font-size:14px;min-width:160px">'+(r.detail||'—')+'</td>' +
+        '<td style="font-size:14px">'+who+'</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function showOverviewDetail(title, recs) {
+  document.getElementById('detail-modal-title').textContent = title + '  (' + recs.length + ' รายการ)';
+  document.getElementById('detail-modal-body').innerHTML = _buildOverviewDetailTable(recs);
+  const modal = document.getElementById('detail-modal');
+  modal.style.display = 'flex';
+  modal.scrollTop = 0;
+}
+
 function showDetailModal(title, recs) {
   const isHosXP = recs.length > 0 && (
     recs[0].dept === 'OPD' || recs[0].dept === 'IPD' ||
@@ -3661,7 +3694,8 @@ function renderOverview() {
   renderChart('chart-ov-dept','bar',
     ['OPD ผู้ป่วยนอก','IPD ผู้ป่วยใน','ER ห้องฉุกเฉิน'],
     [opdRecs.length, ipdRecs.length, erRecs.length],
-    ['#2563eb','#16a34a','#dc2626']
+    ['#2563eb','#16a34a','#dc2626'], false,
+    (lbl, idx) => showOverviewDetail(lbl, [opdRecs, ipdRecs, erRecs][idx])
   );
 
   // Severity combined doughnut
@@ -3673,7 +3707,8 @@ function renderOverview() {
   renderChart('chart-ov-severity','doughnut',
     nzSev.length?nzSev:['ยังไม่มีข้อมูล'],
     nzSev.length?nzSev.map(s=>sevCount[s]):[1],
-    nzSev.length?nzSev.map(s=>sevColors[sevOrder.indexOf(s)]):['#e5e7eb']
+    nzSev.length?nzSev.map(s=>sevColors[sevOrder.indexOf(s)]):['#e5e7eb'], false,
+    nzSev.length ? (lbl => showOverviewDetail('ระดับ '+lbl+' (ทั้งโรงพยาบาล)', allRecs.filter(r=>r.severity===lbl))) : null
   );
 
   // Top drugs (combined)
@@ -3683,7 +3718,8 @@ function renderOverview() {
     else if(r.drugs&&r.drugs.length) r.drugs.forEach(d=>{ if(d.name) drugCount[d.name]=(drugCount[d.name]||0)+1; });
   });
   const topDrugs=Object.entries(drugCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  if(topDrugs.length) renderChart('chart-ov-drug','bar',topDrugs.map(d=>d[0]),topDrugs.map(d=>d[1]),palette(topDrugs.length),true);
+  if(topDrugs.length) renderChart('chart-ov-drug','bar',topDrugs.map(d=>d[0]),topDrugs.map(d=>d[1]),palette(topDrugs.length),true,
+    lbl => showOverviewDetail('ยา: '+lbl+' (ทั้งโรงพยาบาล)', allRecs.filter(r=>r.drug===lbl || (r.drugs&&r.drugs.some(d=>d.name===lbl)))));
 
   // 12-month trend multi-line
   const thMini=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -3721,15 +3757,16 @@ function renderOverview() {
 
   // Recent 20 records table
   const sorted=allRecs.filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  window._ovRecentRecs = sorted;
   const tbody=document.getElementById('ov-recent-tbody');
   if(tbody){
-    tbody.innerHTML=sorted.map(r=>{
+    tbody.innerHTML=sorted.map((r,i)=>{
       const dept=r.dept||'ER';
       const deptColor=dept==='OPD'?'#2563eb':dept==='IPD'?'#16a34a':'#dc2626';
       const drugStr=r.drug||(r.drugs&&r.drugs.length?r.drugs.map(d=>d.name).join(', '):'—');
       const sev=r.severity||'—';
       const detail=r.detail||r.stageRaw||'—';
-      return `<tr>
+      return `<tr style="cursor:pointer" onclick="showOverviewDetail('รายละเอียด ME', [window._ovRecentRecs[${i}]])">
         <td style="white-space:nowrap;color:var(--text-light);font-size:12px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${formatDateThai(r.date)}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span style="background:${deptColor}22;color:${deptColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">${dept}</span></td>
         <td style="font-size:13px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${drugStr}</td>
