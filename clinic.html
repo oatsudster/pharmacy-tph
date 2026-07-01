@@ -570,6 +570,10 @@ function thDate(s) {
   const d = new Date(s); if (isNaN(d)) return s;
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
 }
+function thTime(ts) {
+  if (!ts) return '-';
+  return new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+}
 function fiscalInfo(iso) {
   const d = new Date(iso); if (isNaN(d)) return {year:null,month:null,key:''};
   const m = d.getMonth();
@@ -633,9 +637,10 @@ function renderRecentRecords() {
     return;
   }
   wrap.innerHTML = `<table>
-    <thead><tr><th>วันที่</th><th>HN</th><th>ชื่อ</th><th>เภสัชกร</th><th>DRP</th><th>ประหยัด</th><th>ประเมิน</th><th></th></tr></thead>
+    <thead><tr><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อ</th><th>เภสัชกร</th><th>DRP</th><th>ประหยัด</th><th>ประเมิน</th><th></th></tr></thead>
     <tbody>${recs.map(r => `<tr>
       <td>${thDate(r.date)}</td>
+      <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
       <td>${r.hn||'—'}</td>
       <td>${r.name||'—'}</td>
       <td style="font-size:11px">${r.pharmacist||'—'}</td>
@@ -965,8 +970,25 @@ function calcKPIs(clinic) {
   const drpPct = visits.length>0 ? Math.round(withDRP.length/visits.length*1000)/10 : 0;
   const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
   const htPmTotal = sessions.filter(s=>s.clinic==='HT'||clinic!=='all').reduce((s,r)=>s+(r.htPmCount||0),0);
+  const todayISO = thToISO(todayTH());
+  const todayCount = visits.filter(v=>v.date===todayISO).length;
   return {visits:visits.length, attended:attended.length, missed:missed.length,
-          withDRP:withDRP.length, drpPct, totalSaving, htPmTotal};
+          withDRP:withDRP.length, drpPct, totalSaving, htPmTotal, todayCount};
+}
+
+function dailySummaryRows(clinic, days=14) {
+  const visits = getFilteredVisits(clinic);
+  const byDate = {};
+  visits.forEach(v => {
+    if (!byDate[v.date]) byDate[v.date] = {count:0, drp:0, leftover:0, saving:0};
+    const d = byDate[v.date];
+    d.count++;
+    if (v.drps && v.drps.length) d.drp++;
+    if (v.leftovers && v.leftovers.length) d.leftover++;
+    d.saving += v.totalSaving||0;
+  });
+  return Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,days)
+    .map(date => ({date, ...byDate[date]}));
 }
 
 function renderMain() {
@@ -1013,12 +1035,24 @@ function renderMain() {
         <div class="kpi-val gold">฿${Math.round(kpi.totalSaving).toLocaleString()}</div>
         <div class="kpi-sub">จากยาคงเหลือที่คืน</div>
       </div>
+      <div class="kpi-card">
+        <div class="kpi-label">ลงคลินิกวันนี้</div>
+        <div class="kpi-val ${color}">${kpi.todayCount}</div>
+        <div class="kpi-sub">ราย (${thDate(thToISO(todayTH()))})</div>
+      </div>
     </div>
     ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
     <div class="chart-grid">
       <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน</div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย</div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿)</div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head"><span class="table-title">📆 สรุปรายวัน (14 วันล่าสุด)</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>จำนวนคนไข้</th><th>พบ DRP</th><th>มียาคงเหลือ</th><th>ประหยัด</th></tr></thead>
+        <tbody id="daily-summary-body"></tbody>
+      </table></div>
     </div>
     <div class="table-card">
       <div class="table-head">
@@ -1036,13 +1070,14 @@ function renderMain() {
         </div>
       </div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>วันที่</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th><th></th></tr></thead>
+        <thead><tr><th>วันที่</th><th>เวลา</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th><th></th></tr></thead>
         <tbody id="tbl-body"></tbody>
       </table></div>
     </div>`;
 
   renderCharts(clinic);
   renderTable();
+  renderDailySummaryTable(clinic);
 }
 
 function renderLeftoverReport(main) {
@@ -1147,7 +1182,7 @@ function filterLeftoverCards() {
             border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
           <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
           <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
-          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)}</span>
+          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
           ${totalSaving}
           <button onclick="editVisit('${r.id}')" style="background:none;border:1.5px solid var(--border);
             border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--primary)">✏️ แก้ไข</button>
@@ -1187,6 +1222,7 @@ function renderTable() {
     const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
     return `<tr>
       <td style="white-space:nowrap">${thDate(r.date)}</td>
+      <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
       <td><div style="font-weight:600">${r.hn||''}</div><div style="font-size:11px;color:var(--text-mid)">${r.name||''}</div></td>
       <td>${badge}</td>
       <td>${drpList||'<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>'}</td>
@@ -1198,6 +1234,23 @@ function renderTable() {
         <button class="btn-del" onclick="deleteVisit('${r.id}')">🗑</button>
       </td></tr>`;
   }).join('');
+}
+
+function renderDailySummaryTable(clinic) {
+  const tbody = document.getElementById('daily-summary-body');
+  if (!tbody) return;
+  const rows = dailySummaryRows(clinic);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="white-space:nowrap">${thDate(r.date)}</td>
+    <td style="font-weight:700">${r.count}</td>
+    <td>${r.drp}</td>
+    <td>${r.leftover}</td>
+    <td style="white-space:nowrap;font-weight:700;color:var(--success)">${r.saving>0?'฿'+r.saving.toFixed(0):''}</td>
+  </tr>`).join('');
 }
 
 function renderSessionTab(main) {
@@ -1370,6 +1423,7 @@ function pageDoExport(fmt) {
   if (fmt === 'excel') {
     const visits = recs.map(r => ({
       'วันที่':          expISOtoTH(r.date),
+      'เวลาที่บันทึก':   thTime(r.created),
       'คลินิก':          r.clinic||'',
       'HN':              r.hn||'',
       'ชื่อผู้ป่วย':     r.name||'',
@@ -1403,9 +1457,9 @@ function pageDoExport(fmt) {
   }
 
   if (fmt === 'pdf') {
-    const headers = ['วันที่','คลินิก','HN','ชื่อผู้ป่วย','DRP','ยาคงเหลือ','มูลค่า (฿)','เภสัชกร'];
+    const headers = ['วันที่','เวลา','คลินิก','HN','ชื่อผู้ป่วย','DRP','ยาคงเหลือ','มูลค่า (฿)','เภสัชกร'];
     const rows = recs.map(r => [
-      expISOtoTH(r.date), r.clinic||'', r.hn||'', r.name||'',
+      expISOtoTH(r.date), thTime(r.created), r.clinic||'', r.hn||'', r.name||'',
       (r.drps||[]).map(d=>d.type).join(', ')||'—',
       (r.leftovers||[]).map(l=>`${cleanDrugName(l.drug)} ${l.qty}${l.unit||'เม็ด'}`).join('\n')||'—',
       r.totalSaving>0 ? '฿'+r.totalSaving.toFixed(0) : '',
