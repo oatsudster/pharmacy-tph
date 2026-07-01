@@ -265,6 +265,40 @@ tr:hover td{background:#f8faf9;}
 .lo-section-wrap.highlighted{border-color:#059669;background:#f0fdf4;}
 .lo-section-wrap.highlighted .form-title{color:#065f46;}
 
+.session-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px;}
+
+/* ══ RESPONSIVE: TABLET ══ */
+@media (max-width: 900px) {
+  .chart-grid{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+}
+
+/* ══ RESPONSIVE: MOBILE/TABLET (แนวตั้ง) ══ */
+@media (max-width: 760px) {
+  .entry-grid{grid-template-columns:1fr;gap:20px 0;}
+  .session-grid{grid-template-columns:1fr 1fr;}
+
+  .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 14px;row-gap:8px;}
+  .topbar-title{flex:1 1 auto;}
+  .topbar-btns{flex:1 1 100%;flex-wrap:wrap;}
+  .topbar-btns .tbtn{flex:1;text-align:center;}
+
+  .clinic-tabs{gap:6px;}
+  .clinic-tab{padding:10px 6px;font-size:13px;}
+
+  .view-btn{padding:12px 14px;font-size:14px;}
+
+  /* ตารางยาคงเหลือ/DRP กว้างกว่าจอมือถือ ให้เลื่อนแนวนอนแทนการบีบจนอ่านไม่ออก */
+  .lo-section-wrap{overflow-x:auto;}
+  .lo-header,.lo-row,.mlo-row{min-width:460px;}
+  .modal-box{overflow-x:auto;}
+}
+
+@media (max-width: 480px) {
+  .kpi-grid{grid-template-columns:1fr;}
+  .session-grid{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -426,7 +460,7 @@ tr:hover td{background:#f8faf9;}
       <span id="session-arrow">▼</span>
     </button>
     <div class="session-panel" id="session-panel">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px">
+      <div class="session-grid">
         <div class="form-group">
           <label>วันที่</label>
           <div class="input-row">
