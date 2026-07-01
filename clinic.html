@@ -226,6 +226,22 @@ tr:hover td{background:#f8faf9;}
 .lo-row .btn-rm{width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;
   background:#fff5f5;color:#dc2626;font-size:13px;cursor:pointer;font-weight:700;justify-self:center;}
 
+/* ── Leftover grid (edit modal — separate classes to avoid clashing with the entry form's live .lo-row queries) ── */
+.mlo-row{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;margin-bottom:6px;align-items:center;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:8px;transition:border .15s;}
+.mlo-row:hover{border-color:var(--primary-mid);}
+.mlo-row .mlo-drug{font-size:13px;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg);font-family:inherit;outline:none;width:100%;}
+.mlo-row .mlo-drug:focus{border-color:var(--primary);background:#fff;}
+.mlo-row .mlo-qty{width:100%;text-align:center;font-size:13px;padding:7px 8px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.mlo-row .mlo-qty:focus{border-color:var(--primary);background:#fff;}
+.mlo-row .mlo-unit{width:100%;text-align:center;font-size:12px;padding:7px 4px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.mlo-row .mlo-unit:focus{border-color:var(--primary);}
+.mlo-row .btn-rm{width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;
+  background:#fff5f5;color:#dc2626;font-size:13px;cursor:pointer;font-weight:700;justify-self:center;}
+
 .lo-summary{margin-top:14px;padding:16px 20px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);
   border:2px solid #86efac;border-radius:12px;display:flex;align-items:center;justify-content:space-between;}
 .lo-summary-label{font-size:14px;font-weight:700;color:#15803d;}
@@ -910,8 +926,87 @@ function editVisit(id) {
       <select id="m-pharm"><option value="">--</option>${PHARMACISTS.map(p=>`<option ${p===r.pharmacist?'selected':''} value="${p}">${p}</option>`).join('')}</select></div>
     <div class="form-group"><label>HN</label><input type="text" id="m-hn" value="${r.hn||''}"></div>
     <div class="form-group"><label>ชื่อ-สกุล</label><input type="text" id="m-name" value="${r.name||''}"></div>
-    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${r.notes||''}</textarea></div>`;
+    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${r.notes||''}</textarea></div>
+    <div class="form-group">
+      <label>📦 ยาคงเหลือ</label>
+      <div class="lo-header">
+        <span class="lo-h-drug">ชื่อยา</span>
+        <span class="lo-h-qty">จำนวน<br>ที่เหลือ</span>
+        <span class="lo-h-unit">หน่วย</span>
+        <span class="lo-h-price">ราคา/<br>หน่วย</span>
+        <span class="lo-h-total">มูลค่า<br>ประหยัด</span>
+        <span class="lo-h-del"></span>
+      </div>
+      <div id="m-lo-list"></div>
+      <button class="btn-add" type="button" onclick="addMLoRow()" style="width:100%;margin-top:6px">+ เพิ่มรายการยา</button>
+      <div class="lo-summary" id="m-lo-summary" style="display:none">
+        <div class="lo-summary-label">💰 ประหยัดได้ทั้งหมด</div>
+        <div class="lo-summary-val" id="m-lo-total">฿0</div>
+      </div>
+    </div>`;
+  document.getElementById('m-lo-list').innerHTML = '';
+  (r.leftovers||[]).forEach(l => addMLoRow(l.drug, l.qty, l.unit, l.priceUnit));
+  updateMLoTotal();
   document.getElementById('edit-modal').classList.add('show');
+}
+
+// ── EDIT MODAL: ยาคงเหลือ (แยกจากฟอร์มบันทึกคนไข้ใหม่ ไม่ให้ query ปนกัน) ──
+function addMLoRow(drug='', qty='', unit='', price=0) {
+  const list = document.getElementById('m-lo-list');
+  const div = document.createElement('div');
+  div.className = 'mlo-row';
+  div.innerHTML = `
+    <input class="mlo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onMLoDrugInput(this)" autocomplete="off">
+    <input class="mlo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateMLoTotal()" style="text-align:center">
+    <input class="mlo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <span class="lo-price-display">฿${price>0?price:'—'}</span>
+    <span class="lo-total-display">—</span>
+    <button class="btn-rm" type="button" onclick="this.closest('.mlo-row').remove();updateMLoTotal()">✕</button>`;
+  div.querySelector('.mlo-qty')._price = price;
+  list.appendChild(div);
+  updateMLoTotal();
+}
+
+function onMLoDrugInput(el) {
+  const row = el.closest('.mlo-row');
+  const info = DRUG_PRICES[el.value];
+  if (info) {
+    row.querySelector('.mlo-unit').value = info.u || 'เม็ด';
+    row.querySelector('.mlo-qty')._price = info.p;
+    row.querySelector('.lo-price-display').textContent = '฿'+info.p;
+  } else {
+    row.querySelector('.mlo-qty')._price = 0;
+    row.querySelector('.lo-price-display').textContent = '—';
+  }
+  updateMLoTotal();
+}
+
+function updateMLoTotal() {
+  let total = 0;
+  document.querySelectorAll('.mlo-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.mlo-qty').value)||0;
+    const price = row.querySelector('.mlo-qty')._price||0;
+    const rowTotal = qty * price;
+    total += rowTotal;
+    const totalSpan = row.querySelector('.lo-total-display');
+    if (totalSpan) totalSpan.textContent = rowTotal > 0 ? '฿'+rowTotal.toFixed(0) : '—';
+  });
+  const summary = document.getElementById('m-lo-summary');
+  const el = document.getElementById('m-lo-total');
+  if (summary && el) {
+    summary.style.display = total > 0 ? 'flex' : 'none';
+    el.textContent = '฿'+total.toFixed(2);
+  }
+}
+
+function getMLoData() {
+  return [...document.querySelectorAll('.mlo-row')].map(row => {
+    const drug = row.querySelector('.mlo-drug').value.trim();
+    const qty = parseFloat(row.querySelector('.mlo-qty').value)||0;
+    const unit = row.querySelector('.mlo-unit').value.trim();
+    const price = row.querySelector('.mlo-qty')._price||0;
+    return drug||qty ? {drug,qty,unit,priceUnit:price,total:Math.round(qty*price*100)/100} : null;
+  }).filter(Boolean);
 }
 
 function closeModal() {
@@ -928,6 +1023,9 @@ function saveModal() {
   visitRecords[idx].hn = document.getElementById('m-hn').value.trim();
   visitRecords[idx].name = document.getElementById('m-name').value.trim();
   visitRecords[idx].notes = document.getElementById('m-notes').value.trim();
+  const leftovers = getMLoData();
+  visitRecords[idx].leftovers = leftovers;
+  visitRecords[idx].totalSaving = Math.round(leftovers.reduce((s,l)=>s+l.total,0)*100)/100;
   saveLocal(); fbSave(); renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
 }
 
@@ -991,6 +1089,18 @@ function dailySummaryRows(clinic, days=14) {
     .map(date => ({date, ...byDate[date]}));
 }
 
+function buildClinicBtns(activeC) {
+  return ['HT','DM','COPD','all','leftover','session'].map(c => {
+    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
+    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
+    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
+                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
+                  : `renderMain()`;
+    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
+    return `<button class="clinic-tab ${colors[c]} ${c===activeC?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+  }).join('');
+}
+
 function renderMain() {
   const main = document.getElementById('main-content');
 
@@ -1002,15 +1112,7 @@ function renderMain() {
   const curYear = new Date().getFullYear()+543;
   const fy = new Date().getMonth()>=9 ? curYear+1 : curYear;
 
-  const clinicBtns = ['HT','DM','COPD','all','leftover','session'].map(c => {
-    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
-    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
-    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
-                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
-                  : `renderMain()`;
-    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
-    return `<button class="clinic-tab ${colors[c]} ${c===clinic?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
-  }).join('');
+  const clinicBtns = buildClinicBtns(clinic);
 
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
@@ -1081,15 +1183,7 @@ function renderMain() {
 }
 
 function renderLeftoverReport(main) {
-  const clinicBtns = ['HT','DM','COPD','all','leftover','session'].map(c => {
-    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
-    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
-    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
-                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
-                  : `renderMain()`;
-    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
-    return `<button class="clinic-tab ${colors[c]} ${'leftover'===c?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
-  }).join('');
+  const clinicBtns = buildClinicBtns('leftover');
 
   // Get all visits with leftovers, sorted newest first
   const recs = [...visitRecords]
@@ -1255,7 +1349,9 @@ function renderDailySummaryTable(clinic) {
 
 function renderSessionTab(main) {
   const all = [...sessionRecords].sort((a,b)=>b.date.localeCompare(a.date));
+  const clinicBtns = buildClinicBtns('session');
   main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     <div class="table-card">
       <div class="table-head">
         <span class="table-title">📋 บันทึก Session การลงคลินิก</span>
