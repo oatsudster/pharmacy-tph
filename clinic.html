@@ -1412,7 +1412,7 @@ function renderTable() {
   let recs = getFilteredVisits(clinic).filter(r => {
     if (q && ![r.hn,r.name,...(r.drps||[]).map(d=>d.type)].some(f=>String(f||'').toLowerCase().includes(q.toLowerCase()))) return false;
     return true;
-  }).sort((a,b)=>b.date.localeCompare(a.date));
+  }).sort((a,b)=>(b.created||0)-(a.created||0));
 
   const tbody = document.getElementById('tbl-body');
   if (!tbody) return;
