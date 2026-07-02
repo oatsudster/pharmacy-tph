@@ -1246,6 +1246,10 @@ function renderLeftoverReport(main) {
           style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
           ${yearOptions}
         </select>
+        <input type="date" id="lo-f-date" onchange="filterLeftoverCards()"
+          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
+        <button onclick="document.getElementById('lo-f-date').value='';filterLeftoverCards()"
+          style="background:none;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text-mid)">ล้างวันที่</button>
         <span id="lo-count" style="font-size:13px;color:var(--text-light)"></span>
       </div>
       <div id="lo-cards-wrap"></div>
@@ -1258,11 +1262,13 @@ function filterLeftoverCards() {
   const q = (document.getElementById('lo-search')||{}).value||'';
   const fc = (document.getElementById('lo-f-clinic')||{}).value||'';
   const fy = (document.getElementById('lo-f-year')||{}).value||'';
+  const fd = (document.getElementById('lo-f-date')||{}).value||'';
 
   let recs = [...visitRecords]
     .filter(r => r.leftovers && r.leftovers.length > 0)
     .filter(r => {
       if (fc && r.clinic !== fc) return false;
+      if (fd && r.date !== fd) return false;
       if (fy) { const fi = fiscalInfo(r.date); if (String(fi.year) !== String(fy)) return false; }
       if (q) {
         const ql = q.toLowerCase();
