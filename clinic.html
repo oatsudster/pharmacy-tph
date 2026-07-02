@@ -544,6 +544,17 @@ tr:hover td{background:#f8faf9;}
   </div>
 </div>
 
+<!-- DASHBOARD DETAIL MODAL (คลิกกราฟเพื่อดูรายละเอียด) -->
+<div class="modal-overlay" id="cl-detail-modal" onclick="if(event.target===this)closeClinicDetail()">
+  <div class="modal-box" style="width:min(920px,95vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="modal-title" id="cl-detail-title" style="margin-bottom:0"></div>
+      <button onclick="closeClinicDetail()" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="cl-detail-body"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- datalist -->
@@ -632,6 +643,56 @@ function fiscalInfo(iso) {
   return {year:fy, month:TH_MONTHS[m], key:iso.slice(0,7)};
 }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── PERIOD FILTER (ปีงบประมาณ / เดือน) ────────────────────
+function inPeriod(dateISO) {
+  const fy = window.reportFY, pm = window.reportMonth;
+  if (!fy && !pm) return true;
+  const fi = fiscalInfo(dateISO);
+  if (fy && String(fi.year) !== String(fy)) return false;
+  if (pm && fi.month !== pm) return false;
+  return true;
+}
+function allFiscalYears() {
+  const ys = new Set();
+  visitRecords.forEach(r => { const fi = fiscalInfo(r.date); if (fi.year) ys.add(fi.year); });
+  sessionRecords.forEach(r => { const fi = fiscalInfo(r.date); if (fi.year) ys.add(fi.year); });
+  const curYear = new Date().getFullYear()+543;
+  ys.add(new Date().getMonth()>=9 ? curYear+1 : curYear);
+  return [...ys].sort((a,b)=>b-a);
+}
+function periodBarHtml() {
+  const fyOptions = allFiscalYears().map(y=>`<option value="${y}" ${String(window.reportFY||'')===String(y)?'selected':''}>ปีงบ ${y}</option>`).join('');
+  const pmOptions = TH_MONTHS.map(m=>`<option value="${m}" ${(window.reportMonth||'')===m?'selected':''}>${m}</option>`).join('');
+  const hasFilter = window.reportFY || window.reportMonth;
+  return `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+      <span style="font-size:13px;font-weight:600;color:var(--text-mid)">🗓️ ช่วงเวลา:</span>
+      <select id="f-fy" onchange="onPeriodChange()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+        <option value="">ทุกปีงบประมาณ</option>${fyOptions}
+      </select>
+      <select id="f-pm" onchange="onPeriodChange()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+        <option value="">ทุกเดือน</option>${pmOptions}
+      </select>
+      ${hasFilter?`<button onclick="clearPeriod()" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--text-mid);font-family:inherit">✕ ล้างตัวกรอง</button>`:''}
+    </div>`;
+}
+function onPeriodChange() {
+  window.reportFY = (document.getElementById('f-fy')||{}).value || '';
+  window.reportMonth = (document.getElementById('f-pm')||{}).value || '';
+  rerenderCurrentView();
+}
+function clearPeriod() {
+  window.reportFY = '';
+  window.reportMonth = '';
+  rerenderCurrentView();
+}
+function rerenderCurrentView() {
+  const view = window.reportView || 'main';
+  if (view === 'session') renderSessionTab(document.getElementById('main-content'));
+  else if (view === 'leftover') renderLeftoverReport(document.getElementById('main-content'));
+  else renderMain();
+}
 
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
@@ -1085,12 +1146,12 @@ function renderCurrentView() {
 }
 
 function getFilteredVisits(clinic) {
-  if (clinic==='all') return visitRecords;
-  return visitRecords.filter(r=>r.clinic===clinic);
+  const list = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
+  return list.filter(r=>inPeriod(r.date));
 }
 function getFilteredSessions(clinic) {
-  if (clinic==='all') return sessionRecords;
-  return sessionRecords.filter(r=>r.clinic===clinic);
+  const list = clinic==='all' ? sessionRecords : sessionRecords.filter(r=>r.clinic===clinic);
+  return list.filter(r=>inPeriod(r.date));
 }
 
 function calcKPIs(clinic) {
@@ -1102,9 +1163,12 @@ function calcKPIs(clinic) {
   const drpPct = visits.length>0 ? Math.round(withDRP.length/visits.length*1000)/10 : 0;
   const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
   const htPmTotal = sessions.filter(s=>s.clinic==='HT'||clinic!=='all').reduce((s,r)=>s+(r.htPmCount||0),0);
+  const attendPct = (attended.length+missed.length)>0 ? Math.round(attended.length/(attended.length+missed.length)*1000)/10 : 0;
+  // "วันนี้" ไม่ควรถูกกรองด้วยตัวกรองช่วงเวลา (ปีงบ/เดือน) — ให้แสดงยอดวันนี้จริงเสมอ
   const todayISO = thToISO(todayTH());
-  const todayCount = visits.filter(v=>v.date===todayISO).length;
-  return {visits:visits.length, attended:attended.length, missed:missed.length,
+  const todayVisits = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
+  const todayCount = todayVisits.filter(v=>v.date===todayISO).length;
+  return {visits:visits.length, attended:attended.length, missed:missed.length, attendPct,
           withDRP:withDRP.length, drpPct, totalSaving, htPmTotal, todayCount};
 }
 
@@ -1119,8 +1183,33 @@ function dailySummaryRows(clinic, days=14) {
     if (v.leftovers && v.leftovers.length) d.leftover++;
     d.saving += v.totalSaving||0;
   });
-  return Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,days)
+  // เมื่อเลือกช่วงเวลา (ปีงบ/เดือน) แล้ว ให้แสดงทุกวันในช่วงนั้น ไม่จำกัดแค่ 14 วันล่าสุด
+  const limit = (window.reportFY || window.reportMonth) ? Infinity : days;
+  return Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,limit)
     .map(date => ({date, ...byDate[date]}));
+}
+
+function attendanceSummaryRows(clinic, limit=14) {
+  const sessions = getFilteredSessions(clinic);
+  const cap = (window.reportFY || window.reportMonth) ? Infinity : limit;
+  return [...sessions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,cap);
+}
+
+function renderAttendanceSummaryTable(clinic) {
+  const tbody = document.getElementById('attend-summary-body');
+  if (!tbody) return;
+  const rows = attendanceSummaryRows(clinic);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr class="${r.attended?'':' session-miss'}">
+    <td style="white-space:nowrap">${thDate(r.date)}</td>
+    <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
+    <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':'<span class="tag-missed">❌ ไม่ได้ลง</span>'}</td>
+    <td style="font-size:12px">${r.pharmacist||''}</td>
+    <td style="font-size:11px;color:var(--text-mid)">${r.attended?(r.notes||''):(r.reason||'')}</td>
+  </tr>`).join('');
 }
 
 function buildClinicBtns(activeC) {
@@ -1150,6 +1239,7 @@ function renderMain() {
 
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">ผู้ป่วยที่ให้คำปรึกษา</div>
@@ -1162,9 +1252,9 @@ function renderMain() {
         <div class="kpi-sub">${kpi.withDRP} ใน ${kpi.visits} ราย</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">ลงคลินิก / ขาด</div>
-        <div class="kpi-val ${color}">${kpi.attended}</div>
-        <div class="kpi-sub">ครั้ง (ขาด ${kpi.missed} ครั้ง)</div>
+        <div class="kpi-label">อัตราการลงคลินิก</div>
+        <div class="kpi-val ${color}">${kpi.attendPct}%</div>
+        <div class="kpi-sub">ลง ${kpi.attended} / ขาด ${kpi.missed} ครั้ง</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">เงินประหยัดสะสม</div>
@@ -1179,12 +1269,19 @@ function renderMain() {
     </div>
     ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
     <div class="chart-grid">
-      <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน</div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย</div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿)</div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿) <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
     </div>
     <div class="table-card">
-      <div class="table-head"><span class="table-title">📆 สรุปรายวัน (14 วันล่าสุด)</span></div>
+      <div class="table-head"><span class="table-title">📋 สรุปการลงคลินิก${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 ครั้งล่าสุด)'}</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="attend-summary-body"></tbody>
+      </table></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head"><span class="table-title">📆 สรุปรายวัน${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 วันล่าสุด)'}</span></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>วันที่</th><th>จำนวนคนไข้</th><th>พบ DRP</th><th>มียาคงเหลือ</th><th>ประหยัด</th></tr></thead>
         <tbody id="daily-summary-body"></tbody>
@@ -1195,14 +1292,6 @@ function renderMain() {
         <span class="table-title">รายการให้คำปรึกษา</span>
         <div class="filter-row">
           <input type="text" id="f-search" placeholder="🔍 ค้นหา HN/ชื่อ/DRP..." oninput="renderTable()" style="width:180px">
-          <select id="f-year" onchange="renderTable()">
-            <option value="">ทุกปี</option>
-            ${[...new Set(visitRecords.map(r=>fiscalInfo(r.date).year).filter(Boolean))].sort((a,b)=>b-a).map(y=>`<option>${y}</option>`).join('')}
-          </select>
-          <select id="f-month" onchange="renderTable()">
-            <option value="">ทุกเดือน</option>
-            ${TH_MONTHS.map(m=>`<option value="${m}">${m}</option>`).join('')}
-          </select>
         </div>
       </div>
       <div class="tbl-wrap"><table>
@@ -1212,6 +1301,7 @@ function renderMain() {
     </div>`;
 
   renderCharts(clinic);
+  renderAttendanceSummaryTable(clinic);
   renderTable();
   renderDailySummaryTable(clinic);
 }
@@ -1219,20 +1309,12 @@ function renderMain() {
 function renderLeftoverReport(main) {
   const clinicBtns = buildClinicBtns('leftover');
 
-  // Get all visits with leftovers, sorted newest first
-  const recs = [...visitRecords]
-    .filter(r => r.leftovers && r.leftovers.length > 0)
-    .sort((a,b) => b.date.localeCompare(a.date));
-
   // Build filter UI
   const clinicOptions = ['','HT','DM','COPD'].map(v=>`<option value="${v}">${v||'ทุกคลินิก'}</option>`).join('');
-  const curYear = new Date().getFullYear()+543;
-  const years = [];
-  for(let y=curYear-2;y<=curYear+1;y++) years.push(y);
-  const yearOptions = ['', ...years].map(y=>`<option value="${y}">${y||'ทุกปี'}</option>`).join('');
 
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
     <div class="table-card" style="background:transparent;box-shadow:none;padding:0">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <span style="font-size:16px;font-weight:700">📦 ยาคงเหลือทั้งหมด</span>
@@ -1241,10 +1323,6 @@ function renderLeftoverReport(main) {
         <select id="lo-f-clinic" onchange="filterLeftoverCards()"
           style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
           ${clinicOptions}
-        </select>
-        <select id="lo-f-year" onchange="filterLeftoverCards()"
-          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
-          ${yearOptions}
         </select>
         <input type="date" id="lo-f-date" onchange="filterLeftoverCards()"
           style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
@@ -1261,7 +1339,6 @@ function renderLeftoverReport(main) {
 function filterLeftoverCards() {
   const q = (document.getElementById('lo-search')||{}).value||'';
   const fc = (document.getElementById('lo-f-clinic')||{}).value||'';
-  const fy = (document.getElementById('lo-f-year')||{}).value||'';
   const fd = (document.getElementById('lo-f-date')||{}).value||'';
 
   let recs = [...visitRecords]
@@ -1269,7 +1346,7 @@ function filterLeftoverCards() {
     .filter(r => {
       if (fc && r.clinic !== fc) return false;
       if (fd && r.date !== fd) return false;
-      if (fy) { const fi = fiscalInfo(r.date); if (String(fi.year) !== String(fy)) return false; }
+      if (!inPeriod(r.date)) return false;
       if (q) {
         const ql = q.toLowerCase();
         const inPatient = [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql));
@@ -1330,15 +1407,10 @@ function filterLeftoverCards() {
 
 function renderTable() {
   const q = (document.getElementById('f-search')||{}).value||'';
-  const fYear = (document.getElementById('f-year')||{}).value||''
-  const fMonth = (document.getElementById('f-month')||{}).value||''
   const clinic = activeTab;
 
   let recs = getFilteredVisits(clinic).filter(r => {
     if (q && ![r.hn,r.name,...(r.drps||[]).map(d=>d.type)].some(f=>String(f||'').toLowerCase().includes(q.toLowerCase()))) return false;
-    const fi = fiscalInfo(r.date);
-    if (fYear && String(fi.year)!==fYear) return false;
-    if (fMonth && fi.month!==fMonth) return false;
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
 
@@ -1388,10 +1460,11 @@ function renderDailySummaryTable(clinic) {
 }
 
 function renderSessionTab(main) {
-  const all = [...sessionRecords].sort((a,b)=>b.date.localeCompare(a.date));
+  const all = [...sessionRecords].filter(r=>inPeriod(r.date)).sort((a,b)=>b.date.localeCompare(a.date));
   const clinicBtns = buildClinicBtns('session');
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
     <div class="table-card">
       <div class="table-head">
         <span class="table-title">📋 บันทึก Session การลงคลินิก</span>
@@ -1420,11 +1493,13 @@ function renderCharts(clinic) {
   // Monthly patient count
   destroyChart('monthly');
   const monthMap = {};
+  const monthVisits = {};
   visits.forEach(v => {
     const fi = fiscalInfo(v.date);
     if (!fi.key) return;
     const label = fi.month+' '+String(fi.year).slice(-2);
     monthMap[label] = (monthMap[label]||0)+1;
+    (monthVisits[label] = monthVisits[label]||[]).push(v);
   });
   const mLabels = Object.keys(monthMap).slice(-12);
   const mData = mLabels.map(k=>monthMap[k]);
@@ -1432,16 +1507,28 @@ function renderCharts(clinic) {
   const clr = clrMap[clinic]||'#1A5E38';
   const ctx1 = document.getElementById('c-monthly').getContext('2d');
   chartInstances['monthly'] = new Chart(ctx1,{type:'bar',data:{labels:mLabels,datasets:[{label:'ผู้ป่วย',data:mData,backgroundColor:clr+'99',borderColor:clr,borderWidth:1.5,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=mLabels[els[0].index]; showClinicDetail('👥 ผู้ป่วยเดือน '+label, monthVisits[label]||[]); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
 
   // DRP types
   destroyChart('drp');
   const drpMap = {};
-  visits.forEach(v => (v.drps||[]).forEach(d=>{ if(d.type) drpMap[d.type]=(drpMap[d.type]||0)+1; }));
+  const drpVisits = {};
+  visits.forEach(v => (v.drps||[]).forEach(d=>{
+    if (!d.type) return;
+    drpMap[d.type] = (drpMap[d.type]||0)+1;
+    (drpVisits[d.type] = drpVisits[d.type]||[]).push(v);
+  }));
   const drpEntries = Object.entries(drpMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const drpFullLabels = drpEntries.map(e=>e[0]);
   const ctx2 = document.getElementById('c-drp').getContext('2d');
-  chartInstances['drp'] = new Chart(ctx2,{type:'bar',data:{labels:drpEntries.map(e=>e[0].length>16?e[0].slice(0,15)+'…':e[0]),datasets:[{data:drpEntries.map(e=>e[1]),backgroundColor:'#f59e0b99',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
+  chartInstances['drp'] = new Chart(ctx2,{type:'bar',data:{labels:drpFullLabels.map(l=>l.length>16?l.slice(0,15)+'…':l),datasets:[{data:drpEntries.map(e=>e[1]),backgroundColor:'#f59e0b99',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=drpFullLabels[els[0].index]; showClinicDetail('🔍 DRP: '+label, drpVisits[label]||[]); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
 
   // Savings
   destroyChart('saving');
@@ -1456,7 +1543,39 @@ function renderCharts(clinic) {
   const sData = sLabels.map(k=>Math.round(savMap[k]||0));
   const ctx3 = document.getElementById('c-saving').getContext('2d');
   chartInstances['saving'] = new Chart(ctx3,{type:'bar',data:{labels:sLabels,datasets:[{label:'฿',data:sData,backgroundColor:'#16a34a55',borderColor:'#16a34a',borderWidth:1.5,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>'฿'+v.toLocaleString()},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>'฿'+v.toLocaleString()},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=sLabels[els[0].index]; showClinicDetail('💰 เงินประหยัดเดือน '+label, (monthVisits[label]||[]).filter(v=>v.totalSaving>0)); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
+}
+
+// ── DASHBOARD DETAIL MODAL (คลิกกราฟเพื่อดูรายละเอียด) ────
+function showClinicDetail(title, recs) {
+  document.getElementById('cl-detail-title').textContent = title + '  (' + recs.length + ' รายการ)';
+  document.getElementById('cl-detail-body').innerHTML = _buildClinicDetailTable(recs);
+  document.getElementById('cl-detail-modal').classList.add('show');
+}
+function closeClinicDetail() {
+  document.getElementById('cl-detail-modal').classList.remove('show');
+}
+function _buildClinicDetailTable(recs) {
+  if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0">ไม่มีข้อมูลในหมวดนี้</p>';
+  const sorted = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
+  return '<div class="tbl-wrap"><table><thead><tr><th>วันที่</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th></tr></thead><tbody>' +
+    sorted.map(r => {
+      const drpList = (r.drps||[]).map(d=>escHtml(d.type)).join('<br>') || '<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>';
+      const loList = (r.leftovers||[]).map(l=>escHtml(cleanDrugName(l.drug))+' × '+l.qty).join('<br>') || '<span style="color:var(--text-light);font-size:11px">-</span>';
+      return '<tr>' +
+        '<td style="white-space:nowrap">'+thDate(r.date)+'</td>' +
+        '<td><div style="font-weight:600">'+escHtml(r.hn||'')+'</div><div style="font-size:11px;color:var(--text-mid)">'+escHtml(r.name||'')+'</div></td>' +
+        '<td><span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.clinic+'</span></td>' +
+        '<td style="font-size:12px">'+drpList+'</td>' +
+        '<td style="font-size:12px">'+loList+'</td>' +
+        '<td style="white-space:nowrap;font-weight:700;color:var(--success)">'+(r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):'')+'</td>' +
+        '<td style="font-size:11px">'+escHtml(r.pharmacist||'')+'</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table></div>';
 }
 
 // ── STORAGE ──────────────────────────────────────────────
