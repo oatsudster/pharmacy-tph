@@ -229,13 +229,13 @@ function statusOf(exp) {
 function thDate(iso) {
   if (!iso) return '—';
   const [y,m,d] = iso.split('-');
-  return d+'/'+m+'/'+(parseInt(y)+543);
+  return d+'/'+m+'/'+y;
 }
-// ช่องกรอกวันที่แบบ วว/ดด/ปปปป (พ.ศ.) — เลี่ยงปัญหา <input type="date"> ที่แสดงผลตาม locale เครื่อง (เช่น MM/DD/YYYY)
+// ช่องกรอกวันที่แบบ วว/ดด/ปปปป (ค.ศ.) — เลี่ยงปัญหา <input type="date"> ที่แสดงผลตาม locale เครื่อง (เช่น MM/DD/YYYY)
 function isoToThFull(iso) {
   if (!iso) return '';
   const [y,m,d] = iso.split('-');
-  return d+'/'+m+'/'+(parseInt(y)+543);
+  return d+'/'+m+'/'+y;
 }
 function autoDateFull(el) {
   let v = el.value.replace(/\D/g,'').slice(0,8);
@@ -247,7 +247,7 @@ function thFullToISO(s) {
   if (!s || !s.includes('/')) return null;
   const [dd,mm,yyyy] = s.trim().split('/');
   if (!dd||!mm||!yyyy||yyyy.length<4) return null;
-  const iso = `${parseInt(yyyy)-543}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  const iso = `${parseInt(yyyy)}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
   return isNaN(new Date(iso+'T00:00:00').getTime()) ? null : iso;
 }
 
@@ -305,7 +305,7 @@ function onEditExpText(id, el) {
   if (!raw) { onEditExp(id, null); return; }
   const iso = thFullToISO(raw);
   if (!iso) {
-    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2569');
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
     render();
     return;
   }
@@ -350,7 +350,7 @@ function onEditBoxChecked(boxId, el) {
   if (!raw) { delete boxChecked[boxId]; persistState(); return; }
   const iso = thFullToISO(raw);
   if (!iso) {
-    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2569');
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
     render();
     return;
   }
