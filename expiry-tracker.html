@@ -105,6 +105,9 @@ tr.multi-lot td:first-child{box-shadow:inset 3px 0 0 var(--grp-border);}
 .box-tag{display:inline-block;padding:3px 9px;border-radius:7px;background:var(--bg);color:var(--text-mid);
   font-size:11.5px;font-weight:600;white-space:nowrap;}
 .days-cell{font-weight:700;white-space:nowrap;}
+.chk-item{width:18px;height:18px;cursor:pointer;accent-color:var(--primary);}
+tr.row-checked td{background:var(--primary-light);}
+tr.row-checked:hover td{filter:brightness(0.97);}
 .empty-state{text-align:center;padding:40px;color:var(--text-light);}
 .count-note{font-size:12.5px;color:var(--text-light);margin:10px 2px 0;}
 
@@ -168,6 +171,7 @@ footer{padding:16px 20px;text-align:center;font-size:11.5px;color:var(--text-lig
           <th onclick="setSort('qty')">จำนวน<span class="arrow" id="ar-qty"></span></th>
           <th onclick="setSort('exp')">วันหมดอายุ<span class="arrow" id="ar-exp"></span></th>
           <th onclick="setSort('days')">เหลืออีก<span class="arrow" id="ar-days"></span></th>
+          <th style="cursor:default;text-align:center">เช็คแล้ว</th>
           <th style="cursor:default">จัดการ</th>
         </tr>
       </thead>
@@ -262,10 +266,11 @@ function loadLocalState() {
       removed: (s && s.removed) || [],
       boxChecked: (s && s.boxChecked) || {},
       customBoxes: (s && s.customBoxes) || [],
+      itemChecked: (s && s.itemChecked) || {},
     };
-  } catch(e) { return { overrides: {}, extras: [], removed: [], boxChecked: {}, customBoxes: [] }; }
+  } catch(e) { return { overrides: {}, extras: [], removed: [], boxChecked: {}, customBoxes: [], itemChecked: {} }; }
 }
-let { overrides, extras, removed, boxChecked, customBoxes } = loadLocalState();
+let { overrides, extras, removed, boxChecked, customBoxes, itemChecked } = loadLocalState();
 
 const baseRows = DATA.rows.map((r,i) => ({...r, id:'r'+i, baseQty:r.qty, baseExp:r.exp}));
 function buildRows() {
@@ -313,11 +318,25 @@ function onEditExpText(id, el) {
 }
 
 function persistState() {
-  localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes}));
+  localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes, itemChecked}));
   rows = buildRows();
   BOX_LIST = buildBoxList();
   render();
   fbSave();
+}
+
+// ติ๊กว่ารายการยานี้ตรวจนับ/เช็ควันหมดอายุแล้วในรอบตรวจสอบปัจจุบัน
+function toggleItemChecked(id, checked) {
+  if (checked) itemChecked[id] = true; else delete itemChecked[id];
+  persistState();
+}
+// ล้างเครื่องหมายเช็คทั้งหมดของกล่องที่กำลังดูอยู่ (เริ่มรอบตรวจสอบใหม่)
+function clearBoxChecks() {
+  if (!activeBox) { showToast('⚠️ กรุณาเลือกแท็บกล่องยาก่อน'); return; }
+  if (!confirm('ล้างเครื่องหมายเช็คของรายการยาทั้งหมดในกล่อง "' + activeBox + '" ใช่หรือไม่?')) return;
+  rows.filter(r => r.box === activeBox).forEach(r => delete itemChecked[r.id]);
+  persistState();
+  showToast('🔄 ล้างเครื่องหมายเช็คของกล่อง "' + activeBox + '" แล้ว');
 }
 
 // เพิ่ม/ลบกล่องยาใหม่ (เผื่ออนาคตมีกล่องเพิ่ม)
@@ -403,6 +422,7 @@ function removeRow(id) {
   if (!confirm('ลบรายการนี้ออกจากกล่องยาใช่หรือไม่?')) return;
   if (id.startsWith('x')) { extras = extras.filter(e => e.id !== id); }
   else { removed.push(id); }
+  delete itemChecked[id];
   persistState();
 }
 
@@ -431,7 +451,8 @@ function initFirebase() {
         removed = d.removed || [];
         boxChecked = d.boxChecked || {};
         customBoxes = d.customBoxes || [];
-        localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes}));
+        itemChecked = d.itemChecked || {};
+        localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes, itemChecked}));
         rows = buildRows();
         BOX_LIST = buildBoxList();
         render();
@@ -449,7 +470,7 @@ function initFirebase() {
 }
 function fbSave() {
   if (!db) return;
-  db.collection('pharmacy_tph').doc('expiry_tracker').set({overrides, extras, removed, boxChecked, customBoxes, updated: Date.now()})
+  db.collection('pharmacy_tph').doc('expiry_tracker').set({overrides, extras, removed, boxChecked, customBoxes, itemChecked, updated: Date.now()})
     .catch(e => showToast('⚠️ ซิงค์ไม่สำเร็จ (บันทึกไว้ในเครื่องนี้แล้ว): ' + (e.code||e.message)));
 }
 
@@ -499,10 +520,14 @@ function buildBoxTabs() {
     noteEl.innerHTML = '';
   } else {
     const checkedIso = boxChecked[meta.id] !== undefined ? boxChecked[meta.id] : meta.checked;
+    const boxRows = rows.filter(r => r.box === activeBox);
+    const checkedCnt = boxRows.filter(r => itemChecked[r.id]).length;
     noteEl.innerHTML = `📅 ตรวจสอบกล่องล่าสุด:
       <input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(checkedIso)}"
         oninput="autoDateFull(this)" onchange="onEditBoxChecked('${meta.id}', this)" style="display:inline-block;width:110px">
-      <button class="btn-today" onclick="setBoxCheckedToday('${meta.id}')">วันนี้</button>`;
+      <button class="btn-today" onclick="setBoxCheckedToday('${meta.id}')">วันนี้</button>
+      <span style="margin-left:10px">✅ เช็คแล้ว ${checkedCnt}/${boxRows.length} รายการ</span>
+      <button class="btn-today" onclick="clearBoxChecks()">🔄 ล้างเครื่องหมายเช็ค</button>`;
   }
 }
 function setBox(b) { activeBox = b; render(); }
@@ -554,7 +579,7 @@ function render() {
   });
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">ไม่พบรายการที่ตรงกับตัวกรอง</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">ไม่พบรายการที่ตรงกับตัวกรอง</td></tr>`;
   } else {
     tbody.innerHTML = list.map(r => {
       const s = STATUS_DEF[r.status];
@@ -569,7 +594,8 @@ function render() {
               onchange="onEditName('${r.id}', this.value)">${lotBadge}`
         : `${escHtml(r.name)}${editedMark}${lotBadge}`;
       const rowStyle = color ? ` style="--grp-bg:${color.bg};--grp-border:${color.border}"` : '';
-      return `<tr class="${lotCount>1?'multi-lot':''}"${rowStyle}>
+      const isChecked = !!itemChecked[r.id];
+      return `<tr class="${lotCount>1?'multi-lot':''}${isChecked?' row-checked':''}"${rowStyle}>
         <td><span class="status-cell" style="color:${s.color}"><span class="status-dot" style="background:${s.color}"></span>${s.label}</span></td>
         <td>${nameCell}</td>
         <td><span class="box-tag">${r.box}</span></td>
@@ -578,6 +604,8 @@ function render() {
         <td><input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(r.exp)}"
               oninput="autoDateFull(this)" onchange="onEditExpText('${r.id}', this)"></td>
         <td class="days-cell" style="color:${s.color}">${dayTxt}</td>
+        <td style="text-align:center"><input class="chk-item" type="checkbox" title="เช็คจำนวน/วันหมดอายุแล้ว" ${isChecked?'checked':''}
+              onchange="toggleItemChecked('${r.id}', this.checked)"></td>
         <td><div class="row-actions">
           <button class="row-btn" title="เพิ่มล็อตใหม่สำหรับยานี้" onclick="addLot('${r.id}')">➕</button>
           <button class="row-btn del" title="ลบรายการนี้" onclick="removeRow('${r.id}')">🗑</button>
@@ -601,6 +629,7 @@ function doExport() {
     'จำนวน': r.qty,
     'วันหมดอายุ': thDate(r.exp),
     'เหลืออีก (วัน)': r.days===null?'':r.days,
+    'เช็คแล้ว': itemChecked[r.id] ? 'เช็คแล้ว' : '',
   }));
   expExcel([{name:'ยาใกล้หมดอายุ', data}], 'ยาใกล้หมดอายุ_'+TODAY);
 }
