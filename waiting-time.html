@@ -449,7 +449,7 @@ let cartRecords = JSON.parse(localStorage.getItem('wt_cart') || '[]');
 let pendingStatRecords = JSON.parse(localStorage.getItem('wt_stat_pending') || '[]');
 let pendingCartRecords = JSON.parse(localStorage.getItem('wt_cart_pending') || '[]');
 let activeTab = 'stat';
-let activeMonth = 'all';
+let activeMonth = new Date().toISOString().slice(0,7);
 const STAT_LIMIT = 15;
 const CART_LIMIT = 120;
 

@@ -3155,21 +3155,24 @@ function fiscalYearMonths(fy) {
   return months;
 }
 
+let erFilterDefaultsApplied = false;
 function populateERFilter() {
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
   const meRecs = records.filter(r => r.hasME !== false);
   const months = [...new Set(meRecs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
+  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  const curMonth = new Date().toISOString().slice(0,7);
 
   const fyEl = document.getElementById('er-dash-fy');
   if (fyEl) {
     const prev = fyEl.value;
-    const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
     const fys = new Set(months.map(m => getFiscalYear(m+'-01')).filter(Boolean));
     fys.add(curFY);
     const fysSorted = [...fys].sort((a,b)=>b-a);
     fyEl.innerHTML = '<option value="">ทั้งหมด</option>' + fysSorted.map(fy=>`<option value="${fy}">ปีงบ ${fy}</option>`).join('');
     if (prev && fysSorted.includes(parseInt(prev))) fyEl.value = prev;
+    else if (!erFilterDefaultsApplied) fyEl.value = curFY;
   }
 
   const selFY = fyEl ? parseInt(fyEl.value) : NaN;
@@ -3181,26 +3184,32 @@ function populateERFilter() {
     const prev = el.value;
     el.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) el.value = prev;
+    else if (!erFilterDefaultsApplied && filteredMonths.includes(curMonth)) el.value = curMonth;
   });
+  erFilterDefaultsApplied = true;
 }
 
+const hosxpFilterDefaultsApplied = {};
 function populateHosXPMonthFilter(dept) {
   const p = dept.toLowerCase();
   const recs = hosxpRecords.filter(r => r.dept === dept);
   const months = [...new Set(recs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
+  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  const curMonth = new Date().toISOString().slice(0,7);
+  const defaultsApplied = hosxpFilterDefaultsApplied[p] === true;
 
   // Fiscal year dropdown
   const fyEl = document.querySelector('#'+p+'-dash-fy');
   if (fyEl) {
     const prevFY = fyEl.value;
-    const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
     const fys = new Set(months.map(m => getFiscalYear(m+'-01')).filter(Boolean));
     fys.add(curFY);
     const fysSorted = [...fys].sort((a,b)=>b-a);
     fyEl.innerHTML = '<option value="">ทั้งหมด</option>' + fysSorted.map(fy=>`<option value="${fy}">ปีงบ ${fy}</option>`).join('');
     if (prevFY && fysSorted.includes(parseInt(prevFY))) fyEl.value = prevFY;
+    else if (!defaultsApplied) fyEl.value = curFY;
   }
 
   // Month dropdown — all 12 months of the selected fiscal year (even without data yet)
@@ -3213,8 +3222,10 @@ function populateHosXPMonthFilter(dept) {
     const prev = el.value;
     el.innerHTML = '<option value="">ทั้งหมด</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) el.value = prev;
+    else if (!defaultsApplied && filteredMonths.includes(curMonth)) el.value = curMonth;
     else el.value = '';
   });
+  hosxpFilterDefaultsApplied[p] = true;
 }
 
 function updateGauge(p, rate, std) {
