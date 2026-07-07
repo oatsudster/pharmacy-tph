@@ -15,6 +15,7 @@
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
+<script src="lib/admin-gate.js"></script>
 <style>
 
   :root {
@@ -780,7 +781,7 @@
           <select id="opd-delete-month" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);font-size:15px;flex:1;min-width:180px">
             <option value="">— เลือกเดือนที่ต้องการลบ —</option>
           </select>
-          <button class="btn btn-danger" onclick="deleteHosXPMonth('OPD')" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
+          <button class="btn btn-danger" onclick="requireAdmin(() => deleteHosXPMonth('OPD'))" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
         </div>
       </div>
       <div class="upload-zone" id="opd-upload-zone"
@@ -1112,7 +1113,7 @@
           <select id="ipd-delete-month" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);font-size:15px;flex:1;min-width:180px">
             <option value="">— เลือกเดือนที่ต้องการลบ —</option>
           </select>
-          <button class="btn btn-danger" onclick="deleteHosXPMonth('IPD')" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
+          <button class="btn btn-danger" onclick="requireAdmin(() => deleteHosXPMonth('IPD'))" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
         </div>
       </div>
       <div class="upload-zone" id="ipd-upload-zone"
@@ -1413,6 +1414,9 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       บันทึกความคลาดเคลื่อนทางยา
     </div>
+    <div id="edit-banner" style="display:none;background:#fff7e6;border:1.5px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px;font-weight:600;color:#7a5b00">
+      ✏️ กำลังแก้ไขรายการที่บันทึกไว้แล้ว — แก้ไขข้อมูลด้านล่างแล้วกด "บันทึกการแก้ไข" (หรือกด "ล้างฟอร์ม" เพื่อยกเลิก)
+    </div>
     <form id="me-form" onsubmit="submitForm(event)">
       <div class="form-grid">
 
@@ -1564,7 +1568,7 @@
       <div class="card-title" style="margin:0">รายการความคลาดเคลื่อนทางยาทั้งหมด</div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
-        <button class="btn btn-reset" onclick="confirmReset()">🔄 รีเซ็ตข้อมูลทั้งหมด</button>
+        <button class="btn btn-reset" onclick="requireAdmin(confirmReset)">🔄 รีเซ็ตข้อมูลทั้งหมด</button>
       </div>
     </div>
     <div class="filter-bar">
@@ -1777,6 +1781,7 @@ Chart.register({
 // ======= DATA =======
 let records = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
 let chartInstances = {};
+let editingRecordId = null;
 
 // ======= TOAST =======
 let _toastTimer;
@@ -2109,6 +2114,9 @@ function clearForm() {
   // reset drug chips
   drugClear();
   setDefaultDateTime();
+  // reset edit state
+  editingRecordId = null;
+  document.getElementById('edit-banner').style.display = 'none';
 }
 
 function submitForm(e) {
@@ -2131,9 +2139,11 @@ function submitForm(e) {
       alert('กรุณาเลือกระดับความรุนแรง'); return;
     }
   }
+  const isEdit = editingRecordId !== null;
+  const existing = isEdit ? records.find(r => r.id === editingRecordId) : null;
   const rec = {
-    id: Date.now(),
-    seq: records.length + 1,
+    id: existing ? existing.id : Date.now(),
+    seq: existing ? existing.seq : records.length + 1,
     date: getDateValue(),
     time: getTimeValue() || '',
     hasME,
@@ -2150,14 +2160,57 @@ function submitForm(e) {
     detail:   hasME ? document.getElementById('f-detail').value : '',
     intervention: hasME ? document.getElementById('f-intervention').value : '',
   };
-  records.push(rec);
+  if (existing) {
+    Object.assign(existing, rec);
+  } else {
+    records.push(rec);
+  }
   save();
   clearForm();
-  if (hasME) {
+  if (isEdit) {
+    erShowPage('records', document.querySelector('#section-er .tab-bar .tab-btn:nth-child(4)'));
+    showSuccessModal('แก้ไขข้อมูลแล้ว!', 'ข้อมูลถูกแก้ไขและบันทึกเรียบร้อยแล้ว', '✏️');
+  } else if (hasME) {
     showSuccessModal('บันทึก ME แล้ว!', 'ข้อมูลความคลาดเคลื่อนทางยาถูกบันทึกเรียบร้อยแล้ว', '⚠️');
   } else {
     showSuccessModal('บันทึกแล้ว!', 'ข้อมูลใบสั่งยาประจำวันถูกบันทึกเรียบร้อยแล้ว', '✅');
   }
+}
+
+function editRecord(id) {
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  clearForm();
+  editingRecordId = id;
+
+  const [y, mo, d] = rec.date.split('-');
+  document.getElementById('f-date-text').value = `${d}/${mo}/${String(parseInt(y)+543).slice(-2)}`;
+  document.getElementById('f-time-text').value = rec.time || '';
+  updateDatePreview();
+  updateTimePreview();
+
+  document.getElementById('f-rx-daily').value = rec.rxDaily || '';
+
+  const hasME = rec.hasME !== false;
+  document.getElementById('f-has-me').checked = hasME;
+  toggleMESection();
+
+  document.getElementById('f-stage').value    = rec.stage || '';
+  document.getElementById('f-me-type').value  = rec.meType || '';
+  document.getElementById('f-severity').value = rec.severity || '';
+  selectedDrugs = (rec.drugs && rec.drugs.length) ? rec.drugs.map(d => ({...d}))
+                : (rec.drug ? [{name: rec.drug, form: rec.drugForm || ''}] : []);
+  renderDrugChips();
+  document.getElementById('f-ward').value     = rec.ward || '';
+  document.getElementById('f-reporter').value = rec.reporter || '';
+  document.getElementById('f-detail').value   = rec.detail || '';
+  document.getElementById('f-intervention').value = rec.intervention || '';
+
+  document.getElementById('btn-submit').textContent = hasME ? '💾 บันทึกการแก้ไข ME' : '💾 บันทึกการแก้ไข';
+  document.getElementById('edit-banner').style.display = 'block';
+
+  erShowPage('entry', document.querySelector('#section-er .tab-bar .tab-btn:nth-child(2)'));
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 // ======= TABLE =======
@@ -2201,7 +2254,10 @@ function renderTable() {
           </td>
           <td style="text-align:center">${r.rxDaily || '—'}</td>
           <td>—</td>
-          <td><button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
+            <button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button>
+          </td>
         </tr>`;
       }
       return `<tr>
@@ -2221,7 +2277,10 @@ function renderTable() {
         <td>${r.ward || '—'}</td>
         <td style="text-align:center">${r.rxDaily || '—'}</td>
         <td><span class="badge sev-${r.severity}">${r.severity}</span></td>
-        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
+          <button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button>
+        </td>
       </tr>`;
     }).join('');
 }

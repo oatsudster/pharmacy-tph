@@ -12,6 +12,7 @@
 <title>DM Remission Clinic — รพ.ถ้ำพรรณา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
+<script src="lib/admin-gate.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -1589,7 +1590,7 @@ function renderDashboard() {
           </div>
           <div class="btn-row" style="flex-wrap:wrap; gap:8px;">
             <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 Export CSV</button>
-            <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑️ ลบข้อมูลทั้งหมด</button>
+            <button class="btn btn-danger btn-sm" onclick="requireAdmin(clearAllData)">🗑️ ลบข้อมูลทั้งหมด</button>
           </div>
         </div>
       </div>

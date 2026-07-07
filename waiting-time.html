@@ -546,11 +546,12 @@ function autoDateTH(el) {
 }
 // ─────────────────────────────────────────────
 // ── TIME CALC ────────────────────────────────────────────
-function stampNow(id) {
+function nowHHMM() {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2,'0');
-  const m = String(now.getMinutes()).padStart(2,'0');
-  document.getElementById(id).value = h + ':' + m;
+  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+function stampNow(id) {
+  document.getElementById(id).value = nowHHMM();
 }
 function autoTime(el) {
   let v = el.value.replace(/\D/g, '').slice(0, 4);
@@ -668,8 +669,7 @@ function completeStat(id) {
 function completeCart(id) {
   const rec = pendingCartRecords.find(r => r.id === id);
   if (!rec) return;
-  const tCalled = prompt('กรอกเวลาโทรให้มารับรถยา (HH:MM):', '');
-  if (!tCalled || !/^\d{1,2}:\d{2}$/.test(tCalled)) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  const tCalled = nowHHMM();
   const mins = timeDiff(rec.timeSent, tCalled);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
   const full = { id: 'cart_'+Date.now(), date: rec.date, timeSent: rec.timeSent, timeCalled: tCalled, mins };
@@ -738,7 +738,7 @@ function renderPending() {
           <div style="font-size:13px;font-weight:700">ส่งรถยา ${r.timeSent} น.</div>
           <div style="font-size:12px;color:var(--text-light)">${r.date}</div>
         </div>
-        <button onclick="completeCart('${r.id}')" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ รับแล้ว</button>
+        <button onclick="completeCart('${r.id}')" title="กดเพื่อบันทึกเวลาปัจจุบันเป็นเวลารับยา" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ รับแล้ว (เวลานี้)</button>
         <button onclick="deletePendingCart('${r.id}')" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
       </div>`;
     }).join('');
