@@ -456,11 +456,29 @@ const CART_LIMIT = 120;
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 let chartInstances = {};
 
+// ── FISCAL YEAR HELPERS ──────────────────────────────────
+function currentFiscalYear() {
+  const now = new Date();
+  const y = now.getFullYear() + 543;
+  return now.getMonth() >= 9 ? y + 1 : y; // ต.ค. เป็นต้นไป = ปีงบใหม่
+}
+function fiscalYearMonths(fy) {
+  // คืนค่า "YYYY-MM" (ค.ศ.) ทั้ง 12 เดือนของปีงบประมาณไทย (ต.ค. - ก.ย.)
+  const startCE = fy - 544;
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const m = (9 + i) % 12;
+    const y = i < 3 ? startCE : startCE + 1;
+    months.push(y + '-' + String(m + 1).padStart(2, '0'));
+  }
+  return months;
+}
+
 // ── INIT ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('s-date').value = todayTH();
   document.getElementById('c-date').value = todayTH();
-  document.getElementById('badge-year').textContent = new Date().getFullYear() + 543;
+  document.getElementById('badge-year').textContent = currentFiscalYear();
   buildMonthFilter();
   renderAll();
   renderPending();
@@ -486,7 +504,9 @@ function switchTab(tab) {
 // ── MONTH FILTER ─────────────────────────────────────────
 function buildMonthFilter() {
   const recs = activeTab === 'stat' ? statRecords : cartRecords;
-  const months = [...new Set(recs.map(r => r.date ? r.date.slice(0,7) : ''))].filter(Boolean).sort().reverse();
+  const dataMonths = [...new Set(recs.map(r => r.date ? r.date.slice(0,7) : ''))].filter(Boolean);
+  const fyMonths = fiscalYearMonths(currentFiscalYear());
+  const months = [...new Set([...fyMonths, ...dataMonths])].sort().reverse();
   const el = document.getElementById('month-filter');
   el.innerHTML = `<button class="month-btn ${activeMonth==='all'?'active':''}" onclick="setMonth('all')">ทั้งหมด</button>`;
   months.forEach(m => {
