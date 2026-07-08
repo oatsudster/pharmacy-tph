@@ -496,16 +496,37 @@ tr:hover td{background:#f8faf9;}
           <label>เหตุผลที่ขาด</label>
           <input type="text" id="s-reason" placeholder="เช่น ติดประชุม...">
         </div>
-        <div id="s-pm-group" class="form-group">
-          <label>ผู้ป่วย HT บ่าย (ไม่ได้พบเภสัชกร)</label>
-          <input type="number" id="s-pm-count" min="0" placeholder="0">
-        </div>
         <div class="form-group">
           <label>หมายเหตุ</label>
           <input type="text" id="s-notes" placeholder="">
         </div>
       </div>
       <button class="btn-session" onclick="submitSession()">📋 บันทึก Session</button>
+    </div>
+  </div>
+
+  <!-- HT บ่าย: standalone quick entry (ไม่เกี่ยวกับการลงคลินิก เพราะเภสัชไม่ได้ดูช่วงบ่ายเป็นปกติอยู่แล้ว) -->
+  <div class="entry-full" style="margin-top:10px">
+    <div class="session-panel open" style="border-color:#ddd6fe;background:#f5f3ff">
+      <div class="table-title" style="margin-bottom:4px;color:#6d28d9">🫀 จำนวนคนไข้ HT บ่าย (เภสัชไม่ได้ดู)</div>
+      <div class="session-grid" style="grid-template-columns:1fr 1fr 2fr">
+        <div class="form-group">
+          <label>วันที่</label>
+          <div class="input-row">
+            <input type="text" id="pm-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+            <button class="btn-stamp" onclick="document.getElementById('pm-date').value=todayTH()">📅</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>จำนวนคนไข้ (ราย)</label>
+          <input type="number" id="pm-count" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุ</label>
+          <input type="text" id="pm-notes" placeholder="">
+        </div>
+      </div>
+      <button class="btn-session" style="background:#6d28d9" onclick="submitHtPm()">📋 บันทึกจำนวนคนไข้</button>
     </div>
   </div>
 
@@ -924,11 +945,6 @@ function onAttendedChange() {
   document.getElementById('s-pharm-group').style.display = v==='yes'?'':'none';
   document.getElementById('s-reason-group').style.display = v==='no'?'':'none';
 }
-function onSClinicChange() {
-  const c = document.getElementById('s-clinic').value;
-  document.getElementById('s-pm-group').style.display = c==='HT'?'':'none';
-}
-document.getElementById('s-clinic').addEventListener('change', onSClinicChange);
 
 // ── SUBMIT VISIT ─────────────────────────────────────────
 function submitVisit() {
@@ -979,17 +995,30 @@ function submitSession() {
   const attended = document.getElementById('s-attended').value === 'yes';
   const pharm = attended ? document.getElementById('s-pharm').value : '';
   const reason = !attended ? document.getElementById('s-reason').value.trim() : '';
-  const pmCount = clinic==='HT' ? (parseInt(document.getElementById('s-pm-count').value)||0) : 0;
   const notes = document.getElementById('s-notes').value.trim();
   if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
-  const rec = {id:uid(), date, clinic, attended, pharmacist:pharm, reason, htPmCount:pmCount, notes, created:Date.now()};
+  const rec = {id:uid(), date, clinic, attended, pharmacist:pharm, reason, notes, created:Date.now()};
   sessionRecords.push(rec);
   saveLocal(); fbSave();
   renderAll();
   showToast('✅ บันทึก Session แล้ว');
-  document.getElementById('s-pm-count').value = '';
   document.getElementById('s-notes').value = '';
   document.getElementById('s-reason').value = '';
+}
+
+// ── SUBMIT HT บ่าย (standalone patient-count log) ─────────
+function submitHtPm() {
+  const date = thToISO(document.getElementById('pm-date').value);
+  const count = parseInt(document.getElementById('pm-count').value) || 0;
+  const notes = document.getElementById('pm-notes').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  const rec = {id:uid(), date, clinic:'HT', attended:null, pharmacist:'', reason:'', htPmCount:count, notes, pmOnly:true, created:Date.now()};
+  sessionRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึกจำนวนคนไข้ HT บ่ายแล้ว');
+  document.getElementById('pm-count').value = '';
+  document.getElementById('pm-notes').value = '';
 }
 
 // ── DELETE ───────────────────────────────────────────────
@@ -1158,7 +1187,7 @@ function calcKPIs(clinic) {
   const visits = getFilteredVisits(clinic);
   const sessions = getFilteredSessions(clinic);
   const attended = sessions.filter(s=>s.attended);
-  const missed = sessions.filter(s=>!s.attended);
+  const missed = sessions.filter(s=>!s.attended && !s.pmOnly);
   const withDRP = visits.filter(v=>v.drps&&v.drps.length>0);
   const drpPct = visits.length>0 ? Math.round(withDRP.length/visits.length*1000)/10 : 0;
   const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
@@ -1190,7 +1219,7 @@ function dailySummaryRows(clinic, days=14) {
 }
 
 function attendanceSummaryRows(clinic, limit=14) {
-  const sessions = getFilteredSessions(clinic);
+  const sessions = getFilteredSessions(clinic).filter(s=>!s.pmOnly);
   const cap = (window.reportFY || window.reportMonth) ? Infinity : limit;
   return [...sessions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,cap);
 }
@@ -1471,10 +1500,10 @@ function renderSessionTab(main) {
       </div>
       <div class="tbl-wrap"><table style="min-width:500px">
         <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>HT บ่าย</th><th>หมายเหตุ</th><th></th></tr></thead>
-        <tbody>${all.map(r=>`<tr class="${r.attended?'':' session-miss'}">
+        <tbody>${all.map(r=>`<tr class="${!r.pmOnly&&!r.attended?' session-miss':''}">
           <td>${thDate(r.date)}</td>
           <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
-          <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${r.reason||''}</div>`}</td>
+          <td>${r.pmOnly?'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>':r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${r.reason||''}</div>`}</td>
           <td style="font-size:12px">${r.pharmacist||''}</td>
           <td style="text-align:center">${r.htPmCount>0?r.htPmCount:''}</td>
           <td style="font-size:11px;color:var(--text-mid)">${r.notes||''}</td>
@@ -1661,6 +1690,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   document.getElementById('f-date').value = todayTH();
   document.getElementById('s-date').value = todayTH();
+  document.getElementById('pm-date').value = todayTH();
   // วันพุธ (3) → HT อัตโนมัติ, วันพฤหัสบดี (4) → DM อัตโนมัติ
   const dow = new Date().getDay();
   if (dow === 3) selectClinic('HT');
