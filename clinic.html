@@ -384,7 +384,8 @@ tr:hover td{background:#f8faf9;}
         <div class="check-group">
           <label class="check-item"><input type="checkbox" id="chk-adherence"> <span>💊 กินยาถูกต้อง</span></label>
           <label class="check-item"><input type="checkbox" id="chk-noleftover"> <span>📭 ไม่มียาเหลือ</span></label>
-          <label class="check-item"><input type="checkbox" id="chk-icebox"> <span>🧊 นำกระติกน้ำแข็งมา</span></label>
+          <label class="check-item"><input type="checkbox" id="chk-insulin" onchange="toggleInsulinIcebox()"> <span>💉 มียาฉีดเบาหวาน</span></label>
+          <label class="check-item" id="chk-icebox-wrap" style="display:none"><input type="checkbox" id="chk-icebox"> <span>🧊 นำกระติกน้ำแข็งมา</span></label>
         </div>
       </div>
 
@@ -958,10 +959,12 @@ function submitVisit() {
   const drps = getDrpData();
   const leftovers = getLoData();
   const totalSaving = leftovers.reduce((s,l)=>s+l.total,0);
+  const hasInsulin = document.getElementById('chk-insulin').checked;
   const checks = {
     adherence: document.getElementById('chk-adherence').checked,
     noLeftover: document.getElementById('chk-noleftover').checked,
-    icebox: document.getElementById('chk-icebox').checked,
+    hasInsulin,
+    icebox: hasInsulin ? document.getElementById('chk-icebox').checked : false,
   };
   const rec = {
     id: uid(), date, clinic, pharmacist:pharm, hn, name,
@@ -981,11 +984,20 @@ function submitVisit() {
 function clearForm() {
   document.getElementById('f-date').value = todayTH();
   ['f-hn','f-name','f-notes','f-pharmnote'].forEach(id=>document.getElementById(id).value='');
-  ['chk-adherence','chk-noleftover','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
+  ['chk-adherence','chk-noleftover','chk-insulin','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
+  toggleInsulinIcebox();
   document.getElementById('drp-list').innerHTML = '';
   toggleQuickDrp(false);
   document.getElementById('lo-list').innerHTML = '';
   document.getElementById('lo-total').textContent = '';
+}
+
+// แสดงช่องติ๊ก "นำกระติกน้ำแข็งมา" เฉพาะเมื่อติ๊กว่ามียาฉีดเบาหวานแล้วเท่านั้น
+function toggleInsulinIcebox() {
+  const hasInsulin = document.getElementById('chk-insulin').checked;
+  const wrap = document.getElementById('chk-icebox-wrap');
+  wrap.style.display = hasInsulin ? '' : 'none';
+  if (!hasInsulin) document.getElementById('chk-icebox').checked = false;
 }
 
 // ── SUBMIT SESSION ───────────────────────────────────────
@@ -1414,7 +1426,7 @@ function filterLeftoverCards() {
       </div>`).join('');
 
     const totalSaving = r.totalSaving > 0 ? `<span style="font-size:13px;font-weight:700;color:#15803d">💰 ฿${r.totalSaving.toFixed(0)}</span>` : '';
-    const iceBadge = r.clinic==='DM' ? (r.checks?.icebox
+    const iceBadge = r.checks?.hasInsulin ? (r.checks?.icebox
       ? `<span style="font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1.5px solid #7dd3fc;border-radius:6px;padding:3px 10px">🧊 นำกระติกมา</span>`
       : `<span style="font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:6px;padding:3px 10px">🧊 ไม่ได้นำกระติกมา</span>`) : '';
     return `
