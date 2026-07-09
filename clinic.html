@@ -1414,6 +1414,9 @@ function filterLeftoverCards() {
       </div>`).join('');
 
     const totalSaving = r.totalSaving > 0 ? `<span style="font-size:13px;font-weight:700;color:#15803d">💰 ฿${r.totalSaving.toFixed(0)}</span>` : '';
+    const iceBadge = r.clinic==='DM' ? (r.checks?.icebox
+      ? `<span style="font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1.5px solid #7dd3fc;border-radius:6px;padding:3px 10px">🧊 นำกระติกมา</span>`
+      : `<span style="font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:6px;padding:3px 10px">🧊 ไม่ได้นำกระติกมา</span>`) : '';
     return `
       <div style="background:var(--surface);border:2px solid ${clinicColor}22;border-left:4px solid ${clinicColor};
         border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
@@ -1423,6 +1426,7 @@ function filterLeftoverCards() {
           <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
           <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
           <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+          ${iceBadge}
           ${totalSaving}
           <button onclick="editVisit('${r.id}')" style="background:none;border:1.5px solid var(--border);
             border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--primary)">✏️ แก้ไข</button>
