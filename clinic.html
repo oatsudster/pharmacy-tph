@@ -1382,12 +1382,17 @@ function filterLeftoverCards() {
   const fc = (document.getElementById('lo-f-clinic')||{}).value||'';
   const fd = (document.getElementById('lo-f-date')||{}).value||'';
 
+  const baseFilter = r => {
+    if (fc && r.clinic !== fc) return false;
+    if (fd && r.date !== fd) return false;
+    if (!inPeriod(r.date)) return false;
+    return true;
+  };
+
   let recs = [...visitRecords]
     .filter(r => r.leftovers && r.leftovers.length > 0)
+    .filter(baseFilter)
     .filter(r => {
-      if (fc && r.clinic !== fc) return false;
-      if (fd && r.date !== fd) return false;
-      if (!inPeriod(r.date)) return false;
       if (q) {
         const ql = q.toLowerCase();
         const inPatient = [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql));
@@ -1404,6 +1409,35 @@ function filterLeftoverCards() {
   const wrap = document.getElementById('lo-cards-wrap');
   if (!wrap) return;
   if (!recs.length) {
+    if (q) {
+      const ql = q.toLowerCase();
+      const noLeftoverMatches = [...visitRecords]
+        .filter(baseFilter)
+        .filter(r => !(r.leftovers && r.leftovers.length > 0))
+        .filter(r => [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql)))
+        .sort((a,b) => b.date.localeCompare(a.date));
+
+      if (noLeftoverMatches.length) {
+        wrap.innerHTML = noLeftoverMatches.map(r => {
+          const clinicColor = r.clinic==='HT'?'#7c3aed':r.clinic==='DM'?'#0d9488':'#ea580c';
+          const clinicBg   = r.clinic==='HT'?'#f5f3ff':r.clinic==='DM'?'#f0fdfa':'#fff7ed';
+          return `
+            <div style="background:var(--surface);border:2px solid var(--border);border-left:4px solid ${clinicColor};
+              border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
+                  border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
+                <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
+                <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
+                <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+                <span style="font-size:12px;font-weight:700;color:var(--text-mid);background:var(--bg);
+                  border:1.5px solid var(--border);border-radius:6px;padding:3px 10px">📭 ไม่มียาคงเหลือ</span>
+              </div>
+            </div>`;
+        }).join('');
+        return;
+      }
+    }
     wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">ไม่พบรายการยาคงเหลือ</div>';
     return;
   }
