@@ -479,8 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('s-date').value = todayTH();
   document.getElementById('c-date').value = todayTH();
   document.getElementById('badge-year').textContent = currentFiscalYear();
-  buildMonthFilter();
-  renderAll();
+  switchTab('cart');
   renderPending();
   // อัปเดต elapsed time ทุก 1 นาที
   setInterval(renderPending, 60000);
