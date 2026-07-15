@@ -1,0 +1,1867 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>งานเภสัชกรรมคลินิก — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/chart.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
+<script src="lib/session-timeout.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<style>
+:root {
+  --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
+  --primary-light:#EAF4EE;--gold:#C49A22;--gold-light:#FBF3DC;
+  --success:#16a34a;--danger:#b91c1c;--warning:#b45309;
+  --info:#0e7490;--info-light:#e0f2fe;
+  --ht:#7c3aed;--ht-light:#ede9fe;
+  --dm:#0e7490;--dm-light:#e0f2fe;
+  --copd:#c2410c;--copd-light:#ffedd5;
+  --bg:#F4F7F5;--surface:#fff;--border:#D6E4DA;
+  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#7A9A85;
+  font-family:'Noto Sans Thai',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;
+  display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(26,94,56,.07);flex-shrink:0;position:sticky;top:0;z-index:100;}
+.topbar-home{display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;
+  padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;}
+.topbar-home:hover{background:var(--primary-dark);}
+.topbar-title{font-size:17px;font-weight:700;color:var(--primary-dark);flex:1;}
+.topbar-badge{background:var(--gold);color:#fff;font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px;flex-shrink:0;}
+.sync-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:#f3f4f6;color:#6b7280;flex-shrink:0;transition:all .3s;}
+.topbar-btns{display:flex;gap:6px;}
+.tbtn{padding:6px 11px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-mid);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.tbtn:hover{border-color:var(--primary);color:var(--primary);}
+
+.view-bar{display:flex;background:var(--surface);border-bottom:2px solid var(--border);padding:0 20px;flex-shrink:0;gap:4px;}
+.view-btn{padding:13px 24px;font-size:15px;font-weight:700;cursor:pointer;border:none;background:none;
+  color:var(--text-mid);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .18s;font-family:inherit;}
+.view-btn.active,.view-btn:hover{color:var(--primary);}
+.view-btn.active{border-bottom-color:var(--primary);color:var(--primary);}
+
+/* Entry view */
+.view-entry{display:block;padding:24px 20px;}
+.view-report{display:none;padding:20px;}
+
+.clinic-tabs{display:flex;gap:10px;margin-bottom:24px;}
+.clinic-tab{flex:1;padding:14px 10px;border:2.5px solid var(--border);border-radius:12px;background:var(--surface);
+  font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text-mid);transition:all .2s;text-align:center;}
+.clinic-tab.ht.active{background:var(--ht-light);border-color:var(--ht);color:var(--ht);}
+.clinic-tab.dm.active{background:var(--dm-light);border-color:var(--dm);color:var(--dm);}
+.clinic-tab.copd.active{background:var(--copd-light);border-color:var(--copd);color:var(--copd);}
+.clinic-tab:hover{border-color:var(--primary-mid);}
+
+.entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;max-width:900px;margin:0 auto;}
+.entry-col{display:flex;flex-direction:column;}
+.entry-full{grid-column:1/-1;max-width:900px;margin:0 auto;width:100%;}
+.form-title{font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:14px;border-left:4px solid var(--primary);padding-left:10px;}
+.main-content{flex:1;padding:20px;overflow-y:auto;}
+
+.form-title{font-size:13px;font-weight:700;color:var(--primary-dark);margin-bottom:10px;}
+.form-group{margin-bottom:8px;}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:5px;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
+  font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border .15s;}
+.form-group textarea{resize:vertical;min-height:72px;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);background:#fff;}
+.input-row{display:flex;gap:8px;align-items:flex-end;}
+.input-row>.form-group{flex:1;margin-bottom:0;}
+.btn-stamp{padding:10px 12px;background:var(--primary-light);border:1.5px solid var(--border);
+  border-radius:9px;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit;color:var(--primary);font-weight:700;transition:all .15s;}
+.btn-stamp:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.reason-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.reason-chip{padding:6px 10px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:20px;
+  font-size:12px;cursor:pointer;font-family:inherit;color:#b91c1c;font-weight:600;transition:all .15s;}
+.reason-chip:hover{background:#dc2626;color:#fff;border-color:#dc2626;}
+.btn-submit{width:100%;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:10px;
+  font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .2s;}
+.btn-submit:hover{background:var(--primary-dark);}
+.btn-clear{width:100%;padding:10px;background:none;color:var(--text-mid);border:1.5px solid var(--border);
+  border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;transition:all .2s;}
+.btn-clear:hover{border-color:var(--danger);color:var(--danger);}
+.btn-add{padding:8px 16px;border:1.5px dashed var(--primary);border-radius:8px;background:var(--primary-light);
+  color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-add:hover{background:var(--primary);color:#fff;}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+.section-lbl{font-size:12px;font-weight:700;color:var(--text-light);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;}
+
+/* DRP rows */
+.drp-row{display:flex;gap:4px;margin-bottom:6px;align-items:flex-start;}
+.drp-row .drp-inner{flex:1;display:flex;flex-direction:column;gap:3px;}
+.drp-row select,.drp-row input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:13px;font-family:inherit;background:var(--bg);outline:none;}
+.drp-row select:focus,.drp-row input:focus{border-color:var(--primary);}
+.btn-rm{padding:4px 7px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);
+  color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .15s;}
+.btn-rm:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+/* Leftover rows */
+.lo-row{display:flex;gap:4px;margin-bottom:5px;align-items:center;}
+.lo-row .lo-drug{flex:2;}
+.lo-row .lo-qty{width:72px;flex-shrink:0;}
+.lo-row .lo-unit{width:52px;flex-shrink:0;font-size:12px;}
+.lo-row .lo-price{font-size:12px;color:var(--success);font-weight:700;min-width:50px;text-align:right;flex-shrink:0;}
+.lo-row input{padding:8px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);outline:none;}
+.lo-row input:focus{border-color:var(--primary);}
+
+.lo-total-row{display:flex;justify-content:flex-end;font-size:11px;font-weight:700;color:var(--success);margin-top:4px;}
+
+/* Session section */
+.session-toggle{width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);
+  color:var(--text-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;
+  display:flex;justify-content:space-between;align-items:center;transition:all .15s;}
+.session-toggle:hover{border-color:var(--primary-mid);color:var(--primary);}
+.session-panel{display:none;margin-top:8px;padding:16px 20px;background:var(--bg);border-radius:12px;border:1px solid var(--border);}
+.session-panel.open{display:block;}
+.btn-session{width:100%;padding:7px;background:#4f46e5;color:#fff;border:none;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .2s;}
+.btn-session:hover{background:#3730a3;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.kpi-card{background:var(--surface);border-radius:12px;padding:14px 16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);}
+.kpi-label{font-size:11px;color:var(--text-mid);font-weight:600;margin-bottom:3px;}
+.kpi-val{font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;}
+.kpi-val.purple{color:var(--ht);}
+.kpi-val.teal{color:var(--dm);}
+.kpi-val.orange{color:var(--copd);}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.danger{color:var(--danger);}
+.kpi-sub{font-size:11px;color:var(--text-light);margin-top:2px;}
+
+/* Charts */
+.chart-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:18px;}
+.chart-card{background:var(--surface);border-radius:12px;padding:16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);}
+.chart-title{font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:12px;}
+.chart-wrap{position:relative;height:190px;}
+
+/* Table */
+.table-card{background:var(--surface);border-radius:12px;padding:16px;
+  box-shadow:0 1px 4px rgba(26,94,56,.07);border:1px solid var(--border);margin-bottom:20px;}
+.table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.table-title{font-size:13px;font-weight:700;color:var(--primary-dark);}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-row select,.filter-row input{padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:12px;font-family:inherit;background:var(--bg);outline:none;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px;}
+th{background:var(--primary-light);color:var(--primary-dark);font-weight:700;padding:8px 10px;text-align:left;font-size:11px;}
+td{padding:7px 10px;border-bottom:1px solid #f0f4f2;vertical-align:top;}
+tr:hover td{background:#f8faf9;}
+.badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;}
+.badge-ht{background:var(--ht-light);color:var(--ht);}
+.badge-dm{background:var(--dm-light);color:var(--dm);}
+.badge-copd{background:var(--copd-light);color:var(--copd);}
+.btn-edit{padding:3px 8px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);
+  font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-edit:hover{border-color:var(--primary);color:var(--primary);}
+.btn-del{padding:3px 8px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);
+  font-size:11px;cursor:pointer;font-family:inherit;color:var(--danger);transition:all .15s;}
+.btn-del:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+/* Sessions table */
+.session-miss{background:#fef2f2;}
+.tag-attended{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+.tag-missed{background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border-radius:14px;padding:22px;width:min(560px,95vw);max-height:88vh;overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal-title{font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:14px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.btn-ok{padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-cancel{padding:8px 16px;background:none;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-mid);cursor:pointer;font-family:inherit;}
+
+#toast{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:#1C2B22;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:300;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);}
+
+/* ── Checklist ── */
+.check-group{display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);}
+.check-item{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);user-select:none;}
+.check-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--primary);flex-shrink:0;}
+.check-item input[type=checkbox]:checked + span{color:var(--primary);}
+
+/* ── Leftover compact grid ── */
+.lo-header{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;
+  padding:6px 8px;background:var(--primary-light);border-radius:8px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--primary-dark);}
+.lo-h-drug,.lo-h-qty,.lo-h-unit,.lo-h-price,.lo-h-total,.lo-h-del{text-align:center;line-height:1.3;}
+.lo-h-drug{text-align:left;}
+.lo-row{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;margin-bottom:6px;align-items:center;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:8px;transition:border .15s;}
+.lo-row:hover{border-color:var(--primary-mid);}
+.lo-row-top{display:contents;}
+.lo-row-bottom{display:contents;}
+.lo-qty-wrap{display:contents;}
+.lo-qty-label{display:none;}
+.lo-qty-row{display:contents;}
+.lo-unit-wrap{display:contents;}
+.lo-unit-label{display:none;}
+.lo-row .lo-drug{font-size:13px;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg);font-family:inherit;outline:none;width:100%;}
+.lo-row .lo-drug:focus{border-color:var(--primary);background:#fff;}
+.lo-row .lo-qty{width:100%;text-align:center;font-size:13px;padding:7px 8px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.lo-row .lo-qty:focus{border-color:var(--primary);background:#fff;}
+.lo-row .lo-unit{width:100%;text-align:center;font-size:12px;padding:7px 4px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.lo-row .lo-unit:focus{border-color:var(--primary);}
+.lo-price-display{font-size:12px;color:var(--text-light);text-align:center;}
+.lo-total-display{font-size:13px;font-weight:700;color:var(--success);text-align:center;}
+.lo-row .btn-rm{width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;
+  background:#fff5f5;color:#dc2626;font-size:13px;cursor:pointer;font-weight:700;justify-self:center;}
+
+/* ── Leftover grid (edit modal — separate classes to avoid clashing with the entry form's live .lo-row queries) ── */
+.mlo-row{display:grid;grid-template-columns:1fr 70px 52px 60px 72px 32px;gap:4px;margin-bottom:6px;align-items:center;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:8px;transition:border .15s;}
+.mlo-row:hover{border-color:var(--primary-mid);}
+.mlo-row .mlo-drug{font-size:13px;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg);font-family:inherit;outline:none;width:100%;}
+.mlo-row .mlo-drug:focus{border-color:var(--primary);background:#fff;}
+.mlo-row .mlo-qty{width:100%;text-align:center;font-size:13px;padding:7px 8px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.mlo-row .mlo-qty:focus{border-color:var(--primary);background:#fff;}
+.mlo-row .mlo-unit{width:100%;text-align:center;font-size:12px;padding:7px 4px;
+  border:1.5px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;outline:none;}
+.mlo-row .mlo-unit:focus{border-color:var(--primary);}
+.mlo-row .btn-rm{width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;
+  background:#fff5f5;color:#dc2626;font-size:13px;cursor:pointer;font-weight:700;justify-self:center;}
+
+.lo-summary{margin-top:14px;padding:16px 20px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+  border:2px solid #86efac;border-radius:12px;display:flex;align-items:center;justify-content:space-between;}
+.lo-summary-label{font-size:14px;font-weight:700;color:#15803d;}
+.lo-summary-val{font-size:28px;font-weight:800;color:#15803d;}
+/* ── Quick DRP checkbox ── */
+.drp-quick{border:2.5px solid var(--border);border-radius:12px;background:var(--surface);
+  transition:all .2s;overflow:hidden;}
+.drp-quick.active{border-color:#059669;background:#f0fdf4;}
+.drp-quick-label{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;user-select:none;}
+.drp-quick-check{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:24px;color:var(--text-light);transition:all .2s;}
+.drp-quick.active .drp-quick-check{color:#059669;}
+.drp-quick-title{font-size:15px;font-weight:700;color:var(--text);}
+.drp-quick.active .drp-quick-title{color:#065f46;}
+.drp-quick-sub{font-size:12px;color:var(--text-light);margin-top:2px;}
+.drp-quick.active .drp-quick-sub{color:#059669;}
+
+/* Leftover section highlight when quick DRP active */
+.lo-section-wrap{border:2.5px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);
+  transition:all .2s;margin-top:8px;}
+.lo-section-wrap.highlighted{border-color:#059669;background:#f0fdf4;}
+.lo-section-wrap.highlighted .form-title{color:#065f46;}
+
+.session-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px;}
+
+/* ══ RESPONSIVE: TABLET ══ */
+@media (max-width: 900px) {
+  .chart-grid{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+}
+
+/* ══ RESPONSIVE: MOBILE/TABLET (แนวตั้ง) ══ */
+@media (max-width: 760px) {
+  .entry-grid{grid-template-columns:1fr;gap:20px 0;}
+  .session-grid{grid-template-columns:1fr 1fr;}
+
+  .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 14px;row-gap:8px;}
+  .topbar-title{flex:1 1 auto;}
+  .topbar-btns{flex:1 1 100%;flex-wrap:wrap;}
+  .topbar-btns .tbtn{flex:1;text-align:center;}
+
+  .clinic-tabs{gap:6px;}
+  .clinic-tab{padding:10px 6px;font-size:13px;}
+
+  .view-btn{padding:12px 14px;font-size:14px;}
+
+  /* ตารางยาคงเหลือ/DRP กว้างกว่าจอมือถือ ให้เลื่อนแนวนอนแทนการบีบจนอ่านไม่ออก */
+  .lo-section-wrap{overflow-x:auto;}
+  .lo-header,.lo-row,.mlo-row{min-width:460px;}
+  .modal-box{overflow-x:auto;}
+}
+
+@media (max-width: 480px) {
+  .kpi-grid{grid-template-columns:1fr;}
+  .session-grid{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="topbar-home">🏠 หน้าแรก</a>
+  <span class="topbar-title">💊 งานเภสัชกรรมคลินิก</span>
+  <span class="topbar-badge" id="badge-year"></span>
+  <span class="sync-badge" id="sync-badge">⏳ กำลังโหลด</span>
+  <div class="topbar-btns">
+    <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
+    <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
+    <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+  </div>
+</div>
+
+<div class="view-bar">
+  <button class="view-btn active" id="vbtn-entry" onclick="switchView('entry')">📝 บันทึกข้อมูล</button>
+  <button class="view-btn" id="vbtn-report" onclick="switchView('report')">📊 รายงาน & สถิติ</button>
+</div>
+
+<!-- ═══ ENTRY VIEW ═══ -->
+<div id="view-entry" class="view-entry">
+
+  <!-- Clinic selector -->
+  <div style="max-width:900px;margin:0 auto 20px;">
+    <div class="clinic-tabs">
+      <button class="clinic-tab ht active" id="ctab-HT" onclick="selectClinic('HT')">🫀 คลินิก HT<br><small style="font-weight:400;font-size:12px">ความดันโลหิตสูง</small></button>
+      <button class="clinic-tab dm" id="ctab-DM" onclick="selectClinic('DM')">🩺 คลินิก DM<br><small style="font-weight:400;font-size:12px">เบาหวาน</small></button>
+      <button class="clinic-tab copd" id="ctab-COPD" onclick="selectClinic('COPD')">🫁 คลินิก COPD<br><small style="font-weight:400;font-size:12px">โรคปอดอุดกั้นเรื้อรัง</small></button>
+    </div>
+  </div>
+
+  <!-- Entry form (full-width, 2-col grid) -->
+  <div class="entry-grid">
+
+    <!-- LEFT COL: Patient info -->
+    <div class="entry-col">
+      <div class="form-title">ข้อมูลผู้ป่วย</div>
+
+      <div class="form-group">
+        <label>วันที่</label>
+        <div class="input-row">
+          <div class="form-group" style="margin:0;flex:1">
+            <input type="text" id="f-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)">
+          </div>
+          <button class="btn-stamp" onclick="document.getElementById('f-date').value=todayTH()">📅 วันนี้</button>
+        </div>
+      </div>
+
+      <div class="form-group" style="display:none">
+        <label>คลินิก</label>
+        <select id="f-clinic">
+          <option value="HT">🫀 HT (ความดันโลหิตสูง)</option>
+          <option value="DM">🩺 DM (เบาหวาน)</option>
+          <option value="COPD">🫁 COPD</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>เภสัชกร</label>
+        <select id="f-pharm">
+          <option value="">-- เลือกเภสัชกร --</option>
+          <option>ภก.พงศกร นวเลิศปัญญา</option>
+          <option>ภก.พงศ์ไพสิฐ บรรจงเมือง</option>
+          <option>ภญ.สมฤดี คงศรี</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>HN ผู้ป่วย</label>
+        <input type="text" id="f-hn" placeholder="รหัส HN">
+      </div>
+
+      <div class="form-group">
+        <label>ชื่อ-สกุล</label>
+        <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
+      </div>
+
+      <!-- Checklist -->
+      <div class="form-group">
+        <label>ประเมินผู้ป่วย</label>
+        <div class="check-group">
+          <label class="check-item"><input type="checkbox" id="chk-adherence"> <span>💊 กินยาถูกต้อง</span></label>
+          <label class="check-item"><input type="checkbox" id="chk-noleftover"> <span>📭 ไม่มียาเหลือ</span></label>
+          <label class="check-item"><input type="checkbox" id="chk-insulin" onchange="toggleInsulinIcebox()"> <span>💉 มียาฉีดเบาหวาน</span></label>
+          <label class="check-item" id="chk-icebox-wrap" style="display:none"><input type="checkbox" id="chk-icebox"> <span>🧊 นำกระติกน้ำแข็งมา</span></label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>หมายเหตุ</label>
+        <textarea id="f-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Pharmacist Note <span style="font-size:11px;font-weight:400;color:var(--text-light)">(สำหรับเภสัชกรเท่านั้น)</span></label>
+        <textarea id="f-pharmnote" rows="2" placeholder="ข้อสังเกต แผนการดูแล หรือนัดติดตาม..."></textarea>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COL: DRP + Leftover -->
+    <div class="entry-col">
+      <div class="form-title">DRPs ที่พบ</div>
+
+      <!-- Quick DRP: ยาเหลือสะสม (90% of cases) -->
+      <div class="drp-quick" id="drp-quick-wrap">
+        <label class="drp-quick-label" onclick="toggleQuickDrp()">
+          <div class="drp-quick-check" id="drp-quick-check">
+            <span id="drp-quick-icon">☐</span>
+          </div>
+          <div class="drp-quick-text">
+            <div class="drp-quick-title">📦 ยาเหลือสะสม</div>
+            <div class="drp-quick-sub">DRP ที่พบบ่อยที่สุด — กรอกยาในช่องด้านล่างได้เลย</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Other DRPs -->
+      <div style="margin-top:10px;margin-bottom:4px;font-size:11px;font-weight:700;color:var(--text-light);letter-spacing:.05em">DRP อื่นๆ</div>
+      <div id="drp-list"></div>
+      <button class="btn-add" onclick="addDrpRow()">+ เพิ่ม DRP อื่นๆ</button>
+
+      <hr class="divider">
+
+      <div class="lo-section-wrap" id="lo-section-wrap">
+      <div class="form-title">📦 ยาที่คนไข้นำกลับมา</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:10px">กรอกจำนวนที่เหลือ → ระบบคำนวณมูลค่าให้อัตโนมัติ</div>
+
+      <!-- column headers -->
+      <div class="lo-header">
+        <span class="lo-h-drug">ชื่อยา</span>
+        <span class="lo-h-qty">จำนวน<br>ที่เหลือ</span>
+        <span class="lo-h-unit">หน่วย</span>
+        <span class="lo-h-price">ราคา/<br>หน่วย</span>
+        <span class="lo-h-total">มูลค่า<br>ประหยัด</span>
+        <span class="lo-h-del"></span>
+      </div>
+      <div id="lo-list"></div>
+      <button class="btn-add" onclick="addLoRow()" style="width:100%;margin-top:6px">+ เพิ่มรายการยา</button>
+
+      <!-- Savings summary card -->
+      <div class="lo-summary" id="lo-summary" style="display:none">
+        <div class="lo-summary-label">💰 ประหยัดได้ทั้งหมด</div>
+        <div class="lo-summary-val" id="lo-total">฿0</div>
+      </div>
+      </div><!-- /lo-section-wrap -->
+
+      <button class="btn-submit" onclick="submitVisit()" style="margin-top:14px">✅ บันทึกการให้คำปรึกษา</button>
+      <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
+    </div>
+
+  </div><!-- /entry-grid -->
+
+  <!-- Session section (full-width, below form) -->
+  <div class="entry-full" style="margin-top:10px">
+    <button class="session-toggle" onclick="toggleSessionPanel()">
+      <span>📋 บันทึก Session / ขาดลง</span>
+      <span id="session-arrow">▼</span>
+    </button>
+    <div class="session-panel" id="session-panel">
+      <div class="session-grid">
+        <div class="form-group">
+          <label>วันที่</label>
+          <div class="input-row">
+            <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+            <button class="btn-stamp" onclick="document.getElementById('s-date').value=todayTH()">📅</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>คลินิก</label>
+          <select id="s-clinic">
+            <option value="HT">HT</option>
+            <option value="DM">DM</option>
+            <option value="COPD">COPD</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>เภสัชกรลงคลินิก?</label>
+          <select id="s-attended" onchange="onAttendedChange()">
+            <option value="yes">✅ ลงคลินิก</option>
+            <option value="no">❌ ไม่ได้ลง</option>
+          </select>
+        </div>
+        <div id="s-pharm-group" class="form-group">
+          <label>เภสัชกร</label>
+          <select id="s-pharm">
+            <option value="">-- เลือก --</option>
+            <option>ภก.พงศกร นวเลิศปัญญา</option>
+            <option>ภก.พงศ์ไพสิฐ บรรจงเมือง</option>
+            <option>ภญ.สมฤดี คงศรี</option>
+          </select>
+        </div>
+        <div id="s-reason-group" class="form-group" style="display:none">
+          <label>เหตุผลที่ขาด</label>
+          <div class="reason-chips">
+            <button type="button" class="reason-chip" onclick="setReason('ลา (ไม่มีเภสัชกรลงคลินิก)')">🏖️ ลา</button>
+            <button type="button" class="reason-chip" onclick="setReason('ติดประชุม')">📅 ติดประชุม</button>
+            <button type="button" class="reason-chip" onclick="setReason('ติดราชการ')">📋 ติดราชการ</button>
+          </div>
+          <input type="text" id="s-reason" placeholder="เช่น ติดประชุม...">
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุ</label>
+          <input type="text" id="s-notes" placeholder="">
+        </div>
+      </div>
+      <button class="btn-session" onclick="submitSession()">📋 บันทึก Session</button>
+    </div>
+  </div>
+
+  <!-- HT บ่าย: standalone quick entry (ไม่เกี่ยวกับการลงคลินิก เพราะเภสัชไม่ได้ดูช่วงบ่ายเป็นปกติอยู่แล้ว) -->
+  <div class="entry-full" style="margin-top:10px">
+    <div class="session-panel open" style="border-color:#ddd6fe;background:#f5f3ff">
+      <div class="table-title" style="margin-bottom:4px;color:#6d28d9">🫀 จำนวนคนไข้ HT บ่าย (เภสัชไม่ได้ดู)</div>
+      <div class="session-grid" style="grid-template-columns:1fr 1fr 2fr">
+        <div class="form-group">
+          <label>วันที่</label>
+          <div class="input-row">
+            <input type="text" id="pm-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+            <button class="btn-stamp" onclick="document.getElementById('pm-date').value=todayTH()">📅</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>จำนวนคนไข้ (ราย)</label>
+          <input type="number" id="pm-count" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุ</label>
+          <input type="text" id="pm-notes" placeholder="">
+        </div>
+      </div>
+      <button class="btn-session" style="background:#6d28d9" onclick="submitHtPm()">📋 บันทึกจำนวนคนไข้</button>
+    </div>
+  </div>
+
+  <!-- Recent records for current clinic -->
+  <div class="entry-full" style="margin-top:24px">
+    <div class="table-card">
+      <div class="table-head">
+        <div class="table-title" id="recent-title">📋 รายการล่าสุด</div>
+      </div>
+      <div class="tbl-wrap" id="recent-records-wrap">
+        <div style="padding:20px;text-align:center;color:var(--text-light);font-size:13px">ยังไม่มีข้อมูล</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /view-entry -->
+
+<!-- ═══ REPORT VIEW ═══ -->
+<div id="view-report" class="view-report" style="display:none">
+  <div class="main-content" id="main-content">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title">✏️ แก้ไขรายการ</div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn-ok" onclick="saveModal()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD DETAIL MODAL (คลิกกราฟเพื่อดูรายละเอียด) -->
+<div class="modal-overlay" id="cl-detail-modal" onclick="if(event.target===this)closeClinicDetail()">
+  <div class="modal-box" style="width:min(920px,95vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="modal-title" id="cl-detail-title" style="margin-bottom:0"></div>
+      <button onclick="closeClinicDetail()" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="cl-detail-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- datalist -->
+<datalist id="drug-dl"><option value="(inj.) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g."><option value="(inj.) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU"><option value="(inj.) 10%D/N/2 10 %"><option value="(inj.) 3%Sodium Chloride(NaCl) 3 %"><option value="(iv.) ACETATE RINGER 1,000 ml."><option value="(pwd.) ACTIVATED CHARCOAL 5 g."><option value="(tab.) Acyclovir 200 mg."><option value="(tab.) ACYCLOVIR 800 mg."><option value="(inj.) Adenosine (adenocor) 6 mg."><option value="(inj.) ADRENALINE 1 mg./ml."><option value="(syr.) Albendazole (FALBEN)susp 100 mg/5ml"><option value="(tab.) ALBENDAZOLE(zentel) 200 mg."><option value="(sol.) ALCOHOL  60 ml 70 %"><option value="(sol.) ALCOHOL 70 %"><option value="(tab.) ALLOPURINOL(zyloric) 100 mg."><option value="(inj.) AMIODARONE(Cordarone) (NL) 150 mg."><option value="(tab.) amitriptyline(A10/tripta) 10 mg."><option value="(tab.) Amlodipine 5 mg."><option value="(sol.) AMMONIUM CARBONATE 60 ml."><option value="(cap.) AMOXICILLIN 500 mg."><option value="(syr.) Amoxy dry SYRUP 250 mg/5ml"><option value="(cap.) AmoxyCillin 250 mg."><option value="(pwd.) amoxycillin SYR 125 mg./5ml."><option value="(pwd.) AMPICILLIN   1 g 1 g."><option value="(syr.) ANTACID SUSP(alum milk) 0.66 g."><option value="(inj.) ANTIVENUM SERA,(งูเห่า) 0.6 u."><option value="(pwd.) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml."><option value="(inj.) aP Acellular Pertussis (ไอกรน) 5 mcg./dose"><option value="(tab.) aspirin(asa) 81 mg."><option value="(tab.) ASPIRIN(ASA/aspent) 300 mg."><option value="(tab.) Atarax(hydroxyzine) 10 mg."><option value="(tab.) ATENOLOL 50 mg."><option value="(inj.) ATROPINE 0.6 mg./ml."><option value="(tab.) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g."><option value="(syr.) Augmentin Susp 400/57 mg/5ml"><option value="(inj.) BCG(bacillus calmette-gue rin) 0.1 ml."><option value="(inj.) BENZATHINE PENICILLIN 1,200,000 u."><option value="(tab.) Benzhexol 2 mg."><option value="(tab.) Benzhexol 5 mg."><option value="(lot.) BENZYL BENZOATE 25 %"><option value="(pwd.) BERODUAL ( MDI ) inhaler 200 dose"><option value="(sol.) BERODUAL 0.5 %"><option value="(sol.) BERODUAL 20 ml."><option value="(sol.) BETADINE (IODINE) %"><option value="(cream) BETAMETHASONE(5g) 0.1 %"><option value="(syr.) Bromhexine elixir 4 mg."><option value="BUDESONIDE  (MDI) 200 mcg."><option value="(inj.) Buscopan inj (HYOSCINE  INJ) 20 mg./ml."><option value="(tab.) CAFERGOT (NL) 1 mg."><option value="(syr.) CALAMINE 15 %"><option value="(tab.) calcium carbonate(CaCO3) 600 mg."><option value="(inj.) CALCIUM GLUCONATE 10 %"><option value="(tab.) CAPTOPRIL  25 mg 25 mg."><option value="(tab.) CARBAMAZEPINE(tegretol) 200 mg."><option value="Carbocisteine 100 mg/5ml"><option value="(pwd.) CeFaZOLIN injection 1 g."><option value="(pwd.) CefTaZidime injection 1 g."><option value="(inj.) CefTRIAXone 1 g injection (CEF-3) 1 g."><option value="(tab.) CETIRIZINE (Alerest) 10 mg."><option value="(ear drop) CHLORAMPHENICOL EAR DROP 1 %"><option value="(sol.) Chlorhexidine mouth wash 0.12 g."><option value="(tab.) CHLORPROMAZINE(CPZ) 100 mg."><option value="(oint.) CHLORTETRACYCLINE - mg."><option value="(tab.) Ciprofloxacin 500 mg."><option value="(cap.) CLINDAMYCIIN 300 mg"><option value="(inj.) clindamycin  600 mg/vial. 600 mg./dose"><option value="(tab.) CLONAZEPAM(rivotril) 2 mg."><option value="(tab.) Clopidogrel (Plavix) 75 mg."><option value="(vag. tab.) CLOTRIMAZOLE VAG TAB(canesten) 100 mg."><option value="(cream) CLOTRIMAZOLE(canesten) 1 %"><option value="(inj.) CLOXACILLIN INJ  1  g 1 g."><option value="(tab.) COLCHICINE 0.6 mg."><option value="(tab.) COTRIMOXAZOLE(bactrim) 400 mg."><option value="(syr.) COTRIMOXAZOLE(bactrim) 60 ml."><option value="(inj.) Covid Vaccine(SARS-CoV-2) 0.5 ml."><option value="(tab.) CPM   tab. 4 mg."><option value="(syr.) CPM 2 mg./5ml."><option value="(inj.) CPM(piriton) 10 mg./ml."><option value="(tab.) CYPROHEPTADINE(periactin) 4 mg."><option value="(tab.) Cytotec 200 mcg."><option value="(iv.) D-5-S - %"><option value="(iv.) D-5-S/2 - %"><option value="(iv.) D-5-S/3 - %"><option value="(iv.) D-5-S/4 500 ml."><option value="(inj.) D-5-S/5 5 %"><option value="(iv.) D-5-W %"><option value="(inj.) D-5-W %"><option value="(iv.) D-5-W - %"><option value="(inj.) D-W-10 %"><option value="(tab.) Depakin (sodium valproate) 200 mg."><option value="(inj.) DEXAMETHASONE 5 mg./ml."><option value="(iv.) DEXTRAN 40 mg."><option value="(tab.) DEXTROMETHORPHAN 15 mg."><option value="(inj.) DEXTROSE (glucose) 50 %"><option value="(inj.) DIAZEPAM(valium) 10 mg./ml."><option value="(tab.) DIAZEPAM(valium) 2 mg."><option value="(tab.) DIAZEPAM(valium) 5 mg."><option value="(tab.) DICLOFENAC (voltaren/fenac) 25 mg."><option value="(cap.) diCloxacillin  cap 250 mg."><option value="(cap.) DICLOXACILLIN CAP 500 mg."><option value="(pwd.) Dicloxacillin syp. 62.5 mg/5ml"><option value="(inj.) DIGOXIN 0.25 mg./ml."><option value="(tab.) DIGOXIN(lanoxin) 0.25 mg."><option value="(tab.) DIMENHYDRINATE(dramamine) 50 mg."><option value="(inj.) DIMENHYDRINATE(Dramamine) 50 mg./ml."><option value="(cap.) DIP. CLORAZEPATE(trancon/T5) 5 mg."><option value="(tab.) Dolutegravir 50 mg."><option value="(tab.) DOMPERIDONE(motilium) 10 mg."><option value="(syr.) DOMPERIDONE(motilium) 5 mg/5ml"><option value="(inj.) DOPAMINE 250 mg./ml."><option value="(tab.) Doxazosin 4 mg."><option value="(cap.) DOXYCYCLINE 100 mg."><option value="(inj.) DT(diphtheria tetanus) vaccines mg."><option value="(inj.) DTP iu./dose"><option value="(inj.) DTP-HB iu./dose"><option value="(inj.) DTP-HB-Hib vaccine 0.5 ml."><option value="(tab.) EFAVIRENZ(EFV) 600 mg."><option value="(tab.) ENALAPRIL 20 mg."><option value="(tab.) eNAlapril 5 mg."><option value="(inj.) ERIG (vinrab) 1000 iu."><option value="(pwd.) ERYTHROMYCIN 125 mg"><option value="(tab.) ETHAMBUTOL 400 mg."><option value="(tab.) Favipiravir (covid-19) 200 mg."><option value="(sol.) FERROUS  DROP 50 mg/0.6ml"><option value="(tab.) FERROUS  FUMARATE 200 mg."><option value="(syr.) Ferrous fumarate Susp. 76 mg/5ml"><option value="(cap.) FLUCONAZOLE 200 mg."><option value="(cap.) FLUNARIZINE(sibelium) 5 mg."><option value="(tab.) Fluoxetine 20 mg."><option value="(inj.) Fluphenazine(DECA) 50"><option value="(inj.) FLUPHENAZINE(deca) 50 mg."><option value="(tab.) FOLIC  ACID 5 mg."><option value="(inj.) FUROSEMIDE(lasix) 20 mg/2 ml"><option value="(tab.) FUROSEMIDE(lasix) 40 mg."><option value="(cap.) GEMFIBROZIL(Lopid) 300 mg."><option value="(inj.) GENTAMICIN  80 mg/amp. 80 mg./2ml."><option value="(tab.) gliPIZIDE(minidiab) 5 mg."><option value="(tab.) Glyceryl guaiacolate (GG) 100 mg."><option value="(tab.) GPO vir S30 30 mg."><option value="(tab.) GPO VIR Z 250 250"><option value="(syr.) Guaifenesin syrup (GG) 100 mg/5ml"><option value="HALOPERIDOL 0.5 mg."><option value="(tab.) HALOPERIDOL 2 mg."><option value="(tab.) HALOPERIDOL 5 mg."><option value="(inj.) HALOPERIDOL 5 mg./ml."><option value="(tab.) HCTZ(hydrochlorothiazide) 25 mg."><option value="(inj.) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml."><option value="HI SET 1 u."><option value="(sol.) HISTA OPH(opsil A) 0.05 %"><option value="(inj.) HPV vaccine 0.5 ml."><option value="(inj.) Hydralazine  Hcl 20 mg./1ml"><option value="(tab.) Hydralazine HCl 25 mg."><option value="(inj.) Hydrocortisone sodium  succinate 100 mg."><option value="(tab.) HYOSCINE(buscopan) 10 mg."><option value="(syr.) HYOSICNE(buscopan) 5 mg./5ml."><option value="(syr.) Ibuprofen (brufen) 100 mg/5ml"><option value="(tab.) IBUPROFEN(brufen) 400 mg."><option value="(tab.) IMIPRAMINE(tofranil) 25 mg."><option value="(inj.) IMPLANON  implant 68 mg."><option value="(inj.) Inactivated Poliomyelitis Vaccine(IPV) 40 iu."><option value="(inj.) influenza ตามฤดูกาล 0.5 ml."><option value="(tab.) INH(isoniazid) 100 mg."><option value="(tab.) ISODIL  SL 5 mg."><option value="(tab.) ISODIL  TAB 10 mg."><option value="(tab.) Isoniazid 300 mg 300 mg."><option value="(tab.) Isoniazid+Rifapentine 300/300 mg."><option value="(inj.) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml."><option value="(inj.) JE VACCINE(0.5 ML) 80 mcg./ml."><option value="(sol.) K Y jelly sack 5 g."><option value="(pwd.) KALIMATE ."><option value="(tab.) KETOCONAZOLE(nizoral) 200 mg."><option value="(tab.) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg."><option value="(tab.) Lamivudine 150 mg."><option value="(tab.) Lamivudine 3TC 300 mg."><option value="(tab.) Levodopa250 + carbidopa 25 mg."><option value="(tab.) LevoFloxacin 500 mg."><option value="Lidocain injection 2%"><option value="(inj.) LIDOCAINE 2 %"><option value="(cap.) LITHIUM CARBONATE(LiCO3) (NL) 300 mg."><option value="(tab.) Lopinavir/Ritonavir 200/50 mg."><option value="(tab.) Lorazepam 1 mg."><option value="(tab.) Losartan (cozaar) 50 mg."><option value="(sol.) M tussis ( brown mixt ) 180 ml."><option value="(sol.) M. CARMINATIVE 180 ml."><option value="(sol.) M.tussis (brown mixt) 60 ml."><option value="(inj.) MAGNESIUM SULFATE 10 %"><option value="(inj.) MAGNESIUM SULFATE 50 %"><option value="(inj.) MEDROXYPROGESTERONE ACETATE(depo) 150 mg."><option value="(tab.) METFORMIN(glucophage) 500 mg."><option value="(tab.) Methimazole 5 mg."><option value="(tab.) METHYLDOPA(aldomet) 250 mg."><option value="(inj.) METHYLERGOMETRINE(Methergin) 0.2 mg./ml."><option value="(tab.) METOCLOPRAMIDE(plasil) 10 mg."><option value="(inj.) METOCLOPRAMIDE(plasil) 10 mg./2ml."><option value="(tab.) Metoprolol tartrate 100 mg."><option value="(tab.) METRONIDAZOLE(flagyl) 400 mg."><option value="(inj.) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg."><option value="(tab.) Micronised progesterone 100 mg."><option value="(syr.) MILK OF MAGNESIA(MOM) 60 ml."><option value="(inj.) Mixtard (ขวด) 100 units/ml."><option value="(inj.) mixtard STAT 100 iu"><option value="(inj.) MMR 0.5 ml."><option value="(cap.) Molnupiravir 200 mg"><option value="(inj.) MORPHINE 10 mg./ml."><option value="(tab.) Morphine MST 10 mg"><option value="(sol.) Morphine Solution 10 mg/5 ml"><option value="(inj.) MR 0.5"><option value="(tab.) MTV-MULTIVITAMINS g."><option value="(tab.) NaCl (Sodium Chloride) 300 mg"><option value="(inj.) NALOXONE(narcan) 0.1mg./ml."><option value="(tab.) Nevirapine 200 mg."><option value="(tab.) NIFEDIPINE SR 20 mg."><option value="(inj.) Norepinephrine bitartrate 4 ml/ 4 mg."><option value="(tab.) NORFLOXACIN(lexinor) 400 mg."><option value="(tab.) Norgesic(Orphenadrine35mg/paracetamol500mg) mg."><option value="(inj.) NPH (ขวด) 100 units/ml."><option value="(inj.) NPH INSULIN 1 units/ml."><option value="(inj.) NSS 5 ml 0.9 %"><option value="(inj.) NSS INJ. 0.9 %"><option value="(sol.) OLIVE OIL 60 ml."><option value="(inj.) Omeprazole 10 ml 40 mg."><option value="(cap.) OMEPRAZOLE(losec/miracid) 20 mg."><option value="(inj.) Ondansetron inj 8mg/4ml"><option value="(oral drop) OPV vaccine ."><option value="(pwd.) ORS(รสส้ม) 75 4.253 g."><option value="(cap.) oseltamivir 30 mg."><option value="(cap.) oseltamivir 45 mg."><option value="(cap.) oseltamivir 75 mg."><option value="(inj.) OXYTOCIN 10 iu."><option value="(syr.) PARACETAMOL  SYR 250 mg/5ml."><option value="(tab.) paracetamol 325 mg."><option value="(tab.) PARACETAMOL 500 mg."><option value="(syr.) PARACETAMOL SYRUP 120 มก./5มล."><option value="(inj.) PCEC (ID) 0.1 iu."><option value="(inj.) PCEC (IM) 0.5 iu."><option value="(tab.) PERPHENAZINE(สีไข่ไก่) 8 mg."><option value="(inj.) PETHIDINE 50 mg./ml."><option value="(tab.) PHENOBARBITAL(1 GRAIN) 60 mg."><option value="(inj.) Phenytoin inj 250/5 mg./ml."><option value="(tab.) Phenytoin(Dilantin) 50 mg."><option value="(cap.) PHENYTOIN(dilantin) promt 100 mg."><option value="(tab.) Pioglitazone 30 mg."><option value="(eye drop) PolyOPH 5000 iu."><option value="(sol.) POTASSIUM (KCL elixir) 20 mEq./15ml."><option value="(tab.) Potassium Chloride tab 6.7 mEq."><option value="(inj.) POTASSIUM CHLORIDE(KCl) 20 mEq."><option value="(tab.) PREDNISOLONE 5 mg."><option value="(cream) prednisolone cream 5"><option value="(tab.) Primolut-N(norethisterone 5 mg) 5 mg."><option value="(supp.) PROCTOSEDYL 5 mg."><option value="(tab.) propranolol(inderal) 10 mg."><option value="(tab.) PTU(propylthiouracil) 50 mg."><option value="(tab.) PZA(pyrazinamide) 500 mg."><option value="(tab.) QUININE SULFATE 300 mg."><option value="(tab.) R-DEN(คุมเม็ด) 30 mcg."><option value="(inj.) RABIES ANTISERUM(ERIG) 100 iu."><option value="(inj.) RI  STAT (REGULAR INSULIN ) 100 iu./ml."><option value="(cap.) RIFAMPICIN 300 mg."><option value="(cap.) RIFAMPICIN 450 mg."><option value="(tab.) Rifapentine 150 mg."><option value="(cap.) Rifinah (Rifam+INH) 300+150 mg."><option value="(tab.) Risperidone 2 mg."><option value="(syr.) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml."><option value="(tab.) ROXITHROMYCIN(rulid) 150 mg."><option value="(sol.) SALBUTAMOL  NB (ER) 0.1 %"><option value="(tab.) SALBUTAMOL 2 mg."><option value="(syr.) SALBUTAMOL 2 mg/5ml"><option value="(sol.) SALBUTAMOL NB. 0.1 %"><option value="(sol.) SALBUTAMOL(ventolin) MDI 100 mcg."><option value="(sol.) Saline IRRIGATE 0.9 %"><option value="(sol.) SELENIUM shampoo 200 mg./ml."><option value="(mdi) SeRoflo   (MDI) 25/125 mcg./dos"><option value="(tab.) Sertraline 50 mg."><option value="(cream) SILVER SULFADIAZINE (25g) 1 %"><option value="(tab.) SIMETHICONE  (air-x) 80 mg."><option value="(syr.) SIMETHICONE DROP SUS 40 mg./0.6ml."><option value="(tab.) SimVastatin(zocor) (NL) 20 mg."><option value="(tab.) Sodamint (Sodium bicarbonate) 300 mg."><option value="(inj.) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml."><option value="(syr.) SODIUM BICARBONATE(NaHCO3) 10 mg./ml."><option value="(tab.) spironolactone (Aldactone) 25 mg."><option value="(inj.) STERILEWATER (SWI) 100 ml."><option value="(inj.) Streptokinase 1500000 u."><option value="(inj.) STREPTOMYCIN SULPHATE 1 g."><option value="(tab.) Teevir 300 mg."><option value="(tab.) Tenofovia disoproxil 300 mg."><option value="(inj.) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml."><option value="(sol.) tetracain eye drop 0.5 %"><option value="(cap.) Theophylline-CR 200 mg."><option value="(tab.) THYROXINE-L 100 mcg."><option value="(tab.) TLD (TDF300mg+3TC300mg+DTG50mg) mg."><option value="(cap.) TRAMADOL HCl(tramal) 50 mg."><option value="(inj.) TRAMADOL inj 50 mg./ml."><option value="(cap.) Tranexamic acid 250 mg."><option value="(cream) TRIAMCINOLONE 0.02 %"><option value="(cream) TRIAMCINOLONE 0.1 %"><option value="(oint.) Triamcinolone Oral Paste 1 g."><option value="(inj.) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml."><option value="(tab.) Triferdine 150 mg."><option value="(sol.) UNISON 10 ml."><option value="(sol.) UNISON ENEMA 100 ml."><option value="UNISON ENEMA 20"><option value="Varenicline Tartrate 0.5 mg"><option value="Varenicline Tartrate 1 mg"><option value="(inj.) VERORAB ( ID ) 0.1 ml."><option value="(inj.) VERORAB ( IM ) 0.5 ml."><option value="(tab.) VIT B6(pyridoxine) 50 mg."><option value="(tab.) VITAMIN B 1/6/12 1 g."><option value="(inj.) VITAMIN B COMPLEX ."><option value="vitamin c 25 mg."><option value="(inj.) VITAMIN K1 1 mg."><option value="(inj.) WATER FOR INJECTION 5 ml."><option value="Whitfields ointment 6 %"><option value="(cap.) Zidovudine  (AZT) 300 mg."><option value="(syr.) Zidovudine (AZT) 10 mg./ml."><option value="(cap.) Zidovudine (AZT) 100 mg."><option value="(tab.) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg."><option value="กานพลู 5 g."><option value="(cap.) ขมิ้นชัน แคปซูล KMC 500 mg."><option value="ขวดยา 120 ml."><option value="ขวดยา 30  ml."><option value="ขวดยา 60 ml."><option value="(cap.) ขิง 500 mg."><option value="ครีมพญายอ 4.343 g/100g"><option value="(cap.) จันทน์ลีลา ซองละ 24 แคปซูล 330 g."><option value="ชุมเห็ดเทศ 3 g."><option value="(cap.) ตรีผลาTPL 90 g."><option value="น้ำมันกัญชา ml."><option value="น้ำมันไพลPLI 20 ml"><option value="(cap.) ฟ้าทะลายโจร FTJ 500 mg."><option value="(syr.) มะขามป้อม MKP 120 ml."><option value="ยาธาตุบรรจบ 500 mg."><option value="ยาธาตุอบเชยOS 240 ml."><option value="ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg."><option value="(cap.) ยาประสะไพลPSP 500 mg."><option value="(cap.) ยามันทธาตุ 500 mg."><option value="(tab.) ยาระบายมะขามแขก(senokot) 7.5  mg"><option value="(cap.) ยาศุขไสยาศน์ 500 mg."><option value="(cap.) ยาสหัสธาราSHTR 500 mg."><option value="(pwd.) ยาหอมนวโกฐNVK 7 g."><option value="(pwd.) ยาหอมเทพจิตรTPJ 30 g."><option value="(cap.) ยาห้าราก ซองละ 9 แคปซูล 500 mg."><option value="(tab.) ยาอมมะแว้ง MW %"><option value="(cap.) ยาเขียวหอมKH 500 mg."><option value="(tab.) ยาเดิม (Manidipine ) 20 mg"><option value="(sol.) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml"><option value="(pwd.) ยาเดิม(Acetylcysteine) 200 mg."><option value="(tab.) ยาเดิม(Amlodipine) 10 mg."><option value="(tab.) ยาเดิม(Atorvastatin) 40 mg."><option value="(tab.) ยาเดิม(Azithromycin) 250 mg."><option value="(syr.) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml"><option value="(tab.) ยาเดิม(Betahistine) 6 mg."><option value="(tab.) ยาเดิม(Carvedilol) 6.25 mg."><option value="(cap.) ยาเดิม(Gabapentin) 300 mg."><option value="(tab.) ยาเดิม(Hydralazine) 50 mg."><option value="(inj.) ยาเดิม(Hypercrit) 4000 u."><option value="(tab.) ยาเดิม(Lorazepam) 0.5 mg."><option value="(pwd.) ยาเดิม(Meropenem inj.) 1 gm"><option value="(tab.) ยาเดิม(Risperidone) 1 mg."><option value="(inj.) ยาเดิม(Vancomycin inj.) 500 mg"><option value="(tab.) ยาเดิม(Warfarin) 5 mg"><option value="(cap.) ยาเลือดงามLH 500 mg."><option value="(cap.) ยาเหลืองปิดสมุทร 500 mg."><option value="(cap.) ยาแก้ลมจับเส้น 500 mg."><option value="(pwd.) ยาแก้ลมอัมพฤกษ์AMP 70 g."><option value="(cap.) รางจืด RJ 400 mg."><option value="(pwd.) ลูกประคบสมุนไพร 220 g."><option value="เจลว่านหางจระเข้ g."><option value="เถาวัลย์เปรียง TWP 500 mg."><option value="(cap.) เพชรสังฆาต PSK 500 mg."></datalist>
+
+<script>
+// ── DRUG DATA ────────────────────────────────────────────
+const DRUG_LIST = ["(inj.) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.","(inj.) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU","(inj.) 10%D/N/2 10 %","(inj.) 3%Sodium Chloride(NaCl) 3 %","(iv.) ACETATE RINGER 1,000 ml.","(pwd.) ACTIVATED CHARCOAL 5 g.","(tab.) Acyclovir 200 mg.","(tab.) ACYCLOVIR 800 mg.","(inj.) Adenosine (adenocor) 6 mg.","(inj.) ADRENALINE 1 mg./ml.","(syr.) Albendazole (FALBEN)susp 100 mg/5ml","(tab.) ALBENDAZOLE(zentel) 200 mg.","(sol.) ALCOHOL  60 ml 70 %","(sol.) ALCOHOL 70 %","(tab.) ALLOPURINOL(zyloric) 100 mg.","(inj.) AMIODARONE(Cordarone) (NL) 150 mg.","(tab.) amitriptyline(A10/tripta) 10 mg.","(tab.) Amlodipine 5 mg.","(sol.) AMMONIUM CARBONATE 60 ml.","(cap.) AMOXICILLIN 500 mg.","(syr.) Amoxy dry SYRUP 250 mg/5ml","(cap.) AmoxyCillin 250 mg.","(pwd.) amoxycillin SYR 125 mg./5ml.","(pwd.) AMPICILLIN   1 g 1 g.","(syr.) ANTACID SUSP(alum milk) 0.66 g.","(inj.) ANTIVENUM SERA,(งูเห่า) 0.6 u.","(pwd.) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.","(inj.) aP Acellular Pertussis (ไอกรน) 5 mcg./dose","(tab.) aspirin(asa) 81 mg.","(tab.) ASPIRIN(ASA/aspent) 300 mg.","(tab.) Atarax(hydroxyzine) 10 mg.","(tab.) ATENOLOL 50 mg.","(inj.) ATROPINE 0.6 mg./ml.","(tab.) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.","(syr.) Augmentin Susp 400/57 mg/5ml","(inj.) BCG(bacillus calmette-gue rin) 0.1 ml.","(inj.) BENZATHINE PENICILLIN 1,200,000 u.","(tab.) Benzhexol 2 mg.","(tab.) Benzhexol 5 mg.","(lot.) BENZYL BENZOATE 25 %","(pwd.) BERODUAL ( MDI ) inhaler 200 dose","(sol.) BERODUAL 0.5 %","(sol.) BERODUAL 20 ml.","(sol.) BETADINE (IODINE) %","(cream) BETAMETHASONE(5g) 0.1 %","(syr.) Bromhexine elixir 4 mg.","BUDESONIDE  (MDI) 200 mcg.","(inj.) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.","(tab.) CAFERGOT (NL) 1 mg.","(syr.) CALAMINE 15 %","(tab.) calcium carbonate(CaCO3) 600 mg.","(inj.) CALCIUM GLUCONATE 10 %","(tab.) CAPTOPRIL  25 mg 25 mg.","(tab.) CARBAMAZEPINE(tegretol) 200 mg.","Carbocisteine 100 mg/5ml","(pwd.) CeFaZOLIN injection 1 g.","(pwd.) CefTaZidime injection 1 g.","(inj.) CefTRIAXone 1 g injection (CEF-3) 1 g.","(tab.) CETIRIZINE (Alerest) 10 mg.","(ear drop) CHLORAMPHENICOL EAR DROP 1 %","(sol.) Chlorhexidine mouth wash 0.12 g.","(tab.) CHLORPROMAZINE(CPZ) 100 mg.","(oint.) CHLORTETRACYCLINE - mg.","(tab.) Ciprofloxacin 500 mg.","(cap.) CLINDAMYCIIN 300 mg","(inj.) clindamycin  600 mg/vial. 600 mg./dose","(tab.) CLONAZEPAM(rivotril) 2 mg.","(tab.) Clopidogrel (Plavix) 75 mg.","(vag. tab.) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.","(cream) CLOTRIMAZOLE(canesten) 1 %","(inj.) CLOXACILLIN INJ  1  g 1 g.","(tab.) COLCHICINE 0.6 mg.","(tab.) COTRIMOXAZOLE(bactrim) 400 mg.","(syr.) COTRIMOXAZOLE(bactrim) 60 ml.","(inj.) Covid Vaccine(SARS-CoV-2) 0.5 ml.","(tab.) CPM   tab. 4 mg.","(syr.) CPM 2 mg./5ml.","(inj.) CPM(piriton) 10 mg./ml.","(tab.) CYPROHEPTADINE(periactin) 4 mg.","(tab.) Cytotec 200 mcg.","(iv.) D-5-S - %","(iv.) D-5-S/2 - %","(iv.) D-5-S/3 - %","(iv.) D-5-S/4 500 ml.","(inj.) D-5-S/5 5 %","(iv.) D-5-W %","(inj.) D-5-W %","(iv.) D-5-W - %","(inj.) D-W-10 %","(tab.) Depakin (sodium valproate) 200 mg.","(inj.) DEXAMETHASONE 5 mg./ml.","(iv.) DEXTRAN 40 mg.","(tab.) DEXTROMETHORPHAN 15 mg.","(inj.) DEXTROSE (glucose) 50 %","(inj.) DIAZEPAM(valium) 10 mg./ml.","(tab.) DIAZEPAM(valium) 2 mg.","(tab.) DIAZEPAM(valium) 5 mg.","(tab.) DICLOFENAC (voltaren/fenac) 25 mg.","(cap.) diCloxacillin  cap 250 mg.","(cap.) DICLOXACILLIN CAP 500 mg.","(pwd.) Dicloxacillin syp. 62.5 mg/5ml","(inj.) DIGOXIN 0.25 mg./ml.","(tab.) DIGOXIN(lanoxin) 0.25 mg.","(tab.) DIMENHYDRINATE(dramamine) 50 mg.","(inj.) DIMENHYDRINATE(Dramamine) 50 mg./ml.","(cap.) DIP. CLORAZEPATE(trancon/T5) 5 mg.","(tab.) Dolutegravir 50 mg.","(tab.) DOMPERIDONE(motilium) 10 mg.","(syr.) DOMPERIDONE(motilium) 5 mg/5ml","(inj.) DOPAMINE 250 mg./ml.","(tab.) Doxazosin 4 mg.","(cap.) DOXYCYCLINE 100 mg.","(inj.) DT(diphtheria tetanus) vaccines mg.","(inj.) DTP iu./dose","(inj.) DTP-HB iu./dose","(inj.) DTP-HB-Hib vaccine 0.5 ml.","(tab.) EFAVIRENZ(EFV) 600 mg.","(tab.) ENALAPRIL 20 mg.","(tab.) eNAlapril 5 mg.","(inj.) ERIG (vinrab) 1000 iu.","(pwd.) ERYTHROMYCIN 125 mg","(tab.) ETHAMBUTOL 400 mg.","(tab.) Favipiravir (covid-19) 200 mg.","(sol.) FERROUS  DROP 50 mg/0.6ml","(tab.) FERROUS  FUMARATE 200 mg.","(syr.) Ferrous fumarate Susp. 76 mg/5ml","(cap.) FLUCONAZOLE 200 mg.","(cap.) FLUNARIZINE(sibelium) 5 mg.","(tab.) Fluoxetine 20 mg.","(inj.) Fluphenazine(DECA) 50","(inj.) FLUPHENAZINE(deca) 50 mg.","(tab.) FOLIC  ACID 5 mg.","(inj.) FUROSEMIDE(lasix) 20 mg/2 ml","(tab.) FUROSEMIDE(lasix) 40 mg.","(cap.) GEMFIBROZIL(Lopid) 300 mg.","(inj.) GENTAMICIN  80 mg/amp. 80 mg./2ml.","(tab.) gliPIZIDE(minidiab) 5 mg.","(tab.) Glyceryl guaiacolate (GG) 100 mg.","(tab.) GPO vir S30 30 mg.","(tab.) GPO VIR Z 250 250","(syr.) Guaifenesin syrup (GG) 100 mg/5ml","HALOPERIDOL 0.5 mg.","(tab.) HALOPERIDOL 2 mg.","(tab.) HALOPERIDOL 5 mg.","(inj.) HALOPERIDOL 5 mg./ml.","(tab.) HCTZ(hydrochlorothiazide) 25 mg.","(inj.) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.","HI SET 1 u.","(sol.) HISTA OPH(opsil A) 0.05 %","(inj.) HPV vaccine 0.5 ml.","(inj.) Hydralazine  Hcl 20 mg./1ml","(tab.) Hydralazine HCl 25 mg.","(inj.) Hydrocortisone sodium  succinate 100 mg.","(tab.) HYOSCINE(buscopan) 10 mg.","(syr.) HYOSICNE(buscopan) 5 mg./5ml.","(syr.) Ibuprofen (brufen) 100 mg/5ml","(tab.) IBUPROFEN(brufen) 400 mg.","(tab.) IMIPRAMINE(tofranil) 25 mg.","(inj.) IMPLANON  implant 68 mg.","(inj.) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.","(inj.) influenza ตามฤดูกาล 0.5 ml.","(tab.) INH(isoniazid) 100 mg.","(tab.) ISODIL  SL 5 mg.","(tab.) ISODIL  TAB 10 mg.","(tab.) Isoniazid 300 mg 300 mg.","(tab.) Isoniazid+Rifapentine 300/300 mg.","(inj.) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.","(inj.) JE VACCINE(0.5 ML) 80 mcg./ml.","(sol.) K Y jelly sack 5 g.","(pwd.) KALIMATE .","(tab.) KETOCONAZOLE(nizoral) 200 mg.","(tab.) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.","(tab.) Lamivudine 150 mg.","(tab.) Lamivudine 3TC 300 mg.","(tab.) Levodopa250 + carbidopa 25 mg.","(tab.) LevoFloxacin 500 mg.","Lidocain injection 2%","(inj.) LIDOCAINE 2 %","(cap.) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.","(tab.) Lopinavir/Ritonavir 200/50 mg.","(tab.) Lorazepam 1 mg.","(tab.) Losartan (cozaar) 50 mg.","(sol.) M tussis ( brown mixt ) 180 ml.","(sol.) M. CARMINATIVE 180 ml.","(sol.) M.tussis (brown mixt) 60 ml.","(inj.) MAGNESIUM SULFATE 10 %","(inj.) MAGNESIUM SULFATE 50 %","(inj.) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.","(tab.) METFORMIN(glucophage) 500 mg.","(tab.) Methimazole 5 mg.","(tab.) METHYLDOPA(aldomet) 250 mg.","(inj.) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.","(tab.) METOCLOPRAMIDE(plasil) 10 mg.","(inj.) METOCLOPRAMIDE(plasil) 10 mg./2ml.","(tab.) Metoprolol tartrate 100 mg.","(tab.) METRONIDAZOLE(flagyl) 400 mg.","(inj.) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.","(tab.) Micronised progesterone 100 mg.","(syr.) MILK OF MAGNESIA(MOM) 60 ml.","(inj.) Mixtard (ขวด) 100 units/ml.","(inj.) mixtard STAT 100 iu","(inj.) MMR 0.5 ml.","(cap.) Molnupiravir 200 mg","(inj.) MORPHINE 10 mg./ml.","(tab.) Morphine MST 10 mg","(sol.) Morphine Solution 10 mg/5 ml","(inj.) MR 0.5","(tab.) MTV-MULTIVITAMINS g.","(tab.) NaCl (Sodium Chloride) 300 mg","(inj.) NALOXONE(narcan) 0.1mg./ml.","(tab.) Nevirapine 200 mg.","(tab.) NIFEDIPINE SR 20 mg.","(inj.) Norepinephrine bitartrate 4 ml/ 4 mg.","(tab.) NORFLOXACIN(lexinor) 400 mg.","(tab.) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.","(inj.) NPH (ขวด) 100 units/ml.","(inj.) NPH INSULIN 1 units/ml.","(inj.) NSS 5 ml 0.9 %","(inj.) NSS INJ. 0.9 %","(sol.) OLIVE OIL 60 ml.","(inj.) Omeprazole 10 ml 40 mg.","(cap.) OMEPRAZOLE(losec/miracid) 20 mg.","(inj.) Ondansetron inj 8mg/4ml","(oral drop) OPV vaccine .","(pwd.) ORS(รสส้ม) 75 4.253 g.","(cap.) oseltamivir 30 mg.","(cap.) oseltamivir 45 mg.","(cap.) oseltamivir 75 mg.","(inj.) OXYTOCIN 10 iu.","(syr.) PARACETAMOL  SYR 250 mg/5ml.","(tab.) paracetamol 325 mg.","(tab.) PARACETAMOL 500 mg.","(syr.) PARACETAMOL SYRUP 120 มก./5มล.","(inj.) PCEC (ID) 0.1 iu.","(inj.) PCEC (IM) 0.5 iu.","(tab.) PERPHENAZINE(สีไข่ไก่) 8 mg.","(inj.) PETHIDINE 50 mg./ml.","(tab.) PHENOBARBITAL(1 GRAIN) 60 mg.","(inj.) Phenytoin inj 250/5 mg./ml.","(tab.) Phenytoin(Dilantin) 50 mg.","(cap.) PHENYTOIN(dilantin) promt 100 mg.","(tab.) Pioglitazone 30 mg.","(eye drop) PolyOPH 5000 iu.","(sol.) POTASSIUM (KCL elixir) 20 mEq./15ml.","(tab.) Potassium Chloride tab 6.7 mEq.","(inj.) POTASSIUM CHLORIDE(KCl) 20 mEq.","(tab.) PREDNISOLONE 5 mg.","(cream) prednisolone cream 5","(tab.) Primolut-N(norethisterone 5 mg) 5 mg.","(supp.) PROCTOSEDYL 5 mg.","(tab.) propranolol(inderal) 10 mg.","(tab.) PTU(propylthiouracil) 50 mg.","(tab.) PZA(pyrazinamide) 500 mg.","(tab.) QUININE SULFATE 300 mg.","(tab.) R-DEN(คุมเม็ด) 30 mcg.","(inj.) RABIES ANTISERUM(ERIG) 100 iu.","(inj.) RI  STAT (REGULAR INSULIN ) 100 iu./ml.","(cap.) RIFAMPICIN 300 mg.","(cap.) RIFAMPICIN 450 mg.","(tab.) Rifapentine 150 mg.","(cap.) Rifinah (Rifam+INH) 300+150 mg.","(tab.) Risperidone 2 mg.","(syr.) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.","(tab.) ROXITHROMYCIN(rulid) 150 mg.","(sol.) SALBUTAMOL  NB (ER) 0.1 %","(tab.) SALBUTAMOL 2 mg.","(syr.) SALBUTAMOL 2 mg/5ml","(sol.) SALBUTAMOL NB. 0.1 %","(sol.) SALBUTAMOL(ventolin) MDI 100 mcg.","(sol.) Saline IRRIGATE 0.9 %","(sol.) SELENIUM shampoo 200 mg./ml.","(mdi) SeRoflo   (MDI) 25/125 mcg./dos","(tab.) Sertraline 50 mg.","(cream) SILVER SULFADIAZINE (25g) 1 %","(tab.) SIMETHICONE  (air-x) 80 mg.","(syr.) SIMETHICONE DROP SUS 40 mg./0.6ml.","(tab.) SimVastatin(zocor) (NL) 20 mg.","(tab.) Sodamint (Sodium bicarbonate) 300 mg.","(inj.) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.","(syr.) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.","(tab.) spironolactone (Aldactone) 25 mg.","(inj.) STERILEWATER (SWI) 100 ml.","(inj.) Streptokinase 1500000 u.","(inj.) STREPTOMYCIN SULPHATE 1 g.","(tab.) Teevir 300 mg.","(tab.) Tenofovia disoproxil 300 mg.","(inj.) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.","(sol.) tetracain eye drop 0.5 %","(cap.) Theophylline-CR 200 mg.","(tab.) THYROXINE-L 100 mcg.","(tab.) TLD (TDF300mg+3TC300mg+DTG50mg) mg.","(cap.) TRAMADOL HCl(tramal) 50 mg.","(inj.) TRAMADOL inj 50 mg./ml.","(cap.) Tranexamic acid 250 mg.","(cream) TRIAMCINOLONE 0.02 %","(cream) TRIAMCINOLONE 0.1 %","(oint.) Triamcinolone Oral Paste 1 g.","(inj.) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.","(tab.) Triferdine 150 mg.","(sol.) UNISON 10 ml.","(sol.) UNISON ENEMA 100 ml.","UNISON ENEMA 20","Varenicline Tartrate 0.5 mg","Varenicline Tartrate 1 mg","(inj.) VERORAB ( ID ) 0.1 ml.","(inj.) VERORAB ( IM ) 0.5 ml.","(tab.) VIT B6(pyridoxine) 50 mg.","(tab.) VITAMIN B 1/6/12 1 g.","(inj.) VITAMIN B COMPLEX .","vitamin c 25 mg.","(inj.) VITAMIN K1 1 mg.","(inj.) WATER FOR INJECTION 5 ml.","Whitfields ointment 6 %","(cap.) Zidovudine  (AZT) 300 mg.","(syr.) Zidovudine (AZT) 10 mg./ml.","(cap.) Zidovudine (AZT) 100 mg.","(tab.) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.","กานพลู 5 g.","(cap.) ขมิ้นชัน แคปซูล KMC 500 mg.","ขวดยา 120 ml.","ขวดยา 30  ml.","ขวดยา 60 ml.","(cap.) ขิง 500 mg.","ครีมพญายอ 4.343 g/100g","(cap.) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.","ชุมเห็ดเทศ 3 g.","(cap.) ตรีผลาTPL 90 g.","น้ำมันกัญชา ml.","น้ำมันไพลPLI 20 ml","(cap.) ฟ้าทะลายโจร FTJ 500 mg.","(syr.) มะขามป้อม MKP 120 ml.","ยาธาตุบรรจบ 500 mg.","ยาธาตุอบเชยOS 240 ml.","ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.","(cap.) ยาประสะไพลPSP 500 mg.","(cap.) ยามันทธาตุ 500 mg.","(tab.) ยาระบายมะขามแขก(senokot) 7.5  mg","(cap.) ยาศุขไสยาศน์ 500 mg.","(cap.) ยาสหัสธาราSHTR 500 mg.","(pwd.) ยาหอมนวโกฐNVK 7 g.","(pwd.) ยาหอมเทพจิตรTPJ 30 g.","(cap.) ยาห้าราก ซองละ 9 แคปซูล 500 mg.","(tab.) ยาอมมะแว้ง MW %","(cap.) ยาเขียวหอมKH 500 mg.","(tab.) ยาเดิม (Manidipine ) 20 mg","(sol.) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml","(pwd.) ยาเดิม(Acetylcysteine) 200 mg.","(tab.) ยาเดิม(Amlodipine) 10 mg.","(tab.) ยาเดิม(Atorvastatin) 40 mg.","(tab.) ยาเดิม(Azithromycin) 250 mg.","(syr.) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml","(tab.) ยาเดิม(Betahistine) 6 mg.","(tab.) ยาเดิม(Carvedilol) 6.25 mg.","(cap.) ยาเดิม(Gabapentin) 300 mg.","(tab.) ยาเดิม(Hydralazine) 50 mg.","(inj.) ยาเดิม(Hypercrit) 4000 u.","(tab.) ยาเดิม(Lorazepam) 0.5 mg.","(pwd.) ยาเดิม(Meropenem inj.) 1 gm","(tab.) ยาเดิม(Risperidone) 1 mg.","(inj.) ยาเดิม(Vancomycin inj.) 500 mg","(tab.) ยาเดิม(Warfarin) 5 mg","(cap.) ยาเลือดงามLH 500 mg.","(cap.) ยาเหลืองปิดสมุทร 500 mg.","(cap.) ยาแก้ลมจับเส้น 500 mg.","(pwd.) ยาแก้ลมอัมพฤกษ์AMP 70 g.","(cap.) รางจืด RJ 400 mg.","(pwd.) ลูกประคบสมุนไพร 220 g.","เจลว่านหางจระเข้ g.","เถาวัลย์เปรียง TWP 500 mg.","(cap.) เพชรสังฆาต PSK 500 mg."];
+const DRUG_PRICES = {"HALOPERIDOL 0.5 mg.":{"p":0.0,"u":"เม็ด"},"(sol.) UNISON ENEMA 100 ml.":{"p":21.4,"u":"ขวด"},"(cap.) PHENYTOIN(dilantin) promt 100 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) Benzhexol 2 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) DIAZEPAM(valium) 2 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) HALOPERIDOL 2 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Acyclovir 200 mg.":{"p":0.0,"u":"เม็ด"},"(cap.) oseltamivir 30 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) paracetamol 325 mg.":{"p":0.0,"u":"เม็ด"},"(cap.) oseltamivir 45 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Benzhexol 5 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) DIAZEPAM(valium) 5 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) HALOPERIDOL 5 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Phenytoin(Dilantin) 50 mg.":{"p":2.6,"u":"เม็ด"},"(tab.) PARACETAMOL 500 mg.":{"p":0.0,"u":"เม็ด"},"(cap.) oseltamivir 75 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) ACYCLOVIR 800 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.":{"p":35.31,"u":"Vial"},"(inj.) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU":{"p":35.0,"u":"Vial"},"(inj.) 10%D/N/2 10 %":{"p":33.0,"u":"ถุง (1,000 ml.)"},"(inj.) 3%Sodium Chloride(NaCl) 3 %":{"p":0.0,"u":"ขวด (500 ml.)"},"(tab.) aspirin(asa) 81 mg.":{"p":0.15,"u":"เม็ด"},"(pwd.) amoxycillin SYR 125 mg./5ml.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(tab.) ENALAPRIL 20 mg.":{"p":0.26,"u":"เม็ด"},"(syr.) Amoxy dry SYRUP 250 mg/5ml":{"p":0.0,"u":"bot"},"(cap.) AmoxyCillin 250 mg.":{"p":0.0,"u":"แค็บซูล"},"(cap.) diCloxacillin  cap 250 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) ASPIRIN(ASA/aspent) 300 mg.":{"p":0.0,"u":"เม็ด"},"(cap.) AMOXICILLIN 500 mg.":{"p":0.0,"u":"แค็บซูล"},"(cap.) DICLOXACILLIN CAP 500 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) eNAlapril 5 mg.":{"p":0.16,"u":"เม็ด"},"(iv.) ACETATE RINGER 1,000 ml.":{"p":0.0,"u":"ถุง (1,000 ซีซี)"},"(pwd.) ACTIVATED CHARCOAL 5 g.":{"p":0.0,"u":"ซอง"},"(inj.) Adenosine (adenocor) 6 mg.":{"p":0.0,"u":"Amphule (2 ml.)"},"(inj.) ADRENALINE 1 mg./ml.":{"p":0.0,"u":"Amp(1ml)"},"(syr.) Albendazole (FALBEN)susp 100 mg/5ml":{"p":0.0,"u":"ขวด (20 ml.)"},"(tab.) ALBENDAZOLE(zentel) 200 mg.":{"p":0.0,"u":"เม็ด"},"(sol.) ALCOHOL 70 %":{"p":0.0,"u":"450 ml"},"(sol.) ALCOHOL  60 ml 70 %":{"p":0.0,"u":"ขวด"},"(tab.) ALLOPURINOL(zyloric) 100 mg.":{"p":0.48,"u":"เม็ด"},"(inj.) AMIODARONE(Cordarone) (NL) 150 mg.":{"p":0.0,"u":"Amphule (3ml.)"},"(tab.) amitriptyline(A10/tripta) 10 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Amlodipine 5 mg.":{"p":0.39,"u":"เม็ด"},"(sol.) AMMONIUM CARBONATE 60 ml.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(pwd.) AMPICILLIN   1 g 1 g.":{"p":0.0,"u":"ไวอัล"},"(syr.) ANTACID SUSP(alum milk) 0.66 g.":{"p":0.0,"u":"ขวด (240ซีซี.)"},"(inj.) ANTIVENUM SERA,(งูเห่า) 0.6 u.":{"p":0.0,"u":"Amp(10ml)"},"(pwd.) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.":{"p":0.0,"u":"Amp(10ml)"},"(inj.) aP Acellular Pertussis (ไอกรน) 5 mcg./dose":{"p":350.0,"u":"dose"},"(tab.) Atarax(hydroxyzine) 10 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) ATENOLOL 50 mg.":{"p":0.21,"u":"เม็ด"},"(inj.) ATROPINE 0.6 mg./ml.":{"p":0.0,"u":"แอมป์"},"(tab.) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.":{"p":5.2,"u":"เม็ด"},"(syr.) Augmentin Susp 400/57 mg/5ml":{"p":193.0,"u":"ขวด"},"(inj.) BCG(bacillus calmette-gue rin) 0.1 ml.":{"p":0.0,"u":"Vial"},"(inj.) BENZATHINE PENICILLIN 1,200,000 u.":{"p":0.0,"u":"ไวอัล"},"(lot.) BENZYL BENZOATE 25 %":{"p":20.0,"u":"ขวด (60 ซีซี)"},"(sol.) BERODUAL 0.5 %":{"p":0.0,"u":"dose"},"(sol.) BERODUAL 20 ml.":{"p":92.0,"u":"ขวด"},"(pwd.) BERODUAL ( MDI ) inhaler 200 dose":{"p":105.93,"u":"กล่อง"},"(sol.) BETADINE (IODINE) %":{"p":10.7,"u":"ขวด (30 ml.)"},"(cream) BETAMETHASONE(5g) 0.1 %":{"p":8.56,"u":"หลอด (5 กรัม)"},"(syr.) Bromhexine elixir 4 mg.":{"p":16.0,"u":"ขวด (60 ml.)"},"BUDESONIDE  (MDI) 200 mcg.":{"p":72.76,"u":"ขวด MDI (200 dose)"},"(inj.) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.":{"p":0.0,"u":"Amp. (1 ml.)"},"(tab.) CAFERGOT (NL) 1 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) CALAMINE 15 %":{"p":14.98,"u":"ขวด (60 ml.)"},"(tab.) calcium carbonate(CaCO3) 600 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) CALCIUM GLUCONATE 10 %":{"p":0.0,"u":"Amphule (10 ml.)"},"(tab.) CAPTOPRIL  25 mg 25 mg.":{"p":0.0,"u":"tab"},"(tab.) CARBAMAZEPINE(tegretol) 200 mg.":{"p":0.0,"u":"เม็ด"},"Carbocisteine 100 mg/5ml":{"p":20.0,"u":"ขวด"},"(pwd.) CeFaZOLIN injection 1 g.":{"p":17.0,"u":"Vial"},"(pwd.) CefTaZidime injection 1 g.":{"p":20.0,"u":"Vial"},"(inj.) CefTRIAXone 1 g injection (CEF-3) 1 g.":{"p":10.7,"u":"ไวอัล"},"(tab.) CETIRIZINE (Alerest) 10 mg.":{"p":0.0,"u":"เม็ด"},"(ear drop) CHLORAMPHENICOL EAR DROP 1 %":{"p":0.0,"u":"ขวด (10ซีซี)"},"(sol.) Chlorhexidine mouth wash 0.12 g.":{"p":24.0,"u":"ขวด (250 ml)"},"(tab.) CHLORPROMAZINE(CPZ) 100 mg.":{"p":0.0,"u":"เม็ด"},"(oint.) CHLORTETRACYCLINE - mg.":{"p":13.5,"u":"หลอด"},"(tab.) Ciprofloxacin 500 mg.":{"p":1.6,"u":"เม็ด"},"(cap.) CLINDAMYCIIN 300 mg":{"p":0.0,"u":"เม็ด"},"(inj.) clindamycin  600 mg/vial. 600 mg./dose":{"p":19.0,"u":"Vial"},"(tab.) CLONAZEPAM(rivotril) 2 mg.":{"p":5.5,"u":"เม็ด"},"(tab.) Clopidogrel (Plavix) 75 mg.":{"p":3.0,"u":"เม็ด"},"(vag. tab.) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.":{"p":1.74,"u":"เม็ด"},"(cream) CLOTRIMAZOLE(canesten) 1 %":{"p":6.0,"u":"หลอด (5 g.)"},"(inj.) CLOXACILLIN INJ  1  g 1 g.":{"p":0.0,"u":"Vial"},"(tab.) COLCHICINE 0.6 mg.":{"p":0.32,"u":"เม็ด"},"(tab.) COTRIMOXAZOLE(bactrim) 400 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) COTRIMOXAZOLE(bactrim) 60 ml.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(inj.) Covid Vaccine(SARS-CoV-2) 0.5 ml.":{"p":490.0,"u":"Vial"},"(syr.) CPM 2 mg./5ml.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(tab.) CPM   tab. 4 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) CPM(piriton) 10 mg./ml.":{"p":0.0,"u":"Amphule (1 ml.)"},"(tab.) CYPROHEPTADINE(periactin) 4 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Cytotec 200 mcg.":{"p":0.0,"u":"เม็ด"},"(iv.) D-5-S - %":{"p":0.0,"u":"ถุง (1,000 ซีซี)"},"(iv.) D-5-S/2 - %":{"p":0.0,"u":"ถุง (1,000 ซีซี)"},"(iv.) D-5-S/3 - %":{"p":0.0,"u":"ถุง (500 ซีซี)"},"(iv.) D-5-S/4 500 ml.":{"p":0.0,"u":"ถุง (500 ml.)"},"(inj.) D-5-S/5 5 %":{"p":0.0,"u":"ถุง (500 ml.)"},"(iv.) D-5-W %":{"p":0.0,"u":"ถุง (100 ซีซี)"},"(inj.) D-5-W %":{"p":27.0,"u":"ถุง(250 cc)"},"(iv.) D-5-W - %":{"p":31.0,"u":"ถุง (1,000 ซีซี)"},"(inj.) D-W-10 %":{"p":0.0,"u":"ขวด (500 ml.)"},"(tab.) Depakin (sodium valproate) 200 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) DEXAMETHASONE 5 mg./ml.":{"p":5.6,"u":"Amphule"},"(iv.) DEXTRAN 40 mg.":{"p":0.0,"u":"ถุง (500 ซีซี)"},"(tab.) DEXTROMETHORPHAN 15 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) DEXTROSE (glucose) 50 %":{"p":0.0,"u":"ขวด (50 ซีซี)"},"(inj.) DIAZEPAM(valium) 10 mg./ml.":{"p":0.0,"u":"Amp.(2ml)"},"(tab.) DICLOFENAC (voltaren/fenac) 25 mg.":{"p":0.0,"u":"เม็ด"},"(pwd.) Dicloxacillin syp. 62.5 mg/5ml":{"p":18.32,"u":"ขวด (60 ml.)"},"(inj.) DIGOXIN 0.25 mg./ml.":{"p":0.0,"u":"Amphule"},"(tab.) DIGOXIN(lanoxin) 0.25 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) DIMENHYDRINATE(dramamine) 50 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) DIMENHYDRINATE(Dramamine) 50 mg./ml.":{"p":0.0,"u":"Amp."},"(cap.) DIP. CLORAZEPATE(trancon/T5) 5 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Dolutegravir 50 mg.":{"p":9.2,"u":"เม็ด"},"(tab.) DOMPERIDONE(motilium) 10 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) DOMPERIDONE(motilium) 5 mg/5ml":{"p":0.0,"u":"ขวด (30 ซีซี)"},"(inj.) DOPAMINE 250 mg./ml.":{"p":0.0,"u":"Amphule"},"(tab.) Doxazosin 4 mg.":{"p":0.54,"u":"เม็ด"},"(cap.) DOXYCYCLINE 100 mg.":{"p":0.0,"u":"แค็บซูล"},"(inj.) DT(diphtheria tetanus) vaccines mg.":{"p":0.0,"u":"ครั้ง"},"(inj.) DTP iu./dose":{"p":0.0,"u":"Vial (5 ml.)"},"(inj.) DTP-HB iu./dose":{"p":0.0,"u":"Vial (5 ml.)"},"(inj.) DTP-HB-Hib vaccine 0.5 ml.":{"p":25.15,"u":"ซีซี"},"(tab.) EFAVIRENZ(EFV) 600 mg.":{"p":0.0,"u":"แค็บซูล"},"(inj.) ERIG (vinrab) 1000 iu.":{"p":500.0,"u":"Vial (5 ml.)"},"(pwd.) ERYTHROMYCIN 125 mg":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(tab.) ETHAMBUTOL 400 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Favipiravir (covid-19) 200 mg.":{"p":11.77,"u":"เม็ด"},"(sol.) FERROUS  DROP 50 mg/0.6ml":{"p":0.0,"u":"ขวด (15 ml.)"},"(tab.) FERROUS  FUMARATE 200 mg.":{"p":0.13,"u":"เม็ด"},"(syr.) Ferrous fumarate Susp. 76 mg/5ml":{"p":0.0,"u":"ขวด (60 ml.)"},"(cap.) FLUCONAZOLE 200 mg.":{"p":0.0,"u":"แคปซูล"},"(cap.) FLUNARIZINE(sibelium) 5 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) Fluoxetine 20 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) Fluphenazine(DECA) 50":{"p":0.0,"u":"Amphule (2 ml.)"},"(inj.) FLUPHENAZINE(deca) 50 mg.":{"p":0.0,"u":"Amphule (2 ml.)"},"(tab.) FOLIC  ACID 5 mg.":{"p":0.2,"u":"เม็ด"},"(inj.) FUROSEMIDE(lasix) 20 mg/2 ml":{"p":0.0,"u":"Amp. (2 ml.)"},"(tab.) FUROSEMIDE(lasix) 40 mg.":{"p":0.28,"u":"เม็ด"},"(cap.) GEMFIBROZIL(Lopid) 300 mg.":{"p":0.75,"u":"แค็บซูล"},"(inj.) GENTAMICIN  80 mg/amp. 80 mg./2ml.":{"p":0.0,"u":"Amphule (2 ml.)"},"(tab.) gliPIZIDE(minidiab) 5 mg.":{"p":0.23,"u":"เม็ด"},"(tab.) Glyceryl guaiacolate (GG) 100 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) GPO vir S30 30 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) GPO VIR Z 250 250":{"p":0.0,"u":"TAB"},"(syr.) Guaifenesin syrup (GG) 100 mg/5ml":{"p":9.0,"u":"ขวด (60 ml.)"},"(inj.) HALOPERIDOL 5 mg./ml.":{"p":0.0,"u":"Amphule (1 ml.)"},"(tab.) HCTZ(hydrochlorothiazide) 25 mg.":{"p":0.3,"u":"เม็ด"},"(inj.) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.":{"p":0.0,"u":"Vial"},"HI SET 1 u.":{"p":0.0,"u":"กล่อง"},"(sol.) HISTA OPH(opsil A) 0.05 %":{"p":15.1,"u":"ขวด ED (5 ml.)"},"(inj.) HPV vaccine 0.5 ml.":{"p":279.54,"u":"dose"},"(inj.) Hydralazine  Hcl 20 mg./1ml":{"p":0.0,"u":"Amphule"},"(tab.) Hydralazine HCl 25 mg.":{"p":0.3,"u":"เม็ด"},"(inj.) Hydrocortisone sodium  succinate 100 mg.":{"p":48.0,"u":"Vial"},"(tab.) HYOSCINE(buscopan) 10 mg.":{"p":1.7,"u":"เม็ด"},"(syr.) HYOSICNE(buscopan) 5 mg./5ml.":{"p":0.0,"u":"ขวด (30 ซีซี)"},"(syr.) Ibuprofen (brufen) 100 mg/5ml":{"p":0.0,"u":"ขวด"},"(tab.) IBUPROFEN(brufen) 400 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) IMIPRAMINE(tofranil) 25 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) IMPLANON  implant 68 mg.":{"p":1830.0,"u":"แท่ง"},"(inj.) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.":{"p":0.0,"u":"Vial"},"(inj.) influenza ตามฤดูกาล 0.5 ml.":{"p":0.0,"u":"Amphule"},"(tab.) INH(isoniazid) 100 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) ISODIL  SL 5 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) ISODIL  TAB 10 mg.":{"p":0.33,"u":"เม็ด"},"(tab.) Isoniazid 300 mg 300 mg.":{"p":1.0,"u":"เม็ด"},"(inj.) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.":{"p":0.0,"u":"Vial"},"(inj.) JE VACCINE(0.5 ML) 80 mcg./ml.":{"p":0.0,"u":"Vial"},"(sol.) K Y jelly sack 5 g.":{"p":5.7,"u":"ซอง (5 g.)"},"(pwd.) KALIMATE .":{"p":0.0,"u":"ซอง (5 g.)"},"(tab.) KETOCONAZOLE(nizoral) 200 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.":{"p":20.0,"u":"เม็ด"},"(tab.) Lamivudine 150 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Lamivudine 3TC 300 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Levodopa250 + carbidopa 25 mg.":{"p":4.17,"u":"เม็ด"},"(tab.) LevoFloxacin 500 mg.":{"p":9.63,"u":"เม็ด"},"Lidocain injection 2%":{"p":0.0,"u":"CC"},"(inj.) LIDOCAINE 2 %":{"p":0.0,"u":"Vial (50 ml.)"},"(cap.) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) Lopinavir/Ritonavir 200/50 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Lorazepam 1 mg.":{"p":0.35,"u":"เม็ด"},"(tab.) Losartan (cozaar) 50 mg.":{"p":0.72,"u":"tab"},"(sol.) M tussis ( brown mixt ) 180 ml.":{"p":0.0,"u":"ขวด"},"(sol.) M. CARMINATIVE 180 ml.":{"p":0.0,"u":"ขวด"},"(sol.) M.tussis (brown mixt) 60 ml.":{"p":0.0,"u":"ขวด"},"(inj.) MAGNESIUM SULFATE 10 %":{"p":0.0,"u":"Amphule (10 ml.)"},"(inj.) MAGNESIUM SULFATE 50 %":{"p":0.0,"u":"Amphule (2 ml.)"},"(inj.) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.":{"p":0.0,"u":"ไวอัล"},"(tab.) METFORMIN(glucophage) 500 mg.":{"p":0.26,"u":"เม็ด"},"(tab.) Methimazole 5 mg.":{"p":0.7,"u":"เม็ด"},"(tab.) METHYLDOPA(aldomet) 250 mg.":{"p":1.5,"u":"เม็ด"},"(inj.) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.":{"p":0.0,"u":"Amp."},"(tab.) METOCLOPRAMIDE(plasil) 10 mg.":{"p":0.2,"u":"เม็ด"},"(inj.) METOCLOPRAMIDE(plasil) 10 mg./2ml.":{"p":0.0,"u":"Amphule"},"(tab.) Metoprolol tartrate 100 mg.":{"p":0.45,"u":"เม็ด"},"(tab.) METRONIDAZOLE(flagyl) 400 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.":{"p":0.0,"u":"Vial (100 ml.)"},"(tab.) Micronised progesterone 100 mg.":{"p":0.0,"u":"เม็ด (VG.)"},"(syr.) MILK OF MAGNESIA(MOM) 60 ml.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(inj.) Mixtard (ขวด) 100 units/ml.":{"p":90.0,"u":"Vial (10 ml.)"},"(inj.) mixtard STAT 100 iu":{"p":0.0,"u":"Stat"},"(inj.) MMR 0.5 ml.":{"p":0.0,"u":"Vial"},"(cap.) Molnupiravir 200 mg":{"p":9.14,"u":"เม็ด"},"(inj.) MORPHINE 10 mg./ml.":{"p":0.0,"u":"Amphule (1 ml.)"},"(tab.) Morphine MST 10 mg":{"p":11.0,"u":"tablet"},"(sol.) Morphine Solution 10 mg/5 ml":{"p":62.0,"u":"ขวด (60ml)"},"(inj.) MR 0.5":{"p":0.0,"u":"Vial"},"(tab.) MTV-MULTIVITAMINS g.":{"p":0.21,"u":"เม็ด"},"(tab.) NaCl (Sodium Chloride) 300 mg":{"p":0.5,"u":"เม็ด"},"(inj.) NALOXONE(narcan) 0.1mg./ml.":{"p":0.0,"u":"แอมป์"},"(tab.) Nevirapine 200 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) NIFEDIPINE SR 20 mg.":{"p":0.67,"u":"เม็ด"},"(inj.) Norepinephrine bitartrate 4 ml/ 4 mg.":{"p":50.0,"u":"Amphule"},"(tab.) NORFLOXACIN(lexinor) 400 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.":{"p":0.0,"u":"เม็ด"},"(inj.) NPH (ขวด) 100 units/ml.":{"p":90.0,"u":"Vial (10 ml.)"},"(inj.) NPH INSULIN 1 units/ml.":{"p":0.0,"u":"Stat"},"(inj.) NSS 5 ml 0.9 %":{"p":4.5,"u":"Amphule"},"(inj.) NSS INJ. 0.9 %":{"p":0.0,"u":"ขวด (1,000 ml.)"},"(sol.) OLIVE OIL 60 ml.":{"p":38.0,"u":"ขวด"},"(inj.) Omeprazole 10 ml 40 mg.":{"p":0.0,"u":"Vial"},"(cap.) OMEPRAZOLE(losec/miracid) 20 mg.":{"p":0.55,"u":"เม็ด"},"(inj.) Ondansetron inj 8mg/4ml":{"p":0.0,"u":"Amphule"},"(oral drop) OPV vaccine .":{"p":0.0,"u":"dose"},"(pwd.) ORS(รสส้ม) 75 4.253 g.":{"p":0.0,"u":"ซอง"},"(inj.) OXYTOCIN 10 iu.":{"p":0.0,"u":"Amp."},"(syr.) PARACETAMOL  SYR 250 mg/5ml.":{"p":18.0,"u":"ขวด (60 ml.)"},"(syr.) PARACETAMOL SYRUP 120 มก./5มล.":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(inj.) PCEC (ID) 0.1 iu.":{"p":0.0,"u":"Vial"},"(inj.) PCEC (IM) 0.5 iu.":{"p":0.0,"u":"Vial"},"(tab.) PERPHENAZINE(สีไข่ไก่) 8 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) PETHIDINE 50 mg./ml.":{"p":0.0,"u":"Amphule"},"(tab.) PHENOBARBITAL(1 GRAIN) 60 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) Phenytoin inj 250/5 mg./ml.":{"p":0.0,"u":"Vial (5 ml.)"},"(tab.) Pioglitazone 30 mg.":{"p":0.64,"u":"เม็ด"},"(eye drop) PolyOPH 5000 iu.":{"p":15.0,"u":"ขวด"},"(sol.) POTASSIUM (KCL elixir) 20 mEq./15ml.":{"p":0.35,"u":"ซีซี"},"(tab.) Potassium Chloride tab 6.7 mEq.":{"p":0.0,"u":"เม็ด"},"(inj.) POTASSIUM CHLORIDE(KCl) 20 mEq.":{"p":0.0,"u":"Amphule (10 ml.)"},"(tab.) PREDNISOLONE 5 mg.":{"p":0.0,"u":"เม็ด"},"(cream) prednisolone cream 5":{"p":0.0,"u":"หลอด (5 g.)"},"(tab.) Primolut-N(norethisterone 5 mg) 5 mg.":{"p":0.0,"u":"เม็ด"},"(supp.) PROCTOSEDYL 5 mg.":{"p":0.0,"u":"เม็ด (SP.)"},"(tab.) propranolol(inderal) 10 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) PTU(propylthiouracil) 50 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) PZA(pyrazinamide) 500 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) QUININE SULFATE 300 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) R-DEN(คุมเม็ด) 30 mcg.":{"p":0.0,"u":"แผง"},"(inj.) RABIES ANTISERUM(ERIG) 100 iu.":{"p":0.0,"u":"UNIT"},"(inj.) RI  STAT (REGULAR INSULIN ) 100 iu./ml.":{"p":0.0,"u":"cc"},"(cap.) RIFAMPICIN 300 mg.":{"p":0.0,"u":"แค็บซูล"},"(cap.) RIFAMPICIN 450 mg.":{"p":0.0,"u":"แค็บซูล"},"(cap.) Rifinah (Rifam+INH) 300+150 mg.":{"p":0.0,"u":"ขวด"},"(tab.) Risperidone 2 mg.":{"p":2.66,"u":"เม็ด"},"(syr.) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.":{"p":254.0,"u":"dose"},"(tab.) ROXITHROMYCIN(rulid) 150 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) SALBUTAMOL 2 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) SALBUTAMOL 2 mg/5ml":{"p":0.0,"u":"ขวด (60 ซีซี)"},"(sol.) SALBUTAMOL  NB (ER) 0.1 %":{"p":0.0,"u":"1 CC"},"(sol.) SALBUTAMOL NB. 0.1 %":{"p":52.0,"u":"20 ml"},"(sol.) SALBUTAMOL(ventolin) MDI 100 mcg.":{"p":42.8,"u":"ขวด MDI (200 dose)"},"(sol.) Saline IRRIGATE 0.9 %":{"p":0.0,"u":"ถุง (1,000 ml.)"},"(sol.) SELENIUM shampoo 200 mg./ml.":{"p":80.0,"u":"ขวด"},"(mdi) SeRoflo   (MDI) 25/125 mcg./dos":{"p":128.4,"u":"กล่อง"},"(tab.) Sertraline 50 mg.":{"p":2.14,"u":"เม็ด"},"(cream) SILVER SULFADIAZINE (25g) 1 %":{"p":0.0,"u":"หลอด"},"(tab.) SIMETHICONE  (air-x) 80 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) SIMETHICONE DROP SUS 40 mg./0.6ml.":{"p":18.0,"u":"ขวด (15 ml.)"},"(tab.) SimVastatin(zocor) (NL) 20 mg.":{"p":0.49,"u":"เม็ด"},"(tab.) Sodamint (Sodium bicarbonate) 300 mg.":{"p":0.09,"u":"เม็ด"},"(inj.) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.":{"p":0.0,"u":"Amphule"},"(syr.) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.":{"p":0.0,"u":"ขวด (60 ml.)"},"(tab.) spironolactone (Aldactone) 25 mg.":{"p":0.83,"u":"เม็ด"},"(inj.) STERILEWATER (SWI) 100 ml.":{"p":0.0,"u":"ถุง"},"(inj.) Streptokinase 1500000 u.":{"p":6000.0,"u":"Vial"},"(inj.) STREPTOMYCIN SULPHATE 1 g.":{"p":0.0,"u":"Vial"},"(tab.) Teevir 300 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Tenofovia disoproxil 300 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.":{"p":0.0,"u":"Amphule"},"(sol.) tetracain eye drop 0.5 %":{"p":0.0,"u":"ขวด (5 ml.)"},"(cap.) Theophylline-CR 200 mg.":{"p":0.0,"u":"แค็บซูล"},"(tab.) THYROXINE-L 100 mcg.":{"p":0.0,"u":"เม็ด"},"(tab.) TLD (TDF300mg+3TC300mg+DTG50mg) mg.":{"p":23.33,"u":"เม็ด"},"(cap.) TRAMADOL HCl(tramal) 50 mg.":{"p":0.0,"u":"แค็บซูล"},"(inj.) TRAMADOL inj 50 mg./ml.":{"p":0.0,"u":"Amphule (1 ml.)"},"(cap.) Tranexamic acid 250 mg.":{"p":2.5,"u":"แค็บซูล"},"(cream) TRIAMCINOLONE 0.02 %":{"p":7.0,"u":"หลอด (5 g)"},"(cream) TRIAMCINOLONE 0.1 %":{"p":7.0,"u":"หลอด (5 g.)"},"(oint.) Triamcinolone Oral Paste 1 g.":{"p":0.0,"u":"ซอง"},"(inj.) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.":{"p":0.0,"u":"ซีซี"},"(tab.) Triferdine 150 mg.":{"p":0.0,"u":"เม็ด"},"(sol.) UNISON 10 ml.":{"p":6.5,"u":"ขวด (10 ml.)"},"UNISON ENEMA 20":{"p":0.0,"u":"ขวด (20 ml.)"},"Varenicline Tartrate 0.5 mg":{"p":1.0,"u":"เม็ด"},"Varenicline Tartrate 1 mg":{"p":1.0,"u":"เม็ด"},"(inj.) VERORAB ( ID ) 0.1 ml.":{"p":0.0,"u":"Vial"},"(inj.) VERORAB ( IM ) 0.5 ml.":{"p":0.0,"u":"Vial"},"(tab.) VIT B6(pyridoxine) 50 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) VITAMIN B 1/6/12 1 g.":{"p":0.0,"u":"เม็ด"},"(inj.) VITAMIN B COMPLEX .":{"p":0.0,"u":"Amphule (1 ml.)"},"vitamin c 25 mg.":{"p":0.0,"u":"เม็ด"},"(inj.) VITAMIN K1 1 mg.":{"p":0.0,"u":"Ampule"},"(inj.) WATER FOR INJECTION 5 ml.":{"p":0.0,"u":"Amphule (5 ml.)"},"Whitfields ointment 6 %":{"p":20.0,"u":"หลอด (15 g.)"},"(cap.) Zidovudine  (AZT) 300 mg.":{"p":0.0,"u":"เม็ด"},"(syr.) Zidovudine (AZT) 10 mg./ml.":{"p":0.0,"u":"ขวด"},"(cap.) Zidovudine (AZT) 100 mg.":{"p":0.0,"u":"เม็ด"},"(tab.) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.":{"p":8.0,"u":"เม็ด"},"กานพลู 5 g.":{"p":8.0,"u":"ถุง"},"(cap.) ขมิ้นชัน แคปซูล KMC 500 mg.":{"p":1.0,"u":"เม็ด"},"ขวดยา 120 ml.":{"p":1.5,"u":"ขวด (120 ml.)"},"ขวดยา 30  ml.":{"p":1.2,"u":"ขวด (30 ml.)"},"ขวดยา 60 ml.":{"p":1.4,"u":"ขวด (60 ml.)"},"(cap.) ขิง 500 mg.":{"p":1.2,"u":"แค็บซูล"},"ครีมพญายอ 4.343 g/100g":{"p":44.0,"u":"1"},"(cap.) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.":{"p":0.0,"u":"แค็บซูล"},"เจลว่านหางจระเข้ g.":{"p":0.0,"u":"หลอด (30 g.)"},"ชุมเห็ดเทศ 3 g.":{"p":4.5,"u":"ซอง"},"(cap.) ตรีผลาTPL 90 g.":{"p":0.6,"u":"แค็บซูล"},"เถาวัลย์เปรียง TWP 500 mg.":{"p":0.0,"u":"แค็บซูล"},"น้ำมันไพลPLI 20 ml":{"p":24.0,"u":"ขวด"},"(cap.) เพชรสังฆาต PSK 500 mg.":{"p":0.0,"u":"แค็บซูล"},"(cap.) ฟ้าทะลายโจร FTJ 500 mg.":{"p":3.5,"u":"เม็ด"},"(syr.) มะขามป้อม MKP 120 ml.":{"p":0.0,"u":"ขวด"},"(pwd.) ยาแก้ลมอัมพฤกษ์AMP 70 g.":{"p":100.0,"u":"ขวด"},"(cap.) ยาเขียวหอมKH 500 mg.":{"p":0.8,"u":"แค็บซูล"},"ยาธาตุอบเชยOS 240 ml.":{"p":25.0,"u":"ขวด"},"ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.":{"p":1.5,"u":"แค็บซูล"},"(cap.) ยาประสะไพลPSP 500 mg.":{"p":1.1,"u":"แค็บซูล"},"(tab.) ยาระบายมะขามแขก(senokot) 7.5  mg":{"p":0.0,"u":"เม็ด"},"(cap.) ยาเลือดงามLH 500 mg.":{"p":1.0,"u":"แค็บซูล"},"(cap.) ยาศุขไสยาศน์ 500 mg.":{"p":3.6,"u":"แค็บซูล"},"(cap.) ยาสหัสธาราSHTR 500 mg.":{"p":1.1,"u":"แค็บซูล"},"(pwd.) ยาหอมเทพจิตรTPJ 30 g.":{"p":9.0,"u":"ซอง"},"(pwd.) ยาหอมนวโกฐNVK 7 g.":{"p":30.0,"u":"ขวด"},"(cap.) ยาห้าราก ซองละ 9 แคปซูล 500 mg.":{"p":1.5,"u":"แค็บซูล"},"(cap.) ยาเหลืองปิดสมุทร 500 mg.":{"p":0.9,"u":"เม็ด"},"(tab.) ยาอมมะแว้ง MW %":{"p":0.0,"u":"ซอง"},"(cap.) รางจืด RJ 400 mg.":{"p":0.7,"u":"แค็บซูล"},"(pwd.) ลูกประคบสมุนไพร 220 g.":{"p":0.0,"u":"ถุง"}};
+
+// ── PHARMACISTS ──────────────────────────────────────────
+const PHARMACISTS = ['ภก.พงศกร นวเลิศปัญญา','ภก.พงศ์ไพสิฐ บรรจงเมือง','ภญ.สมฤดี คงศรี'];
+
+// ── DRP TYPES ────────────────────────────────────────────
+const DRP_TYPES = [
+  'ผู้ป่วยได้รับยาผิดขนาด',
+  'ผู้ป่วยไม่ได้ใช้ยาตามแพทย์สั่ง',
+  'แพทย์เปลี่ยนแปลงการรักษา',
+  'เกิด ADR จากยา',
+  'เกิด Drug interaction',
+  'ได้รับยาซ้ำซ้อนจากรพ.อื่น/รพ.ถ้ำพรรณรา',
+  'ผู้ป่วยรับประทานยาผิดขนาด',
+  'ผู้ป่วยรับประทานยาผิดวิธีใช้',
+  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง',
+  'ผู้ป่วยมาผิดนัด/ขาดนัด',
+  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน',
+  'ยาเหลือสะสม',
+  'ยาหมดก่อนนัด',
+  'ได้ยาไม่ครบรายการ',
+  'การเก็บรักษายาไม่ถูกต้อง',
+  'ได้ยาผิดจำนวน',
+  'ผู้ป่วยไม่ได้รับประทานมื้อเที่ยงจึงไม่รับประทานยา',
+  'อื่นๆ'
+];
+
+const DRP_CAUSES = {
+  'ผู้ป่วยรับประทานยาผิดวิธีใช้':['ไม่อ่านฉลากเป็นปัจจุบัน','ไม่อ่านฉลาก','อ่านฉลากผิด','ตามองไม่ชัด','อื่นๆ'],
+  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน':['ไม่ได้ทานอาหารเที่ยง','ไม่ได้ทานอาหารเช้า','ไม่ได้นำยาติดตัวเมื่อไปธุระ','ติดธุระจึงลืมทาน','ผู้ป่วยจำไม่ได้ว่าทานยาแล้วหรือยัง','ลืมทานมื้อก่อนนอน','ไม่เห็นความสำคัญในการรับประทานยา','อื่นๆ'],
+  'ยาหมดก่อนนัด':['ผู้ป่วยทานยาผิดวิธีใช้','แจ้งจำนวนยาที่เหลือผิด','ผิดนัด','ไม่ทราบสาเหตุ','จ่ายยาผิดจำนวน','แบ่งยาครึ่งเม็ดจนเม็ดยาแตก','ผู้อื่นเอายาผู้ป่วยไปทาน','ไม่เห็นยาที่เหลือ','อื่นๆ'],
+  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง':['จำนวนเม็ดยาที่ทานต่อมื้อมากเกินไป','เกิด ADR หลังทานยา','ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา','กรณีต้องแบ่งเม็ดยา วิธีบริหารยายากสำหรับผู้ป่วย','แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น','ไม่เห็นความสำคัญในการใช้ยา','คาดเดาอาการตนเองว่าป่วย เช่น ความดันสูง น้ำตาลสูง','ตรวจวัดความดัน/DTX เองที่บ้าน','ผลเลือดปกติในนัดรอบก่อน จึงไม่ทานยา คิดว่าผลเลือดปกติ','กังวลเรื่องการทานยามากเกินไป ทำให้ตับ/ไตพัง','ต้องการรวบมื้อยาในมื้อเดียวกัน','ปรับวิธีใช้ยาตามความสะดวกในการรับประทาน','ปรับยาตามขนาดที่ทานแล้วอาการยังปกติ','ผู้ป่วยมีอาการป่วยจึงหยุดใช้ยา','ผู้ป่วยอาการดีขึ้นแล้วหยุดใช้ยา/ทานเมื่อมีอาการ','อื่นๆ']
+};
+
+// ── FISCAL MONTHS ────────────────────────────────────────
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+
+// ── STATE ────────────────────────────────────────────────
+let visitRecords = [];
+let sessionRecords = [];
+let activeTab = 'HT';
+let editingId = null;
+let chartInstances = {};
+
+// ── DATE HELPERS ─────────────────────────────────────────
+function todayTH() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thToISO(s) {
+  if (!s||!s.includes('/')) return s||'';
+  const [dd,mm,yy] = s.trim().split('/');
+  if (!dd||!mm||!yy) return '';
+  const ce = (yy.length<=2 ? 2500+parseInt(yy) : parseInt(yy)) - 543;
+  return `${ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function autoDateTH(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+function thDate(s) {
+  if (!s) return '-';
+  const d = new Date(s); if (isNaN(d)) return s;
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thTime(ts) {
+  if (!ts) return '-';
+  return new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+}
+function fiscalInfo(iso) {
+  const d = new Date(iso); if (isNaN(d)) return {year:null,month:null,key:''};
+  const m = d.getMonth();
+  const y = d.getFullYear()+543;
+  const fy = m>=9 ? y+1 : y;
+  return {year:fy, month:TH_MONTHS[m], key:iso.slice(0,7)};
+}
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── PERIOD FILTER (ปีงบประมาณ / เดือน) ────────────────────
+function inPeriod(dateISO) {
+  const fy = window.reportFY, pm = window.reportMonth;
+  if (!fy && !pm) return true;
+  const fi = fiscalInfo(dateISO);
+  if (fy && String(fi.year) !== String(fy)) return false;
+  if (pm && fi.month !== pm) return false;
+  return true;
+}
+function allFiscalYears() {
+  const ys = new Set();
+  visitRecords.forEach(r => { const fi = fiscalInfo(r.date); if (fi.year) ys.add(fi.year); });
+  sessionRecords.forEach(r => { const fi = fiscalInfo(r.date); if (fi.year) ys.add(fi.year); });
+  const curYear = new Date().getFullYear()+543;
+  ys.add(new Date().getMonth()>=9 ? curYear+1 : curYear);
+  return [...ys].sort((a,b)=>b-a);
+}
+function periodBarHtml() {
+  const fyOptions = allFiscalYears().map(y=>`<option value="${y}" ${String(window.reportFY||'')===String(y)?'selected':''}>ปีงบ ${y}</option>`).join('');
+  const pmOptions = TH_MONTHS.map(m=>`<option value="${m}" ${(window.reportMonth||'')===m?'selected':''}>${m}</option>`).join('');
+  const hasFilter = window.reportFY || window.reportMonth;
+  return `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+      <span style="font-size:13px;font-weight:600;color:var(--text-mid)">🗓️ ช่วงเวลา:</span>
+      <select id="f-fy" onchange="onPeriodChange()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+        <option value="">ทุกปีงบประมาณ</option>${fyOptions}
+      </select>
+      <select id="f-pm" onchange="onPeriodChange()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+        <option value="">ทุกเดือน</option>${pmOptions}
+      </select>
+      ${hasFilter?`<button onclick="clearPeriod()" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--text-mid);font-family:inherit">✕ ล้างตัวกรอง</button>`:''}
+    </div>`;
+}
+function onPeriodChange() {
+  window.reportFY = (document.getElementById('f-fy')||{}).value || '';
+  window.reportMonth = (document.getElementById('f-pm')||{}).value || '';
+  rerenderCurrentView();
+}
+function clearPeriod() {
+  window.reportFY = '';
+  window.reportMonth = '';
+  rerenderCurrentView();
+}
+function rerenderCurrentView() {
+  const view = window.reportView || 'main';
+  if (view === 'session') renderSessionTab(document.getElementById('main-content'));
+  else if (view === 'leftover') renderLeftoverReport(document.getElementById('main-content'));
+  else renderMain();
+}
+
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function cleanDrugName(raw) {
+  if (!raw) return '';
+  let s = raw.trim();
+  // ลบ prefix รูปแบบ (tab.) (cap.) (syr.) (inj.) ฯลฯ ที่อยู่ข้างหน้า
+  s = s.replace(/^\s*\(\s*(?:tab|cap|syr|inj|susp|sol|amp|vial|liq|drops?|oint|cream|gel|patch|inh)\s*\.?\s*\)\s*/i, '');
+  // ลบตัวย่อในวงเล็บ เช่น (CaCO3) (HCTZ) — ต้องไม่มีช่องว่างข้างใน (ต่างจาก dosage เช่น (50 mg))
+  s = s.replace(/\(\s*[A-Za-z][A-Za-z0-9]*\s*\)/g, '');
+  // ลบจุดท้าย
+  s = s.replace(/\.\s*$/, '');
+  // ลบช่องว่างซ้ำ
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  // Capitalize ตัวแรก
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg,dur=2800) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',dur);
+}
+
+// ── VIEWS ────────────────────────────────────────────────
+function switchView(view) {
+  const isEntry = view === 'entry';
+  document.getElementById('view-entry').style.display = isEntry ? 'block' : 'none';
+  document.getElementById('view-report').style.display = isEntry ? 'none' : 'block';
+  document.getElementById('vbtn-entry').classList.toggle('active', isEntry);
+  document.getElementById('vbtn-report').classList.toggle('active', !isEntry);
+  if (!isEntry) { renderCurrentView(); }
+}
+
+function selectClinic(c) {
+  activeTab = c;
+  ['HT','DM','COPD'].forEach(t => {
+    document.getElementById('ctab-'+t).classList.toggle('active', t===c);
+  });
+  document.getElementById('f-clinic').value = c;
+  renderRecentRecords();
+}
+
+function renderRecentRecords() {
+  const c = activeTab || 'HT';
+  const recs = visitRecords.filter(r => r.clinic === c)
+    .sort((a,b) => b.created - a.created).slice(0, 15);
+  document.getElementById('recent-title').textContent = `📋 รายการล่าสุด — คลินิก ${c} (${recs.length} รายการ)`;
+  const wrap = document.getElementById('recent-records-wrap');
+  if (!recs.length) {
+    wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light);font-size:13px">ยังไม่มีข้อมูล</div>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อ</th><th>เภสัชกร</th><th>DRP</th><th>ประหยัด</th><th>ประเมิน</th><th></th></tr></thead>
+    <tbody>${recs.map(r => `<tr>
+      <td>${thDate(r.date)}</td>
+      <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
+      <td>${r.hn||'—'}</td>
+      <td>${r.name||'—'}</td>
+      <td style="font-size:11px">${r.pharmacist||'—'}</td>
+      <td>${r.drps&&r.drps.length ? '<span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.drps.length+' DRP</span>' : '—'}</td>
+      <td>${r.totalSaving>0?'฿'+Math.round(r.totalSaving).toLocaleString():'—'}</td>
+      <td style="font-size:14px;white-space:nowrap">
+        ${r.checks&&r.checks.adherence?'💊':''}
+        ${r.checks&&r.checks.noLeftover?'📭':''}
+        ${r.checks&&r.checks.icebox?'🧊':''}
+      </td>
+      <td><button class="btn-del" onclick="deleteVisit('${r.id}')">✕</button></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ── QUICK DRP TOGGLE ─────────────────────────────────────
+let quickDrpActive = false;
+
+function toggleQuickDrp(forceState) {
+  quickDrpActive = forceState !== undefined ? forceState : !quickDrpActive;
+  const wrap = document.getElementById('drp-quick-wrap');
+  const icon = document.getElementById('drp-quick-icon');
+  const loWrap = document.getElementById('lo-section-wrap');
+  wrap.classList.toggle('active', quickDrpActive);
+  icon.textContent = quickDrpActive ? '☑' : '☐';
+  if (loWrap) loWrap.classList.toggle('highlighted', quickDrpActive);
+  // Auto-add leftover row if none exist
+  if (quickDrpActive && document.getElementById('lo-list').children.length === 0) {
+    addLoRow();
+  }
+}
+
+// ── DRP ROWS ─────────────────────────────────────────────
+function addDrpRow(type='', cause='', causeNote='') {
+  const list = document.getElementById('drp-list');
+  const div = document.createElement('div');
+  div.className = 'drp-row';
+  div.innerHTML = `
+    <div class="drp-inner">
+      <select class="drp-type" onchange="onDrpTypeChange(this)">
+        <option value="">-- เลือก DRP --</option>
+        ${DRP_TYPES.map(t=>`<option ${t===type?'selected':''} value="${t}">${t}</option>`).join('')}
+      </select>
+      <select class="drp-cause" style="display:none">
+        <option value="">-- เลือกสาเหตุ --</option>
+      </select>
+      <input class="drp-cause-note" type="text" placeholder="ระบุสาเหตุ/เพิ่มเติม..." style="display:none" value="${causeNote||cause||''}">
+    </div>
+    <button class="btn-rm" onclick="this.closest('.drp-row').remove()">✕</button>`;
+  list.appendChild(div);
+  if (type) {
+    const sel = div.querySelector('.drp-type');
+    onDrpTypeChange(sel, cause);
+  }
+}
+
+function onDrpTypeChange(sel, preset='') {
+  const row = sel.closest('.drp-row');
+  const causeSel = row.querySelector('.drp-cause');
+  const causeNote = row.querySelector('.drp-cause-note');
+  const t = sel.value;
+  const causes = DRP_CAUSES[t];
+  if (causes) {
+    causeSel.innerHTML = '<option value="">-- สาเหตุ --</option>' + causes.map(c=>`<option ${c===preset?'selected':''} value="${c}">${c}</option>`).join('');
+    causeSel.style.display = '';
+    causeNote.style.display = 'none';
+    causeSel.onchange = () => {
+      causeNote.style.display = causeSel.value==='อื่นๆ'?'':'none';
+    };
+    if (preset==='อื่นๆ') causeNote.style.display = '';
+  } else if (t && t!=='--') {
+    causeSel.style.display = 'none';
+    causeNote.style.display = '';
+  } else {
+    causeSel.style.display = 'none';
+    causeNote.style.display = 'none';
+  }
+}
+
+function getDrpData() {
+  const rows = document.querySelectorAll('.drp-row');
+  const others = [...rows].map(row => {
+    const type = row.querySelector('.drp-type').value;
+    const causeSel = row.querySelector('.drp-cause');
+    const causeNote = row.querySelector('.drp-cause-note');
+    const cause = causeSel.style.display!=='none' ? causeSel.value : '';
+    const note = causeNote.style.display!=='none' ? causeNote.value.trim() : '';
+    return type ? {type, cause, causeNote:note} : null;
+  }).filter(Boolean);
+  // Prepend quick DRP if active
+  if (quickDrpActive) {
+    return [{type:'ยาเหลือสะสม', cause:'', causeNote:''}, ...others];
+  }
+  return others;
+}
+
+// ── LEFTOVER ROWS ────────────────────────────────────────
+function addLoRow(drug='', qty='', unit='', price=0) {
+  const list = document.getElementById('lo-list');
+  const div = document.createElement('div');
+  div.className = 'lo-row';
+  div.innerHTML = `
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onDrugInput(this)" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.lo-row').querySelector('.lo-qty').select();}">
+    <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()" style="text-align:center"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();addLoRow();}">
+    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <span class="lo-price-display">฿${price>0?price:'—'}</span>
+    <span class="lo-total-display">—</span>
+    <button class="btn-rm" type="button" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
+  div.querySelector('.lo-qty')._price = price;
+  list.appendChild(div);
+  div.querySelector('.lo-drug').focus();
+  updateLoTotal();
+}
+
+function onDrugInput(el) {
+  const row = el.closest('.lo-row');
+  const info = DRUG_PRICES[el.value];
+  if (info) {
+    row.querySelector('.lo-unit').value = info.u || 'เม็ด';
+    row.querySelector('.lo-qty')._price = info.p;
+    row.querySelector('.lo-price-display').textContent = '฿'+info.p;
+  } else {
+    row.querySelector('.lo-qty')._price = 0;
+    row.querySelector('.lo-price-display').textContent = '—';
+  }
+  updateLoTotal();
+}
+
+function updateLoTotal() {
+  let total = 0;
+  document.querySelectorAll('.lo-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
+    const price = row.querySelector('.lo-qty')._price||0;
+    const rowTotal = qty * price;
+    total += rowTotal;
+    const totalSpan = row.querySelector('.lo-total-display');
+    if (totalSpan) totalSpan.textContent = rowTotal > 0 ? '฿'+rowTotal.toFixed(0) : '—';
+  });
+  const summary = document.getElementById('lo-summary');
+  const el = document.getElementById('lo-total');
+  if (summary && el) {
+    summary.style.display = total > 0 ? 'flex' : 'none';
+    el.textContent = '฿'+total.toFixed(2);
+  }
+}
+
+function getLoData() {
+  return [...document.querySelectorAll('.lo-row')].map(row => {
+    const drug = row.querySelector('.lo-drug').value.trim();
+    const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
+    const unit = row.querySelector('.lo-unit').value.trim();
+    const price = row.querySelector('.lo-qty')._price||0;
+    return drug||qty ? {drug,qty,unit,priceUnit:price,total:Math.round(qty*price*100)/100} : null;
+  }).filter(Boolean);
+}
+
+// ── SESSION PANEL ─────────────────────────────────────────
+function toggleSessionPanel() {
+  const p = document.getElementById('session-panel');
+  const a = document.getElementById('session-arrow');
+  p.classList.toggle('open');
+  a.textContent = p.classList.contains('open') ? '▲' : '▼';
+  if (p.classList.contains('open') && !document.getElementById('s-date').value)
+    document.getElementById('s-date').value = todayTH();
+}
+function setReason(text) {
+  document.getElementById('s-reason').value = text;
+}
+function onAttendedChange() {
+  const v = document.getElementById('s-attended').value;
+  document.getElementById('s-pharm-group').style.display = v==='yes'?'':'none';
+  document.getElementById('s-reason-group').style.display = v==='no'?'':'none';
+}
+
+// ── SUBMIT VISIT ─────────────────────────────────────────
+function submitVisit() {
+  const date = thToISO(document.getElementById('f-date').value);
+  const clinic = document.getElementById('f-clinic').value;
+  const pharm = document.getElementById('f-pharm').value;
+  const hn = document.getElementById('f-hn').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  if (!hn && !name) { showToast('⚠️ กรุณาระบุ HN หรือชื่อผู้ป่วย'); return; }
+  const drps = getDrpData();
+  const leftovers = getLoData();
+  const totalSaving = leftovers.reduce((s,l)=>s+l.total,0);
+  const hasInsulin = document.getElementById('chk-insulin').checked;
+  const checks = {
+    adherence: document.getElementById('chk-adherence').checked,
+    noLeftover: document.getElementById('chk-noleftover').checked,
+    hasInsulin,
+    icebox: hasInsulin ? document.getElementById('chk-icebox').checked : false,
+  };
+  const rec = {
+    id: uid(), date, clinic, pharmacist:pharm, hn, name,
+    drps, leftovers, totalSaving:Math.round(totalSaving*100)/100,
+    checks,
+    pharmNote: document.getElementById('f-pharmnote').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    created: Date.now()
+  };
+  visitRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึกแล้ว' + (drps.length ? ' — พบ DRP '+drps.length+' รายการ' : '') + (totalSaving>0?' ประหยัด ฿'+totalSaving.toFixed(2):''));
+  clearForm();
+}
+
+function clearForm() {
+  document.getElementById('f-date').value = todayTH();
+  ['f-hn','f-name','f-notes','f-pharmnote'].forEach(id=>document.getElementById(id).value='');
+  ['chk-adherence','chk-noleftover','chk-insulin','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
+  toggleInsulinIcebox();
+  document.getElementById('drp-list').innerHTML = '';
+  toggleQuickDrp(false);
+  document.getElementById('lo-list').innerHTML = '';
+  document.getElementById('lo-total').textContent = '';
+}
+
+// แสดงช่องติ๊ก "นำกระติกน้ำแข็งมา" เฉพาะเมื่อติ๊กว่ามียาฉีดเบาหวานแล้วเท่านั้น
+function toggleInsulinIcebox() {
+  const hasInsulin = document.getElementById('chk-insulin').checked;
+  const wrap = document.getElementById('chk-icebox-wrap');
+  wrap.style.display = hasInsulin ? '' : 'none';
+  if (!hasInsulin) document.getElementById('chk-icebox').checked = false;
+}
+
+// ── SUBMIT SESSION ───────────────────────────────────────
+function submitSession() {
+  const date = thToISO(document.getElementById('s-date').value);
+  const clinic = document.getElementById('s-clinic').value;
+  const attended = document.getElementById('s-attended').value === 'yes';
+  const pharm = attended ? document.getElementById('s-pharm').value : '';
+  const reason = !attended ? document.getElementById('s-reason').value.trim() : '';
+  const notes = document.getElementById('s-notes').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  const rec = {id:uid(), date, clinic, attended, pharmacist:pharm, reason, notes, created:Date.now()};
+  sessionRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึก Session แล้ว');
+  document.getElementById('s-notes').value = '';
+  document.getElementById('s-reason').value = '';
+}
+
+// ── SUBMIT HT บ่าย (standalone patient-count log) ─────────
+function submitHtPm() {
+  const date = thToISO(document.getElementById('pm-date').value);
+  const count = parseInt(document.getElementById('pm-count').value) || 0;
+  const notes = document.getElementById('pm-notes').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  const rec = {id:uid(), date, clinic:'HT', attended:null, pharmacist:'', reason:'', htPmCount:count, notes, pmOnly:true, created:Date.now()};
+  sessionRecords.push(rec);
+  saveLocal(); fbSave();
+  renderAll();
+  showToast('✅ บันทึกจำนวนคนไข้ HT บ่ายแล้ว');
+  document.getElementById('pm-count').value = '';
+  document.getElementById('pm-notes').value = '';
+}
+
+// ── DELETE ───────────────────────────────────────────────
+function deleteVisit(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  visitRecords = visitRecords.filter(r=>r.id!==id);
+  saveLocal(); fbSave(); renderAll();
+}
+function deleteSession(id) {
+  if (!confirm('ลบ session นี้?')) return;
+  sessionRecords = sessionRecords.filter(r=>r.id!==id);
+  saveLocal(); fbSave(); renderAll();
+}
+
+// ── EDIT MODAL ───────────────────────────────────────────
+function editVisit(id) {
+  const r = visitRecords.find(r=>r.id===id); if (!r) return;
+  editingId = id;
+  const box = document.getElementById('modal-body');
+  box.innerHTML = `
+    <div class="form-group"><label>วันที่</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="m-date" value="${thDate(r.date)}" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+        <button class="btn-stamp" onclick="document.getElementById('m-date').value=todayTH()">📅</button>
+      </div></div>
+    <div class="form-group"><label>คลินิก</label>
+      <select id="m-clinic">${['HT','DM','COPD'].map(c=>`<option ${c===r.clinic?'selected':''} value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label>เภสัชกร</label>
+      <select id="m-pharm"><option value="">--</option>${PHARMACISTS.map(p=>`<option ${p===r.pharmacist?'selected':''} value="${p}">${p}</option>`).join('')}</select></div>
+    <div class="form-group"><label>HN</label><input type="text" id="m-hn" value="${r.hn||''}"></div>
+    <div class="form-group"><label>ชื่อ-สกุล</label><input type="text" id="m-name" value="${r.name||''}"></div>
+    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${r.notes||''}</textarea></div>
+    <div class="form-group">
+      <label>📦 ยาคงเหลือ</label>
+      <div class="lo-header">
+        <span class="lo-h-drug">ชื่อยา</span>
+        <span class="lo-h-qty">จำนวน<br>ที่เหลือ</span>
+        <span class="lo-h-unit">หน่วย</span>
+        <span class="lo-h-price">ราคา/<br>หน่วย</span>
+        <span class="lo-h-total">มูลค่า<br>ประหยัด</span>
+        <span class="lo-h-del"></span>
+      </div>
+      <div id="m-lo-list"></div>
+      <button class="btn-add" type="button" onclick="addMLoRow()" style="width:100%;margin-top:6px">+ เพิ่มรายการยา</button>
+      <div class="lo-summary" id="m-lo-summary" style="display:none">
+        <div class="lo-summary-label">💰 ประหยัดได้ทั้งหมด</div>
+        <div class="lo-summary-val" id="m-lo-total">฿0</div>
+      </div>
+    </div>`;
+  document.getElementById('m-lo-list').innerHTML = '';
+  (r.leftovers||[]).forEach(l => addMLoRow(l.drug, l.qty, l.unit, l.priceUnit));
+  updateMLoTotal();
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+// ── EDIT MODAL: ยาคงเหลือ (แยกจากฟอร์มบันทึกคนไข้ใหม่ ไม่ให้ query ปนกัน) ──
+function addMLoRow(drug='', qty='', unit='', price=0) {
+  const list = document.getElementById('m-lo-list');
+  const div = document.createElement('div');
+  div.className = 'mlo-row';
+  div.innerHTML = `
+    <input class="mlo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onMLoDrugInput(this)" autocomplete="off">
+    <input class="mlo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateMLoTotal()" style="text-align:center">
+    <input class="mlo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <span class="lo-price-display">฿${price>0?price:'—'}</span>
+    <span class="lo-total-display">—</span>
+    <button class="btn-rm" type="button" onclick="this.closest('.mlo-row').remove();updateMLoTotal()">✕</button>`;
+  div.querySelector('.mlo-qty')._price = price;
+  list.appendChild(div);
+  updateMLoTotal();
+}
+
+function onMLoDrugInput(el) {
+  const row = el.closest('.mlo-row');
+  const info = DRUG_PRICES[el.value];
+  if (info) {
+    row.querySelector('.mlo-unit').value = info.u || 'เม็ด';
+    row.querySelector('.mlo-qty')._price = info.p;
+    row.querySelector('.lo-price-display').textContent = '฿'+info.p;
+  } else {
+    row.querySelector('.mlo-qty')._price = 0;
+    row.querySelector('.lo-price-display').textContent = '—';
+  }
+  updateMLoTotal();
+}
+
+function updateMLoTotal() {
+  let total = 0;
+  document.querySelectorAll('.mlo-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.mlo-qty').value)||0;
+    const price = row.querySelector('.mlo-qty')._price||0;
+    const rowTotal = qty * price;
+    total += rowTotal;
+    const totalSpan = row.querySelector('.lo-total-display');
+    if (totalSpan) totalSpan.textContent = rowTotal > 0 ? '฿'+rowTotal.toFixed(0) : '—';
+  });
+  const summary = document.getElementById('m-lo-summary');
+  const el = document.getElementById('m-lo-total');
+  if (summary && el) {
+    summary.style.display = total > 0 ? 'flex' : 'none';
+    el.textContent = '฿'+total.toFixed(2);
+  }
+}
+
+function getMLoData() {
+  return [...document.querySelectorAll('.mlo-row')].map(row => {
+    const drug = row.querySelector('.mlo-drug').value.trim();
+    const qty = parseFloat(row.querySelector('.mlo-qty').value)||0;
+    const unit = row.querySelector('.mlo-unit').value.trim();
+    const price = row.querySelector('.mlo-qty')._price||0;
+    return drug||qty ? {drug,qty,unit,priceUnit:price,total:Math.round(qty*price*100)/100} : null;
+  }).filter(Boolean);
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+  editingId = null;
+}
+
+function saveModal() {
+  if (!editingId) return;
+  const idx = visitRecords.findIndex(r=>r.id===editingId); if (idx<0) return;
+  visitRecords[idx].date = thToISO(document.getElementById('m-date').value);
+  visitRecords[idx].clinic = document.getElementById('m-clinic').value;
+  visitRecords[idx].pharmacist = document.getElementById('m-pharm').value;
+  visitRecords[idx].hn = document.getElementById('m-hn').value.trim();
+  visitRecords[idx].name = document.getElementById('m-name').value.trim();
+  visitRecords[idx].notes = document.getElementById('m-notes').value.trim();
+  const leftovers = getMLoData();
+  visitRecords[idx].leftovers = leftovers;
+  visitRecords[idx].totalSaving = Math.round(leftovers.reduce((s,l)=>s+l.total,0)*100)/100;
+  saveLocal(); fbSave(); renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function renderAll() {
+  renderRecentRecords();
+  renderCurrentView();
+}
+
+// รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)
+// เพื่อไม่ให้หน้า "ยาคงเหลือ" ถูกรีเซ็ตทุกครั้งที่มีการบันทึก/ซิงค์ข้อมูล
+function renderCurrentView() {
+  const main = document.getElementById('main-content');
+  const view = window.reportView || 'main';
+  if (view === 'leftover') {
+    if (document.getElementById('lo-cards-wrap')) filterLeftoverCards();
+    else renderLeftoverReport(main);
+  } else if (view === 'session') {
+    renderSessionTab(main);
+  } else {
+    renderMain();
+  }
+}
+
+function getFilteredVisits(clinic) {
+  const list = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
+  return list.filter(r=>inPeriod(r.date));
+}
+function getFilteredSessions(clinic) {
+  const list = clinic==='all' ? sessionRecords : sessionRecords.filter(r=>r.clinic===clinic);
+  return list.filter(r=>inPeriod(r.date));
+}
+
+function calcKPIs(clinic) {
+  const visits = getFilteredVisits(clinic);
+  const sessions = getFilteredSessions(clinic);
+  const attended = sessions.filter(s=>s.attended);
+  const missed = sessions.filter(s=>!s.attended && !s.pmOnly);
+  const withDRP = visits.filter(v=>v.drps&&v.drps.length>0);
+  const drpPct = visits.length>0 ? Math.round(withDRP.length/visits.length*1000)/10 : 0;
+  const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
+  const htPmTotal = sessions.filter(s=>s.clinic==='HT'||clinic!=='all').reduce((s,r)=>s+(r.htPmCount||0),0);
+  const attendPct = (attended.length+missed.length)>0 ? Math.round(attended.length/(attended.length+missed.length)*1000)/10 : 0;
+  // "วันนี้" ไม่ควรถูกกรองด้วยตัวกรองช่วงเวลา (ปีงบ/เดือน) — ให้แสดงยอดวันนี้จริงเสมอ
+  const todayISO = thToISO(todayTH());
+  const todayVisits = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
+  const todayCount = todayVisits.filter(v=>v.date===todayISO).length;
+  return {visits:visits.length, attended:attended.length, missed:missed.length, attendPct,
+          withDRP:withDRP.length, drpPct, totalSaving, htPmTotal, todayCount};
+}
+
+function dailySummaryRows(clinic, days=14) {
+  const visits = getFilteredVisits(clinic);
+  const byDate = {};
+  visits.forEach(v => {
+    if (!byDate[v.date]) byDate[v.date] = {count:0, drp:0, leftover:0, saving:0};
+    const d = byDate[v.date];
+    d.count++;
+    if (v.drps && v.drps.length) d.drp++;
+    if (v.leftovers && v.leftovers.length) d.leftover++;
+    d.saving += v.totalSaving||0;
+  });
+  // เมื่อเลือกช่วงเวลา (ปีงบ/เดือน) แล้ว ให้แสดงทุกวันในช่วงนั้น ไม่จำกัดแค่ 14 วันล่าสุด
+  const limit = (window.reportFY || window.reportMonth) ? Infinity : days;
+  return Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,limit)
+    .map(date => ({date, ...byDate[date]}));
+}
+
+function attendanceSummaryRows(clinic, limit=14) {
+  const sessions = getFilteredSessions(clinic).filter(s=>!s.pmOnly);
+  const cap = (window.reportFY || window.reportMonth) ? Infinity : limit;
+  return [...sessions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,cap);
+}
+
+function renderAttendanceSummaryTable(clinic) {
+  const tbody = document.getElementById('attend-summary-body');
+  if (!tbody) return;
+  const rows = attendanceSummaryRows(clinic);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr class="${r.attended?'':' session-miss'}">
+    <td style="white-space:nowrap">${thDate(r.date)}</td>
+    <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
+    <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':'<span class="tag-missed">❌ ไม่ได้ลง</span>'}</td>
+    <td style="font-size:12px">${r.pharmacist||''}</td>
+    <td style="font-size:11px;color:var(--text-mid)">${r.attended?(r.notes||''):(r.reason||'')}</td>
+  </tr>`).join('');
+}
+
+function buildClinicBtns(activeC) {
+  return ['HT','DM','COPD','all','leftover','session'].map(c => {
+    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
+    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
+    const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
+                  : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
+                  : `renderMain()`;
+    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
+    return `<button class="clinic-tab ${colors[c]} ${c===activeC?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+  }).join('');
+}
+
+function renderMain() {
+  const main = document.getElementById('main-content');
+
+  const clinic = window.reportClinic || activeTab || 'HT';
+  window.reportClinic = clinic;
+  const kpi = calcKPIs(clinic);
+  const color = clinic==='HT'?'purple':clinic==='DM'?'teal':clinic==='COPD'?'orange':'';
+
+  const curYear = new Date().getFullYear()+543;
+  const fy = new Date().getMonth()>=9 ? curYear+1 : curYear;
+
+  const clinicBtns = buildClinicBtns(clinic);
+
+  main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">ผู้ป่วยที่ให้คำปรึกษา</div>
+        <div class="kpi-val ${color}">${kpi.visits.toLocaleString()}</div>
+        <div class="kpi-sub">ราย (ทุก session)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">พบ DRP</div>
+        <div class="kpi-val ${color}">${kpi.drpPct}%</div>
+        <div class="kpi-sub">${kpi.withDRP} ใน ${kpi.visits} ราย</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">อัตราการลงคลินิก</div>
+        <div class="kpi-val ${color}">${kpi.attendPct}%</div>
+        <div class="kpi-sub">ลง ${kpi.attended} / ขาด ${kpi.missed} ครั้ง</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">เงินประหยัดสะสม</div>
+        <div class="kpi-val gold">฿${Math.round(kpi.totalSaving).toLocaleString()}</div>
+        <div class="kpi-sub">จากยาคงเหลือที่คืน</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">ลงคลินิกวันนี้</div>
+        <div class="kpi-val ${color}">${kpi.todayCount}</div>
+        <div class="kpi-sub">ราย (${thDate(thToISO(todayTH()))})</div>
+      </div>
+    </div>
+    ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
+    <div class="chart-grid">
+      <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿) <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head"><span class="table-title">📋 สรุปการลงคลินิก${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 ครั้งล่าสุด)'}</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="attend-summary-body"></tbody>
+      </table></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head"><span class="table-title">📆 สรุปรายวัน${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 วันล่าสุด)'}</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>จำนวนคนไข้</th><th>พบ DRP</th><th>มียาคงเหลือ</th><th>ประหยัด</th></tr></thead>
+        <tbody id="daily-summary-body"></tbody>
+      </table></div>
+    </div>
+    <div class="table-card">
+      <div class="table-head">
+        <span class="table-title">รายการให้คำปรึกษา</span>
+        <div class="filter-row">
+          <input type="text" id="f-search" placeholder="🔍 ค้นหา HN/ชื่อ/DRP..." oninput="renderTable()" style="width:180px">
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>วันที่</th><th>เวลา</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th><th></th></tr></thead>
+        <tbody id="tbl-body"></tbody>
+      </table></div>
+    </div>`;
+
+  renderCharts(clinic);
+  renderAttendanceSummaryTable(clinic);
+  renderTable();
+  renderDailySummaryTable(clinic);
+}
+
+function renderLeftoverReport(main) {
+  const clinicBtns = buildClinicBtns('leftover');
+
+  // Build filter UI
+  const clinicOptions = ['','HT','DM','COPD'].map(v=>`<option value="${v}">${v||'ทุกคลินิก'}</option>`).join('');
+
+  main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
+    <div class="table-card" style="background:transparent;box-shadow:none;padding:0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-size:16px;font-weight:700">📦 ยาคงเหลือทั้งหมด</span>
+        <input type="text" id="lo-search" placeholder="🔍 ค้นหา HN/ชื่อ/ยา..." oninput="filterLeftoverCards()"
+          style="padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;width:200px">
+        <select id="lo-f-clinic" onchange="filterLeftoverCards()"
+          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
+          ${clinicOptions}
+        </select>
+        <input type="date" id="lo-f-date" onchange="filterLeftoverCards()"
+          style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
+        <button onclick="document.getElementById('lo-f-date').value='';filterLeftoverCards()"
+          style="background:none;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text-mid)">ล้างวันที่</button>
+        <span id="lo-count" style="font-size:13px;color:var(--text-light)"></span>
+      </div>
+      <div id="lo-cards-wrap"></div>
+    </div>`;
+
+  filterLeftoverCards();
+}
+
+function filterLeftoverCards() {
+  const q = (document.getElementById('lo-search')||{}).value||'';
+  const fc = (document.getElementById('lo-f-clinic')||{}).value||'';
+  const fd = (document.getElementById('lo-f-date')||{}).value||'';
+
+  const baseFilter = r => {
+    if (fc && r.clinic !== fc) return false;
+    if (fd && r.date !== fd) return false;
+    if (!inPeriod(r.date)) return false;
+    return true;
+  };
+
+  let recs = [...visitRecords]
+    .filter(r => r.leftovers && r.leftovers.length > 0)
+    .filter(baseFilter)
+    .filter(r => {
+      if (q) {
+        const ql = q.toLowerCase();
+        const inPatient = [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql));
+        const inDrug = (r.leftovers||[]).some(l => String(l.drug||'').toLowerCase().includes(ql));
+        if (!inPatient && !inDrug) return false;
+      }
+      return true;
+    })
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const countEl = document.getElementById('lo-count');
+  if (countEl) countEl.textContent = recs.length + ' รายการ';
+
+  const wrap = document.getElementById('lo-cards-wrap');
+  if (!wrap) return;
+  if (!recs.length) {
+    if (q) {
+      const ql = q.toLowerCase();
+      const noLeftoverMatches = [...visitRecords]
+        .filter(baseFilter)
+        .filter(r => !(r.leftovers && r.leftovers.length > 0))
+        .filter(r => [r.hn, r.name].some(f => String(f||'').toLowerCase().includes(ql)))
+        .sort((a,b) => b.date.localeCompare(a.date));
+
+      if (noLeftoverMatches.length) {
+        wrap.innerHTML = noLeftoverMatches.map(r => {
+          const clinicColor = r.clinic==='HT'?'#7c3aed':r.clinic==='DM'?'#0d9488':'#ea580c';
+          const clinicBg   = r.clinic==='HT'?'#f5f3ff':r.clinic==='DM'?'#f0fdfa':'#fff7ed';
+          return `
+            <div style="background:var(--surface);border:2px solid var(--border);border-left:4px solid ${clinicColor};
+              border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
+                  border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
+                <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
+                <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
+                <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+                <span style="font-size:12px;font-weight:700;color:var(--text-mid);background:var(--bg);
+                  border:1.5px solid var(--border);border-radius:6px;padding:3px 10px">📭 ไม่มียาคงเหลือ</span>
+              </div>
+            </div>`;
+        }).join('');
+        return;
+      }
+    }
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">ไม่พบรายการยาคงเหลือ</div>';
+    return;
+  }
+
+  wrap.innerHTML = recs.map(r => {
+    const clinicColor = r.clinic==='HT'?'#7c3aed':r.clinic==='DM'?'#0d9488':'#ea580c';
+    const clinicBg   = r.clinic==='HT'?'#f5f3ff':r.clinic==='DM'?'#f0fdfa':'#fff7ed';
+    const drugCards = (r.leftovers||[]).map(l => `
+      <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;
+        border-radius:10px;padding:10px 14px;min-width:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#065f46;line-height:1.4">${cleanDrugName(l.drug)}</div>
+          ${l.priceUnit>0?`<div style="font-size:11px;color:#6b7280">฿${l.priceUnit}/หน่วย</div>`:''}
+        </div>
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-size:26px;font-weight:900;color:#dc2626;line-height:1">${l.qty}</div>
+          <div style="font-size:11px;color:#b91c1c;font-weight:600">${l.unit||'เม็ด'}</div>
+        </div>
+        ${l.total>0?`<div style="font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;border-radius:6px;padding:4px 8px;flex-shrink:0">฿${l.total}</div>`:''}
+      </div>`).join('');
+
+    const totalSaving = r.totalSaving > 0 ? `<span style="font-size:13px;font-weight:700;color:#15803d">💰 ฿${r.totalSaving.toFixed(0)}</span>` : '';
+    const iceBadge = r.checks?.hasInsulin ? (r.checks?.icebox
+      ? `<span style="font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1.5px solid #7dd3fc;border-radius:6px;padding:3px 10px">🧊 นำกระติกมา</span>`
+      : `<span style="font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:6px;padding:3px 10px">🧊 ไม่ได้นำกระติกมา</span>`) : '';
+    return `
+      <div style="background:var(--surface);border:2px solid ${clinicColor}22;border-left:4px solid ${clinicColor};
+        border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
+            border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
+          <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
+          <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
+          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+          ${iceBadge}
+          ${totalSaving}
+          <button onclick="editVisit('${r.id}')" style="background:none;border:1.5px solid var(--border);
+            border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--primary)">✏️ แก้ไข</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+          ${drugCards}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTable() {
+  const q = (document.getElementById('f-search')||{}).value||'';
+  const clinic = activeTab;
+
+  let recs = getFilteredVisits(clinic).filter(r => {
+    if (q && ![r.hn,r.name,...(r.drps||[]).map(d=>d.type)].some(f=>String(f||'').toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
+  }).sort((a,b)=>(b.created||0)-(a.created||0));
+
+  const tbody = document.getElementById('tbl-body');
+  if (!tbody) return;
+  tbody.innerHTML = recs.map(r => {
+    const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+d.type+(d.cause?' → '+d.cause:'')+'</span>').join('');
+    const loList = (r.leftovers||[]).length
+      ? (r.leftovers||[]).map(l=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:4px 8px;min-width:0">
+          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cleanDrugName(l.drug)}</span>
+          <span style="font-size:16px;font-weight:800;color:#dc2626;flex-shrink:0">${l.qty}</span>
+          <span style="font-size:11px;color:#b91c1c;flex-shrink:0">${l.unit||''}</span>
+        </div>`).join('')
+      : '<span style="color:var(--text-light);font-size:11px">-</span>';
+    const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
+    return `<tr>
+      <td style="white-space:nowrap">${thDate(r.date)}</td>
+      <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
+      <td><div style="font-weight:600">${r.hn||''}</div><div style="font-size:11px;color:var(--text-mid)">${r.name||''}</div></td>
+      <td>${badge}</td>
+      <td>${drpList||'<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>'}</td>
+      <td>${loList||'<span style="color:var(--text-light);font-size:11px">-</span>'}</td>
+      <td style="white-space:nowrap;font-weight:700;color:var(--success)">${r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):''}</td>
+      <td style="font-size:11px">${r.pharmacist||''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-edit" onclick="editVisit('${r.id}')">✏️</button>
+        <button class="btn-del" onclick="deleteVisit('${r.id}')">🗑</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function renderDailySummaryTable(clinic) {
+  const tbody = document.getElementById('daily-summary-body');
+  if (!tbody) return;
+  const rows = dailySummaryRows(clinic);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="white-space:nowrap">${thDate(r.date)}</td>
+    <td style="font-weight:700">${r.count}</td>
+    <td>${r.drp}</td>
+    <td>${r.leftover}</td>
+    <td style="white-space:nowrap;font-weight:700;color:var(--success)">${r.saving>0?'฿'+r.saving.toFixed(0):''}</td>
+  </tr>`).join('');
+}
+
+function renderSessionTab(main) {
+  const all = [...sessionRecords].filter(r=>inPeriod(r.date)).sort((a,b)=>b.date.localeCompare(a.date));
+  const clinicBtns = buildClinicBtns('session');
+  main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    ${periodBarHtml()}
+    <div class="table-card">
+      <div class="table-head">
+        <span class="table-title">📋 บันทึก Session การลงคลินิก</span>
+      </div>
+      <div class="tbl-wrap"><table style="min-width:500px">
+        <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>HT บ่าย</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <tbody>${all.map(r=>`<tr class="${!r.pmOnly&&!r.attended?' session-miss':''}">
+          <td>${thDate(r.date)}</td>
+          <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
+          <td>${r.pmOnly?'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>':r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${r.reason||''}</div>`}</td>
+          <td style="font-size:12px">${r.pharmacist||''}</td>
+          <td style="text-align:center">${r.htPmCount>0?r.htPmCount:''}</td>
+          <td style="font-size:11px;color:var(--text-mid)">${r.notes||''}</td>
+          <td><button class="btn-del" onclick="deleteSession('${r.id}')">🗑</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+function renderCharts(clinic) {
+  const visits = getFilteredVisits(clinic);
+
+  // Monthly patient count
+  destroyChart('monthly');
+  const monthMap = {};
+  const monthVisits = {};
+  visits.forEach(v => {
+    const fi = fiscalInfo(v.date);
+    if (!fi.key) return;
+    const label = fi.month+' '+String(fi.year).slice(-2);
+    monthMap[label] = (monthMap[label]||0)+1;
+    (monthVisits[label] = monthVisits[label]||[]).push(v);
+  });
+  const mLabels = Object.keys(monthMap).slice(-12);
+  const mData = mLabels.map(k=>monthMap[k]);
+  const clrMap = {HT:'#7c3aed',DM:'#0e7490',COPD:'#c2410c',all:'#1A5E38'};
+  const clr = clrMap[clinic]||'#1A5E38';
+  const ctx1 = document.getElementById('c-monthly').getContext('2d');
+  chartInstances['monthly'] = new Chart(ctx1,{type:'bar',data:{labels:mLabels,datasets:[{label:'ผู้ป่วย',data:mData,backgroundColor:clr+'99',borderColor:clr,borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=mLabels[els[0].index]; showClinicDetail('👥 ผู้ป่วยเดือน '+label, monthVisits[label]||[]); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
+
+  // DRP types
+  destroyChart('drp');
+  const drpMap = {};
+  const drpVisits = {};
+  visits.forEach(v => (v.drps||[]).forEach(d=>{
+    if (!d.type) return;
+    drpMap[d.type] = (drpMap[d.type]||0)+1;
+    (drpVisits[d.type] = drpVisits[d.type]||[]).push(v);
+  }));
+  const drpEntries = Object.entries(drpMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const drpFullLabels = drpEntries.map(e=>e[0]);
+  const ctx2 = document.getElementById('c-drp').getContext('2d');
+  chartInstances['drp'] = new Chart(ctx2,{type:'bar',data:{labels:drpFullLabels.map(l=>l.length>16?l.slice(0,15)+'…':l),datasets:[{data:drpEntries.map(e=>e[1]),backgroundColor:'#f59e0b99',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=drpFullLabels[els[0].index]; showClinicDetail('🔍 DRP: '+label, drpVisits[label]||[]); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
+
+  // Savings
+  destroyChart('saving');
+  const savMap = {};
+  visits.forEach(v => {
+    const fi = fiscalInfo(v.date);
+    if (!fi.key) return;
+    const label = fi.month+' '+String(fi.year).slice(-2);
+    savMap[label] = (savMap[label]||0)+(v.totalSaving||0);
+  });
+  const sLabels = mLabels;
+  const sData = sLabels.map(k=>Math.round(savMap[k]||0));
+  const ctx3 = document.getElementById('c-saving').getContext('2d');
+  chartInstances['saving'] = new Chart(ctx3,{type:'bar',data:{labels:sLabels,datasets:[{label:'฿',data:sData,backgroundColor:'#16a34a55',borderColor:'#16a34a',borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>'฿'+v.toLocaleString()},grid:{color:'#e5e7eb'}},x:{ticks:{font:{size:10}}}},
+      onClick:(evt,els)=>{ if(!els.length) return; const label=sLabels[els[0].index]; showClinicDetail('💰 เงินประหยัดเดือน '+label, (monthVisits[label]||[]).filter(v=>v.totalSaving>0)); },
+      onHover:(evt,els)=>{ if(evt.native) evt.native.target.style.cursor = els.length?'pointer':'default'; }}});
+}
+
+// ── DASHBOARD DETAIL MODAL (คลิกกราฟเพื่อดูรายละเอียด) ────
+function showClinicDetail(title, recs) {
+  document.getElementById('cl-detail-title').textContent = title + '  (' + recs.length + ' รายการ)';
+  document.getElementById('cl-detail-body').innerHTML = _buildClinicDetailTable(recs);
+  document.getElementById('cl-detail-modal').classList.add('show');
+}
+function closeClinicDetail() {
+  document.getElementById('cl-detail-modal').classList.remove('show');
+}
+function _buildClinicDetailTable(recs) {
+  if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0">ไม่มีข้อมูลในหมวดนี้</p>';
+  const sorted = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
+  return '<div class="tbl-wrap"><table><thead><tr><th>วันที่</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th></tr></thead><tbody>' +
+    sorted.map(r => {
+      const drpList = (r.drps||[]).map(d=>escHtml(d.type)).join('<br>') || '<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>';
+      const loList = (r.leftovers||[]).map(l=>escHtml(cleanDrugName(l.drug))+' × '+l.qty).join('<br>') || '<span style="color:var(--text-light);font-size:11px">-</span>';
+      return '<tr>' +
+        '<td style="white-space:nowrap">'+thDate(r.date)+'</td>' +
+        '<td><div style="font-weight:600">'+escHtml(r.hn||'')+'</div><div style="font-size:11px;color:var(--text-mid)">'+escHtml(r.name||'')+'</div></td>' +
+        '<td><span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.clinic+'</span></td>' +
+        '<td style="font-size:12px">'+drpList+'</td>' +
+        '<td style="font-size:12px">'+loList+'</td>' +
+        '<td style="white-space:nowrap;font-weight:700;color:var(--success)">'+(r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):'')+'</td>' +
+        '<td style="font-size:11px">'+escHtml(r.pharmacist||'')+'</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table></div>';
+}
+
+// ── STORAGE ──────────────────────────────────────────────
+function saveLocal() {
+  localStorage.setItem('clinic_visits', JSON.stringify(visitRecords));
+  localStorage.setItem('clinic_sessions', JSON.stringify(sessionRecords));
+}
+function loadLocal() {
+  visitRecords = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
+  sessionRecords = JSON.parse(localStorage.getItem('clinic_sessions')||'[]');
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────
+function exportJSON() {
+  const d = new Date(); const ts = d.toISOString().slice(0,10);
+  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  const a = Object.assign(document.createElement('a'),{href:url,download:'clinic_backup_'+ts+'.json'});
+  a.click(); URL.revokeObjectURL(url);
+}
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.visitRecords) visitRecords = data.visitRecords;
+      if (data.sessionRecords) sessionRecords = data.sessionRecords;
+      saveLocal(); fbSave(); renderAll();
+      showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
+    } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── FIREBASE ─────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:"AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+  authDomain:"pharmacy-tph.firebaseapp.com",
+  projectId:"pharmacy-tph",
+  storageBucket:"pharmacy-tph.firebasestorage.app",
+  messagingSenderId:"617328257113",
+  appId:"1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+
+let db;
+function initFirebase() {
+  try {
+    firebase.initializeApp(FB_CONFIG);
+    db = firebase.firestore();
+    db.enablePersistence().catch(() => {});
+    const badge = document.getElementById('sync-badge');
+    let lastSyncTime = null;
+    const nowTH = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+    db.collection('pharmacy_tph').doc('clinic_data').onSnapshot(snap => {
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.visitRecords) visitRecords = d.visitRecords;
+        if (d.sessionRecords) sessionRecords = d.sessionRecords;
+        saveLocal(); renderAll();
+        lastSyncTime = nowTH();
+        badge.textContent=`☁️ ซิงค์แล้ว ${lastSyncTime}`; badge.style.background='#dcfce7'; badge.style.color='#15803d';
+      } else {
+        badge.textContent='⚠️ ไม่พบข้อมูล'; badge.style.background='#fef9c3'; badge.style.color='#854d0e';
+      }
+    }, err => {
+      badge.textContent = lastSyncTime ? `📴 ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '📴 ออฟไลน์';
+      badge.style.background='#fee2e2'; badge.style.color='#991b1b';
+    });
+  } catch(e) { console.warn('Firebase:',e); }
+}
+function fbSave() {
+  if (!db) return;
+  db.collection('pharmacy_tph').doc('clinic_data').set({visitRecords,sessionRecords,updated:Date.now()})
+    .catch(e=>console.warn('FB save:',e));
+}
+
+// ── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('badge-year').textContent = 'ปีงบ ' + (new Date().getMonth()>=9 ? new Date().getFullYear()+544 : new Date().getFullYear()+543);
+  loadLocal();
+  initFirebase();
+  document.getElementById('f-date').value = todayTH();
+  document.getElementById('s-date').value = todayTH();
+  document.getElementById('pm-date').value = todayTH();
+  // วันพุธ (3) → HT อัตโนมัติ, วันพฤหัสบดี (4) → DM อัตโนมัติ
+  const dow = new Date().getDay();
+  if (dow === 3) selectClinic('HT');
+  else if (dow === 4) selectClinic('DM');
+  renderAll();
+});
+
+// ── EXPORT (clinic) ──────────────────────────────────────
+function pageDoExport(fmt) {
+  const f    = expGetFilter();
+  const recs = expFilter(visitRecords, f);
+  if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+  const label = expFilterLabel(f);
+
+  if (fmt === 'excel') {
+    const visits = recs.map(r => ({
+      'วันที่':          expISOtoTH(r.date),
+      'เวลาที่บันทึก':   thTime(r.created),
+      'คลินิก':          r.clinic||'',
+      'HN':              r.hn||'',
+      'ชื่อผู้ป่วย':     r.name||'',
+      'เภสัชกร':         r.pharmacist||'',
+      'จำนวน DRP':       (r.drps||[]).length,
+      'ประเภท DRP':      (r.drps||[]).map(d=>d.type).join(', '),
+      'กินยาถูกต้อง':    r.checks?.adherence  ? '✓' : '',
+      'ไม่มียาเหลือ':    r.checks?.noLeftover ? '✓' : '',
+      'นำกระติกน้ำแข็ง': r.checks?.icebox    ? '✓' : '',
+      'รายการยาเหลือ':   (r.leftovers||[]).length,
+      'มูลค่าประหยัด (฿)': r.totalSaving||0,
+      'หมายเหตุ':        r.notes||'',
+    }));
+    const los = recs.flatMap(r =>
+      (r.leftovers||[]).map(l => ({
+        'วันที่':          expISOtoTH(r.date),
+        'คลินิก':          r.clinic||'',
+        'HN':              r.hn||'',
+        'ชื่อผู้ป่วย':     r.name||'',
+        'ชื่อยา':          cleanDrugName(l.drug),
+        'จำนวนที่เหลือ':   l.qty||0,
+        'หน่วย':           l.unit||'เม็ด',
+        'ราคา/หน่วย (฿)': l.priceUnit||0,
+        'มูลค่า (฿)':      l.total||0,
+      }))
+    );
+    expExcel([
+      { name:'รายการให้คำปรึกษา', data: visits },
+      { name:'ยาคงเหลือ',         data: los.length ? los : [{หมายเหตุ:'ไม่มีรายการยาเหลือ'}] },
+    ], `งานเภสัชกรรมคลินิก_${label}`);
+  }
+
+  if (fmt === 'pdf') {
+    const headers = ['วันที่','เวลา','คลินิก','HN','ชื่อผู้ป่วย','DRP','ยาคงเหลือ','มูลค่า (฿)','เภสัชกร'];
+    const rows = recs.map(r => [
+      expISOtoTH(r.date), thTime(r.created), r.clinic||'', r.hn||'', r.name||'',
+      (r.drps||[]).map(d=>d.type).join(', ')||'—',
+      (r.leftovers||[]).map(l=>`${cleanDrugName(l.drug)} ${l.qty}${l.unit||'เม็ด'}`).join('\n')||'—',
+      r.totalSaving>0 ? '฿'+r.totalSaving.toFixed(0) : '',
+      r.pharmacist||'',
+    ]);
+    expPDF({ title:'รายงานงานเภสัชกรรมคลินิก', subtitle: label, headers, rows, landscape:true });
+  }
+  expModalClose();
+}
+</script>
+
+<!-- ══ EXPORT MODAL ══════════════════════════════════════════ -->
+<div id="export-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title">📊 Export รายงาน</div>
+    <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <button id="exp-tab-date"  onclick="expSetTab('date')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">📅 ช่วงวันที่</button>
+      <button id="exp-tab-month" onclick="expSetTab('month')" style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📆 รายเดือน</button>
+      <button id="exp-tab-year"  onclick="expSetTab('year')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📋 ปีงบฯ</button>
+    </div>
+    <div id="exp-pane-date">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ตั้งแต่วันที่</label>
+          <input id="exp-from" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ถึงวันที่</label>
+          <input id="exp-to" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+      </div>
+    </div>
+    <div id="exp-pane-month" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">เดือน</label>
+          <select id="exp-month" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none">
+            <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option>
+            <option value="04">เมษายน</option><option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option>
+            <option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option><option value="09">กันยายน</option>
+            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปี (พ.ศ.)</label>
+          <select id="exp-month-year" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select></div>
+      </div>
+    </div>
+    <div id="exp-pane-year" style="display:none">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปีงบประมาณ (พ.ศ.)</label>
+      <select id="exp-fy" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select>
+    </div>
+    <div id="exp-preview" style="margin-top:12px;padding:10px 14px;background:var(--primary-light);border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark)">📊 เลือกช่วงเวลาด้านบน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button onclick="pageDoExport('excel')" style="padding:12px;background:#217346;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel (.xlsx)</button>
+      <button onclick="pageDoExport('pdf')"   style="padding:12px;background:#c0392b;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF (พิมพ์)</button>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="expModalClose()">ปิด</button></div>
+  </div>
+</div>
+
+</body>
+</html>

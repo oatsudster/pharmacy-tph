@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── pharmacy_tph collection ──────────────────────────────────────
+    // ครอบคลุม documents ทั้งหมดที่แอปใช้งาน:
+    // suggestions, adr_records, clinic_data,
+    // wt_stat, wt_cart, wt_stat_pending, wt_cart_pending,
+    // er_records, hosxp_records, hosxp_denom, expiry_tracker
+    match /pharmacy_tph/{docId} {
+      // อ่านได้ทุกคน (ข้อมูลภายในโรงพยาบาล ผ่าน PIN แล้ว)
+      allow read: if true;
+
+      // เขียนได้เฉพาะ document IDs ที่แอปใช้งานจริง
+      allow write: if docId in [
+        'suggestions',
+        'adr_records',
+        'clinic_data',
+        'wt_stat',
+        'wt_cart',
+        'wt_stat_pending',
+        'wt_cart_pending',
+        'er_records',
+        'hosxp_records',
+        'hosxp_denom',
+        'expiry_tracker'
+      ];
+    }
+
+    // ── Deny all other collections / paths ──────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

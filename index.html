@@ -1,0 +1,1003 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<style>
+:root {
+  --primary:      #1A5E38;
+  --primary-dark: #124228;
+  --primary-mid:  #237A4A;
+  --primary-light:#EAF4EE;
+  --gold:         #C49A22;
+  --gold-light:   #FBF3DC;
+  --success:      #16a34a;
+  --warning:      #b45309;
+  --danger:       #b91c1c;
+  --bg:           #F4F7F5;
+  --surface:      #ffffff;
+  --border:       #D6E4DA;
+  --text:         #1C2B22;
+  --text-mid:     #3D5A47;
+  --text-light:   #7A9A85;
+  --shadow:       0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
+  --shadow-md:    0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
+  --shadow-lg:    0 8px 32px rgba(26,94,56,.15), 0 2px 8px rgba(26,94,56,.08);
+  --radius:       12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans Thai', 'Sarabun', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--primary-dark);
+  color: #fff;
+  height: 64px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(18,66,40,.35);
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-pill {
+  background: var(--gold);
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+}
+.header-name { font-size: 16px; font-weight: 700; line-height: 1.35; }
+.header-sub  { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 1px; }
+.header-date {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  padding: 6px 14px;
+  border-radius: 99px;
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-mid) 100%);
+  color: #fff;
+  padding: 56px 24px 72px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+/* subtle dot pattern */
+.hero::before {
+  content:'';
+  position:absolute; inset:0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+/* gold decorative line */
+.hero::after {
+  content:'';
+  position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 3px;
+  background: var(--gold);
+  border-radius: 2px 2px 0 0;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(196,154,34,.2);
+  border: 1px solid rgba(196,154,34,.4);
+  color: #f0cc6a;
+  border-radius: 99px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 22px;
+  letter-spacing: .3px;
+}
+.hero h1 {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  letter-spacing: -.2px;
+}
+.hero h1 span { color: #f0cc6a; }
+.hero p {
+  font-size: 16px;
+  color: rgba(255,255,255,.75);
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── Cards section ── */
+.cards-wrap {
+  max-width: 1120px;
+  margin: -36px auto 0;
+  padding: 0 24px 60px;
+  position: relative;
+  z-index: 10;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* ── App Card ── */
+.app-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+  overflow: hidden;
+}
+.app-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* top color stripe */
+.card-stripe {
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-mid) 100%);
+}
+.card-stripe.gold {
+  background: linear-gradient(90deg, var(--gold) 0%, #e0b830 100%);
+}
+
+.card-body { padding: 22px 22px 16px; flex: 1; }
+.card-head  { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+.card-icon  {
+  width: 52px; height: 52px; flex-shrink: 0;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.icon-me  { background: #fef2f2; }
+.icon-dm  { background: var(--primary-light); }
+.icon-soon{ background: #f8fafc; }
+.card-title-wrap h2 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+.card-title-wrap .en { font-size: 11px; color: var(--text-light); font-weight: 500; letter-spacing: .5px; }
+.card-desc { font-size: 14px; color: var(--text-mid); line-height: 1.7; }
+
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tag {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tag-green  { background: var(--primary-light); color: var(--primary-dark); }
+.tag-gold   { background: var(--gold-light);    color: #7a5c0a; }
+.tag-red    { background: #fff1f1; color: #991b1b; }
+.tag-blue   { background: #eff6ff; color: #1e40af; }
+.tag-purple { background: #f5f3ff; color: #5b21b6; }
+.tag-gray   { background: #f1f5f9; color: #475569; }
+
+/* stat bar */
+.card-stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  background: var(--primary-light);
+  border-top: 1px solid var(--border);
+}
+.card-stat-bar.gold-bar { background: var(--gold-light); }
+.stat-item { display: flex; flex-direction: column; }
+.stat-val { font-size: 18px; font-weight: 800; color: var(--primary); line-height: 1; }
+.stat-val.gold-val { color: #7a5c0a; }
+.stat-lbl { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+.stat-divider { width: 1px; height: 32px; background: var(--border); }
+
+/* footer */
+.card-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.open-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary);
+  color: #fff;
+  border: none; border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: background .15s;
+  font-family: inherit;
+}
+.open-btn:hover { background: var(--primary-dark); }
+.open-btn.gold-btn { background: var(--gold); color: var(--primary-dark); }
+.open-btn.gold-btn:hover { background: #a8831a; }
+.last-update { font-size: 12px; color: var(--text-light); }
+
+/* ── Coming soon cards ── */
+/* ── Suggest Section ── */
+.suggest-wrap {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.suggest-form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+}
+.suggest-form-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 6px;
+}
+.suggest-desc {
+  font-size: 13px;
+  color: var(--text-mid);
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+.sform-group { margin-bottom: 12px; }
+.sform-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mid);
+  margin-bottom: 4px;
+}
+.sform-group input, .sform-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border .15s;
+}
+.sform-group textarea { resize: vertical; min-height: 72px; }
+.sform-group input:focus, .sform-group textarea:focus { border-color: var(--primary); background: #fff; }
+.sg-submit {
+  width: 100%;
+  padding: 10px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: background .2s;
+}
+.sg-submit:hover { background: var(--primary-dark); }
+
+.suggest-list-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+  max-height: 480px;
+}
+.suggest-list-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sg-count {
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 9px;
+  border-radius: 20px;
+}
+.sg-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-light);
+  font-size: 13px;
+}
+.sg-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: var(--bg);
+  position: relative;
+}
+.sg-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 4px;
+  padding-right: 28px;
+}
+.sg-item-detail {
+  font-size: 13px;
+  color: var(--text-mid);
+  line-height: 1.55;
+  margin-bottom: 8px;
+}
+.sg-item-meta {
+  font-size: 11px;
+  color: var(--text-light);
+  display: flex;
+  gap: 10px;
+}
+.sg-del {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #d1d5db;
+  font-size: 15px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.sg-del:hover { color: #ef4444; background: #fee2e2; }
+.sg-vote {
+  background: var(--primary-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.sg-vote:hover { background: var(--primary); color: #fff; }
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 28px 20px;
+  font-size: 13px;
+  color: var(--text-light);
+  border-top: 1px solid var(--border);
+}
+.footer-logo {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .hero h1 { font-size: 24px; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .header-date { display: none; }
+  .header-name { font-size: 14px; }
+  .card-stat-bar { flex-wrap: wrap; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<!-- ── LOGIN OVERLAY ─────────────────────────────────── -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--primary-dark);align-items:center;justify-content:center;flex-direction:column;gap:24px;">
+  <div style="text-align:center;color:#fff;margin-bottom:8px;">
+    <div style="font-size:52px;margin-bottom:8px;">💊</div>
+    <div style="font-size:20px;font-weight:800;">กลุ่มงานเภสัชกรรม</div>
+    <div style="font-size:14px;opacity:.7;margin-top:4px;">รพ.ถ้ำพรรณรา</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:32px;width:min(340px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center;">
+    <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:20px;">🔒 กรอกรหัสเพื่อเข้าใช้งาน</div>
+    <input id="pin-input" type="password" placeholder="รหัสผ่าน"
+      onkeydown="if(event.key==='Enter') checkPin()"
+      style="width:100%;padding:12px 16px;font-size:18px;font-family:inherit;border:2px solid var(--border);border-radius:10px;outline:none;text-align:center;letter-spacing:.1em;margin-bottom:12px;"
+      onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+    <div id="pin-error" style="color:var(--danger);font-size:13px;font-weight:600;margin-bottom:14px;min-height:18px;"></div>
+    <button onclick="checkPin()" style="width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<script>
+const PIN_HASH = 'a6def126ab5e799f31daddcde6d28e219daf99413142195a7569a8f4b07ca256';
+const AUTH_KEY  = 'tph_auth_v1';
+const FAIL_KEY  = 'tph_fail_v1';
+const MAX_TRIES = 5;
+const LOCK_MS   = 5 * 60 * 1000;
+
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getFailState() {
+  try { return JSON.parse(localStorage.getItem(FAIL_KEY)) || { count:0, lockUntil:0 }; }
+  catch { return { count:0, lockUntil:0 }; }
+}
+
+function setError(msg) {
+  document.getElementById('pin-error').textContent = msg;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-input').focus();
+}
+
+async function checkPin() {
+  const state = getFailState();
+  const now   = Date.now();
+  if (state.lockUntil > now) {
+    const mins = Math.ceil((state.lockUntil - now) / 60000);
+    setError(`🔒 ล็อกชั่วคราว กรุณารอ ${mins} นาที`);
+    return;
+  }
+  const val  = document.getElementById('pin-input').value;
+  const hash = await sha256(val);
+  if (hash === PIN_HASH) {
+    localStorage.removeItem(FAIL_KEY);
+    localStorage.setItem(AUTH_KEY, '1');
+    document.getElementById('login-overlay').style.display = 'none';
+  } else {
+    const newCount  = (state.count || 0) + 1;
+    const lockUntil = newCount >= MAX_TRIES ? now + LOCK_MS : 0;
+    localStorage.setItem(FAIL_KEY, JSON.stringify({ count: newCount, lockUntil }));
+    if (newCount >= MAX_TRIES) {
+      setError(`🔒 ล็อก 5 นาที (กรอกผิดเกิน ${MAX_TRIES} ครั้ง)`);
+    } else {
+      setError(`❌ รหัสไม่ถูกต้อง (เหลืออีก ${MAX_TRIES - newCount} ครั้ง)`);
+    }
+  }
+}
+
+(function() {
+  if (!localStorage.getItem(AUTH_KEY)) {
+    const ov = document.getElementById('login-overlay');
+    ov.style.display = 'flex';
+    const state = getFailState();
+    if (state.lockUntil > Date.now()) {
+      const mins = Math.ceil((state.lockUntil - Date.now()) / 60000);
+      document.getElementById('pin-error').textContent = `🔒 ล็อกชั่วคราว กรุณารอ ${mins} นาที`;
+    } else {
+      setTimeout(() => document.getElementById('pin-input').focus(), 100);
+    }
+  }
+})();
+</script>
+
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-pill">💊</div>
+    <div>
+      <div class="header-name">กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค</div>
+      <div class="header-sub">โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
+    </div>
+  </div>
+  <div class="header-date" id="hdr-date"></div>
+  <span id="idx-sync" style="font-size:11px;color:rgba(255,255,255,.5);display:none"></span>
+  <button onclick="localStorage.removeItem('tph_auth_v1');location.reload()" style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">🔒 ออก</button>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">🏥 ระบบสารสนเทศเภสัชกรรม</div>
+  <h1>ระบบจัดการข้อมูล<br><span>กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค</span></h1>
+  <p>รวมเครื่องมือดิจิทัลสำหรับงานเภสัชกรรมคลินิก<br>โรงพยาบาลถ้ำพรรณรา</p>
+</section>
+
+<!-- Cards -->
+<div class="cards-wrap">
+  <div class="section-label" style="margin-top:0">เครื่องมือที่ใช้งานได้</div>
+  <div class="cards-grid">
+
+    <!-- ME Dashboard -->
+    <div class="app-card" onclick="window.location.href='ME_Dashboard.html'">
+      <div class="card-stripe"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-me">⚠️</div>
+          <div class="card-title-wrap">
+            <h2>ME Dashboard</h2>
+            <div class="en">Medication Error Reporting</div>
+          </div>
+        </div>
+        <div class="card-desc">บันทึกและวิเคราะห์ความคลาดเคลื่อนทางยา พร้อมแดชบอร์ด แนวโน้ม และการนำเข้าข้อมูลจาก HosXP</div>
+        <div class="card-tags">
+          <span class="tag tag-red">ME Reporting</span>
+          <span class="tag tag-gold">HosXP Import</span>
+          <span class="tag tag-green">Dashboard</span>
+        </div>
+      </div>
+      <div class="card-stat-bar">
+        <div class="stat-item">
+          <div class="stat-val" id="me-total">—</div>
+          <div class="stat-lbl">ME เดือนนี้</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="me-harm">—</div>
+          <div class="stat-lbl">ก่อให้เกิดอันตราย</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="me-month">—</div>
+          <div class="stat-lbl">เดือนนี้</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="me-updated"></span>
+        <button class="open-btn" onclick="event.stopPropagation();window.location.href='ME_Dashboard.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+    <!-- Waiting Time -->
+    <div class="app-card" onclick="window.location.href='waiting-time.html'">
+      <div class="card-stripe gold"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#fefce8">⏱️</div>
+          <div class="card-title-wrap">
+            <h2>ระยะเวลารอคอยยา</h2>
+            <div class="en">Dispensing Waiting Time</div>
+          </div>
+        </div>
+        <div class="card-desc">บันทึกเวลารอรับยา Stat Dose และยา Cart ประจำวัน พร้อมกราฟแนวโน้มและสถิติรายเดือน</div>
+        <div class="card-tags">
+          <span class="tag tag-gold">Stat Dose</span>
+          <span class="tag tag-blue">Cart Dose</span>
+          <span class="tag tag-green">รายงานรายเดือน</span>
+        </div>
+      </div>
+      <div class="card-stat-bar gold-bar">
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="wt-stat-count">—</div>
+          <div class="stat-lbl">บันทึก Stat Dose</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="wt-cart-count">—</div>
+          <div class="stat-lbl">บันทึก Cart Dose</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val gold-val" id="wt-avg">—</div>
+          <div class="stat-lbl">เฉลี่ย Stat (นาที)</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="wt-updated"></span>
+        <button class="open-btn gold-btn" onclick="event.stopPropagation();window.location.href='waiting-time.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+    <!-- DM Remission -->
+    <div class="app-card" onclick="window.location.href='dm-remission.html'">
+      <div class="card-stripe"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon icon-dm">🩺</div>
+          <div class="card-title-wrap">
+            <h2>ติดตาม DM Remission</h2>
+            <div class="en">Diabetes Remission Tracker</div>
+          </div>
+        </div>
+        <div class="card-desc">ติดตามผู้ป่วยเบาหวานที่มี A1C &lt; 6.5% และคุมอาหาร พร้อมนำเข้าข้อมูลจาก HosXP รายวัน</div>
+        <div class="card-tags">
+          <span class="tag tag-green">DM Remission</span>
+          <span class="tag tag-gold">HosXP Import</span>
+          <span class="tag tag-blue">ติดตามรายปี</span>
+        </div>
+      </div>
+      <div class="card-stat-bar">
+        <div class="stat-item">
+          <div class="stat-val" id="dm-patients">—</div>
+          <div class="stat-lbl">ผู้ป่วยทั้งหมด</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="dm-remit">—</div>
+          <div class="stat-lbl">Remission</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" id="dm-visits">—</div>
+          <div class="stat-lbl">ครั้งที่ติดตาม</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="dm-updated"></span>
+        <button class="open-btn" onclick="event.stopPropagation();window.location.href='dm-remission.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+    <!-- Clinic HT/DM/COPD -->
+    <div class="app-card" onclick="window.location.href='clinic.html'" style="background:linear-gradient(135deg,#faf5ff 0%,#f0fdf4 100%)">
+      <div class="card-stripe" style="background:linear-gradient(90deg,#7c3aed,#0e7490)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#f5f3ff">💊</div>
+          <div class="card-title-wrap">
+            <h2>งานเภสัชกรรมคลินิก</h2>
+            <div class="en">HT / DM / COPD Pharmacy Clinic</div>
+          </div>
+        </div>
+        <div class="card-desc">บันทึกการให้บริการคลินิก HT, DM, COPD ปัญหาการใช้ยา (DRP) ยาเหลือใช้ และคำนวณต้นทุนที่ประหยัดได้</div>
+        <div class="card-tags">
+          <span class="tag tag-purple">DRP Recording</span>
+          <span class="tag tag-green">Drug Leftover</span>
+          <span class="tag tag-blue">Cost Saving</span>
+        </div>
+      </div>
+      <div class="card-stat-bar" style="background:#f5f3ff">
+        <div class="stat-item">
+          <div class="stat-val" style="color:#5b21b6" id="clinic-visits">—</div>
+          <div class="stat-lbl">ครั้งที่ให้บริการ</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" style="color:#5b21b6" id="clinic-drp">—</div>
+          <div class="stat-lbl">DRP Coverage</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" style="color:#5b21b6" id="clinic-saving">—</div>
+          <div class="stat-lbl">ประหยัดยาได้</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="clinic-updated"></span>
+        <button class="open-btn" style="background:#7c3aed" onclick="event.stopPropagation();window.location.href='clinic.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+    <!-- ADR -->
+    <div class="app-card" onclick="window.location.href='adr.html'">
+      <div class="card-stripe" style="background:linear-gradient(90deg,#b91c1c,#dc2626)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#fff1f2">🚨</div>
+          <div class="card-title-wrap">
+            <h2>รายงาน ADR</h2>
+            <div class="en">Adverse Drug Reaction Reporting</div>
+          </div>
+        </div>
+        <div class="card-desc">บันทึกและติดตามอาการไม่พึงประสงค์จากยา พร้อมระบุยาต้นเหตุ อาการ และความรุนแรง</div>
+        <div class="card-tags">
+          <span class="tag tag-red">ADR Report</span>
+          <span class="tag tag-purple">Causality</span>
+          <span class="tag tag-gray">สะสมรายปี</span>
+        </div>
+      </div>
+      <div class="card-stat-bar" style="background:#fff1f2">
+        <div class="stat-item">
+          <div class="stat-val" style="color:#b91c1c" id="adr-total">—</div>
+          <div class="stat-lbl">ADR เดือนนี้</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" style="color:#b91c1c" id="adr-serious">—</div>
+          <div class="stat-lbl">Probable/Certain</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val" style="color:#b91c1c" id="adr-month">—</div>
+          <div class="stat-lbl">เดือนนี้</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="adr-updated"></span>
+        <button class="open-btn" style="background:#b91c1c" onclick="event.stopPropagation();window.location.href='adr.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+    <!-- EXPIRY TRACKER -->
+    <div class="app-card" onclick="window.location.href='expiry-tracker.html'">
+      <div class="card-stripe" style="background:linear-gradient(90deg,#c2410c,#b45309)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#ffedd5">⏳</div>
+          <div class="card-title-wrap">
+            <h2>ติดตามยาใกล้หมดอายุ</h2>
+            <div class="en">Expiry Date Tracker</div>
+          </div>
+        </div>
+        <div class="card-desc">ติดตามวันหมดอายุยาใน Emergency Box, High Alert Drug, กล่อง Refer, ยาเสพติด, ตู้เย็น และน้ำเกลือ พร้อมแจ้งเตือนยาใกล้หมดอายุ</div>
+        <div class="card-tags">
+          <span class="tag tag-red">Emergency Box</span>
+          <span class="tag tag-gray">High Alert</span>
+          <span class="tag tag-gray">Refer / ยาเสพติด / ตู้เย็น / น้ำเกลือ</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update"></span>
+        <button class="open-btn" style="background:#c2410c" onclick="event.stopPropagation();window.location.href='expiry-tracker.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
+  </div><!-- /cards-grid -->
+
+  <!-- Suggest Section -->
+  <div class="section-label" style="margin-top:40px">ข้อเสนอแนะ / ขอระบบใหม่</div>
+  <div class="suggest-wrap">
+    <div class="suggest-form-card">
+      <div class="suggest-form-title">💡 เสนอฟีเจอร์หรือระบบใหม่</div>
+      <div class="suggest-desc">มีระบบที่อยากให้พัฒนาเพิ่มเติม? แจ้งได้เลย ทีมจะนำไปพิจารณา</div>
+      <div class="sform-group">
+        <label>หัวข้อ</label>
+        <input type="text" id="sg-topic" placeholder="เช่น ระบบติดตาม HT clinic" maxlength="80">
+      </div>
+      <div class="sform-group">
+        <label>รายละเอียด</label>
+        <textarea id="sg-detail" placeholder="อธิบายฟีเจอร์ที่ต้องการ..."></textarea>
+      </div>
+      <button class="sg-submit" onclick="submitSuggest()">ส่งข้อเสนอแนะ</button>
+    </div>
+    <div class="suggest-list-wrap">
+      <div class="suggest-list-title">
+        📋 ข้อเสนอแนะทั้งหมด
+        <span class="sg-count" id="sg-count">0</span>
+      </div>
+      <div id="sg-list"><div class="sg-empty">ยังไม่มีข้อเสนอแนะ</div></div>
+    </div>
+  </div>
+
+</div><!-- /cards-wrap -->
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">
+    💊 กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค
+  </div>
+  <div>โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
+</footer>
+
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+  authDomain: "pharmacy-tph.firebaseapp.com",
+  projectId: "pharmacy-tph",
+  storageBucket: "pharmacy-tph.firebasestorage.app",
+  messagingSenderId: "617328257113",
+  appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence().catch(() => {});
+
+// ── Header date ──
+function updateDate() {
+  const now = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Bangkok' };
+  document.getElementById('hdr-date').textContent = now.toLocaleDateString('th-TH', opts);
+}
+updateDate();
+setInterval(updateDate, 60000);
+
+// ── Stats from localStorage ──
+function g(id) { return document.getElementById(id); }
+
+function updateStats() {
+  // Current month prefix: "YYYY-MM"
+  const now = new Date();
+  const mPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const inMonth = r => r.date && r.date.startsWith(mPrefix);
+
+  // ME Dashboard — show current month ME events + harmful
+  try {
+    const meRecs = JSON.parse(localStorage.getItem('me_records_v2') || '[]').filter(inMonth);
+    const meCount = meRecs.length;
+    g('me-total').textContent = meCount.toLocaleString();
+    const harm = meRecs.filter(r => r.harm && r.harm !== 'ไม่มีอันตราย' && r.harm !== 'none' && r.harm !== 'A').length;
+    g('me-harm').textContent = meCount ? harm : '—';
+    g('me-month').textContent = meCount || '—';
+  } catch(e) {}
+
+  // Waiting Time — current month only
+  try {
+    const wtStat = JSON.parse(localStorage.getItem('wt_stat') || '[]').filter(inMonth);
+    const wtCart = JSON.parse(localStorage.getItem('wt_cart') || '[]').filter(inMonth);
+    g('wt-stat-count').textContent = wtStat.length || '—';
+    g('wt-cart-count').textContent = wtCart.length || '—';
+    if (wtStat.length) {
+      const avg = wtStat.reduce((s,r) => s + (parseFloat(r.minutes)||parseFloat(r.mins)||0), 0) / wtStat.length;
+      g('wt-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
+    } else {
+      g('wt-avg').textContent = '—';
+    }
+  } catch(e) {}
+
+  // DM Remission — visits this month / total patients
+  try {
+    const dmPts = JSON.parse(localStorage.getItem('dm_patients') || '[]');
+    const dmVisits = JSON.parse(localStorage.getItem('dm_visits') || '[]').filter(inMonth);
+    g('dm-patients').textContent = dmPts.length.toLocaleString();
+    g('dm-visits').textContent = dmVisits.length || '—';
+    const remit = dmPts.filter(p => p.remission || (p.a1c && parseFloat(p.a1c) < 6.5)).length;
+    g('dm-remit').textContent = remit > 0 ? remit : '—';
+  } catch(e) {}
+
+  // Clinic — current month only
+  try {
+    const clinicVisits = JSON.parse(localStorage.getItem('clinic_visits') || '[]').filter(inMonth);
+    const count = clinicVisits.length;
+    g('clinic-visits').textContent = count || '—';
+    if (count) {
+      const withDRP = clinicVisits.filter(r => r.drps && r.drps.length > 0);
+      const drpPct = Math.round(withDRP.length / count * 100);
+      g('clinic-drp').textContent = drpPct + '%';
+      const saving = clinicVisits.reduce((s,r) => s + (r.totalSaving||0), 0);
+      g('clinic-saving').textContent = saving > 0 ? '฿' + Math.round(saving).toLocaleString() : '—';
+    } else {
+      g('clinic-drp').textContent = '—';
+      g('clinic-saving').textContent = '—';
+    }
+  } catch(e) {}
+
+  // ADR — current month only
+  try {
+    const adrRecs = JSON.parse(localStorage.getItem('adr_records') || '[]').filter(inMonth);
+    const adrCount = adrRecs.length;
+    g('adr-total').textContent = adrCount || '—';
+    const serious = adrRecs.filter(r => r.causality === 'Probable' || r.causality === 'Certain').length;
+    g('adr-serious').textContent = adrCount ? serious : '—';
+    g('adr-month').textContent = adrCount || '—';
+  } catch(e) {}
+}
+
+updateStats();
+
+// ── Suggest (Firebase) ──
+const SUGGEST_DOC = db.collection('pharmacy_tph').doc('suggestions');
+let suggests = [];
+
+async function loadSuggests() {
+  try {
+    const snap = await SUGGEST_DOC.get();
+    suggests = snap.exists ? (snap.data().list || []) : [];
+    renderSuggests();
+  } catch(e) { console.warn('Suggest load failed', e); }
+}
+
+function renderSuggests() {
+  const el = document.getElementById('sg-list');
+  document.getElementById('sg-count').textContent = suggests.length;
+  if (!suggests.length) { el.innerHTML = '<div class="sg-empty">ยังไม่มีข้อเสนอแนะ</div>'; return; }
+  el.innerHTML = [...suggests].reverse().map((s,ri) => {
+    const idx = suggests.length - 1 - ri;
+    return `<div class="sg-item">
+      <div class="sg-item-title">${escHtml(s.topic)}</div>
+      <div class="sg-item-detail">${escHtml(s.detail)}</div>
+      <div class="sg-item-meta">
+        <span>📅 ${s.date||''}</span>
+        <span>👍 ${s.votes||0} โหวต</span>
+        <button class="sg-vote" onclick="voteItem(${idx})">+1 โหวต</button>
+      </div>
+      <button class="sg-del" onclick="delItem(${idx})" title="ลบ">×</button>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function saveSuggests() {
+  await SUGGEST_DOC.set({ list: suggests });
+  renderSuggests();
+}
+
+window.submitSuggest = async function() {
+  const topic  = document.getElementById('sg-topic').value.trim();
+  const detail = document.getElementById('sg-detail').value.trim();
+  if (!topic) { alert('กรุณาระบุหัวข้อ'); return; }
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2,'0');
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const yy = String(now.getFullYear()+543).slice(-2);
+  suggests.push({ topic, detail, date: `${dd}/${mm}/${yy}`, votes: 0, id: Date.now() });
+  await saveSuggests();
+  document.getElementById('sg-topic').value = '';
+  document.getElementById('sg-detail').value = '';
+};
+
+window.voteItem = async function(idx) {
+  suggests[idx].votes = (suggests[idx].votes||0) + 1;
+  await saveSuggests();
+};
+
+window.delItem = async function(idx) {
+  if (!confirm('ลบข้อเสนอนี้?')) return;
+  suggests.splice(idx, 1);
+  await saveSuggests();
+};
+
+loadSuggests();
+
+// ── Realtime stats from Firestore ──
+const COL = 'pharmacy_tph';
+const syncEl = document.getElementById('idx-sync');
+
+function setIdxSync(ok) {
+  if (!syncEl) return;
+  const t = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+  syncEl.textContent = ok ? `☁️ ${t}` : '⚠️ ออฟไลน์';
+  syncEl.style.color = ok ? 'rgba(255,255,255,.6)' : '#fca5a5';
+  syncEl.style.display = 'inline';
+}
+
+db.collection(COL).doc('er_records').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('me_records_v2', JSON.stringify(snap.data().records||[])); updateStats(); setIdxSync(true); }
+}, () => setIdxSync(false));
+
+db.collection(COL).doc('adr_records').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('adr_records', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('wt_stat').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('wt_stat', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('wt_cart').onSnapshot(snap => {
+  if (snap.exists) { localStorage.setItem('wt_cart', JSON.stringify(snap.data().records||[])); updateStats(); }
+});
+
+db.collection(COL).doc('clinic_data').onSnapshot(snap => {
+  if (snap.exists) {
+    const d = snap.data();
+    if (d.visitRecords) localStorage.setItem('clinic_visits', JSON.stringify(d.visitRecords));
+    updateStats();
+  }
+});
+</script>
+
+</body>
+</html>

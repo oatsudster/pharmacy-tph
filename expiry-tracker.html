@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ติดตามยาใกล้หมดอายุ — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
+<script src="lib/session-timeout.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<style>
+:root {
+  --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
+  --primary-light:#EAF4EE;--gold:#C49A22;--gold-light:#FBF3DC;
+  --success:#16a34a;--danger:#b91c1c;--warning:#b45309;
+  --info:#0e7490;--info-light:#e0f2fe;
+  --bg:#F4F7F5;--surface:#fff;--border:#D6E4DA;
+  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#7A9A85;
+  font-family:'Noto Sans Thai',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;
+  display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(26,94,56,.07);flex-shrink:0;position:sticky;top:0;z-index:100;flex-wrap:wrap;}
+.topbar-home{display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;
+  padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;}
+.topbar-home:hover{background:var(--primary-dark);}
+.topbar-title{font-size:17px;font-weight:700;color:var(--primary-dark);flex:1;}
+.sync-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:#fef9c3;color:#854d0e;flex-shrink:0;}
+
+.main{padding:20px;max-width:1280px;width:100%;margin:0 auto;flex:1;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px;}
+.kpi-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;
+  box-shadow:0 1px 3px rgba(26,94,56,.05);cursor:pointer;transition:transform .12s,box-shadow .12s;}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(26,94,56,.1);}
+.kpi-card.active{outline:2.5px solid var(--primary);}
+.kpi-val{font-size:26px;font-weight:800;line-height:1.2;}
+.kpi-lbl{font-size:11.5px;color:var(--text-mid);font-weight:600;margin-top:2px;}
+
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;background:var(--surface);
+  border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;}
+.filter-bar input[type="text"]{padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;
+  font-family:inherit;width:220px;}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{padding:6px 13px;border:1.5px solid var(--border);border-radius:20px;background:var(--bg);color:var(--text-mid);
+  font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.chip:hover{border-color:var(--primary);color:var(--primary);}
+.chip.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.spacer{flex:1;}
+
+.box-tab-row{margin-bottom:6px;}
+.box-tab{padding:8px 16px;border:1.5px solid var(--border);border-radius:10px 10px 0 0;background:var(--surface);
+  color:var(--text-mid);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;
+  white-space:nowrap;border-bottom:none;position:relative;top:1px;}
+.box-tab:hover{color:var(--primary);}
+.box-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.box-tab .box-cnt{font-size:10.5px;opacity:.8;margin-left:4px;}
+.box-tab-del{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:6px;
+  border-radius:50%;font-size:10px;opacity:.7;}
+.box-tab-del:hover{background:rgba(255,255,255,.3);opacity:1;}
+.box-tab-add{background:var(--bg);border-style:dashed;color:var(--primary);}
+.box-tab-add:hover{background:var(--primary-light);}
+.box-checked-note{font-size:11.5px;color:var(--text-light);margin:0 2px 12px;min-height:26px;display:flex;align-items:center;gap:6px;}
+.btn-today{padding:5px 12px;border:1.5px solid var(--primary);border-radius:7px;background:var(--primary-light);
+  color:var(--primary-dark);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.btn-today:hover{background:var(--primary);color:#fff;}
+.btn-export{padding:8px 16px;background:#217346;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-export:hover{background:#1a5c38;}
+.btn-add{padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-add:hover{background:var(--primary-dark);}
+.row-actions{display:flex;gap:4px;white-space:nowrap;}
+.row-btn{width:28px;height:28px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);
+  cursor:pointer;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:all .12s;}
+.row-btn:hover{border-color:var(--primary);background:var(--primary-light);}
+.row-btn.del:hover{border-color:var(--danger);background:#fee2e2;}
+.edit-name{min-width:180px;}
+
+.tbl-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{background:var(--primary-light);color:var(--primary-dark);padding:10px 12px;text-align:left;font-weight:700;
+  white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;}
+th:hover{background:#dcefe3;}
+th .arrow{font-size:10px;color:var(--text-light);margin-left:3px;}
+td{padding:9px 12px;border-top:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:#f8faf9;}
+tr.multi-lot td{background:var(--grp-bg);}
+tr.multi-lot:hover td{filter:brightness(0.97);}
+tr.multi-lot td:first-child{box-shadow:inset 3px 0 0 var(--grp-border);}
+.lot-badge{display:inline-block;color:#fff;font-size:10.5px;font-weight:700;background:var(--grp-border);
+  padding:2px 8px;border-radius:20px;margin-left:6px;white-space:nowrap;vertical-align:middle;}
+.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;flex-shrink:0;}
+.status-cell{display:flex;align-items:center;font-weight:700;font-size:12.5px;white-space:nowrap;}
+.box-tag{display:inline-block;padding:3px 9px;border-radius:7px;background:var(--bg);color:var(--text-mid);
+  font-size:11.5px;font-weight:600;white-space:nowrap;}
+.days-cell{font-weight:700;white-space:nowrap;}
+.chk-item{width:18px;height:18px;cursor:pointer;accent-color:var(--primary);}
+tr.row-checked td{background:var(--primary-light);}
+tr.row-checked:hover td{filter:brightness(0.97);}
+.empty-state{text-align:center;padding:40px;color:var(--text-light);}
+.count-note{font-size:12.5px;color:var(--text-light);margin:10px 2px 0;}
+
+.edit-input{border:1.5px solid transparent;background:transparent;font-family:inherit;font-size:13.5px;color:var(--text);
+  border-radius:6px;padding:4px 6px;width:100%;transition:all .12s;}
+.edit-input:hover{border-color:var(--border);background:var(--bg);}
+.edit-input:focus{border-color:var(--primary);background:#fff;outline:none;}
+.edit-qty{width:64px;}
+.edit-exp{width:132px;}
+.edited-mark{color:var(--gold);font-size:10px;margin-left:3px;}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;
+  padding:10px 20px;border-radius:9px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:all .25s;z-index:999;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+footer{padding:16px 20px;text-align:center;font-size:11.5px;color:var(--text-light);}
+
+@media (max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media (max-width:640px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .filter-bar input[type="text"]{width:100%;}
+  .main{padding:14px;}
+  table{font-size:12px;}
+  th,td{padding:7px 8px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="topbar-home" href="index.html">🏠 หน้าหลัก</a>
+  <span class="topbar-title">💊 ติดตามยาใกล้หมดอายุ</span>
+  <span class="sync-badge" id="sync-badge">⏳ กำลังเชื่อมต่อ...</span>
+</div>
+<div id="toast"></div>
+<datalist id="drug-formulary"><option value="(0.5) HALOPERIDOL"><option value="(100 ml) UNISON ENEMA"><option value="(100) PHENYTOIN(dilantin) promt"><option value="(2) Benzhexol"><option value="(2) DIAZEPAM(valium)"><option value="(2) HALOPERIDOL"><option value="(200) Acyclovir"><option value="(30) oseltamivir"><option value="(325) paracetamol"><option value="(45) oseltamivir"><option value="(5) Benzhexol"><option value="(5) DIAZEPAM(valium)"><option value="(5) HALOPERIDOL"><option value="(50) Phenytoin(Dilantin)"><option value="(500) PARACETAMOL"><option value="(75) oseltamivir"><option value="(800) ACYCLOVIR"><option value="(Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg"><option value="(ยาใช้เฉพาะราย) Penicillin G Sodium"><option value="10%D/N/2"><option value="3%Sodium Chloride(NaCl)"><option value="ACETATE RINGER"><option value="ACTIVATED CHARCOAL"><option value="ADRENALINE"><option value="ALBENDAZOLE(zentel)"><option value="ALCOHOL"><option value="ALCOHOL  60 ml"><option value="ALLOPURINOL(zyloric)"><option value="AMIODARONE(Cordarone) (NL)"><option value="AMMONIUM CARBONATE"><option value="AMPICILLIN   1 g"><option value="ANTACID SUSP(alum milk)"><option value="ANTIVENUM SERA,(งูเห่า)"><option value="ANTIVENUM SERUM (กะปะ)"><option value="ATENOLOL"><option value="ATROPINE"><option value="Adenosine (adenocor)"><option value="Albendazole (FALBEN)susp"><option value="Amlodipine"><option value="Atarax(hydroxyzine)"><option value="Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg)"><option value="Augmentin Susp"><option value="BCG(bacillus calmette-gue rin)"><option value="BENZATHINE PENICILLIN"><option value="BENZYL BENZOATE"><option value="BERODUAL"><option value="BERODUAL ( MDI ) inhaler"><option value="BETADINE (IODINE)"><option value="BETAMETHASONE(5g)"><option value="BUDESONIDE  (MDI)"><option value="Bromhexine elixir"><option value="Buscopan inj (HYOSCINE  INJ)"><option value="CAFERGOT (NL)"><option value="CALAMINE"><option value="CALCIUM GLUCONATE"><option value="CAPTOPRIL  25 mg"><option value="CARBAMAZEPINE(tegretol)"><option value="CETIRIZINE (Alerest)"><option value="CHLORAMPHENICOL EAR DROP"><option value="CHLORPROMAZINE(CPZ)"><option value="CHLORTETRACYCLINE"><option value="CLINDAMYCIIN"><option value="CLONAZEPAM(rivotril)"><option value="CLOTRIMAZOLE VAG TAB(canesten)"><option value="CLOTRIMAZOLE(canesten)"><option value="CLOXACILLIN INJ  1  g"><option value="COLCHICINE"><option value="COTRIMOXAZOLE(bactrim)"><option value="CPM"><option value="CPM   tab."><option value="CPM(piriton)"><option value="CYPROHEPTADINE(periactin)"><option value="Carbocisteine"><option value="CeFaZOLIN injection"><option value="CefTRIAXone 1 g injection (CEF-3)"><option value="CefTaZidime injection"><option value="Chlorhexidine mouth wash"><option value="Ciprofloxacin"><option value="Clopidogrel (Plavix)"><option value="Covid Vaccine(SARS-CoV-2)"><option value="Cytotec"><option value="D-5-S"><option value="D-5-S/2"><option value="D-5-S/3"><option value="D-5-S/4"><option value="D-5-S/5"><option value="D-5-W"><option value="D-W-10"><option value="DEXAMETHASONE"><option value="DEXTRAN"><option value="DEXTROMETHORPHAN 15"><option value="DEXTROSE (glucose)"><option value="DIAZEPAM(valium)"><option value="DICLOFENAC (voltaren/fenac)"><option value="DIGOXIN"><option value="DIGOXIN(lanoxin)"><option value="DIMENHYDRINATE(Dramamine)"><option value="DIMENHYDRINATE(dramamine)"><option value="DIP. CLORAZEPATE(trancon/T5)"><option value="DOMPERIDONE(motilium)"><option value="DOPAMINE"><option value="DOXYCYCLINE"><option value="DT(diphtheria tetanus) vaccines"><option value="DTP"><option value="DTP-HB"><option value="DTP-HB-Hib vaccine"><option value="Depakin (sodium valproate)"><option value="Dicloxacillin syp."><option value="Dolutegravir"><option value="Doxazosin"><option value="EFAVIRENZ(EFV)"><option value="ERIG (vinrab)"><option value="ERYTHROMYCIN"><option value="ETHAMBUTOL"><option value="FERROUS  DROP"><option value="FERROUS  FUMARATE"><option value="FLUCONAZOLE"><option value="FLUNARIZINE(sibelium)"><option value="FLUPHENAZINE(deca)"><option value="FOLIC  ACID"><option value="FUROSEMIDE(lasix)"><option value="Favipiravir (covid-19)"><option value="Ferrous fumarate Susp."><option value="Fluoxetine"><option value="Fluphenazine(DECA)"><option value="GEMFIBROZIL(Lopid)"><option value="GENTAMICIN  80 mg/amp."><option value="GPO VIR Z 250"><option value="GPO vir S30"><option value="Glyceryl guaiacolate (GG)"><option value="Guaifenesin syrup (GG)"><option value="HALOPERIDOL"><option value="HCTZ(hydrochlorothiazide)"><option value="HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้"><option value="HI SET"><option value="HISTA OPH(opsil A)"><option value="HPV vaccine"><option value="HYOSCINE(buscopan)"><option value="HYOSICNE(buscopan)"><option value="Hydralazine  Hcl"><option value="Hydralazine HCl"><option value="Hydrocortisone sodium  succinate"><option value="IBUPROFEN(brufen)"><option value="IMIPRAMINE(tofranil)"><option value="IMPLANON  implant"><option value="INH(isoniazid)"><option value="ISODIL  SL"><option value="ISODIL  TAB"><option value="Ibuprofen (brufen)"><option value="Inactivated Poliomyelitis Vaccine(IPV)"><option value="Isoniazid 300 mg"><option value="Isoniazid+Rifapentine"><option value="JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml"><option value="JE VACCINE(0.5 ML)"><option value="K Y jelly sack"><option value="KALIMATE"><option value="KETOCONAZOLE(nizoral)"><option value="KOCITAF (DTG50mg+FTC200mg+TAF25mg)"><option value="LIDOCAINE"><option value="LITHIUM CARBONATE(LiCO3) (NL)"><option value="Lamivudine"><option value="Lamivudine 3TC"><option value="LevoFloxacin"><option value="Levodopa250 + carbidopa 25"><option value="Lidocain injection"><option value="Lopinavir/Ritonavir"><option value="Lorazepam"><option value="Losartan (cozaar)"><option value="M tussis ( brown mixt )"><option value="M. CARMINATIVE"><option value="M.tussis (brown mixt)"><option value="MAGNESIUM SULFATE"><option value="MEDROXYPROGESTERONE ACETATE(depo)"><option value="METFORMIN(glucophage)"><option value="METHYLDOPA(aldomet)"><option value="METHYLERGOMETRINE(Methergin)"><option value="METOCLOPRAMIDE(plasil)"><option value="METRONIDAZOLE(flagyl)"><option value="METRONIDAZOLE(flagyl) 500 mg/vial."><option value="MILK OF MAGNESIA(MOM)"><option value="MMR"><option value="MORPHINE"><option value="MR"><option value="MTV-MULTIVITAMINS"><option value="Methimazole"><option value="Metoprolol tartrate"><option value="Micronised progesterone"><option value="Mixtard (ขวด)"><option value="Molnupiravir"><option value="Morphine MST"><option value="Morphine Solution"><option value="NALOXONE(narcan)"><option value="NIFEDIPINE SR"><option value="NORFLOXACIN(lexinor)"><option value="NPH (ขวด)"><option value="NPH INSULIN"><option value="NSS 5 ml"><option value="NSS INJ."><option value="NaCl (Sodium Chloride)"><option value="Nevirapine"><option value="Norepinephrine bitartrate 4 ml/"><option value="Norgesic(Orphenadrine35mg/paracetamol500mg)"><option value="OLIVE OIL"><option value="OMEPRAZOLE(losec/miracid)"><option value="OPV vaccine"><option value="ORS(รสส้ม) 75"><option value="OXYTOCIN"><option value="Omeprazole 10 ml"><option value="Ondansetron inj"><option value="PARACETAMOL  SYR"><option value="PARACETAMOL SYRUP"><option value="PCEC (ID)"><option value="PCEC (IM)"><option value="PERPHENAZINE(สีไข่ไก่)"><option value="PETHIDINE"><option value="PHENOBARBITAL(1 GRAIN)"><option value="POTASSIUM (KCL elixir)"><option value="POTASSIUM CHLORIDE(KCl)"><option value="PREDNISOLONE"><option value="PROCTOSEDYL"><option value="PTU(propylthiouracil)"><option value="PZA(pyrazinamide)"><option value="Phenytoin inj"><option value="Pioglitazone"><option value="PolyOPH"><option value="Potassium Chloride tab"><option value="Primolut-N(norethisterone 5 mg)"><option value="QUININE SULFATE"><option value="R-DEN(คุมเม็ด)"><option value="RABIES ANTISERUM(ERIG)"><option value="RI  STAT (REGULAR INSULIN )"><option value="RIFAMPICIN"><option value="ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง)"><option value="ROXITHROMYCIN(rulid)"><option value="Rifapentine"><option value="Rifinah (Rifam+INH)"><option value="Risperidone"><option value="SALBUTAMOL"><option value="SALBUTAMOL  NB (ER)"><option value="SALBUTAMOL NB."><option value="SALBUTAMOL(ventolin) MDI"><option value="SELENIUM shampoo"><option value="SILVER SULFADIAZINE (25g)"><option value="SIMETHICONE  (air-x)"><option value="SIMETHICONE DROP SUS"><option value="SODIUM BICARBONATE 7.5%(NaHCO3)"><option value="SODIUM BICARBONATE(NaHCO3)"><option value="STERILEWATER (SWI)"><option value="STREPTOMYCIN SULPHATE"><option value="Saline IRRIGATE"><option value="SeRoflo   (MDI)"><option value="Sertraline"><option value="SimVastatin(zocor) (NL)"><option value="Sodamint (Sodium bicarbonate)"><option value="Streptokinase"><option value="TERBUTALINE SULFATE(bricanyl)"><option value="THYROXINE-L"><option value="TLD (TDF300mg+3TC300mg+DTG50mg)"><option value="TRAMADOL HCl(tramal)"><option value="TRAMADOL inj"><option value="TRIAMCINOLONE"><option value="TRIAMCINOLONE+XYLOCAINE(IL)(kenacort)"><option value="Teevir"><option value="Tenofovia disoproxil"><option value="Theophylline-CR"><option value="Tranexamic acid"><option value="Triamcinolone Oral Paste"><option value="Triferdine"><option value="UNISON"><option value="UNISON ENEMA"><option value="VERORAB ( ID )"><option value="VERORAB ( IM )"><option value="VIT B6(pyridoxine)"><option value="VITAMIN B 1/6/12"><option value="VITAMIN B COMPLEX"><option value="VITAMIN K1"><option value="Varenicline Tartrate"><option value="WATER FOR INJECTION"><option value="Whitfields ointment"><option value="Zidovudine  (AZT)"><option value="Zidovudine (AZT)"><option value="Zilarvir (Lamivudine150mg+Zidovudine300mg)"><option value="[ 81] aspirin(asa)"><option value="[125] amoxycillin SYR"><option value="[20] ENALAPRIL"><option value="[250] Amoxy dry SYRUP"><option value="[250] AmoxyCillin"><option value="[250] diCloxacillin  cap"><option value="[300] ASPIRIN(ASA/aspent)"><option value="[500] AMOXICILLIN"><option value="[500] DICLOXACILLIN CAP"><option value="[5] eNAlapril"><option value="aP Acellular Pertussis (ไอกรน)"><option value="amitriptyline(A10/tripta)"><option value="calcium carbonate(CaCO3)"><option value="clindamycin  600 mg/vial."><option value="gliPIZIDE(minidiab)"><option value="influenza ตามฤดูกาล"><option value="mixtard STAT"><option value="prednisolone cream"><option value="propranolol(inderal)"><option value="spironolactone (Aldactone)"><option value="tetracain eye drop"><option value="vitamin c"><option value="กานพลู"><option value="ขมิ้นชัน แคปซูล KMC"><option value="ขวดยา"><option value="ขิง"><option value="ครีมพญายอ"><option value="จันทน์ลีลา ซองละ 24 แคปซูล"><option value="ชุมเห็ดเทศ"><option value="ตรีผลาTPL"><option value="น้ำมันกัญชา"><option value="น้ำมันไพลPLI"><option value="ฟ้าทะลายโจร FTJ"><option value="มะขามป้อม MKP"><option value="ยาธาตุบรรจบ"><option value="ยาธาตุอบเชยOS"><option value="ยาประสะจันทน์แดง ซองละ 12 แคปซูล"><option value="ยาประสะไพลPSP"><option value="ยามันทธาตุ"><option value="ยาระบายมะขามแขก(senokot)"><option value="ยาศุขไสยาศน์"><option value="ยาสหัสธาราSHTR"><option value="ยาหอมนวโกฐNVK"><option value="ยาหอมเทพจิตรTPJ"><option value="ยาห้าราก ซองละ 9 แคปซูล"><option value="ยาอมมะแว้ง MW"><option value="ยาเขียวหอมKH"><option value="ยาเดิม (Manidipine )"><option value="ยาเดิม (Natear(Artificial Tears))"><option value="ยาเดิม(Acetylcysteine)"><option value="ยาเดิม(Amlodipine)"><option value="ยาเดิม(Atorvastatin)"><option value="ยาเดิม(Azithromycin)"><option value="ยาเดิม(Azitromycin Dry syrup)"><option value="ยาเดิม(Betahistine)"><option value="ยาเดิม(Carvedilol)"><option value="ยาเดิม(Gabapentin)"><option value="ยาเดิม(Hydralazine)"><option value="ยาเดิม(Hypercrit)"><option value="ยาเดิม(Lorazepam)"><option value="ยาเดิม(Meropenem inj.)"><option value="ยาเดิม(Risperidone)"><option value="ยาเดิม(Vancomycin inj.)"><option value="ยาเดิม(Warfarin)"><option value="ยาเดิม............................."><option value="ยาเลือดงามLH"><option value="ยาเหลืองปิดสมุทร"><option value="ยาแก้ลมจับเส้น"><option value="ยาแก้ลมอัมพฤกษ์AMP"><option value="รางจืด RJ"><option value="ลูกประคบสมุนไพร"><option value="เจลว่านหางจระเข้"><option value="เถาวัลย์เปรียง TWP"><option value="เพชรสังฆาต PSK"></datalist>
+
+<div class="main">
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="chip-row box-tab-row" id="box-chips"></div>
+  <div class="box-checked-note" id="box-checked-note"></div>
+
+  <div class="filter-bar">
+    <input type="text" id="search" placeholder="🔍 ค้นหาชื่อยา..." oninput="render()">
+    <div class="spacer"></div>
+    <button class="btn-add" onclick="addBlankRow()">➕ เพิ่มรายการยา</button>
+    <button class="btn-export" onclick="doExport()">📊 Export Excel</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="setSort('status')">สถานะ<span class="arrow" id="ar-status"></span></th>
+          <th onclick="setSort('name')">รายการยา<span class="arrow" id="ar-name"></span></th>
+          <th onclick="setSort('box')">กล่อง<span class="arrow" id="ar-box"></span></th>
+          <th onclick="setSort('qty')">จำนวน<span class="arrow" id="ar-qty"></span></th>
+          <th onclick="setSort('exp')">วันหมดอายุ<span class="arrow" id="ar-exp"></span></th>
+          <th onclick="setSort('days')">เหลืออีก<span class="arrow" id="ar-days"></span></th>
+          <th style="cursor:default;text-align:center">เช็คแล้ว</th>
+          <th style="cursor:default">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="count-note" id="count-note"></div>
+</div>
+
+<footer>
+  ข้อมูลนำเข้าจาก Google Sheet "แจ้งเตือนวันหมดอายุ" (Emergency Box, High Alert Drug, Refer, ยาเสพติด, ตู้เย็น, น้ำเกลือ) —
+  เป็นข้อมูล snapshot ณ วันที่ดึงมา หากมีการอัปเดตชีตต้นทาง แจ้งให้ปรับข้อมูลในหน้านี้ใหม่ได้
+</footer>
+
+<script>
+'use strict';
+
+const DATA = {"rows":[{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Hydralazine 20 mg inj.","qty":5.0,"exp":"2028-05-31"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Diazepam 10 mg/2ml inj.","qty":4.0,"exp":"2027-11-22"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Diazepam 10 mg/2ml inj.","qty":1.0,"exp":"2028-07-24"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Dexamethasone 5 mg/ml inj.","qty":5.0,"exp":"2029-10-23"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"CPM 10 mg/ml inj.","qty":5.0,"exp":"2029-01-15"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"50% Glucose","qty":4.0,"exp":"2027-06-03"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"7.5%Sodium bicarbonate 50 ml","qty":7.0,"exp":"2028-05-30"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Clopidogrel  75 mg","qty":12.0,"exp":"2027-09-07"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"ASA 300 mg","qty":10.0,"exp":"2027-06-20"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"ASA 81  mg","qty":12.0,"exp":"2027-12-12"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Captopril 25 mg","qty":10.0,"exp":"2027-01-31"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Hydralazine 25 mg","qty":10.0,"exp":"2027-11-21"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Isodil SL 5 mg","qty":10.0,"exp":"2028-10-09"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 1","name":"Isodil 10 mg","qty":10.0,"exp":"2027-04-19"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Hydralazine 20 mg inj.","qty":5.0,"exp":"2028-05-31"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Diazepam 10 mg/2ml inj.","qty":5.0,"exp":"2028-07-24"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Dexamethasone 5 mg/ml inj.","qty":5.0,"exp":"2029-10-23"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"CPM 10 mg/ml inj.","qty":5.0,"exp":"2029-02-23"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"50% Glucose","qty":4.0,"exp":"2027-06-03"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"7.5%Sodium bicarbonate 50 ml","qty":7.0,"exp":"2028-05-30"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Clopidogrel  75 mg","qty":12.0,"exp":"2027-09-07"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"ASA 300 mg","qty":10.0,"exp":"2027-06-20"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"ASA 81  mg","qty":12.0,"exp":"2027-12-12"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Captopril 25 mg","qty":10.0,"exp":"2027-01-31"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Hydralazine 25 mg","qty":10.0,"exp":"2027-11-21"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Isodil SL 5 mg","qty":10.0,"exp":"2028-10-09"},{"cat":"emergency","catLabel":"Emergency Box","box":"Emergency 2","name":"Isodil 10 mg","qty":10.0,"exp":"2027-04-19"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"10% Magnesium Sulfate inj.","qty":5.0,"exp":"2026-07-17"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Dopamine 250 mg /10 ml","qty":10.0,"exp":"2027-08-22"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"10% Calcium Gluconate 10 ml","qty":5.0,"exp":"2029-11-11"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"10% Calcium Gluconate 10 ml","qty":3.0,"exp":"2028-04-09"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"10% Calcium Gluconate 10 ml","qty":1.0,"exp":"2030-07-27"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Phenytoin 250 mg/5 ml","qty":10.0,"exp":"2027-01-15"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Phenytoin 250 mg/5 ml","qty":6.0,"exp":"2027-03-09"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"50% Magnesium Sulfate 10 ml","qty":20.0,"exp":"2028-09-30"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Atropine Sulfate 0.6/1 ml","qty":20.0,"exp":"2027-07-10"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Atropine Sulfate 0.6/1 ml","qty":13.0,"exp":"2028-04-29"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Adenosine 3 mg/ml","qty":6.0,"exp":"2026-07-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Potassium Chloride 20 Eq/10ml","qty":5.0,"exp":"2027-09-30"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Potassium Chloride 20 Eq/10ml","qty":2.0,"exp":"2028-02-29"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Amiodarone 150 mg/3 ml","qty":6.0,"exp":"2026-08-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Norepinephrine 4 mg/4ml","qty":5.0,"exp":"2026-12-04"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Adrenaline 1 mg/ml","qty":20.0,"exp":"2027-02-28"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 1","name":"Adrenaline 1 mg/ml","qty":10.0,"exp":"2027-09-19"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"10% Magnesium Sulfate inj.","qty":5.0,"exp":"2026-07-17"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Dopamine 250 mg /10 ml","qty":10.0,"exp":"2027-08-22"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"10% Calcium Gluconate 10 ml","qty":5.0,"exp":"2029-11-11"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Phenytoin 250 mg/5 ml","qty":10.0,"exp":"2028-01-11"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"50% Magnesium Sulfate 10 ml","qty":20.0,"exp":"2027-04-30"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"50% Magnesium Sulfate 10 ml","qty":7.0,"exp":"2028-03-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Atropine Sulfate 0.6/1 ml","qty":20.0,"exp":"2027-07-10"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Adenosine 3 mg/ml","qty":6.0,"exp":"2026-07-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Potassium Chloride 20 Eq/10ml","qty":5.0,"exp":"2027-12-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Amiodarone 150 mg/3 ml","qty":6.0,"exp":"2026-08-31"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Norepinephrine 4 mg/4ml","qty":5.0,"exp":"2026-12-04"},{"cat":"had","catLabel":"High Alert Drug","box":"HAD 2","name":"Adrenaline 1 mg/ml","qty":20.0,"exp":"2027-02-28"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Adrenaline inj. (2 ml) 3 mg/ml","qty":10.0,"exp":"2027-03-03"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Dexamethasone inj.(1 ml) 5 mg/ml","qty":2.0,"exp":"2027-06-30"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"CPM inj.(1 ml) 10 mg/ml (2 ml)","qty":1.0,"exp":"2027-06-14"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Furosemide inj.( 2 ml) 10 mg/ml","qty":2.0,"exp":"2027-01-17"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Diazepam inj. (2ml) 5mg/ml","qty":2.0,"exp":"2027-11-22"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Aspirin 300 mg","qty":5.0,"exp":"2027-05-01"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Isodil SL 5 mg","qty":5.0,"exp":"2028-10-09"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Beradual Solution 20 ml (Fenoterol 0.5mg+ Ipratropium 0.25mg)","qty":1.0,"exp":"2027-06-20"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Calcium Gluconate inj.(10 ml) 0.45mEq/ml","qty":2.0,"exp":"2028-04-09"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Atropine 0.6mg/ml","qty":5.0,"exp":"2027-07-10"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Dopamine 250mg/10ml","qty":1.0,"exp":"2027-08-22"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Salbutamol 5mg/ml (20 ml)","qty":1.0,"exp":"2027-04-10"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Sodium Bicarbonate inj. (50 ml) 3.75g/50 ml (44.6 mEq.)","qty":2.0,"exp":"2028-05-30"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"50% Glucose","qty":2.0,"exp":"2028-08-31"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 1","name":"Norepinephrine inj. 4mg/4ml","qty":1.0,"exp":"2026-12-04"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Adrenaline inj. (2 ml) 3 mg/ml","qty":10.0,"exp":"2027-03-03"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Dexamethasone inj.(1 ml) 5 mg/ml","qty":2.0,"exp":"2027-06-30"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"CPM inj.(1 ml) 10 mg/ml (2 ml)","qty":1.0,"exp":"2027-06-14"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Furosemide inj.( 2 ml) 10 mg/ml","qty":2.0,"exp":"2027-01-17"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Diazepam inj. (2ml) 5mg/ml","qty":2.0,"exp":"2028-07-24"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Aspirin 300 mg","qty":5.0,"exp":"2027-05-01"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Isodil SL 5 mg","qty":5.0,"exp":"2028-10-09"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Beradual Solution 20 ml (Fenoterol 0.5mg+Ipratropium 0.25mg)","qty":1.0,"exp":"2027-07-14"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Calcium Gluconate inj.(10 ml) 0.45mEq/ml","qty":2.0,"exp":"2028-04-09"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Atropine 0.6 mg/ml","qty":5.0,"exp":"2027-07-10"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Dopamine 250mg/10ml","qty":1.0,"exp":"2027-08-22"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Salbutamol 5mg/ml (20 ml)","qty":1.0,"exp":"2027-04-10"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Sodium Bicarbonate inj. (50 ml)3.75g/50 ml (44.6 mEq.)","qty":2.0,"exp":"2028-05-30"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"50% Glucose","qty":2.0,"exp":"2027-02-28"},{"cat":"refer","catLabel":"กล่อง Refer","box":"Refer 2","name":"Norepinephrine inj. 4mg/4ml","qty":1.0,"exp":"2026-12-04"},{"cat":"narcotic","catLabel":"ยาเสพติด","box":"ยาเสพติด","name":"Morphine 10 mg/ml inj.","qty":4.0,"exp":"2028-09-09"},{"cat":"narcotic","catLabel":"ยาเสพติด","box":"ยาเสพติด","name":"Pethidine 50 mg/ml inj.","qty":3.0,"exp":"2027-10-06"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"HBV","qty":5.0,"exp":"2026-08-31"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"HBV","qty":3.0,"exp":"2027-09-30"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"DT","qty":10.0,"exp":"2027-06-30"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"ERIG","qty":7.0,"exp":"2027-04-30"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Digoxin inj.","qty":2.0,"exp":"2027-09-30"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"SK","qty":1.0,"exp":"2026-08-31"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Tetracaine hydrochloride","qty":1.0,"exp":null},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"RI","qty":1.0,"exp":null},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"NPH","qty":1.0,"exp":"2026-07-31"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Mixtard","qty":1.0,"exp":"2028-01-31"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Chloramphenicol ear drop","qty":1.0,"exp":"2026-09-19"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Proctosedyl suppo.","qty":2.0,"exp":"2027-03-06"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Augmentin 1.2 g inj.","qty":4.0,"exp":"2027-12-22"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Augmentin 1.2 g inj.","qty":1.0,"exp":"2028-08-08"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Salbutamol Solution","qty":5.0,"exp":"2026-10-15"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Salbutamol Solution","qty":3.0,"exp":"2027-04-10"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Berodual Solution","qty":5.0,"exp":"2027-07-14"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Silver 450 g","qty":1.0,"exp":null},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"เซรุ่มแก้พิษงูกะปะ","qty":10.0,"exp":"2028-12-19"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"เซรุ่มแก้พิษงูกะปะ","qty":1.0,"exp":"2028-10-03"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"เซรุ่มแก้พิษงูเห่า","qty":10.0,"exp":"2027-10-18"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Verorab","qty":30.0,"exp":"2028-10-19"},{"cat":"fridge","catLabel":"ตู้เย็น","box":"ตู้เย็น","name":"Chlortetracycline","qty":1.0,"exp":"2028-08-18"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"NSS Irrigate 1000 ml","qty":30.0,"exp":"2030-10-09"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"0.9 % NSS 1000 ml","qty":10.0,"exp":"2030-09-15"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"0.9% NSS 100 ml","qty":40.0,"exp":"2030-09-24"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D5W 100 ml","qty":10.0,"exp":"2028-07-20"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D5W 500 ml","qty":3.0,"exp":"2026-09-02"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D5W 1000 ml","qty":3.0,"exp":"2026-11-21"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D5S 1000 ml","qty":10.0,"exp":"2029-05-24"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D5S 1000 ml","qty":4.0,"exp":"2029-11-19"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"5%DN/2 1000 ml","qty":10.0,"exp":"2029-10-01"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"5%DN/2 1000 ml","qty":1.0,"exp":"2030-03-22"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"5%DN/3 500 ml","qty":3.0,"exp":"2028-10-12"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"5%DN/4 500 ml","qty":3.0,"exp":"2027-11-10"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"5%DN/5 500 ml","qty":3.0,"exp":"2026-08-22"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"D10W 500 ml","qty":3.0,"exp":"2026-06-06"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"10%DN/2 1000 ml","qty":3.0,"exp":"2027-04-25"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"10%DN/2 1000 ml","qty":1.0,"exp":"2027-09-16"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"SW 100 ml","qty":20.0,"exp":"2026-05-30"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"Acetate Ringer","qty":10.0,"exp":"2028-07-15"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"Acetate Ringer","qty":4.0,"exp":"2028-09-19"},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"3%NaCl 500 ml","qty":1.0,"exp":null},{"cat":"saline","catLabel":"น้ำเกลือ","box":"น้ำเกลือ","name":"KY JELLY","qty":50.0,"exp":null}],"boxMeta":{"em1":{"label":"Emergency 1","category":"emergency","checked":"2026-06-18"},"em2":{"label":"Emergency 2","category":"emergency","checked":"2026-06-09"},"had1":{"label":"HAD 1","category":"had","checked":"2027-06-09"},"had2":{"label":"HAD 2","category":"had","checked":"2026-05-01"},"refer1":{"label":"Refer 1","category":"refer","checked":"2026-05-01"},"refer2":{"label":"Refer 2","category":"refer","checked":"2026-05-01"},"narcotic":{"label":"ยาเสพติด","category":"narcotic","checked":"2026-05-14"},"fridge":{"label":"ตู้เย็น","category":"fridge","checked":"2026-04-02"},"saline":{"label":"น้ำเกลือ","category":"saline","checked":"2026-04-02"}}};
+
+const STATUS_DEF = {
+  expired:  {label:'หมดอายุแล้ว',        color:'#b91c1c', bg:'#fee2e2'},
+  critical: {label:'ใกล้หมดอายุ (≤3 ด.)', color:'#c2410c', bg:'#ffedd5'},
+  warning:  {label:'เฝ้าระวัง (≤6 ด.)',   color:'#b45309', bg:'#fef3c7'},
+  ok:       {label:'ปกติ',               color:'#16a34a', bg:'#dcfce7'},
+  unknown:  {label:'ไม่มีข้อมูล',         color:'#6b7280', bg:'#f3f4f6'},
+};
+
+// สีสำหรับไฮไลท์แยกกลุ่มยาหลายล็อต (หลีกเลี่ยงโทนแดง/ส้ม/เขียวที่ใช้กับสถานะแล้ว)
+const GROUP_COLORS = [
+  {border:'#7c3aed', bg:'#f5f3ff'}, // purple
+  {border:'#2563eb', bg:'#eff6ff'}, // blue
+  {border:'#0d9488', bg:'#f0fdfa'}, // teal
+  {border:'#db2777', bg:'#fdf2f8'}, // pink
+  {border:'#4f46e5', bg:'#eef2ff'}, // indigo
+  {border:'#0891b2', bg:'#ecfeff'}, // cyan
+  {border:'#a21caf', bg:'#fdf4ff'}, // fuchsia
+  {border:'#475569', bg:'#f1f5f9'}, // slate
+];
+
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+const TODAY = todayISO();
+
+function daysLeft(exp) {
+  if (!exp) return null;
+  const a = new Date(TODAY+'T00:00:00'), b = new Date(exp+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
+function statusOf(exp) {
+  const d = daysLeft(exp);
+  if (d === null) return 'unknown';
+  if (d < 0) return 'expired';
+  if (d <= 90) return 'critical';
+  if (d <= 180) return 'warning';
+  return 'ok';
+}
+function thDate(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return d+'/'+m+'/'+y;
+}
+// ช่องกรอกวันที่แบบ วว/ดด/ปปปป (ค.ศ.) — เลี่ยงปัญหา <input type="date"> ที่แสดงผลตาม locale เครื่อง (เช่น MM/DD/YYYY)
+function isoToThFull(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return d+'/'+m+'/'+y;
+}
+function autoDateFull(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,8);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+function thFullToISO(s) {
+  if (!s || !s.includes('/')) return null;
+  const [dd,mm,yyyy] = s.trim().split('/');
+  if (!dd||!mm||!yyyy||yyyy.length<4) return null;
+  const iso = `${parseInt(yyyy)}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  return isNaN(new Date(iso+'T00:00:00').getTime()) ? null : iso;
+}
+
+// ── OVERRIDES / EXTRA LOTS / REMOVED ROWS (manual edits) ──
+const LS_KEY = 'expiry_tracker_state_v2';
+function loadLocalState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    return {
+      overrides: (s && s.overrides) || {},
+      extras: (s && s.extras) || [],
+      removed: (s && s.removed) || [],
+      boxChecked: (s && s.boxChecked) || {},
+      customBoxes: (s && s.customBoxes) || [],
+      itemChecked: (s && s.itemChecked) || {},
+    };
+  } catch(e) { return { overrides: {}, extras: [], removed: [], boxChecked: {}, customBoxes: [], itemChecked: {} }; }
+}
+let { overrides, extras, removed, boxChecked, customBoxes, itemChecked } = loadLocalState();
+
+const baseRows = DATA.rows.map((r,i) => ({...r, id:'r'+i, baseQty:r.qty, baseExp:r.exp}));
+function buildRows() {
+  const removedSet = new Set(removed);
+  const fromBase = baseRows.filter(r => !removedSet.has(r.id)).map(r => {
+    const ov = overrides[r.id];
+    const qty = ov && ov.qty != null ? ov.qty : r.baseQty;
+    const exp = ov && ov.exp !== undefined ? ov.exp : r.baseExp;
+    return {...r, qty, exp, edited: !!ov, isExtra:false, status: statusOf(exp), days: daysLeft(exp)};
+  });
+  const fromExtra = extras.map(e => ({...e, edited:true, isExtra:true, status: statusOf(e.exp), days: daysLeft(e.exp)}));
+  return [...fromBase, ...fromExtra];
+}
+let rows = buildRows();
+const BASE_BOX_LIST = Object.entries(DATA.boxMeta).map(([id,b]) => ({id, ...b})); // preserves em1,em2,had1,had2,refer1,refer2,narcotic,fridge,saline order
+function buildBoxList() {
+  return [...BASE_BOX_LIST, ...customBoxes.map(b => ({...b, isCustom:true}))];
+}
+let BOX_LIST = buildBoxList();
+
+let activeBox = '';
+let activeStatus = '';
+let sortKey = 'days';
+let sortDir = 1;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// แก้ไขวันหมดอายุจากช่องข้อความ วว/ดด/ปปปป — validate ก่อนบันทึก ไม่ให้ค่าหายถ้าพิมพ์ยังไม่ครบ/ผิดรูปแบบ
+function onEditExpText(id, el) {
+  const raw = el.value.trim();
+  if (!raw) { onEditExp(id, null); return; }
+  const iso = thFullToISO(raw);
+  if (!iso) {
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
+    render();
+    return;
+  }
+  onEditExp(id, iso);
+}
+
+function persistState() {
+  localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes, itemChecked}));
+  rows = buildRows();
+  BOX_LIST = buildBoxList();
+  render();
+  fbSave();
+}
+
+// ติ๊กว่ารายการยานี้ตรวจนับ/เช็ควันหมดอายุแล้วในรอบตรวจสอบปัจจุบัน
+function toggleItemChecked(id, checked) {
+  if (checked) itemChecked[id] = true; else delete itemChecked[id];
+  persistState();
+}
+// ล้างเครื่องหมายเช็คทั้งหมดของกล่องที่กำลังดูอยู่ (เริ่มรอบตรวจสอบใหม่)
+function clearBoxChecks() {
+  if (!activeBox) { showToast('⚠️ กรุณาเลือกแท็บกล่องยาก่อน'); return; }
+  if (!confirm('ล้างเครื่องหมายเช็คของรายการยาทั้งหมดในกล่อง "' + activeBox + '" ใช่หรือไม่?')) return;
+  rows.filter(r => r.box === activeBox).forEach(r => delete itemChecked[r.id]);
+  persistState();
+  showToast('🔄 ล้างเครื่องหมายเช็คของกล่อง "' + activeBox + '" แล้ว');
+}
+
+// เพิ่ม/ลบกล่องยาใหม่ (เผื่ออนาคตมีกล่องเพิ่ม)
+function addCustomBox() {
+  const name = prompt('ชื่อกล่องยาใหม่:');
+  if (!name || !name.trim()) return;
+  const label = name.trim();
+  if (BOX_LIST.some(b => b.label === label)) { showToast('⚠️ มีกล่องชื่อนี้อยู่แล้ว'); return; }
+  const id = 'custom' + Date.now().toString(36);
+  customBoxes.push({id, label, category: id, catLabel: label, checked: null});
+  persistState();
+  setBox(label);
+  showToast('📦 เพิ่มกล่องยา "' + label + '" แล้ว');
+}
+function removeCustomBox(id, ev) {
+  if (ev) ev.stopPropagation();
+  const box = customBoxes.find(b => b.id === id);
+  if (!box) return;
+  if (!confirm('ลบกล่องยา "' + box.label + '" ออกทั้งหมด (รวมยาที่เพิ่มไว้ในกล่องนี้) ใช่หรือไม่?')) return;
+  extras = extras.filter(e => e.box !== box.label);
+  customBoxes = customBoxes.filter(b => b.id !== id);
+  delete boxChecked[id];
+  if (activeBox === box.label) activeBox = '';
+  persistState();
+}
+
+// แก้ไข "วันที่ตรวจสอบกล่องยาล่าสุด" ของแต่ละกล่อง
+function onEditBoxChecked(boxId, el) {
+  const raw = el.value.trim();
+  if (!raw) { delete boxChecked[boxId]; persistState(); return; }
+  const iso = thFullToISO(raw);
+  if (!iso) {
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
+    render();
+    return;
+  }
+  boxChecked[boxId] = iso;
+  persistState();
+}
+function setBoxCheckedToday(boxId) {
+  boxChecked[boxId] = TODAY;
+  persistState();
+  showToast('📅 บันทึกวันที่ตรวจสอบกล่องเป็นวันนี้แล้ว');
+}
+
+function onEditExp(id, val) {
+  if (id.startsWith('x')) { const e = extras.find(e=>e.id===id); if (e) e.exp = val || null; }
+  else { overrides[id] = {...(overrides[id]||{}), exp: val || null}; }
+  persistState();
+}
+function onEditQty(id, val) {
+  const n = val === '' ? null : parseFloat(val);
+  const qty = (n==null || isNaN(n)) ? null : n;
+  if (id.startsWith('x')) { const e = extras.find(e=>e.id===id); if (e) e.qty = qty; }
+  else { overrides[id] = {...(overrides[id]||{}), qty}; }
+  persistState();
+}
+function onEditName(id, val) {
+  const e = extras.find(e=>e.id===id);
+  if (e) { e.name = val; persistState(); }
+}
+
+// เพิ่มล็อตใหม่สำหรับยาที่มีหลายล็อต (คัดลอกชื่อ/กล่องจากแถวต้นแบบ)
+function addLot(sourceId) {
+  const src = rows.find(r => r.id === sourceId);
+  if (!src) return;
+  const id = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  extras.push({id, cat: src.cat, catLabel: src.catLabel, box: src.box, name: src.name, qty: null, exp: null});
+  persistState();
+  showToast('➕ เพิ่มล็อตใหม่สำหรับ "' + src.name + '" แล้ว — กรอกจำนวน/วันหมดอายุของล็อตนี้ได้เลย');
+}
+
+// เพิ่มรายการยาใหม่ทั้งหมด (ยังไม่มีในกล่องนี้มาก่อน)
+function addBlankRow() {
+  if (!activeBox) { showToast('⚠️ กรุณาเลือกแท็บกล่องยาก่อน แล้วค่อยเพิ่มรายการ'); return; }
+  const meta = BOX_LIST.find(b => b.label === activeBox);
+  const id = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  extras.push({id, cat: meta.category, catLabel: meta.catLabel||'', box: activeBox, name: '', qty: null, exp: null});
+  persistState();
+}
+
+function removeRow(id) {
+  if (!confirm('ลบรายการนี้ออกจากกล่องยาใช่หรือไม่?')) return;
+  if (id.startsWith('x')) { extras = extras.filter(e => e.id !== id); }
+  else { removed.push(id); }
+  delete itemChecked[id];
+  persistState();
+}
+
+// ── FIREBASE (sync overrides across devices) ──────────────
+const FB_CONFIG = {
+  apiKey:"AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+  authDomain:"pharmacy-tph.firebaseapp.com",
+  projectId:"pharmacy-tph",
+  storageBucket:"pharmacy-tph.firebasestorage.app",
+  messagingSenderId:"617328257113",
+  appId:"1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+let db, fbReady = false;
+function initFirebase() {
+  const badge = document.getElementById('sync-badge');
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    db = firebase.firestore();
+    db.enablePersistence().catch(()=>{});
+    db.collection('pharmacy_tph').doc('expiry_tracker').onSnapshot(snap => {
+      fbReady = true;
+      if (snap.exists && snap.data()) {
+        const d = snap.data();
+        overrides = d.overrides || {};
+        extras = d.extras || [];
+        removed = d.removed || [];
+        boxChecked = d.boxChecked || {};
+        customBoxes = d.customBoxes || [];
+        itemChecked = d.itemChecked || {};
+        localStorage.setItem(LS_KEY, JSON.stringify({overrides, extras, removed, boxChecked, customBoxes, itemChecked}));
+        rows = buildRows();
+        BOX_LIST = buildBoxList();
+        render();
+      }
+      badge.textContent = '☁️ ซิงค์แล้ว ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+      badge.style.background = '#dcfce7'; badge.style.color = '#15803d';
+    }, err => {
+      badge.textContent = '📴 ออฟไลน์ (บันทึกเฉพาะเครื่องนี้)';
+      badge.style.background = '#fee2e2'; badge.style.color = '#991b1b';
+    });
+  } catch(e) {
+    badge.textContent = '📴 ออฟไลน์ (บันทึกเฉพาะเครื่องนี้)';
+    badge.style.background = '#fee2e2'; badge.style.color = '#991b1b';
+  }
+}
+function fbSave() {
+  if (!db) return;
+  db.collection('pharmacy_tph').doc('expiry_tracker').set({overrides, extras, removed, boxChecked, customBoxes, itemChecked, updated: Date.now()})
+    .catch(e => showToast('⚠️ ซิงค์ไม่สำเร็จ (บันทึกไว้ในเครื่องนี้แล้ว): ' + (e.code||e.message)));
+}
+
+function setSort(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+  render();
+}
+
+function buildKPIs() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  const scoped = rows.filter(r => (!activeBox || r.box === activeBox) && (!q || r.name.toLowerCase().includes(q)));
+  const counts = {expired:0, critical:0, warning:0, ok:0, unknown:0};
+  scoped.forEach(r => counts[r.status]++);
+  const cards = [
+    {key:'', label:'รวมทั้งหมด', val: scoped.length, color: 'var(--primary)'},
+    {key:'expired', label: STATUS_DEF.expired.label, val: counts.expired, color: STATUS_DEF.expired.color},
+    {key:'critical', label: STATUS_DEF.critical.label, val: counts.critical, color: STATUS_DEF.critical.color},
+    {key:'warning', label: STATUS_DEF.warning.label, val: counts.warning, color: STATUS_DEF.warning.color},
+    {key:'ok', label: STATUS_DEF.ok.label, val: counts.ok, color: STATUS_DEF.ok.color},
+    {key:'unknown', label: STATUS_DEF.unknown.label, val: counts.unknown, color: STATUS_DEF.unknown.color},
+  ];
+  document.getElementById('kpi-grid').innerHTML = cards.map(c => `
+    <div class="kpi-card ${activeStatus===c.key?'active':''}" onclick="toggleStatus('${c.key}')">
+      <div class="kpi-val" style="color:${c.color}">${c.val}</div>
+      <div class="kpi-lbl">${c.label}</div>
+    </div>`).join('');
+}
+
+function toggleStatus(key) {
+  activeStatus = activeStatus === key ? '' : key;
+  render();
+}
+
+function buildBoxTabs() {
+  const counts = {};
+  rows.forEach(r => { counts[r.box] = (counts[r.box]||0) + 1; });
+  const tabs = [{label:'ทั้งหมด', cnt: rows.length}, ...BOX_LIST.map(b => ({label:b.label, cnt: counts[b.label]||0, id:b.id, isCustom:b.isCustom}))];
+  document.getElementById('box-chips').innerHTML = tabs.map(t => `
+    <button class="box-tab ${activeBox===t.label?'active':''}" onclick="setBox('${t.label==='ทั้งหมด'?'':t.label}')">${escHtml(t.label)}<span class="box-cnt">(${t.cnt})</span>${
+      t.isCustom ? `<span class="box-tab-del" title="ลบกล่องนี้" onclick="removeCustomBox('${t.id}', event)">✕</span>` : ''
+    }</button>
+  `).join('') + `<button class="box-tab box-tab-add" onclick="addCustomBox()">➕ เพิ่มกล่องยา</button>`;
+
+  const meta = BOX_LIST.find(b => b.label === activeBox);
+  const noteEl = document.getElementById('box-checked-note');
+  if (!meta) {
+    noteEl.innerHTML = '';
+  } else {
+    const checkedIso = boxChecked[meta.id] !== undefined ? boxChecked[meta.id] : meta.checked;
+    const boxRows = rows.filter(r => r.box === activeBox);
+    const checkedCnt = boxRows.filter(r => itemChecked[r.id]).length;
+    noteEl.innerHTML = `📅 ตรวจสอบกล่องล่าสุด:
+      <input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(checkedIso)}"
+        oninput="autoDateFull(this)" onchange="onEditBoxChecked('${meta.id}', this)" style="display:inline-block;width:110px">
+      <button class="btn-today" onclick="setBoxCheckedToday('${meta.id}')">วันนี้</button>
+      <span style="margin-left:10px">✅ เช็คแล้ว ${checkedCnt}/${boxRows.length} รายการ</span>
+      <button class="btn-today" onclick="clearBoxChecks()">🔄 ล้างเครื่องหมายเช็ค</button>`;
+  }
+}
+function setBox(b) { activeBox = b; render(); }
+
+function getFiltered() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  return rows.filter(r => {
+    if (activeBox && r.box !== activeBox) return false;
+    if (activeStatus && r.status !== activeStatus) return false;
+    if (q && !r.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function sortRows(list) {
+  const cmp = {
+    status: (a,b) => Object.keys(STATUS_DEF).indexOf(a.status) - Object.keys(STATUS_DEF).indexOf(b.status),
+    name: (a,b) => a.name.localeCompare(b.name,'th'),
+    box: (a,b) => a.box.localeCompare(b.box,'th'),
+    qty: (a,b) => (a.qty||0) - (b.qty||0),
+    exp: (a,b) => (a.exp||'9999') < (b.exp||'9999') ? -1 : (a.exp||'9999') > (b.exp||'9999') ? 1 : 0,
+    days: (a,b) => (a.days===null?Infinity:a.days) - (b.days===null?Infinity:b.days),
+  }[sortKey];
+  return [...list].sort((a,b) => cmp(a,b) * sortDir);
+}
+
+function render() {
+  buildKPIs();
+  buildBoxTabs();
+  ['status','name','box','qty','exp','days'].forEach(k => {
+    document.getElementById('ar-'+k).textContent = (sortKey===k) ? (sortDir===1?'▲':'▼') : '';
+  });
+
+  let list = sortRows(getFiltered());
+  const tbody = document.getElementById('tbody');
+
+  const lotCounts = {};
+  rows.forEach(r => { const k = r.box+'|'+r.name; lotCounts[k] = (lotCounts[k]||0) + 1; });
+
+  // แจกสีต่างกันให้แต่ละ "กลุ่มยาหลายล็อต" ที่ปรากฏในมุมมองปัจจุบัน (เรียงตามลำดับที่เจอ)
+  const groupColor = {};
+  let colorIdx = 0;
+  list.forEach(r => {
+    const k = r.box+'|'+r.name;
+    if (lotCounts[k] > 1 && !groupColor[k]) {
+      groupColor[k] = GROUP_COLORS[colorIdx % GROUP_COLORS.length];
+      colorIdx++;
+    }
+  });
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">ไม่พบรายการที่ตรงกับตัวกรอง</td></tr>`;
+  } else {
+    tbody.innerHTML = list.map(r => {
+      const s = STATUS_DEF[r.status];
+      const dayTxt = r.days === null ? '—' : (r.days < 0 ? `เกิน ${Math.abs(r.days)} วัน` : `${r.days} วัน`);
+      const editedMark = r.edited ? '<span class="edited-mark" title="แก้ไขแล้ว">✎</span>' : '';
+      const lotKey = r.box+'|'+r.name;
+      const lotCount = lotCounts[lotKey] || 1;
+      const color = groupColor[lotKey];
+      const lotBadge = (r.name && lotCount > 1) ? `<span class="lot-badge" title="ยานี้มี ${lotCount} ล็อตในกล่องนี้">🔗 ${lotCount} ล็อต</span>` : '';
+      const nameCell = r.isExtra
+        ? `<input class="edit-input edit-name" type="text" placeholder="ชื่อยา... (พิมพ์ค้นหาบัญชียา รพ.)" list="drug-formulary" value="${escAttr(r.name)}"
+              onchange="onEditName('${r.id}', this.value)">${lotBadge}`
+        : `${escHtml(r.name)}${editedMark}${lotBadge}`;
+      const rowStyle = color ? ` style="--grp-bg:${color.bg};--grp-border:${color.border}"` : '';
+      const isChecked = !!itemChecked[r.id];
+      return `<tr class="${lotCount>1?'multi-lot':''}${isChecked?' row-checked':''}"${rowStyle}>
+        <td><span class="status-cell" style="color:${s.color}"><span class="status-dot" style="background:${s.color}"></span>${s.label}</span></td>
+        <td>${nameCell}</td>
+        <td><span class="box-tag">${r.box}</span></td>
+        <td><input class="edit-input edit-qty" type="number" min="0" step="1" value="${r.qty!=null?r.qty:''}"
+              onchange="onEditQty('${r.id}', this.value)"></td>
+        <td><input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(r.exp)}"
+              oninput="autoDateFull(this)" onchange="onEditExpText('${r.id}', this)"></td>
+        <td class="days-cell" style="color:${s.color}">${dayTxt}</td>
+        <td style="text-align:center"><input class="chk-item" type="checkbox" title="เช็คจำนวน/วันหมดอายุแล้ว" ${isChecked?'checked':''}
+              onchange="toggleItemChecked('${r.id}', this.checked)"></td>
+        <td><div class="row-actions">
+          <button class="row-btn" title="เพิ่มล็อตใหม่สำหรับยานี้" onclick="addLot('${r.id}')">➕</button>
+          <button class="row-btn del" title="ลบรายการนี้" onclick="removeRow('${r.id}')">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('count-note').textContent = `แสดง ${list.length} จาก ${rows.length} รายการ (ล็อต)`;
+}
+
+function escHtml(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return escHtml(s).replace(/"/g,'&quot;'); }
+
+function doExport() {
+  const list = sortRows(getFiltered());
+  const data = list.map(r => ({
+    'สถานะ': STATUS_DEF[r.status].label,
+    'รายการยา': r.name,
+    'กล่อง': r.box,
+    'หมวด': r.catLabel,
+    'จำนวน': r.qty,
+    'วันหมดอายุ': thDate(r.exp),
+    'เหลืออีก (วัน)': r.days===null?'':r.days,
+    'เช็คแล้ว': itemChecked[r.id] ? 'เช็คแล้ว' : '',
+  }));
+  expExcel([{name:'ยาใกล้หมดอายุ', data}], 'ยาใกล้หมดอายุ_'+TODAY);
+}
+
+render();
+initFirebase();
+</script>
+</body>
+</html>

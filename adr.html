@@ -1,0 +1,1094 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบรายงาน ADR — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/chart.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
+<script src="lib/session-timeout.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<style>
+:root {
+  --primary: #1A5E38; --primary-dark: #124228; --primary-mid: #237A4A;
+  --primary-light: #EAF4EE; --gold: #C49A22; --gold-light: #FBF3DC;
+  --success: #16a34a; --danger: #b91c1c; --warning: #b45309;
+  --info: #0e7490; --info-light: #e0f2fe;
+  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+  font-family: 'Noto Sans Thai', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 20px; height: 56px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); flex-shrink: 0; position: sticky; top: 0; z-index: 100;
+}
+.topbar-home {
+  display: flex; align-items: center; gap: 6px; text-decoration: none;
+  background: var(--primary); color: #fff;
+  padding: 6px 13px; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;
+  transition: background .2s;
+}
+.topbar-home:hover { background: var(--primary-dark); }
+.topbar-title { font-size: 17px; font-weight: 700; color: var(--primary-dark); flex: 1; }
+.topbar-badge { background: var(--gold); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 11px; border-radius: 20px; flex-shrink: 0; }
+.sync-badge {
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+  background: #f3f4f6; color: #6b7280; flex-shrink: 0; transition: all .3s;
+}
+.topbar-btns { display: flex; gap: 6px; }
+.tbtn {
+  padding: 6px 11px; border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text-mid); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap;
+}
+.tbtn:hover { border-color: var(--primary); color: var(--primary); }
+.tbtn label { cursor: pointer; }
+.tbtn input[type=file] { display: none; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; background: var(--surface);
+  border-bottom: 2px solid var(--border); padding: 0 20px; flex-shrink: 0;
+}
+.tab-btn {
+  padding: 11px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+  border: none; background: none; color: var(--text-mid);
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .18s; font-family: inherit;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-btn:hover:not(.active) { color: var(--primary); }
+
+/* ── LAYOUT ── */
+.page-wrap { display: flex; flex: 1; overflow: hidden; }
+.sidebar-form {
+  width: 290px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); padding: 16px;
+  overflow-y: auto; height: calc(100vh - 104px); position: sticky; top: 104px;
+}
+.main-content { flex: 1; padding: 18px; overflow-y: auto; }
+
+/* ── FORM ── */
+.form-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 12px; }
+.form-group { margin-bottom: 9px; }
+.form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); margin-bottom: 3px; letter-spacing: .02em; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 7px 9px; border: 1.5px solid var(--border);
+  border-radius: 7px; font-size: 13px; font-family: inherit;
+  background: var(--bg); color: var(--text); outline: none; transition: border .15s;
+}
+.form-group textarea { resize: vertical; min-height: 56px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); background: #fff; }
+.input-row { display: flex; gap: 5px; align-items: flex-end; }
+.input-row > .form-group { flex: 1; margin-bottom: 0; }
+.btn-stamp {
+  padding: 7px 9px; background: var(--primary-light); border: 1.5px solid var(--border);
+  border-radius: 7px; font-size: 12px; cursor: pointer; flex-shrink: 0;
+  font-family: inherit; color: var(--primary); font-weight: 600; transition: all .15s;
+}
+.btn-stamp:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.section-lbl { font-size: 10px; font-weight: 700; color: var(--text-light); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+.btn-submit {
+  width: 100%; padding: 9px; background: var(--primary); color: #fff;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; margin-top: 4px; transition: background .2s;
+}
+.btn-submit:hover { background: var(--primary-dark); }
+.btn-clear {
+  width: 100%; padding: 6px; background: none; color: var(--text-mid);
+  border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px;
+  font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 5px; transition: all .2s;
+}
+.btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+#symptom-group { display: none; }
+
+/* ── KPI ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.kpi-card {
+  background: var(--surface); border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+}
+.kpi-label { font-size: 11px; color: var(--text-mid); font-weight: 600; margin-bottom: 3px; }
+.kpi-val { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1.1; }
+.kpi-val.gold { color: var(--gold); }
+.kpi-val.danger { color: var(--danger); }
+.kpi-val.info { color: var(--info); }
+.kpi-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+/* ── CHARTS ── */
+.chart-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.chart-card {
+  background: var(--surface); border-radius: 12px; padding: 16px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+}
+.chart-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); margin-bottom: 12px; }
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── TABLE ── */
+.table-card {
+  background: var(--surface); border-radius: 12px; padding: 16px;
+  box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.table-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-row select, .filter-row input {
+  padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 6px;
+  font-size: 12px; font-family: inherit; background: var(--bg); outline: none;
+}
+.filter-row select:focus, .filter-row input:focus { border-color: var(--primary); }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 780px; }
+th { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; padding: 8px 9px; text-align: left; white-space: nowrap; }
+td { padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+tr.missing-symptom td { background: #fffbeb; }
+tr.missing-symptom:hover td { background: #fef3c7; }
+
+/* ── BADGES ── */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-a { background: #dbeafe; color: #1e40af; }
+.badge-b { background: #fce7f3; color: #9d174d; }
+.badge-g6pd { background: #fef3c7; color: #92400e; }
+.badge-mild { background: #d1fae5; color: #065f46; }
+.badge-mod { background: #fef3c7; color: #92400e; }
+.badge-sev { background: #fee2e2; color: #991b1b; }
+.badge-na { background: #f3f4f6; color: #6b7280; }
+.badge-warn { background: #fef3c7; color: #92400e; }
+
+.btn-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 14px; padding: 2px 5px; border-radius: 4px; }
+.btn-del:hover { background: #fee2e2; }
+.btn-edit { background: none; border: none; cursor: pointer; color: var(--primary); font-size: 14px; padding: 2px 5px; border-radius: 4px; }
+.btn-edit:hover { background: var(--primary-light); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-light); }
+.empty-state p { font-size: 14px; margin-bottom: 4px; }
+.empty-state small { font-size: 12px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--primary); color: #fff; padding: 11px 18px;
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(26,94,56,.25); display: none;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--surface); border-radius: 16px; padding: 22px; width: 460px;
+  max-width: 95vw; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+}
+.modal-title { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 14px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.btn-ok { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-cancel { padding: 8px 18px; background: var(--bg); color: var(--text-mid); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-home">🏠 หน้าหลัก</a>
+  <div class="topbar-title">⚠️ ระบบรายงาน ADR</div>
+  <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
+  <div class="topbar-btns">
+    <div class="tbtn"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
+    <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
+    <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
+    <div class="tbtn"><label>📂 Import JSON<input type="file" accept=".json" onchange="importJSON(this)"></label></div>
+  </div>
+  <span class="sync-badge" id="sync-badge">⏳ กำลังเชื่อมต่อ...</span>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('all',this)">📋 ทั้งหมด</button>
+  <button class="tab-btn" onclick="switchTab('A',this)">💊 Type A</button>
+  <button class="tab-btn" onclick="switchTab('B',this)">🌡️ Type B</button>
+  <button class="tab-btn" onclick="switchTab('G6PD',this)">🧬 G6PD</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="page-wrap">
+  <!-- SIDEBAR FORM -->
+  <div class="sidebar-form">
+    <div class="form-title" id="form-title">➕ เพิ่มรายการ ADR</div>
+    <input type="hidden" id="edit-id">
+
+    <div class="form-group">
+      <label>วันที่รายงาน</label>
+      <div class="input-row">
+        <div class="form-group"><input type="text" id="f-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)"></div>
+        <button class="btn-stamp" onclick="document.getElementById('f-date').value=todayTH()">📅</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>HN</label>
+      <input type="text" id="f-hn" placeholder="รหัสผู้ป่วย">
+    </div>
+    <div class="form-group">
+      <label>ชื่อ-สกุล</label>
+      <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
+    </div>
+
+    <div class="form-group">
+      <label>AN (IPD)</label>
+      <input type="text" id="f-an" placeholder="เลขผู้ป่วยใน (ถ้ามี)">
+    </div>
+
+    <hr class="divider">
+    <div class="section-lbl">รายละเอียด ADR</div>
+
+    <div class="form-group">
+      <label>ชนิดรายงาน *</label>
+      <select id="f-type" onchange="onTypeChange()">
+        <option value="">-- เลือกชนิด --</option>
+        <option value="A">Type A — ผลข้างเคียง</option>
+        <option value="B">Type B — แพ้ยา</option>
+        <option value="G6PD">G6PD</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="symptom-group">
+      <label>ลักษณะอาการ</label>
+      <select id="f-symptom">
+        <option value="">-- เลือกอาการ --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>รายการยา/ผลิตภัณฑ์ *</label>
+      <input type="text" id="f-drug" placeholder="ชื่อยา" list="drug-dl-adr">
+      <datalist id="drug-dl-adr"></datalist>
+    </div>
+    <div class="form-group">
+      <label>ประเภทผลิตภัณฑ์</label>
+      <select id="f-prodtype">
+        <option>ยา</option><option>เครื่องสำอาง</option>
+        <option>ผลิตภัณฑ์เสริมอาหาร</option><option>อื่นๆ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ความร้ายแรง</label>
+      <select id="f-sev">
+        <option value="ไม่ร้ายแรง (Non-serious)">ไม่ร้ายแรง (Non-serious)</option>
+        <option value="ร้ายแรง - เสียชีวิต (Death)">ร้ายแรง - เสียชีวิต (Death)</option>
+        <option value="ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)">ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+        <option value="ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)">ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+        <option value="ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)">ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+        <option value="ร้ายแรง - พิการ (Disability)">ร้ายแรง - พิการ (Disability)</option>
+        <option value="ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)">ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
+        <option value="ยังไม่ทราบ">ยังไม่ทราบ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ผลวินิจฉัย / รายละเอียดอาการ</label>
+      <textarea id="f-diag" placeholder="อาการที่เกิดขึ้น..."></textarea>
+    </div>
+
+    <button class="btn-submit" onclick="submitForm()">✅ บันทึก</button>
+    <button class="btn-clear" onclick="resetForm()">🔄 ล้างแบบฟอร์ม</button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <!-- CHARTS -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title" id="chart-monthly-title">จำนวน ADR รายเดือน (ปีงบประมาณ)</div>
+        <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="chart-symptom-title">ลักษณะอาการ (Top 8)</div>
+        <div class="chart-wrap"><canvas id="chart-symptom"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">ยาที่พบบ่อย (Top 8)</div>
+        <div class="chart-wrap"><canvas id="chart-drug"></canvas></div>
+      </div>
+    </div>
+    <!-- TABLE -->
+    <div class="table-card">
+      <div class="table-head">
+        <div class="table-title">รายการ ADR</div>
+        <div class="filter-row">
+          <select id="fil-year" onchange="renderAll()"></select>
+          <select id="fil-month" onchange="renderAll()">
+            <option value="">ทุกเดือน</option>
+            <option>ต.ค.</option><option>พ.ย.</option><option>ธ.ค.</option>
+            <option>ม.ค.</option><option>ก.พ.</option><option>มี.ค.</option>
+            <option>เม.ย.</option><option>พ.ค.</option><option>มิ.ย.</option>
+            <option>ก.ค.</option><option>ส.ค.</option><option>ก.ย.</option>
+          </select>
+          <select id="fil-sev" onchange="renderAll()">
+            <option value="">ทุกระดับ</option>
+            <option value="">ทุกระดับ</option>
+            <option>ไม่ร้ายแรง (Non-serious)</option>
+            <option>ร้ายแรง - เสียชีวิต (Death)</option>
+            <option>ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+            <option>ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+            <option>ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+            <option>ร้ายแรง - พิการ (Disability)</option>
+            <option>ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
+          </select>
+          <input type="text" id="fil-q" placeholder="🔍 HN/ชื่อ/ยา" oninput="renderAll()">
+        </div>
+      </div>
+      <div class="tbl-wrap" id="tbl-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title">✏️ แก้ไขรายการ</div>
+    <div class="form-group">
+      <label>ชนิดรายงาน (ADR Type)</label>
+      <select id="m-type" onchange="onModalTypeChange()">
+        <option value="">-- เลือกชนิด --</option>
+        <option value="A">Type A — ผลข้างเคียง</option>
+        <option value="B">Type B — แพ้ยา</option>
+        <option value="G6PD">G6PD</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ลักษณะอาการ</label>
+      <select id="m-symptom"></select>
+    </div>
+    <div class="form-group">
+      <label>รายการยา</label>
+      <input type="text" id="m-drug" list="drug-dl-adr">
+    </div>
+    <div class="form-group">
+      <label>ความร้ายแรง</label>
+      <select id="m-sev">
+        <option value="ไม่ร้ายแรง (Non-serious)">ไม่ร้ายแรง (Non-serious)</option>
+        <option value="ร้ายแรง - เสียชีวิต (Death)">ร้ายแรง - เสียชีวิต (Death)</option>
+        <option value="ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)">ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)</option>
+        <option value="ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)">ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)</option>
+        <option value="ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)">ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)</option>
+        <option value="ร้ายแรง - พิการ (Disability)">ร้ายแรง - พิการ (Disability)</option>
+        <option value="ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)">ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)</option>
+        <option value="ยังไม่ทราบ">ยังไม่ทราบ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ผลวินิจฉัย / รายละเอียด</label>
+      <textarea id="m-diag"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn-ok" onclick="saveModal()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ DRUG LIST (from HosXP) ═════════════════════════════════════
+const DRUG_LIST = ["(inj.) (Augmentin inj 1.2g) Amoxi 1g+clavulanic 200mg 1.2 g.","(inj.) (ยาใช้เฉพาะราย) Penicillin G Sodium 5 MU","(inj.) 10%D/N/2 10 %","(inj.) 3%Sodium Chloride(NaCl) 3 %","(iv.) ACETATE RINGER 1,000 ml.","(pwd.) ACTIVATED CHARCOAL 5 g.","(tab.) Acyclovir 200 mg.","(tab.) ACYCLOVIR 800 mg.","(inj.) Adenosine (adenocor) 6 mg.","(inj.) ADRENALINE 1 mg./ml.","(syr.) Albendazole (FALBEN)susp 100 mg/5ml","(tab.) ALBENDAZOLE(zentel) 200 mg.","(sol.) ALCOHOL  60 ml 70 %","(sol.) ALCOHOL 70 %","(tab.) ALLOPURINOL(zyloric) 100 mg.","(inj.) AMIODARONE(Cordarone) (NL) 150 mg.","(tab.) amitriptyline(A10/tripta) 10 mg.","(tab.) Amlodipine 5 mg.","(sol.) AMMONIUM CARBONATE 60 ml.","(cap.) AMOXICILLIN 500 mg.","(syr.) Amoxy dry SYRUP 250 mg/5ml","(cap.) AmoxyCillin 250 mg.","(pwd.) amoxycillin SYR 125 mg./5ml.","(pwd.) AMPICILLIN   1 g 1 g.","(syr.) ANTACID SUSP(alum milk) 0.66 g.","(inj.) ANTIVENUM SERA,(งูเห่า) 0.6 u.","(pwd.) ANTIVENUM SERUM (กะปะ) 1.6 mg./ml.","(inj.) aP Acellular Pertussis (ไอกรน) 5 mcg./dose","(tab.) aspirin(asa) 81 mg.","(tab.) ASPIRIN(ASA/aspent) 300 mg.","(tab.) Atarax(hydroxyzine) 10 mg.","(tab.) ATENOLOL 50 mg.","(inj.) ATROPINE 0.6 mg./ml.","(tab.) Augmentin 1g เม็ด (Amoxi875mg+clavulanate125mg) 1 g.","(syr.) Augmentin Susp 400/57 mg/5ml","(inj.) BCG(bacillus calmette-gue rin) 0.1 ml.","(inj.) BENZATHINE PENICILLIN 1,200,000 u.","(tab.) Benzhexol 2 mg.","(tab.) Benzhexol 5 mg.","(lot.) BENZYL BENZOATE 25 %","(pwd.) BERODUAL ( MDI ) inhaler 200 dose","(sol.) BERODUAL 0.5 %","(sol.) BERODUAL 20 ml.","(sol.) BETADINE (IODINE) %","(cream) BETAMETHASONE(5g) 0.1 %","(syr.) Bromhexine elixir 4 mg.","BUDESONIDE  (MDI) 200 mcg.","(inj.) Buscopan inj (HYOSCINE  INJ) 20 mg./ml.","(tab.) CAFERGOT (NL) 1 mg.","(syr.) CALAMINE 15 %","(tab.) calcium carbonate(CaCO3) 600 mg.","(inj.) CALCIUM GLUCONATE 10 %","(tab.) CAPTOPRIL  25 mg 25 mg.","(tab.) CARBAMAZEPINE(tegretol) 200 mg.","(pwd.) CeFaZOLIN injection 1 g.","(pwd.) CefTaZidime injection 1 g.","(inj.) CefTRIAXone 1 g injection (CEF-3) 1 g.","(tab.) CETIRIZINE (Alerest) 10 mg.","(ear drop) CHLORAMPHENICOL EAR DROP 1 %","(sol.) Chlorhexidine mouth wash 0.12 g.","(tab.) CHLORPROMAZINE(CPZ) 100 mg.","(oint.) CHLORTETRACYCLINE - mg.","(tab.) Ciprofloxacin 500 mg.","(cap.) CLINDAMYCIIN 300 mg","(inj.) clindamycin  600 mg/vial. 600 mg./dose","(tab.) CLONAZEPAM(rivotril) 2 mg.","(tab.) Clopidogrel (Plavix) 75 mg.","(vag. tab.) CLOTRIMAZOLE VAG TAB(canesten) 100 mg.","(cream) CLOTRIMAZOLE(canesten) 1 %","(inj.) CLOXACILLIN INJ  1  g 1 g.","(tab.) COLCHICINE 0.6 mg.","(tab.) COTRIMOXAZOLE(bactrim) 400 mg.","(syr.) COTRIMOXAZOLE(bactrim) 60 ml.","(inj.) Covid Vaccine(SARS-CoV-2) 0.5 ml.","(tab.) CPM   tab. 4 mg.","(syr.) CPM 2 mg./5ml.","(inj.) CPM(piriton) 10 mg./ml.","(tab.) CYPROHEPTADINE(periactin) 4 mg.","(tab.) Cytotec 200 mcg.","(iv.) D-5-S - %","(iv.) D-5-S/2 - %","(iv.) D-5-S/3 - %","(iv.) D-5-S/4 500 ml.","(inj.) D-5-S/5 5 %","(iv.) D-5-W %","(inj.) D-5-W %","(iv.) D-5-W - %","(inj.) D-W-10 %","(tab.) Depakin (sodium valproate) 200 mg.","(inj.) DEXAMETHASONE 5 mg./ml.","(iv.) DEXTRAN 40 mg.","(tab.) DEXTROMETHORPHAN 15 mg.","(inj.) DEXTROSE (glucose) 50 %","(inj.) DIAZEPAM(valium) 10 mg./ml.","(tab.) DIAZEPAM(valium) 2 mg.","(tab.) DIAZEPAM(valium) 5 mg.","(tab.) DICLOFENAC (voltaren/fenac) 25 mg.","(cap.) diCloxacillin  cap 250 mg.","(cap.) DICLOXACILLIN CAP 500 mg.","(pwd.) Dicloxacillin syp. 62.5 mg/5ml","(inj.) DIGOXIN 0.25 mg./ml.","(tab.) DIGOXIN(lanoxin) 0.25 mg.","(tab.) DIMENHYDRINATE(dramamine) 50 mg.","(inj.) DIMENHYDRINATE(Dramamine) 50 mg./ml.","(cap.) DIP. CLORAZEPATE(trancon/T5) 5 mg.","(tab.) Dolutegravir 50 mg.","(tab.) DOMPERIDONE(motilium) 10 mg.","(syr.) DOMPERIDONE(motilium) 5 mg/5ml","(inj.) DOPAMINE 250 mg./ml.","(tab.) Doxazosin 4 mg.","(cap.) DOXYCYCLINE 100 mg.","(inj.) DT(diphtheria tetanus) vaccines mg.","(inj.) DTP iu./dose","(inj.) DTP-HB iu./dose","(inj.) DTP-HB-Hib vaccine 0.5 ml.","(tab.) EFAVIRENZ(EFV) 600 mg.","(tab.) ENALAPRIL 20 mg.","(tab.) eNAlapril 5 mg.","(inj.) ERIG (vinrab) 1000 iu.","(pwd.) ERYTHROMYCIN 125 mg","(tab.) ETHAMBUTOL 400 mg.","(tab.) Favipiravir (covid-19) 200 mg.","(sol.) FERROUS  DROP 50 mg/0.6ml","(tab.) FERROUS  FUMARATE 200 mg.","(syr.) Ferrous fumarate Susp. 76 mg/5ml","(cap.) FLUCONAZOLE 200 mg.","(cap.) FLUNARIZINE(sibelium) 5 mg.","(tab.) Fluoxetine 20 mg.","(inj.) Fluphenazine(DECA) 50","(inj.) FLUPHENAZINE(deca) 50 mg.","(tab.) FOLIC  ACID 5 mg.","(inj.) FUROSEMIDE(lasix) 20 mg/2 ml","(tab.) FUROSEMIDE(lasix) 40 mg.","(cap.) GEMFIBROZIL(Lopid) 300 mg.","(inj.) GENTAMICIN  80 mg/amp. 80 mg./2ml.","(tab.) gliPIZIDE(minidiab) 5 mg.","(tab.) Glyceryl guaiacolate (GG) 100 mg.","(tab.) GPO vir S30 30 mg.","(tab.) GPO VIR Z 250 250","(syr.) Guaifenesin syrup (GG) 100 mg/5ml","HALOPERIDOL 0.5 mg.","(tab.) HALOPERIDOL 2 mg.","(tab.) HALOPERIDOL 5 mg.","(inj.) HALOPERIDOL 5 mg./ml.","(tab.) HCTZ(hydrochlorothiazide) 25 mg.","(inj.) HEPATITIS B VACCINE (ENGERIX B)เบิกไม่ได้ 1 ml.","HI SET 1 u.","(sol.) HISTA OPH(opsil A) 0.05 %","(inj.) HPV vaccine 0.5 ml.","(inj.) Hydralazine  Hcl 20 mg./1ml","(tab.) Hydralazine HCl 25 mg.","(inj.) Hydrocortisone sodium  succinate 100 mg.","(tab.) HYOSCINE(buscopan) 10 mg.","(syr.) HYOSICNE(buscopan) 5 mg./5ml.","(syr.) Ibuprofen (brufen) 100 mg/5ml","(tab.) IBUPROFEN(brufen) 400 mg.","(tab.) IMIPRAMINE(tofranil) 25 mg.","(inj.) IMPLANON  implant 68 mg.","(inj.) Inactivated Poliomyelitis Vaccine(IPV) 40 iu.","(inj.) influenza ตามฤดูกาล 0.5 ml.","(tab.) INH(isoniazid) 100 mg.","(tab.) ISODIL  SL 5 mg.","(tab.) ISODIL  TAB 10 mg.","(tab.) Isoniazid 300 mg 300 mg.","(tab.) Isoniazid+Rifapentine 300/300 mg.","(inj.) JE 0.5ML/AMP ถ้าอายุมากกว่า3 ปีฉีด 0.5 ml 1 ml.","(inj.) JE VACCINE(0.5 ML) 80 mcg./ml.","(sol.) K Y jelly sack 5 g.","(pwd.) KALIMATE .","(tab.) KETOCONAZOLE(nizoral) 200 mg.","(tab.) KOCITAF (DTG50mg+FTC200mg+TAF25mg) 50/200/25 mg.","(tab.) Lamivudine 150 mg.","(tab.) Lamivudine 3TC 300 mg.","(tab.) Levodopa250 + carbidopa 25 mg.","(tab.) LevoFloxacin 500 mg.","(inj.) LIDOCAINE 2 %","(cap.) LITHIUM CARBONATE(LiCO3) (NL) 300 mg.","(tab.) Lopinavir/Ritonavir 200/50 mg.","(tab.) Lorazepam 1 mg.","(tab.) Losartan (cozaar) 50 mg.","(sol.) M tussis ( brown mixt ) 180 ml.","(sol.) M. CARMINATIVE 180 ml.","(sol.) M.tussis (brown mixt) 60 ml.","(inj.) MAGNESIUM SULFATE 10 %","(inj.) MAGNESIUM SULFATE 50 %","(inj.) MEDROXYPROGESTERONE ACETATE(depo) 150 mg.","(tab.) METFORMIN(glucophage) 500 mg.","(tab.) Methimazole 5 mg.","(tab.) METHYLDOPA(aldomet) 250 mg.","(inj.) METHYLERGOMETRINE(Methergin) 0.2 mg./ml.","(tab.) METOCLOPRAMIDE(plasil) 10 mg.","(inj.) METOCLOPRAMIDE(plasil) 10 mg./2ml.","(tab.) Metoprolol tartrate 100 mg.","(tab.) METRONIDAZOLE(flagyl) 400 mg.","(inj.) METRONIDAZOLE(flagyl) 500 mg/vial. 500 mg.","(tab.) Micronised progesterone 100 mg.","(syr.) MILK OF MAGNESIA(MOM) 60 ml.","(inj.) Mixtard (ขวด) 100 units/ml.","(inj.) mixtard STAT 100 iu","(inj.) MMR 0.5 ml.","(cap.) Molnupiravir 200 mg","(inj.) MORPHINE 10 mg./ml.","(tab.) Morphine MST 10 mg","(sol.) Morphine Solution 10 mg/5 ml","(inj.) MR 0.5","(tab.) MTV-MULTIVITAMINS g.","(tab.) NaCl (Sodium Chloride) 300 mg","(inj.) NALOXONE(narcan) 0.1mg./ml.","(tab.) Nevirapine 200 mg.","(tab.) NIFEDIPINE SR 20 mg.","(inj.) Norepinephrine bitartrate 4 ml/ 4 mg.","(tab.) NORFLOXACIN(lexinor) 400 mg.","(tab.) Norgesic(Orphenadrine35mg/paracetamol500mg) mg.","(inj.) NPH (ขวด) 100 units/ml.","(inj.) NPH INSULIN 1 units/ml.","(inj.) NSS 5 ml 0.9 %","(inj.) NSS INJ. 0.9 %","(sol.) OLIVE OIL 60 ml.","(inj.) Omeprazole 10 ml 40 mg.","(cap.) OMEPRAZOLE(losec/miracid) 20 mg.","(inj.) Ondansetron inj 8mg/4ml","(oral drop) OPV vaccine .","(pwd.) ORS(รสส้ม) 75 4.253 g.","(cap.) oseltamivir 30 mg.","(cap.) oseltamivir 45 mg.","(cap.) oseltamivir 75 mg.","(inj.) OXYTOCIN 10 iu.","(syr.) PARACETAMOL  SYR 250 mg/5ml.","(tab.) paracetamol 325 mg.","(tab.) PARACETAMOL 500 mg.","(syr.) PARACETAMOL SYRUP 120 มก./5มล.","(inj.) PCEC (ID) 0.1 iu.","(inj.) PCEC (IM) 0.5 iu.","(tab.) PERPHENAZINE(สีไข่ไก่) 8 mg.","(inj.) PETHIDINE 50 mg./ml.","(tab.) PHENOBARBITAL(1 GRAIN) 60 mg.","(inj.) Phenytoin inj 250/5 mg./ml.","(tab.) Phenytoin(Dilantin) 50 mg.","(cap.) PHENYTOIN(dilantin) promt 100 mg.","(tab.) Pioglitazone 30 mg.","(eye drop) PolyOPH 5000 iu.","(sol.) POTASSIUM (KCL elixir) 20 mEq./15ml.","(tab.) Potassium Chloride tab 6.7 mEq.","(inj.) POTASSIUM CHLORIDE(KCl) 20 mEq.","(tab.) PREDNISOLONE 5 mg.","(cream) prednisolone cream 5","(tab.) Primolut-N(norethisterone 5 mg) 5 mg.","(supp.) PROCTOSEDYL 5 mg.","(tab.) propranolol(inderal) 10 mg.","(tab.) PTU(propylthiouracil) 50 mg.","(tab.) PZA(pyrazinamide) 500 mg.","(tab.) QUININE SULFATE 300 mg.","(tab.) R-DEN(คุมเม็ด) 30 mcg.","(inj.) RABIES ANTISERUM(ERIG) 100 iu.","(inj.) RI  STAT (REGULAR INSULIN ) 100 iu./ml.","(cap.) RIFAMPICIN 300 mg.","(cap.) RIFAMPICIN 450 mg.","(tab.) Rifapentine 150 mg.","(cap.) Rifinah (Rifam+INH) 300+150 mg.","(tab.) Risperidone 2 mg.","(syr.) ROTASIIL vaccine(ชนิดหยอด 3 ครั้ง) 2 ml.","(tab.) ROXITHROMYCIN(rulid) 150 mg.","(sol.) SALBUTAMOL  NB (ER) 0.1 %","(tab.) SALBUTAMOL 2 mg.","(syr.) SALBUTAMOL 2 mg/5ml","(sol.) SALBUTAMOL NB. 0.1 %","(sol.) SALBUTAMOL(ventolin) MDI 100 mcg.","(sol.) Saline IRRIGATE 0.9 %","(sol.) SELENIUM shampoo 200 mg./ml.","(mdi) SeRoflo   (MDI) 25/125 mcg./dos","(tab.) Sertraline 50 mg.","(cream) SILVER SULFADIAZINE (25g) 1 %","(tab.) SIMETHICONE  (air-x) 80 mg.","(syr.) SIMETHICONE DROP SUS 40 mg./0.6ml.","(tab.) SimVastatin(zocor) (NL) 20 mg.","(tab.) Sodamint (Sodium bicarbonate) 300 mg.","(inj.) SODIUM BICARBONATE 7.5%(NaHCO3) 50 ml.","(syr.) SODIUM BICARBONATE(NaHCO3) 10 mg./ml.","(tab.) spironolactone (Aldactone) 25 mg.","(inj.) STERILEWATER (SWI) 100 ml.","(inj.) Streptokinase 1500000 u.","(inj.) STREPTOMYCIN SULPHATE 1 g.","(tab.) Teevir 300 mg.","(tab.) Tenofovia disoproxil 300 mg.","(inj.) TERBUTALINE SULFATE(bricanyl) 0.5 mg./ml.","(sol.) tetracain eye drop 0.5 %","(cap.) Theophylline-CR 200 mg.","(tab.) THYROXINE-L 100 mcg.","(tab.) TLD (TDF300mg+3TC300mg+DTG50mg) mg.","(cap.) TRAMADOL HCl(tramal) 50 mg.","(inj.) TRAMADOL inj 50 mg./ml.","(cap.) Tranexamic acid 250 mg.","(cream) TRIAMCINOLONE 0.02 %","(cream) TRIAMCINOLONE 0.1 %","(oint.) Triamcinolone Oral Paste 1 g.","(inj.) TRIAMCINOLONE+XYLOCAINE(IL)(kenacort) 10 mg./ml.","(tab.) Triferdine 150 mg.","(sol.) UNISON 10 ml.","(sol.) UNISON ENEMA 100 ml.","(inj.) VERORAB ( ID ) 0.1 ml.","(inj.) VERORAB ( IM ) 0.5 ml.","(tab.) VIT B6(pyridoxine) 50 mg.","(tab.) VITAMIN B 1/6/12 1 g.","(inj.) VITAMIN B COMPLEX .","(inj.) VITAMIN K1 1 mg.","(inj.) WATER FOR INJECTION 5 ml.","(cap.) Zidovudine  (AZT) 300 mg.","(syr.) Zidovudine (AZT) 10 mg./ml.","(cap.) Zidovudine (AZT) 100 mg.","(tab.) Zilarvir (Lamivudine150mg+Zidovudine300mg) mg.","(cap.) ขมิ้นชัน แคปซูล KMC 500 mg.","(cap.) ขิง 500 mg.","(cap.) จันทน์ลีลา ซองละ 24 แคปซูล 330 g.","(cap.) ตรีผลาTPL 90 g.","(cap.) ฟ้าทะลายโจร FTJ 500 mg.","(syr.) มะขามป้อม MKP 120 ml.","ยาประสะจันทน์แดง ซองละ 12 แคปซูล 500 mg.","(cap.) ยาประสะไพลPSP 500 mg.","(cap.) ยามันทธาตุ 500 mg.","(tab.) ยาระบายมะขามแขก(senokot) 7.5  mg","(cap.) ยาศุขไสยาศน์ 500 mg.","(cap.) ยาสหัสธาราSHTR 500 mg.","(pwd.) ยาหอมนวโกฐNVK 7 g.","(pwd.) ยาหอมเทพจิตรTPJ 30 g.","(cap.) ยาห้าราก ซองละ 9 แคปซูล 500 mg.","(tab.) ยาอมมะแว้ง MW %","(cap.) ยาเขียวหอมKH 500 mg.","(tab.) ยาเดิม (Manidipine ) 20 mg","(sol.) ยาเดิม (Natear(Artificial Tears)) 3 mg/1 ml","(pwd.) ยาเดิม(Acetylcysteine) 200 mg.","(tab.) ยาเดิม(Amlodipine) 10 mg.","(tab.) ยาเดิม(Atorvastatin) 40 mg.","(tab.) ยาเดิม(Azithromycin) 250 mg.","(syr.) ยาเดิม(Azitromycin Dry syrup) 200 mg/5ml","(tab.) ยาเดิม(Betahistine) 6 mg.","(tab.) ยาเดิม(Carvedilol) 6.25 mg.","(cap.) ยาเดิม(Gabapentin) 300 mg.","(tab.) ยาเดิม(Hydralazine) 50 mg.","(inj.) ยาเดิม(Hypercrit) 4000 u.","(tab.) ยาเดิม(Lorazepam) 0.5 mg.","(pwd.) ยาเดิม(Meropenem inj.) 1 gm","(tab.) ยาเดิม(Risperidone) 1 mg.","(inj.) ยาเดิม(Vancomycin inj.) 500 mg","(tab.) ยาเดิม(Warfarin) 5 mg","(cap.) ยาเลือดงามLH 500 mg.","(cap.) ยาเหลืองปิดสมุทร 500 mg.","(cap.) ยาแก้ลมจับเส้น 500 mg.","(pwd.) ยาแก้ลมอัมพฤกษ์AMP 70 g.","(cap.) รางจืด RJ 400 mg.","(pwd.) ลูกประคบสมุนไพร 220 g.","(cap.) เพชรสังฆาต PSK 500 mg."];
+
+// ═══ CONSTANTS ══════════════════════════════════════════════════
+const TYPE_A_SYMPTOMS = [
+  'Agitation','Bradycardia','Constipation','Drug induced hepatitis','Dry cough',
+  'Flushing','Edema','Hypoglycemia','Hepatitis','Lactic acidosis','Myalgia',
+  'Muscle cramps','Orthostatic hypotension','Thrombocytopenia','Transaminitis',
+  'กล้ามเนื้อเกร็งทั้งตัว','คลื่นไส้อาเจียน','ใจสั่น','ปวดศีรษะ',
+  'หน้ามืด','นอนไม่หลับ','ท้องเสีย','เวียนศีรษะ','อื่นๆ'
+];
+
+const TYPE_B_SYMPTOMS = [
+  'Anaphylaxis shock','Angioedema','คัน แต่ไม่มีผื่น','Erythema multiforme (EM)',
+  'Fixed drug eruption','Purpura Rash','MP rash','Mucosal drug allergy','ริมผีปากดำ',
+  'Stevens-Johnson Syndrome (SJS)','ปากบวม ปวด/แสบบริเวณลิ้น ปาก','Urticaria','อื่นๆ'
+];
+
+const G6PD_SYMPTOMS = ['Hemolytic anemia','Methemoglobinemia','อาการอื่นๆ'];
+
+const ADR_DRUGS = [
+  'Allopurinol','Amlodipine','Amoxicillin','Amoxycillin','Aspirin','Atorvastatin',
+  'Augmentin','Azithromycin','Bromhexine','Celecoxib','Cephalexin','Ceftriaxone',
+  'Chlortetracycline','Ciprofloxacin','Clindamycin','Diclofenac','Dicloxacillin',
+  'Dimenhydrinate','Doxazosin','Doxycycline','Enalapril','Etoricoxib','Fexofenadine',
+  'Fluconazole','Gabapentin','Glipizide','Hydralazine','Hyoscine','Ibuprofen',
+  'Iopromide','Lercanidipine','Loratadine','Mefenamic acid','Metformin','Methyldopa',
+  'Mycophenolate','Naproxen','Nifedipine','Norgesic','NSAIDS','Paracetamol',
+  'Penicillin','Phenytoin','Pioglitazone','Prednisolone','Pregabalin','Pyrazinamide',
+  'Rifampicin','Salbutamol','Simvastatin','Sodium Valproate','Sulfa','Tetracycline',
+  'Tolperisone','Tramadol','Tranexamic acid','Trihexyphenidyl','ยาอมมะแว้ง'
+];
+
+const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+// ═══ STATE ══════════════════════════════════════════════════════
+let records = JSON.parse(localStorage.getItem('adr_records') || '[]');
+let currentTab = 'all';
+let editingId = null;
+let charts = {};
+
+// ═══ HELPERS ════════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function today() { return new Date().toISOString().slice(0,10); }
+// ── Thai Date Helpers (พ.ศ. DD/MM/YY) ────────
+function todayTH() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()+543).slice(-2);
+}
+function thToISO(s) {
+  if (!s || !s.includes('/')) return s||'';
+  const [dd,mm,yy] = s.trim().split('/');
+  if (!dd||!mm||!yy) return '';
+  const ce = (yy.length<=2 ? 2500+parseInt(yy) : parseInt(yy)) - 543;
+  return `${ce}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function autoDateTH(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+// ─────────────────────────────────────────────
+
+function showToast(msg, dur=2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display='none', dur);
+}
+
+function thDate(s) {
+  if (!s) return '-';
+  const d = new Date(s); if (isNaN(d)) return s;
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()+543).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+function fiscalInfo(dateStr) {
+  const d = new Date(dateStr); if (isNaN(d)) return { year:null, month:null };
+  const m = d.getMonth(); // 0-11
+  const y = d.getFullYear() + 543;
+  const fy = m >= 9 ? y + 1 : y;
+  return { year: fy, month: TH_MONTHS[m], fyIdx: FISCAL_MONTHS.indexOf(TH_MONTHS[m]) };
+}
+
+function excelToDate(serial) {
+  if (!serial || typeof serial !== 'number') return '';
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  return d.toISOString().slice(0,10);
+}
+
+function saveLocal() { localStorage.setItem('adr_records', JSON.stringify(records)); }
+
+// ═══ DRUG DATALIST ═══════════════════════════════════════════════
+function buildDrugList() {
+  const used = records.map(r=>r.drug).filter(Boolean);
+  const all = [...new Set([...ADR_DRUGS,...used])].sort();
+  document.getElementById('drug-dl-adr').innerHTML = DRUG_LIST.map(d=>`<option value="${d}">`).join('');
+}
+
+// ═══ YEAR FILTER ════════════════════════════════════════════════
+function buildYearFilter() {
+  const years = [...new Set(records.map(r=>fiscalInfo(r.date).year).filter(Boolean))].sort((a,b)=>b-a);
+  const el = document.getElementById('fil-year');
+  const cur = el.value;
+  el.innerHTML = '<option value="">ทุกปี</option>' + years.map(y=>`<option ${String(y)===cur?'selected':''}>${y}</option>`).join('');
+  if (!el.value && years.length) el.value = years[0];
+}
+
+// ═══ TYPE CHANGE ════════════════════════════════════════════════
+function onTypeChange(type) {
+  const t = type !== undefined ? type : document.getElementById('f-type').value;
+  const sg = document.getElementById('symptom-group');
+  const sel = document.getElementById('f-symptom');
+  let list = [];
+  if (t==='A') list = TYPE_A_SYMPTOMS;
+  else if (t==='B') list = TYPE_B_SYMPTOMS;
+  else if (t==='G6PD') list = G6PD_SYMPTOMS;
+  sg.style.display = list.length ? 'block' : 'none';
+  sel.innerHTML = '<option value="">-- เลือกอาการ --</option>' + list.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function populateModalSymptoms(type, cur) {
+  const list = type==='A'?TYPE_A_SYMPTOMS : type==='B'?TYPE_B_SYMPTOMS : type==='G6PD'?G6PD_SYMPTOMS : [];
+  const sel = document.getElementById('m-symptom');
+  sel.innerHTML = '<option value="">-- เลือกอาการ --</option>' + list.map(s=>`<option value="${s}" ${s===cur?'selected':''}>${s}</option>`).join('');
+}
+
+// ═══ CRUD ════════════════════════════════════════════════════════
+function submitForm() {
+  const date = thToISO(document.getElementById('f-date').value);
+  const type = document.getElementById('f-type').value;
+  const drug = document.getElementById('f-drug').value.trim();
+  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
+  if (!type) { showToast('⚠️ กรุณาเลือกชนิดรายงาน'); return; }
+  if (!drug) { showToast('⚠️ กรุณาระบุยา'); return; }
+
+  const editId = document.getElementById('edit-id').value;
+  const rec = {
+    id: editId || uid(),
+    date, type,
+    hn: document.getElementById('f-hn').value.trim(),
+    name: document.getElementById('f-name').value.trim(),
+    dept: 'หอผู้ป่วยใน',
+    an: document.getElementById('f-an').value.trim(),
+    symptom: document.getElementById('f-symptom').value,
+    drug,
+    productType: document.getElementById('f-prodtype').value,
+    severity: document.getElementById('f-sev').value,
+    diagnosis: document.getElementById('f-diag').value.trim(),
+    source: 'manual', created: Date.now()
+  };
+
+  if (editId) {
+    const idx = records.findIndex(r=>r.id===editId);
+    if (idx>=0) records[idx] = { ...records[idx], ...rec };
+    showToast('✅ แก้ไขแล้ว');
+  } else {
+    records.unshift(rec);
+    showToast('✅ บันทึกแล้ว');
+  }
+  saveLocal(); window.fbSaveADR && fbSaveADR();
+  resetForm(); renderAll();
+}
+
+function deleteRecord(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  records = records.filter(r=>r.id!==id);
+  saveLocal(); window.fbSaveADR && fbSaveADR();
+  renderAll(); showToast('🗑️ ลบแล้ว');
+}
+
+function onModalTypeChange() {
+  const t = document.getElementById('m-type').value;
+  const cur = document.getElementById('m-symptom').value;
+  populateModalSymptoms(t, cur);
+}
+
+function editRecord(id) {
+  const r = records.find(r=>r.id===id); if (!r) return;
+  editingId = id;
+  document.getElementById('m-type').value = r.type||'';
+  populateModalSymptoms(r.type, r.symptom);
+  document.getElementById('m-symptom').value = r.symptom||'';
+  document.getElementById('m-drug').value = r.drug||'';
+  document.getElementById('m-sev').value = r.severity||'ไม่ร้ายแรง (Non-serious)';
+  document.getElementById('m-diag').value = r.diagnosis||'';
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+  editingId = null;
+}
+
+function saveModal() {
+  if (!editingId) return;
+  const idx = records.findIndex(r=>r.id===editingId); if (idx<0) return;
+  records[idx].type = document.getElementById('m-type').value;
+  records[idx].symptom = document.getElementById('m-symptom').value;
+  records[idx].drug = document.getElementById('m-drug').value.trim();
+  records[idx].severity = document.getElementById('m-sev').value;
+  records[idx].diagnosis = document.getElementById('m-diag').value.trim();
+  saveLocal(); window.fbSaveADR && fbSaveADR();
+  renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
+}
+
+function resetForm() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('form-title').textContent = '➕ เพิ่มรายการ ADR';
+  ['f-hn','f-name','f-an','f-drug','f-diag'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f-date').value = todayTH();
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-sev').value = 'ไม่ร้ายแรง (Non-serious)';
+  document.getElementById('f-prodtype').value = 'ยา';
+  onTypeChange('');
+}
+
+// ═══ IMPORT HOSXP EXCEL ═════════════════════════════════════════
+async function importHosXP(input) {
+  const file = input.files[0]; if (!file) return;
+  input.value = '';
+  showToast('📥 กำลัง import...', 10000);
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:false });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+    // Find header row
+    let hRow = 0;
+    for (let i=0; i<Math.min(6,rows.length); i++) {
+      if (rows[i].some(c=>String(c).includes('HN')||String(c).includes('วันที่'))) { hRow=i; break; }
+    }
+    const headers = rows[hRow].map(h=>String(h).trim());
+    const col = (name) => headers.findIndex(h=>h.includes(name));
+
+    const cDate=col('วันที่'), cHN=col('HN'), cName=col('ชื่อ'), cDept=col('แผนก'),
+          cAN=col('AN'), cDiag=col('ผลวินิจฉัย'), cType=col('ชนิด'),
+          cProd=col('ประเภทผลิต'), cSev=col('ความร้ายแรง'), cDrug=col('รายการผลิต');
+
+    const mapType = v => {
+      const s = String(v).toLowerCase();
+      if (s.includes('g6pd')) return 'G6PD';
+      if (s.includes('type b')||s.includes('แพ้')||/\bb\b/.test(s)) return 'B';
+      if (s.includes('type a')||s.includes('ข้างเคียง')||/\ba\b/.test(s)) return 'A';
+      return '';
+    };
+    const SEV_MAP = [
+      ['ไม่ร้ายแรง (Non-serious)', ['ไม่ร้ายแรง','non-serious','ไม่รุนแรง']],
+      ['ร้ายแรง - เสียชีวิต (Death)', ['เสียชีวิต','death']],
+      ['ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)', ['อันตรายถึงชีวิต','life-threat','อัตรายถึงชีวิต']],
+      ['ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)', ['hospitalization-initial','เข้ารับการรักษา','ต้องเข้า']],
+      ['ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)', ['hospitalization-prolonged','เพิ่มระยะเวลา','prolonged']],
+      ['ร้ายแรง - พิการ (Disability)', ['พิการ','disability']],
+      ['ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)', ['แต่กำเนิด','congenital']],
+    ];
+    const mapSev = v => {
+      const s = String(v).trim();
+      for (const [canonical, keys] of SEV_MAP) {
+        if (s === canonical || keys.some(k => s.toLowerCase().includes(k.toLowerCase()))) return canonical;
+      }
+      return s || 'ยังไม่ทราบ';
+    };
+    const getDate = raw => {
+      if (!raw) return '';
+      if (typeof raw==='number'&&raw>1000) return excelToDate(raw);
+      const s = String(raw);
+      if (s.match(/\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+      return s;
+    };
+
+    let imported=0, skipped=0;
+    for (let i=hRow+1; i<rows.length; i++) {
+      const r = rows[i]; if (!r||r.every(c=>!c)) continue;
+      const dateStr = getDate(cDate>=0?r[cDate]:'');
+      const hn = cHN>=0?String(r[cHN]).trim():'';
+      const drug = cDrug>=0?String(r[cDrug]).trim():'';
+      if (records.some(x=>x.date===dateStr&&x.hn===hn&&x.drug===drug)) { skipped++; continue; }
+
+      records.unshift({
+        id: uid(), date: dateStr, hn,
+        name: cName>=0?String(r[cName]).trim():'',
+        dept: cDept>=0?String(r[cDept]).trim():'',
+        an: cAN>=0?String(r[cAN]).trim():'',
+        type: mapType(cType>=0?r[cType]:''),
+        symptom: '',
+        drug,
+        productType: cProd>=0?String(r[cProd]).trim():'ยา',
+        severity: mapSev(cSev>=0?r[cSev]:''),
+        diagnosis: cDiag>=0?String(r[cDiag]).trim():'',
+        source: 'hosxp', created: Date.now()
+      });
+      imported++;
+    }
+    saveLocal(); window.fbSaveADR && fbSaveADR();
+    renderAll();
+    showToast(`✅ Import ${imported} รายการ (ข้าม ${skipped} ซ้ำ)${imported?'\n⚠️ กรุณาระบุลักษณะอาการให้ครบ':''}`, 4000);
+  } catch(e) { showToast('❌ เกิดข้อผิดพลาด: '+e.message); console.error(e); }
+}
+
+// ═══ EXPORT / IMPORT JSON ═══════════════════════════════════════
+function exportJSON() {
+  const blob = new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),records},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download='ADR_backup_'+today()+'.json'; a.click(); URL.revokeObjectURL(url);
+  showToast('✅ Export สำเร็จ');
+}
+
+function importJSON(input) {
+  const file = input.files[0]; if (!file) return; input.value='';
+  const rd = new FileReader();
+  rd.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const arr = data.records||data;
+      if (!Array.isArray(arr)) throw new Error('รูปแบบไม่ถูกต้อง');
+      records = arr; saveLocal();
+      window.fbSaveADR && fbSaveADR(); renderAll();
+      showToast(`✅ Import ${records.length} รายการ`);
+    } catch(err) { showToast('❌ ไฟล์ไม่ถูกต้อง: '+err.message); }
+  };
+  rd.readAsText(file);
+}
+
+// ═══ TAB SWITCH ══════════════════════════════════════════════════
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAll();
+}
+
+// ═══ FILTER HELPERS ══════════════════════════════════════════════
+function getTabRecs() {
+  return currentTab==='all' ? records : records.filter(r=>r.type===currentTab);
+}
+
+function getFiltered(base) {
+  const year = document.getElementById('fil-year').value;
+  const month = document.getElementById('fil-month').value;
+  const sev = document.getElementById('fil-sev').value;
+  const q = document.getElementById('fil-q').value.toLowerCase();
+  return base.filter(r => {
+    const fi = fiscalInfo(r.date);
+    if (year && String(fi.year)!==year) return false;
+    if (month && fi.month!==month) return false;
+    if (sev && r.severity!==sev) return false;
+    if (q && ![r.hn,r.name,r.drug,r.symptom].some(f=>String(f||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+// ═══ RENDER ALL ══════════════════════════════════════════════════
+function renderAll() {
+  buildYearFilter();
+  buildDrugList();
+  const tabRecs = getTabRecs();
+  const fRecs = getFiltered(tabRecs);
+  renderKPI(tabRecs, fRecs);
+  renderCharts(fRecs);
+  renderTable(fRecs);
+}
+
+// ═══ KPI ════════════════════════════════════════════════════════
+function renderKPI(tabRecs, fRecs) {
+  const now = new Date();
+  const curFYMonth = TH_MONTHS[now.getMonth()];
+  const thisMonth = fRecs.filter(r=>fiscalInfo(r.date).month===curFYMonth);
+  const severe = fRecs.filter(r=>r.severity && r.severity.startsWith('ร้ายแรง')).length;
+  const noSym = fRecs.filter(r=>!r.symptom).length;
+  const counts = {A:tabRecs.filter(r=>r.type==='A').length, B:tabRecs.filter(r=>r.type==='B').length, G6PD:tabRecs.filter(r=>r.type==='G6PD').length};
+
+  const kpi4 = currentTab==='all'
+    ? `<div class="kpi-card"><div class="kpi-label">Type A / B / G6PD</div><div class="kpi-val" style="font-size:18px">${counts.A} / ${counts.B} / ${counts.G6PD}</div><div class="kpi-sub">จำนวนแต่ละชนิด</div></div>`
+    : `<div class="kpi-card"><div class="kpi-label">ยังไม่ระบุอาการ</div><div class="kpi-val ${noSym?'gold':''}">${noSym}</div><div class="kpi-sub">รายการที่ต้องระบุเพิ่ม</div></div>`;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">ADR ทั้งหมด (${{'all':'ทั้งหมด','A':'Type A','B':'Type B','G6PD':'G6PD'}[currentTab]})</div>
+      <div class="kpi-val">${fRecs.length}</div>
+      <div class="kpi-sub">รายการที่กรอง</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">เดือน${curFYMonth.replace('.','')}</div>
+      <div class="kpi-val gold">${thisMonth.length}</div>
+      <div class="kpi-sub">รายการ</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ร้ายแรง (Serious)</div>
+      <div class="kpi-val ${severe?'danger':''}">${severe}</div>
+      <div class="kpi-sub">รายการ</div>
+    </div>
+    ${kpi4}
+  `;
+}
+
+// ═══ CHARTS ══════════════════════════════════════════════════════
+const CHART_COLORS = {
+  A: 'rgba(30,86,200,0.75)', B: 'rgba(157,23,77,0.75)', G6PD: 'rgba(146,64,14,0.75)',
+  all: 'rgba(26,94,56,0.75)'
+};
+
+function renderCharts(recs) {
+  // Monthly data
+  const mCount = {};
+  const mCountA = {}, mCountB = {}, mCountG = {};
+  FISCAL_MONTHS.forEach(m => { mCount[m]=0; mCountA[m]=0; mCountB[m]=0; mCountG[m]=0; });
+  recs.forEach(r => {
+    const {month} = fiscalInfo(r.date);
+    if (month && mCount[month]!==undefined) {
+      mCount[month]++;
+      if (r.type==='A') mCountA[month]++;
+      else if (r.type==='B') mCountB[month]++;
+      else if (r.type==='G6PD') mCountG[month]++;
+    }
+  });
+
+  const mCtx = document.getElementById('chart-monthly').getContext('2d');
+  if (charts.monthly) charts.monthly.destroy();
+  const datasets = currentTab==='all' ? [
+    { label:'Type A', data: FISCAL_MONTHS.map(m=>mCountA[m]), backgroundColor: CHART_COLORS.A, borderRadius:3 },
+    { label:'Type B', data: FISCAL_MONTHS.map(m=>mCountB[m]), backgroundColor: CHART_COLORS.B, borderRadius:3 },
+    { label:'G6PD',  data: FISCAL_MONTHS.map(m=>mCountG[m]),  backgroundColor: CHART_COLORS.G6PD, borderRadius:3 }
+  ] : [{ label:'จำนวน', data: FISCAL_MONTHS.map(m=>mCount[m]), backgroundColor: CHART_COLORS[currentTab]||CHART_COLORS.all, borderRadius:3 }];
+
+  charts.monthly = new Chart(mCtx, {
+    type: 'bar',
+    data: { labels: FISCAL_MONTHS, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { display: currentTab==='all', position:'bottom', labels:{boxWidth:12,font:{size:11}} } },
+      scales: { x:{stacked:currentTab==='all'}, y:{stacked:currentTab==='all',beginAtZero:true,ticks:{stepSize:1}} }
+    }
+  });
+
+  // Symptom top 8
+  const sCounts = {};
+  recs.forEach(r => { if(r.symptom) sCounts[r.symptom]=(sCounts[r.symptom]||0)+1; });
+  const topS = Object.entries(sCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const sCtx = document.getElementById('chart-symptom').getContext('2d');
+  if (charts.symptom) charts.symptom.destroy();
+  if (!topS.length) {
+    sCtx.clearRect(0,0,sCtx.canvas.width,sCtx.canvas.height);
+    sCtx.fillStyle='#9ca3af'; sCtx.font='14px Noto Sans Thai,sans-serif';
+    sCtx.textAlign='center'; sCtx.fillText('ยังไม่มีข้อมูลอาการ',sCtx.canvas.width/2,sCtx.canvas.height/2);
+  } else {
+    charts.symptom = new Chart(sCtx, {
+      type:'bar',
+      data:{ labels:topS.map(([s])=>s.length>22?s.slice(0,20)+'…':s), datasets:[{ label:'จำนวน', data:topS.map(([,c])=>c), backgroundColor:'rgba(14,116,144,0.75)', borderRadius:3 }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+    });
+  }
+
+  // Drug top 8
+  const dCounts = {};
+  recs.forEach(r => { if(r.drug) dCounts[r.drug]=(dCounts[r.drug]||0)+1; });
+  const topD = Object.entries(dCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const dCtx = document.getElementById('chart-drug').getContext('2d');
+  if (charts.drug) charts.drug.destroy();
+  if (!topD.length) {
+    dCtx.clearRect(0,0,dCtx.canvas.width,dCtx.canvas.height);
+    dCtx.fillStyle='#9ca3af'; dCtx.font='14px Noto Sans Thai,sans-serif';
+    dCtx.textAlign='center'; dCtx.fillText('ยังไม่มีข้อมูลยา',dCtx.canvas.width/2,dCtx.canvas.height/2);
+  } else {
+    charts.drug = new Chart(dCtx, {
+      type:'bar',
+      data:{ labels:topD.map(([d])=>d.length>22?d.slice(0,20)+'…':d), datasets:[{ label:'จำนวน', data:topD.map(([,c])=>c), backgroundColor:'rgba(196,154,34,0.75)', borderRadius:3 }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+    });
+  }
+}
+
+// ═══ TABLE ═══════════════════════════════════════════════════════
+function renderTable(fRecs) {
+  const wrap = document.getElementById('tbl-wrap');
+  if (!fRecs.length) {
+    wrap.innerHTML = '<div class="empty-state"><p>ไม่มีข้อมูล ADR</p><small>เพิ่มรายการผ่านแบบฟอร์มด้านซ้าย หรือ Import จาก HosXP</small></div>';
+    return;
+  }
+  const typeBadge = t => t==='A'?'<span class="badge badge-a">Type A</span>':t==='B'?'<span class="badge badge-b">Type B</span>':t==='G6PD'?'<span class="badge badge-g6pd">G6PD</span>':'<span class="badge badge-na">?</span>';
+  const sevBadge = s => {
+    if (!s || s==='ยังไม่ทราบ') return `<span class="badge badge-na">${s||'-'}</span>`;
+    if (s.includes('ไม่ร้ายแรง')||s.includes('Non-serious')) return '<span class="badge badge-mild">ไม่ร้ายแรง</span>';
+    if (s.includes('เสียชีวิต')||s.includes('Death')) return '<span class="badge badge-sev" style="background:#18181b;color:#fff">เสียชีวิต</span>';
+    if (s.includes('อันตรายถึงชีวิต')||s.includes('Life-threat')) return '<span class="badge badge-sev">Life-threatening</span>';
+    if (s.includes('Hospitalization-initial')||s.includes('เข้ารับการรักษา')) return '<span class="badge badge-sev">Hospitalize-initial</span>';
+    if (s.includes('Hospitalization-prolonged')||s.includes('เพิ่มระยะเวลา')) return '<span class="badge badge-mod">Hospitalize-prolonged</span>';
+    if (s.includes('พิการ')||s.includes('Disability')) return '<span class="badge badge-sev">พิการ</span>';
+    if (s.includes('แต่กำเนิด')||s.includes('Congenital')) return '<span class="badge badge-mod">Congenital anomaly</span>';
+    return `<span class="badge badge-na">${s}</span>`;
+  };
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>วันที่</th><th>HN / ชื่อ</th>
+          <th>ยา / ผลิตภัณฑ์</th><th>ชนิด</th>
+          <th>ลักษณะอาการ</th><th>ความร้ายแรง</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${fRecs.map(r=>`
+          <tr class="${!r.symptom?'missing-symptom':''}">
+            <td style="white-space:nowrap">${thDate(r.date)}</td>
+            <td><strong>${r.hn||'-'}</strong>${r.name?`<br><small style="color:var(--text-light)">${r.name}</small>`:''}</td>
+
+            <td>${r.drug||'-'}</td>
+            <td>${typeBadge(r.type)}</td>
+            <td>${r.symptom||'<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
+            <td>${sevBadge(r.severity)}</td>
+            <td style="white-space:nowrap">
+              <button class="btn-edit" onclick="editRecord('${r.id}')" title="แก้ไข">✏️</button>
+              <button class="btn-del" onclick="deleteRecord('${r.id}')" title="ลบ">🗑️</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ═══ FIREBASE ════════════════════════════════════════════════════
+(function() {
+  const config = {
+    apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+    authDomain: "pharmacy-tph.firebaseapp.com",
+    projectId: "pharmacy-tph",
+    storageBucket: "pharmacy-tph.firebasestorage.app",
+    messagingSenderId: "617328257113",
+    appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+  };
+  const COL = 'pharmacy_tph';
+  let db;
+  const badge = document.getElementById('sync-badge');
+  let lastSyncTime = null;
+  function nowTH() { return new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}); }
+  function setBadge(txt, ok) {
+    if (ok === true) { lastSyncTime = nowTH(); badge.textContent = `☁️ ซิงค์แล้ว ${lastSyncTime}`; }
+    else if (ok === false) { badge.textContent = lastSyncTime ? `⚠️ ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '⚠️ ออฟไลน์'; }
+    else { badge.textContent = txt; }
+    badge.style.background = ok===true?'#d1fae5':ok===false?'#fee2e2':'#fef9c3';
+    badge.style.color = ok===true?'#065f46':ok===false?'#991b1b':'#78350f';
+    badge.style.opacity = '1';
+  }
+
+  window.fbSaveADR = async function() {
+    if (!db) return;
+    try { await db.collection(COL).doc('adr_records').set({ records, updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveADR:', e.message); }
+  };
+
+  function fbInit() {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(config);
+      db = firebase.firestore();
+      db.enablePersistence().catch(() => {});
+      setBadge('🔄 กำลังเชื่อมต่อ...', null);
+      db.collection(COL).doc('adr_records').onSnapshot(snap => {
+        if (snap.exists) {
+          records = snap.data().records || [];
+          saveLocal(); renderAll();
+          setBadge('☁️ ซิงค์แล้ว', true);
+        } else if (records.length) {
+          window.fbSaveADR();
+        }
+      }, err => {
+        console.warn('fbSnapshot:', err.message);
+        setBadge('⚠️ ออฟไลน์', false);
+      });
+    } catch(e) {
+      console.warn('fbInit:', e.message);
+      setBadge('⚠️ ออฟไลน์', false);
+    }
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', fbInit);
+  else fbInit();
+})();
+
+// ═══ INIT ════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('f-date').value = todayTH();
+  onTypeChange('');
+  renderAll();
+});
+
+// ── EXPORT (ADR) ──────────────────────────────────────────
+function pageDoExport(fmt) {
+  const f    = expGetFilter();
+  const recs = expFilter(records, f);
+  if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+  const label = expFilterLabel(f);
+
+  const SEV_SHORT = s => s ? s.replace(/\s*\(.*?\)\s*/g,'').trim() : '';
+
+  if (fmt === 'excel') {
+    const data = recs.map((r,i) => ({
+      'ลำดับ':           i+1,
+      'วันที่':          expISOtoTH(r.date),
+      'ชนิดรายงาน':     r.type||'',
+      'HN':              r.hn||'',
+      'ชื่อผู้ป่วย':     r.name||'',
+      'แผนก/ห้อง':       r.dept||'',
+      'ชื่อยา/ผลิตภัณฑ์': r.drug||'',
+      'ประเภทผลิตภัณฑ์': r.productType||'',
+      'ความรุนแรง':      SEV_SHORT(r.severity),
+      'อาการ/อาการแสดง': r.symptom||'',
+      'การวินิจฉัย':     r.diagnosis||'',
+      'ผู้รายงาน':       r.reporter||'',
+    }));
+    expExcel([{ name:'รายงาน ADR', data }], `ADR_${label}`);
+  }
+
+  if (fmt === 'pdf') {
+    const headers = ['ลำดับ','วันที่','ชนิด','HN','ชื่อผู้ป่วย','แผนก','ยา/ผลิตภัณฑ์','ความรุนแรง'];
+    const rows = recs.map((r,i) => [
+      i+1, expISOtoTH(r.date), r.type||'', r.hn||'', r.name||'',
+      r.dept||'', r.drug||'', SEV_SHORT(r.severity),
+    ]);
+    expPDF({ title:'รายงานการเฝ้าระวัง ADR', subtitle: label, headers, rows, landscape:true });
+  }
+  expModalClose();
+}
+</script>
+
+<!-- ══ EXPORT MODAL ══════════════════════════════════════════ -->
+<div id="export-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title">📊 Export รายงาน ADR</div>
+    <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <button id="exp-tab-date"  onclick="expSetTab('date')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">📅 ช่วงวันที่</button>
+      <button id="exp-tab-month" onclick="expSetTab('month')" style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📆 รายเดือน</button>
+      <button id="exp-tab-year"  onclick="expSetTab('year')"  style="flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;font-family:inherit">📋 ปีงบฯ</button>
+    </div>
+    <div id="exp-pane-date">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ตั้งแต่วันที่</label>
+          <input id="exp-from" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ถึงวันที่</label>
+          <input id="exp-to" type="text" placeholder="วว/ดด/ปปปป" oninput="expUpdatePreview()"
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></div>
+      </div>
+    </div>
+    <div id="exp-pane-month" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">เดือน</label>
+          <select id="exp-month" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none">
+            <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option>
+            <option value="04">เมษายน</option><option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option>
+            <option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option><option value="09">กันยายน</option>
+            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select></div>
+        <div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปี (พ.ศ.)</label>
+          <select id="exp-month-year" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select></div>
+      </div>
+    </div>
+    <div id="exp-pane-year" style="display:none">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-mid)">ปีงบประมาณ (พ.ศ.)</label>
+      <select id="exp-fy" onchange="expUpdatePreview()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);outline:none"></select>
+    </div>
+    <div id="exp-preview" style="margin-top:12px;padding:10px 14px;background:var(--primary-light);border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark)">📊 เลือกช่วงเวลาด้านบน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button onclick="pageDoExport('excel')" style="padding:12px;background:#217346;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel (.xlsx)</button>
+      <button onclick="pageDoExport('pdf')"   style="padding:12px;background:#c0392b;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF (พิมพ์)</button>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="expModalClose()">ปิด</button></div>
+  </div>
+</div>
+
+</body>
+</html>
