@@ -14,6 +14,7 @@
 <script src="lib/chart.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
+<script src="lib/esc-html.js"></script>
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
@@ -511,7 +512,7 @@ function buildMonthFilter() {
   months.forEach(m => {
     const [y,mo] = m.split('-');
     const label = THAI_MONTHS[parseInt(mo)-1] + ' ' + (parseInt(y)+543);
-    el.innerHTML += `<button class="month-btn ${activeMonth===m?'active':''}" onclick="setMonth('${m}')">${label}</button>`;
+    el.innerHTML += `<button class="month-btn ${activeMonth===m?'active':''}" onclick="setMonth(${escHtml(JSON.stringify(m))})">${escHtml(label)}</button>`;
   });
 }
 function setMonth(m) {
@@ -711,11 +712,11 @@ function renderPending() {
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
         <span style="font-size:22px;font-weight:800;color:${over?'var(--danger)':'var(--success)'};">${el} <span style="font-size:13px;font-weight:600">นาที</span></span>
         <div style="flex:1;min-width:120px">
-          <div style="font-size:13px;font-weight:700">${r.drug||'—'}</div>
-          <div style="font-size:12px;color:var(--text-light)">รับ ${r.timeIn} น. ${r.an?'AN:'+r.an:''}</div>
+          <div style="font-size:13px;font-weight:700">${escHtml(r.drug||'—')}</div>
+          <div style="font-size:12px;color:var(--text-light)">รับ ${escHtml(r.timeIn)} น. ${r.an?'AN:'+escHtml(r.an):''}</div>
         </div>
-        <button onclick="completeStat('${r.id}')" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ จ่ายแล้ว</button>
-        <button onclick="deletePendingStat('${r.id}')" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
+        <button onclick="completeStat(${escHtml(JSON.stringify(r.id))})" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ จ่ายแล้ว</button>
+        <button onclick="deletePendingStat(${escHtml(JSON.stringify(r.id))})" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
       </div>`;
     }).join('');
   }
@@ -734,11 +735,11 @@ function renderPending() {
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
         <span style="font-size:22px;font-weight:800;color:${over?'var(--danger)':'var(--success)'};">${el} <span style="font-size:13px;font-weight:600">นาที</span></span>
         <div style="flex:1;min-width:120px">
-          <div style="font-size:13px;font-weight:700">ส่งรถยา ${r.timeSent} น.</div>
-          <div style="font-size:12px;color:var(--text-light)">${r.date}</div>
+          <div style="font-size:13px;font-weight:700">ส่งรถยา ${escHtml(r.timeSent)} น.</div>
+          <div style="font-size:12px;color:var(--text-light)">${escHtml(r.date)}</div>
         </div>
-        <button onclick="completeCart('${r.id}')" title="กดเพื่อบันทึกเวลาปัจจุบันเป็นเวลารับยา" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ รับแล้ว (เวลานี้)</button>
-        <button onclick="deletePendingCart('${r.id}')" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
+        <button onclick="completeCart(${escHtml(JSON.stringify(r.id))})" title="กดเพื่อบันทึกเวลาปัจจุบันเป็นเวลารับยา" style="background:var(--success);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">✅ รับแล้ว (เวลานี้)</button>
+        <button onclick="deletePendingCart(${escHtml(JSON.stringify(r.id))})" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text-light);">✕</button>
       </div>`;
     }).join('');
   }
@@ -950,14 +951,14 @@ function renderStatTable() {
       <th>นาที</th><th>ผล</th><th></th>
     </tr></thead>
     <tbody>${recs.map(r => `<tr>
-      <td>${formatDate(r.date)}</td>
-      <td>${r.timeIn ? r.timeIn+' น.' : '—'}</td>
-      <td>${r.timeOut ? r.timeOut+' น.' : '—'}</td>
-      <td>${r.an||'—'}</td>
-      <td>${r.drug||'—'}</td>
+      <td>${escHtml(formatDate(r.date))}</td>
+      <td>${r.timeIn ? escHtml(r.timeIn)+' น.' : '—'}</td>
+      <td>${r.timeOut ? escHtml(r.timeOut)+' น.' : '—'}</td>
+      <td>${escHtml(r.an||'—')}</td>
+      <td>${escHtml(r.drug||'—')}</td>
       <td style="font-weight:700;color:${r.mins<=STAT_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=STAT_LIMIT?'badge-ok':'badge-over'}">${r.mins<=STAT_LIMIT?'ผ่าน':'เกิน'}</span></td>
-      <td><button class="btn-del" onclick="deleteStat('${r.id}')">🗑</button></td>
+      <td><button class="btn-del" onclick="deleteStat(${escHtml(JSON.stringify(r.id))})">🗑</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -977,12 +978,12 @@ function renderCartTable() {
       <th>นาที</th><th>ผล</th><th></th>
     </tr></thead>
     <tbody>${recs.map(r => `<tr>
-      <td>${formatDate(r.date)}</td>
-      <td>${r.timeSent ? r.timeSent+' น.' : '—'}</td>
-      <td>${r.timeCalled ? r.timeCalled+' น.' : '—'}</td>
+      <td>${escHtml(formatDate(r.date))}</td>
+      <td>${r.timeSent ? escHtml(r.timeSent)+' น.' : '—'}</td>
+      <td>${r.timeCalled ? escHtml(r.timeCalled)+' น.' : '—'}</td>
       <td style="font-weight:700;color:${r.mins<=CART_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=CART_LIMIT?'badge-ok':'badge-over'}">${r.mins<=CART_LIMIT?'ผ่าน':'เกิน'}</span></td>
-      <td><button class="btn-del" onclick="deleteCart('${r.id}')">🗑</button></td>
+      <td><button class="btn-del" onclick="deleteCart(${escHtml(JSON.stringify(r.id))})">🗑</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
 }

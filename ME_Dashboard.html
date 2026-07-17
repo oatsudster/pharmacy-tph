@@ -16,6 +16,7 @@
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
 <script src="lib/admin-gate.js"></script>
+<script src="lib/esc-html.js"></script>
 <style>
 
   :root {
@@ -2252,7 +2253,7 @@ function renderTable() {
           <td colspan="4" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
-          <td style="text-align:center">${r.rxDaily || '—'}</td>
+          <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
           <td>—</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
@@ -2264,19 +2265,19 @@ function renderTable() {
         <td style="color:var(--text-light)">${i+1}</td>
         <td>${formatDateThai(r.date)}</td>
         <td style="white-space:nowrap">${formatTimeThai(r.time)}</td>
-        <td>${(r.stage||'').split(' ')[0]}</td>
-        <td>${r.meType||'—'}</td>
+        <td>${escHtml((r.stage||'').split(' ')[0])}</td>
+        <td>${escHtml(r.meType)||'—'}</td>
         <td>${(() => {
           const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
           if (!list.length) return '—';
           return list.map(d => {
-            const b = d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+d.form+'</span> ' : '';
-            return '<span style="white-space:nowrap;display:inline-block">'+b+d.name+'</span>';
+            const b = d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+escHtml(d.form)+'</span> ' : '';
+            return '<span style="white-space:nowrap;display:inline-block">'+b+escHtml(d.name)+'</span>';
           }).join('<br>');
         })()}</td>
-        <td>${r.ward || '—'}</td>
-        <td style="text-align:center">${r.rxDaily || '—'}</td>
-        <td><span class="badge sev-${r.severity}">${r.severity}</span></td>
+        <td>${escHtml(r.ward) || '—'}</td>
+        <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
+        <td><span class="badge sev-${escHtml(r.severity)}">${escHtml(r.severity)}</span></td>
         <td style="white-space:nowrap">
           <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
           <button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button>
@@ -2613,19 +2614,19 @@ function _buildERDetailTable(recs) {
     recs.map((r,i) => {
       const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
       const drugStr = list.length
-        ? list.map(d => (d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+d.form+'</span> '+d.name : d.name)).join('<br>')
+        ? list.map(d => (d.form ? '<span class="drug-form-badge '+drugFormClass(d.form)+'" style="font-size:11px;padding:1px 5px">'+escHtml(d.form)+'</span> '+escHtml(d.name) : escHtml(d.name))).join('<br>')
         : '—';
       return '<tr>' +
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
         '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
         '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
         '<td>'+drugStr+'</td>' +
-        '<td>'+((r.stage||'').split(' ')[0]||'—')+'</td>' +
-        '<td>'+(r.meType||'—')+'</td>' +
-        '<td><span class="badge sev-'+r.severity+'">'+(r.severity||'—')+'</span></td>' +
-        '<td style="font-size:14px;min-width:160px">'+(r.detail||'—')+'</td>' +
-        '<td style="font-size:14px;min-width:120px">'+(r.intervention||'—')+'</td>' +
-        '<td style="white-space:nowrap;font-size:14px">'+(r.reporter||'—')+'</td>' +
+        '<td>'+(escHtml((r.stage||'').split(' ')[0])||'—')+'</td>' +
+        '<td>'+(escHtml(r.meType)||'—')+'</td>' +
+        '<td><span class="badge sev-'+escHtml(r.severity)+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
+        '<td style="font-size:14px;min-width:160px">'+(escHtml(r.detail)||'—')+'</td>' +
+        '<td style="font-size:14px;min-width:120px">'+(escHtml(r.intervention)||'—')+'</td>' +
+        '<td style="white-space:nowrap;font-size:14px">'+(escHtml(r.reporter)||'—')+'</td>' +
         '</tr>';
     }).join('') +
     '</tbody></table>';
@@ -2888,16 +2889,16 @@ function renderManualRecent(dept) {
       <th style="padding:8px 10px"></th>
     </tr></thead>
     <tbody>${recs.map(r => `<tr style="border-bottom:1px solid #f0f4f2">
-      <td style="padding:7px 10px">${r.date}</td>
-      <td style="padding:7px 10px">${r.hn||'—'}</td>
-      <td style="padding:7px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.drug||'—'}</td>
-      <td style="padding:7px 10px;font-size:12px">${r.stage||'—'}</td>
+      <td style="padding:7px 10px">${escHtml(r.date)}</td>
+      <td style="padding:7px 10px">${escHtml(r.hn)||'—'}</td>
+      <td style="padding:7px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.drug)||'—'}</td>
+      <td style="padding:7px 10px;font-size:12px">${escHtml(r.stage)||'—'}</td>
       <td style="padding:7px 10px;text-align:center">
-        <span style="font-weight:800;font-size:15px;color:${sevColor[r.severity]||'#374151'}">${r.severity||'—'}</span>
+        <span style="font-weight:800;font-size:15px;color:${sevColor[r.severity]||'#374151'}">${escHtml(r.severity)||'—'}</span>
       </td>
-      <td style="padding:7px 10px;font-size:11px">${r.reporter||'—'}</td>
+      <td style="padding:7px 10px;font-size:11px">${escHtml(r.reporter)||'—'}</td>
       <td style="padding:7px 10px">
-        <button onclick="deleteManualME('${r.id}','${dept}')"
+        <button onclick="deleteManualME(${escHtml(JSON.stringify(r.id))},${escHtml(JSON.stringify(dept))})"
           style="padding:3px 8px;border:1px solid #fecaca;border-radius:5px;background:#fff1f2;color:#b91c1c;cursor:pointer;font-size:11px">ลบ</button>
       </td>
     </tr>`).join('')}</tbody>
@@ -3241,7 +3242,7 @@ function populateERFilter() {
     const el = document.getElementById(id);
     if (!el) return;
     const prev = el.value;
-    el.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
+    el.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${escHtml(m)}">${escHtml(fmt(m))}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) el.value = prev;
     else if (!erFilterDefaultsApplied && filteredMonths.includes(curMonth)) el.value = curMonth;
   });
@@ -3279,7 +3280,7 @@ function populateHosXPMonthFilter(dept) {
     const el = document.querySelector(sel);
     if (!el) return;
     const prev = el.value;
-    el.innerHTML = '<option value="">ทั้งหมด</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
+    el.innerHTML = '<option value="">ทั้งหมด</option>' + filteredMonths.map(m=>`<option value="${escHtml(m)}">${escHtml(fmt(m))}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) el.value = prev;
     else if (!defaultsApplied && filteredMonths.includes(curMonth)) el.value = curMonth;
     else el.value = '';
@@ -3438,11 +3439,11 @@ function renderHosXPKPI(dept) {
     const rate=denom?((meN/denom)*1000):null;
     const rStr=rate!==null?rate.toFixed(2):'<span class="kpi-na">—</span>';
     const sStr=rate===null?'<span class="kpi-na">—</span>':rate<=std?'<span class="kpi-ok">✅ ผ่าน</span>':'<span class="kpi-fail">❌ เกินมาตรฐาน</span>';
-    return '<tr data-key="'+dk+'"><td style="white-space:nowrap;font-weight:600">'+lbl+'</td>'+
+    return '<tr data-key="'+escHtml(dk)+'"><td style="white-space:nowrap;font-weight:600">'+lbl+'</td>'+
       '<td style="text-align:center;font-size:18px;font-weight:700">'+meN+'</td>'+
-      '<td><input type="number" min="0" class="denom-input" placeholder="'+dLabel+'..." value="'+denom+'" onchange="previewKPIRate(this,\''+dk+'\','+std+')"></td>'+
-      '<td style="text-align:center;font-weight:700;font-size:17px" id="rate-'+dk+'">'+rStr+'</td>'+
-      '<td style="text-align:center" id="status-'+dk+'">'+sStr+'</td></tr>';
+      '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')"></td>'+
+      '<td style="text-align:center;font-weight:700;font-size:17px" id="rate-'+escHtml(dk)+'">'+rStr+'</td>'+
+      '<td style="text-align:center" id="status-'+escHtml(dk)+'">'+sStr+'</td></tr>';
   }).join('');
 }
 
@@ -3484,15 +3485,15 @@ function renderHosXPTable(dept) {
   if(tbody) tbody.innerHTML = recs.map((r,i) => `<tr>
     <td style="color:var(--text-light)">${i+1}</td>
     <td style="white-space:nowrap">${formatDateThai(r.date)}</td>
-    <td style="white-space:nowrap">${r.time||'—'}</td>
-    <td style="font-size:15px">${r.hn||'—'}</td>
-    <td style="font-size:15px">${r.patient||'—'}</td>
-    <td>${r.drug||'—'}</td>
-    <td style="font-size:14px">${r.stage||'—'}</td>
-    <td><span class="badge sev-${r.severity}">${r.severity||'—'}</span></td>
-    <td style="font-size:14px;min-width:160px">${r.detail||'—'}</td>
-    <td style="font-size:14px">${r.doctor||'—'}</td>
-    <td style="font-size:14px">${r.reporter||'—'}</td>
+    <td style="white-space:nowrap">${escHtml(r.time)||'—'}</td>
+    <td style="font-size:15px">${escHtml(r.hn)||'—'}</td>
+    <td style="font-size:15px">${escHtml(r.patient)||'—'}</td>
+    <td>${escHtml(r.drug)||'—'}</td>
+    <td style="font-size:14px">${escHtml(r.stage)||'—'}</td>
+    <td><span class="badge sev-${escHtml(r.severity)}">${escHtml(r.severity)||'—'}</span></td>
+    <td style="font-size:14px;min-width:160px">${escHtml(r.detail)||'—'}</td>
+    <td style="font-size:14px">${escHtml(r.doctor)||'—'}</td>
+    <td style="font-size:14px">${escHtml(r.reporter)||'—'}</td>
   </tr>`).join('');
 }
 
@@ -3524,14 +3525,14 @@ function _buildHosXPDetailTable(recs) {
     recs.map((r,i) => '<tr>' +
       '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
       '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-      '<td>'+(r.time||'—')+'</td>' +
-      '<td>'+(r.hn||'—')+'</td>' +
-      '<td>'+(r.patient||'—')+'</td>' +
-      '<td>'+(r.drug||'—')+'</td>' +
-      '<td style="font-size:14px">'+(r.stage||'—')+'</td>' +
-      '<td><span class="badge sev-'+(r.severity||'')+'">'+(r.severity||'—')+'</span></td>' +
-      '<td style="font-size:14px;min-width:120px">'+(r.detail||'—')+'</td>' +
-      '<td style="font-size:14px">'+(r.doctor||'—')+'</td></tr>'
+      '<td>'+(escHtml(r.time)||'—')+'</td>' +
+      '<td>'+(escHtml(r.hn)||'—')+'</td>' +
+      '<td>'+(escHtml(r.patient)||'—')+'</td>' +
+      '<td>'+(escHtml(r.drug)||'—')+'</td>' +
+      '<td style="font-size:14px">'+(escHtml(r.stage)||'—')+'</td>' +
+      '<td><span class="badge sev-'+escHtml(r.severity||'')+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
+      '<td style="font-size:14px;min-width:120px">'+(escHtml(r.detail)||'—')+'</td>' +
+      '<td style="font-size:14px">'+(escHtml(r.doctor)||'—')+'</td></tr>'
     ).join('') + '</tbody></table>';
 }
 // ภาพรวมทั้งโรงพยาบาลรวมข้อมูล OPD/IPD/ER เข้าด้วยกัน จึงต้องมีตารางรายละเอียดกลางที่รองรับทุกแผนก
@@ -3543,18 +3544,18 @@ function _buildOverviewDetailTable(recs) {
     recs.map((r,i) => {
       const dept = r.dept || 'ER';
       const deptColor = dept==='OPD'?'#2563eb':dept==='IPD'?'#16a34a':'#dc2626';
-      const drugStr = r.drug || (r.drugs && r.drugs.length ? r.drugs.map(d=>d.name).join(', ') : '—');
-      const stage = ((r.stage||r.stageRaw||'').split(' ')[0]) || '—';
-      const who = r.doctor || r.reporter || '—';
+      const drugStr = escHtml(r.drug) || (r.drugs && r.drugs.length ? r.drugs.map(d=>escHtml(d.name)).join(', ') : '—');
+      const stage = escHtml((r.stage||r.stageRaw||'').split(' ')[0]) || '—';
+      const who = escHtml(r.doctor) || escHtml(r.reporter) || '—';
       return '<tr>' +
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
-        '<td><span style="background:'+deptColor+'22;color:'+deptColor+';font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">'+dept+'</span></td>' +
+        '<td><span style="background:'+deptColor+'22;color:'+deptColor+';font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">'+escHtml(dept)+'</span></td>' +
         '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-        '<td>'+(r.time||'—')+'</td>' +
+        '<td>'+(escHtml(r.time)||'—')+'</td>' +
         '<td>'+drugStr+'</td>' +
         '<td style="font-size:14px">'+stage+'</td>' +
-        '<td><span class="badge sev-'+(r.severity||'')+'">'+(r.severity||'—')+'</span></td>' +
-        '<td style="font-size:14px;min-width:160px">'+(r.detail||'—')+'</td>' +
+        '<td><span class="badge sev-'+escHtml(r.severity||'')+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
+        '<td style="font-size:14px;min-width:160px">'+(escHtml(r.detail)||'—')+'</td>' +
         '<td style="font-size:14px">'+who+'</td></tr>';
     }).join('') + '</tbody></table>';
 }
@@ -3606,7 +3607,7 @@ function populateDeleteMonthSelector(dept) {
     months.map(m => {
       const [y, mo] = m.split('-');
       const cnt = hosxpRecords.filter(r => r.dept === dept && r.date && r.date.startsWith(m)).length;
-      return `<option value="${m}">${thM[parseInt(mo)-1]} ${parseInt(y)+543}  (${cnt} รายการ)</option>`;
+      return `<option value="${escHtml(m)}">${escHtml(thM[parseInt(mo)-1])} ${parseInt(y)+543}  (${cnt} รายการ)</option>`;
     }).join('');
 }
 
@@ -3754,7 +3755,7 @@ function populateOverviewFilter() {
   const moEl = document.getElementById('ov-month');
   if (moEl) {
     const prev = moEl.value;
-    moEl.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${m}">${fmt(m)}</option>`).join('');
+    moEl.innerHTML = '<option value="">ทุกเดือน</option>' + filteredMonths.map(m=>`<option value="${escHtml(m)}">${escHtml(fmt(m))}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) moEl.value = prev;
   }
 }
@@ -3859,12 +3860,12 @@ function renderOverview() {
     tbody.innerHTML=sorted.map((r,i)=>{
       const dept=r.dept||'ER';
       const deptColor=dept==='OPD'?'#2563eb':dept==='IPD'?'#16a34a':'#dc2626';
-      const drugStr=r.drug||(r.drugs&&r.drugs.length?r.drugs.map(d=>d.name).join(', '):'—');
-      const sev=r.severity||'—';
-      const detail=r.detail||r.stageRaw||'—';
+      const drugStr=escHtml(r.drug)||(r.drugs&&r.drugs.length?r.drugs.map(d=>escHtml(d.name)).join(', '):'—');
+      const sev=escHtml(r.severity)||'—';
+      const detail=escHtml(r.detail||r.stageRaw)||'—';
       return `<tr style="cursor:pointer" onclick="showOverviewDetail('รายละเอียด ME', [window._ovRecentRecs[${i}]])">
         <td style="white-space:nowrap;color:var(--text-light);font-size:12px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${formatDateThai(r.date)}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span style="background:${deptColor}22;color:${deptColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">${dept}</span></td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span style="background:${deptColor}22;color:${deptColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">${escHtml(dept)}</span></td>
         <td style="font-size:13px;padding:7px 10px;border-bottom:1px solid #f0f4f2">${drugStr}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f0f4f2"><span class="badge sev-${sev}">${sev}</span></td>
         <td style="font-size:13px;color:var(--text-mid);padding:7px 10px;border-bottom:1px solid #f0f4f2;max-width:260px">${detail}</td>

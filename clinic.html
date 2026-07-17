@@ -17,6 +17,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/esc-html.js"></script>
 <style>
 :root {
   --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
@@ -673,8 +674,6 @@ function fiscalInfo(iso) {
   const fy = m>=9 ? y+1 : y;
   return {year:fy, month:TH_MONTHS[m], key:iso.slice(0,7)};
 }
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
 // ── PERIOD FILTER (ปีงบประมาณ / เดือน) ────────────────────
 function inPeriod(dateISO) {
   const fy = window.reportFY, pm = window.reportMonth;
@@ -783,9 +782,9 @@ function renderRecentRecords() {
     <tbody>${recs.map(r => `<tr>
       <td>${thDate(r.date)}</td>
       <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
-      <td>${r.hn||'—'}</td>
-      <td>${r.name||'—'}</td>
-      <td style="font-size:11px">${r.pharmacist||'—'}</td>
+      <td>${escHtml(r.hn||'—')}</td>
+      <td>${escHtml(r.name||'—')}</td>
+      <td style="font-size:11px">${escHtml(r.pharmacist||'—')}</td>
       <td>${r.drps&&r.drps.length ? '<span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.drps.length+' DRP</span>' : '—'}</td>
       <td>${r.totalSaving>0?'฿'+Math.round(r.totalSaving).toLocaleString():'—'}</td>
       <td style="font-size:14px;white-space:nowrap">
@@ -793,7 +792,7 @@ function renderRecentRecords() {
         ${r.checks&&r.checks.noLeftover?'📭':''}
         ${r.checks&&r.checks.icebox?'🧊':''}
       </td>
-      <td><button class="btn-del" onclick="deleteVisit('${r.id}')">✕</button></td>
+      <td><button class="btn-del" onclick="deleteVisit(${escHtml(JSON.stringify(r.id))})">✕</button></td>
     </tr>`).join('')}
     </tbody></table>`;
 }
@@ -829,7 +828,7 @@ function addDrpRow(type='', cause='', causeNote='') {
       <select class="drp-cause" style="display:none">
         <option value="">-- เลือกสาเหตุ --</option>
       </select>
-      <input class="drp-cause-note" type="text" placeholder="ระบุสาเหตุ/เพิ่มเติม..." style="display:none" value="${causeNote||cause||''}">
+      <input class="drp-cause-note" type="text" placeholder="ระบุสาเหตุ/เพิ่มเติม..." style="display:none" value="${escHtml(causeNote||cause||'')}">
     </div>
     <button class="btn-rm" onclick="this.closest('.drp-row').remove()">✕</button>`;
   list.appendChild(div);
@@ -885,11 +884,11 @@ function addLoRow(drug='', qty='', unit='', price=0) {
   const div = document.createElement('div');
   div.className = 'lo-row';
   div.innerHTML = `
-    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onDrugInput(this)" autocomplete="off"
+    <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${escHtml(drug)}" oninput="onDrugInput(this)" autocomplete="off"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.lo-row').querySelector('.lo-qty').select();}">
-    <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateLoTotal()" style="text-align:center"
+    <input class="lo-qty" type="number" min="0" step="1" placeholder="0" value="${escHtml(qty)}" oninput="updateLoTotal()" style="text-align:center"
       onkeydown="if(event.key==='Enter'){event.preventDefault();addLoRow();}">
-    <input class="lo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <input class="lo-unit" type="text" placeholder="หน่วย" value="${escHtml(unit||'เม็ด')}" style="text-align:center">
     <span class="lo-price-display">฿${price>0?price:'—'}</span>
     <span class="lo-total-display">—</span>
     <button class="btn-rm" type="button" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
@@ -1065,16 +1064,16 @@ function editVisit(id) {
   box.innerHTML = `
     <div class="form-group"><label>วันที่</label>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="text" id="m-date" value="${thDate(r.date)}" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
+        <input type="text" id="m-date" value="${escHtml(thDate(r.date))}" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
         <button class="btn-stamp" onclick="document.getElementById('m-date').value=todayTH()">📅</button>
       </div></div>
     <div class="form-group"><label>คลินิก</label>
       <select id="m-clinic">${['HT','DM','COPD'].map(c=>`<option ${c===r.clinic?'selected':''} value="${c}">${c}</option>`).join('')}</select></div>
     <div class="form-group"><label>เภสัชกร</label>
       <select id="m-pharm"><option value="">--</option>${PHARMACISTS.map(p=>`<option ${p===r.pharmacist?'selected':''} value="${p}">${p}</option>`).join('')}</select></div>
-    <div class="form-group"><label>HN</label><input type="text" id="m-hn" value="${r.hn||''}"></div>
-    <div class="form-group"><label>ชื่อ-สกุล</label><input type="text" id="m-name" value="${r.name||''}"></div>
-    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${r.notes||''}</textarea></div>
+    <div class="form-group"><label>HN</label><input type="text" id="m-hn" value="${escHtml(r.hn||'')}"></div>
+    <div class="form-group"><label>ชื่อ-สกุล</label><input type="text" id="m-name" value="${escHtml(r.name||'')}"></div>
+    <div class="form-group"><label>หมายเหตุ</label><textarea id="m-notes" rows="2">${escHtml(r.notes||'')}</textarea></div>
     <div class="form-group">
       <label>📦 ยาคงเหลือ</label>
       <div class="lo-header">
@@ -1104,9 +1103,9 @@ function addMLoRow(drug='', qty='', unit='', price=0) {
   const div = document.createElement('div');
   div.className = 'mlo-row';
   div.innerHTML = `
-    <input class="mlo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${drug}" oninput="onMLoDrugInput(this)" autocomplete="off">
-    <input class="mlo-qty" type="number" min="0" step="1" placeholder="0" value="${qty}" oninput="updateMLoTotal()" style="text-align:center">
-    <input class="mlo-unit" type="text" placeholder="หน่วย" value="${unit||'เม็ด'}" style="text-align:center">
+    <input class="mlo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${escHtml(drug)}" oninput="onMLoDrugInput(this)" autocomplete="off">
+    <input class="mlo-qty" type="number" min="0" step="1" placeholder="0" value="${escHtml(qty)}" oninput="updateMLoTotal()" style="text-align:center">
+    <input class="mlo-unit" type="text" placeholder="หน่วย" value="${escHtml(unit||'เม็ด')}" style="text-align:center">
     <span class="lo-price-display">฿${price>0?price:'—'}</span>
     <span class="lo-total-display">—</span>
     <button class="btn-rm" type="button" onclick="this.closest('.mlo-row').remove();updateMLoTotal()">✕</button>`;
@@ -1257,11 +1256,11 @@ function renderAttendanceSummaryTable(clinic) {
     return;
   }
   tbody.innerHTML = rows.map(r => `<tr class="${r.attended?'':' session-miss'}">
-    <td style="white-space:nowrap">${thDate(r.date)}</td>
-    <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
+    <td style="white-space:nowrap">${escHtml(thDate(r.date))}</td>
+    <td><span class="badge badge-${escHtml(String(r.clinic||'').toLowerCase())}">${escHtml(r.clinic)}</span></td>
     <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':'<span class="tag-missed">❌ ไม่ได้ลง</span>'}</td>
-    <td style="font-size:12px">${r.pharmacist||''}</td>
-    <td style="font-size:11px;color:var(--text-mid)">${r.attended?(r.notes||''):(r.reason||'')}</td>
+    <td style="font-size:12px">${escHtml(r.pharmacist||'')}</td>
+    <td style="font-size:11px;color:var(--text-mid)">${escHtml(r.attended?(r.notes||''):(r.reason||''))}</td>
   </tr>`).join('');
 }
 
@@ -1439,9 +1438,9 @@ function filterLeftoverCards() {
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
                   border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
-                <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
-                <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
-                <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+                <span style="font-weight:700;font-size:15px">${escHtml(r.hn||'—')}</span>
+                <span style="color:var(--text-mid);font-size:14px">${escHtml(r.name||'')}</span>
+                <span style="margin-left:auto;color:var(--text-light);font-size:12px">${escHtml(thDate(r.date))} ${escHtml(thTime(r.created))}</span>
                 <span style="font-size:12px;font-weight:700;color:var(--text-mid);background:var(--bg);
                   border:1.5px solid var(--border);border-radius:6px;padding:3px 10px">📭 ไม่มียาคงเหลือ</span>
               </div>
@@ -1461,12 +1460,12 @@ function filterLeftoverCards() {
       <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;
         border-radius:10px;padding:10px 14px;min-width:0">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#065f46;line-height:1.4">${cleanDrugName(l.drug)}</div>
+          <div style="font-size:13px;font-weight:700;color:#065f46;line-height:1.4">${escHtml(cleanDrugName(l.drug))}</div>
           ${l.priceUnit>0?`<div style="font-size:11px;color:#6b7280">฿${l.priceUnit}/หน่วย</div>`:''}
         </div>
         <div style="text-align:center;flex-shrink:0">
-          <div style="font-size:26px;font-weight:900;color:#dc2626;line-height:1">${l.qty}</div>
-          <div style="font-size:11px;color:#b91c1c;font-weight:600">${l.unit||'เม็ด'}</div>
+          <div style="font-size:26px;font-weight:900;color:#dc2626;line-height:1">${escHtml(l.qty)}</div>
+          <div style="font-size:11px;color:#b91c1c;font-weight:600">${escHtml(l.unit||'เม็ด')}</div>
         </div>
         ${l.total>0?`<div style="font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;border-radius:6px;padding:4px 8px;flex-shrink:0">฿${l.total}</div>`:''}
       </div>`).join('');
@@ -1481,12 +1480,12 @@ function filterLeftoverCards() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
           <span style="background:${clinicBg};color:${clinicColor};font-weight:800;font-size:12px;
             border-radius:6px;padding:3px 10px;border:1.5px solid ${clinicColor}44">${r.clinic}</span>
-          <span style="font-weight:700;font-size:15px">${r.hn||'—'}</span>
-          <span style="color:var(--text-mid);font-size:14px">${r.name||''}</span>
-          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${thDate(r.date)} ${thTime(r.created)}</span>
+          <span style="font-weight:700;font-size:15px">${escHtml(r.hn||'—')}</span>
+          <span style="color:var(--text-mid);font-size:14px">${escHtml(r.name||'')}</span>
+          <span style="margin-left:auto;color:var(--text-light);font-size:12px">${escHtml(thDate(r.date))} ${escHtml(thTime(r.created))}</span>
           ${iceBadge}
           ${totalSaving}
-          <button onclick="editVisit('${r.id}')" style="background:none;border:1.5px solid var(--border);
+          <button onclick="editVisit(${escHtml(JSON.stringify(r.id))})" style="background:none;border:1.5px solid var(--border);
             border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--primary)">✏️ แก้ไข</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
@@ -1508,27 +1507,27 @@ function renderTable() {
   const tbody = document.getElementById('tbl-body');
   if (!tbody) return;
   tbody.innerHTML = recs.map(r => {
-    const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+d.type+(d.cause?' → '+d.cause:'')+'</span>').join('');
+    const drpList = (r.drps||[]).map(d=>'<span style="display:block;font-size:10px;color:var(--text-mid)">'+escHtml(d.type)+(d.cause?' → '+escHtml(d.cause):'')+'</span>').join('');
     const loList = (r.leftovers||[]).length
       ? (r.leftovers||[]).map(l=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0;background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:4px 8px;min-width:0">
-          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cleanDrugName(l.drug)}</span>
-          <span style="font-size:16px;font-weight:800;color:#dc2626;flex-shrink:0">${l.qty}</span>
-          <span style="font-size:11px;color:#b91c1c;flex-shrink:0">${l.unit||''}</span>
+          <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(cleanDrugName(l.drug))}</span>
+          <span style="font-size:16px;font-weight:800;color:#dc2626;flex-shrink:0">${escHtml(l.qty)}</span>
+          <span style="font-size:11px;color:#b91c1c;flex-shrink:0">${escHtml(l.unit||'')}</span>
         </div>`).join('')
       : '<span style="color:var(--text-light);font-size:11px">-</span>';
-    const badge = `<span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span>`;
+    const badge = `<span class="badge badge-${escHtml(String(r.clinic||'').toLowerCase())}">${escHtml(r.clinic)}</span>`;
     return `<tr>
-      <td style="white-space:nowrap">${thDate(r.date)}</td>
-      <td style="white-space:nowrap;color:var(--text-mid)">${thTime(r.created)}</td>
-      <td><div style="font-weight:600">${r.hn||''}</div><div style="font-size:11px;color:var(--text-mid)">${r.name||''}</div></td>
+      <td style="white-space:nowrap">${escHtml(thDate(r.date))}</td>
+      <td style="white-space:nowrap;color:var(--text-mid)">${escHtml(thTime(r.created))}</td>
+      <td><div style="font-weight:600">${escHtml(r.hn||'')}</div><div style="font-size:11px;color:var(--text-mid)">${escHtml(r.name||'')}</div></td>
       <td>${badge}</td>
       <td>${drpList||'<span style="color:var(--text-light);font-size:11px">ไม่พบ</span>'}</td>
       <td>${loList||'<span style="color:var(--text-light);font-size:11px">-</span>'}</td>
       <td style="white-space:nowrap;font-weight:700;color:var(--success)">${r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):''}</td>
-      <td style="font-size:11px">${r.pharmacist||''}</td>
+      <td style="font-size:11px">${escHtml(r.pharmacist||'')}</td>
       <td style="white-space:nowrap">
-        <button class="btn-edit" onclick="editVisit('${r.id}')">✏️</button>
-        <button class="btn-del" onclick="deleteVisit('${r.id}')">🗑</button>
+        <button class="btn-edit" onclick="editVisit(${escHtml(JSON.stringify(r.id))})">✏️</button>
+        <button class="btn-del" onclick="deleteVisit(${escHtml(JSON.stringify(r.id))})">🗑</button>
       </td></tr>`;
   }).join('');
 }
@@ -1563,13 +1562,13 @@ function renderSessionTab(main) {
       <div class="tbl-wrap"><table style="min-width:500px">
         <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>HT บ่าย</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody>${all.map(r=>`<tr class="${!r.pmOnly&&!r.attended?' session-miss':''}">
-          <td>${thDate(r.date)}</td>
-          <td><span class="badge badge-${r.clinic.toLowerCase()}">${r.clinic}</span></td>
-          <td>${r.pmOnly?'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>':r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${r.reason||''}</div>`}</td>
-          <td style="font-size:12px">${r.pharmacist||''}</td>
-          <td style="text-align:center">${r.htPmCount>0?r.htPmCount:''}</td>
-          <td style="font-size:11px;color:var(--text-mid)">${r.notes||''}</td>
-          <td><button class="btn-del" onclick="deleteSession('${r.id}')">🗑</button></td>
+          <td>${escHtml(thDate(r.date))}</td>
+          <td><span class="badge badge-${escHtml(String(r.clinic||'').toLowerCase())}">${escHtml(r.clinic)}</span></td>
+          <td>${r.pmOnly?'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>':r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${escHtml(r.reason||'')}</div>`}</td>
+          <td style="font-size:12px">${escHtml(r.pharmacist||'')}</td>
+          <td style="text-align:center">${r.htPmCount>0?escHtml(r.htPmCount):''}</td>
+          <td style="font-size:11px;color:var(--text-mid)">${escHtml(r.notes||'')}</td>
+          <td><button class="btn-del" onclick="deleteSession(${escHtml(JSON.stringify(r.id))})">🗑</button></td>
         </tr>`).join('')}</tbody>
       </table></div>
     </div>`;
@@ -1659,7 +1658,7 @@ function _buildClinicDetailTable(recs) {
       return '<tr>' +
         '<td style="white-space:nowrap">'+thDate(r.date)+'</td>' +
         '<td><div style="font-weight:600">'+escHtml(r.hn||'')+'</div><div style="font-size:11px;color:var(--text-mid)">'+escHtml(r.name||'')+'</div></td>' +
-        '<td><span class="badge badge-'+r.clinic.toLowerCase()+'">'+r.clinic+'</span></td>' +
+        '<td><span class="badge badge-'+escHtml(String(r.clinic||'').toLowerCase())+'">'+escHtml(r.clinic)+'</span></td>' +
         '<td style="font-size:12px">'+drpList+'</td>' +
         '<td style="font-size:12px">'+loList+'</td>' +
         '<td style="white-space:nowrap;font-weight:700;color:var(--success)">'+(r.totalSaving>0?'฿'+r.totalSaving.toFixed(0):'')+'</td>' +

@@ -799,6 +799,7 @@ async function checkPin() {
   <div>โรงพยาบาลถ้ำพรรณรา · จ.นครศรีธรรมราช</div>
 </footer>
 
+<script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <script>
@@ -927,8 +928,6 @@ function renderSuggests() {
     </div>`;
   }).join('');
 }
-
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function saveSuggests() {
   await SUGGEST_DOC.set({ list: suggests });

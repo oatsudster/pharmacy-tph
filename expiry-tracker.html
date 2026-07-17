@@ -14,6 +14,7 @@
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
+<script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <style>
@@ -509,8 +510,8 @@ function buildBoxTabs() {
   rows.forEach(r => { counts[r.box] = (counts[r.box]||0) + 1; });
   const tabs = [{label:'ทั้งหมด', cnt: rows.length}, ...BOX_LIST.map(b => ({label:b.label, cnt: counts[b.label]||0, id:b.id, isCustom:b.isCustom}))];
   document.getElementById('box-chips').innerHTML = tabs.map(t => `
-    <button class="box-tab ${activeBox===t.label?'active':''}" onclick="setBox('${t.label==='ทั้งหมด'?'':t.label}')">${escHtml(t.label)}<span class="box-cnt">(${t.cnt})</span>${
-      t.isCustom ? `<span class="box-tab-del" title="ลบกล่องนี้" onclick="removeCustomBox('${t.id}', event)">✕</span>` : ''
+    <button class="box-tab ${activeBox===t.label?'active':''}" onclick="setBox(${escHtml(JSON.stringify(t.label==='ทั้งหมด'?'':t.label))})">${escHtml(t.label)}<span class="box-cnt">(${t.cnt})</span>${
+      t.isCustom ? `<span class="box-tab-del" title="ลบกล่องนี้" onclick="removeCustomBox(${escHtml(JSON.stringify(t.id))}, event)">✕</span>` : ''
     }</button>
   `).join('') + `<button class="box-tab box-tab-add" onclick="addCustomBox()">➕ เพิ่มกล่องยา</button>`;
 
@@ -524,8 +525,8 @@ function buildBoxTabs() {
     const checkedCnt = boxRows.filter(r => itemChecked[r.id]).length;
     noteEl.innerHTML = `📅 ตรวจสอบกล่องล่าสุด:
       <input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(checkedIso)}"
-        oninput="autoDateFull(this)" onchange="onEditBoxChecked('${meta.id}', this)" style="display:inline-block;width:110px">
-      <button class="btn-today" onclick="setBoxCheckedToday('${meta.id}')">วันนี้</button>
+        oninput="autoDateFull(this)" onchange="onEditBoxChecked(${escHtml(JSON.stringify(meta.id))}, this)" style="display:inline-block;width:110px">
+      <button class="btn-today" onclick="setBoxCheckedToday(${escHtml(JSON.stringify(meta.id))})">วันนี้</button>
       <span style="margin-left:10px">✅ เช็คแล้ว ${checkedCnt}/${boxRows.length} รายการ</span>
       <button class="btn-today" onclick="clearBoxChecks()">🔄 ล้างเครื่องหมายเช็ค</button>`;
   }
@@ -591,24 +592,24 @@ function render() {
       const lotBadge = (r.name && lotCount > 1) ? `<span class="lot-badge" title="ยานี้มี ${lotCount} ล็อตในกล่องนี้">🔗 ${lotCount} ล็อต</span>` : '';
       const nameCell = r.isExtra
         ? `<input class="edit-input edit-name" type="text" placeholder="ชื่อยา... (พิมพ์ค้นหาบัญชียา รพ.)" list="drug-formulary" value="${escAttr(r.name)}"
-              onchange="onEditName('${r.id}', this.value)">${lotBadge}`
+              onchange="onEditName(${escHtml(JSON.stringify(r.id))}, this.value)">${lotBadge}`
         : `${escHtml(r.name)}${editedMark}${lotBadge}`;
       const rowStyle = color ? ` style="--grp-bg:${color.bg};--grp-border:${color.border}"` : '';
       const isChecked = !!itemChecked[r.id];
       return `<tr class="${lotCount>1?'multi-lot':''}${isChecked?' row-checked':''}"${rowStyle}>
         <td><span class="status-cell" style="color:${s.color}"><span class="status-dot" style="background:${s.color}"></span>${s.label}</span></td>
         <td>${nameCell}</td>
-        <td><span class="box-tag">${r.box}</span></td>
-        <td><input class="edit-input edit-qty" type="number" min="0" step="1" value="${r.qty!=null?r.qty:''}"
-              onchange="onEditQty('${r.id}', this.value)"></td>
+        <td><span class="box-tag">${escHtml(r.box)}</span></td>
+        <td><input class="edit-input edit-qty" type="number" min="0" step="1" value="${escHtml(r.qty!=null?r.qty:'')}"
+              onchange="onEditQty(${escHtml(JSON.stringify(r.id))}, this.value)"></td>
         <td><input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(r.exp)}"
-              oninput="autoDateFull(this)" onchange="onEditExpText('${r.id}', this)"></td>
+              oninput="autoDateFull(this)" onchange="onEditExpText(${escHtml(JSON.stringify(r.id))}, this)"></td>
         <td class="days-cell" style="color:${s.color}">${dayTxt}</td>
         <td style="text-align:center"><input class="chk-item" type="checkbox" title="เช็คจำนวน/วันหมดอายุแล้ว" ${isChecked?'checked':''}
-              onchange="toggleItemChecked('${r.id}', this.checked)"></td>
+              onchange="toggleItemChecked(${escHtml(JSON.stringify(r.id))}, this.checked)"></td>
         <td><div class="row-actions">
-          <button class="row-btn" title="เพิ่มล็อตใหม่สำหรับยานี้" onclick="addLot('${r.id}')">➕</button>
-          <button class="row-btn del" title="ลบรายการนี้" onclick="removeRow('${r.id}')">🗑</button>
+          <button class="row-btn" title="เพิ่มล็อตใหม่สำหรับยานี้" onclick="addLot(${escHtml(JSON.stringify(r.id))})">➕</button>
+          <button class="row-btn del" title="ลบรายการนี้" onclick="removeRow(${escHtml(JSON.stringify(r.id))})">🗑</button>
         </div></td>
       </tr>`;
     }).join('');
@@ -616,8 +617,8 @@ function render() {
   document.getElementById('count-note').textContent = `แสดง ${list.length} จาก ${rows.length} รายการ (ล็อต)`;
 }
 
-function escHtml(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s) { return escHtml(s).replace(/"/g,'&quot;'); }
+function escHtml(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escAttr(s) { return escHtml(s); }
 
 function doExport() {
   const list = sortRows(getFiltered());

@@ -17,6 +17,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/esc-html.js"></script>
 <style>
 :root {
   --primary: #1A5E38; --primary-dark: #124228; --primary-mid: #237A4A;
@@ -901,7 +902,7 @@ function renderTable(fRecs) {
   }
   const typeBadge = t => t==='A'?'<span class="badge badge-a">Type A</span>':t==='B'?'<span class="badge badge-b">Type B</span>':t==='G6PD'?'<span class="badge badge-g6pd">G6PD</span>':'<span class="badge badge-na">?</span>';
   const sevBadge = s => {
-    if (!s || s==='ยังไม่ทราบ') return `<span class="badge badge-na">${s||'-'}</span>`;
+    if (!s || s==='ยังไม่ทราบ') return `<span class="badge badge-na">${escHtml(s||'-')}</span>`;
     if (s.includes('ไม่ร้ายแรง')||s.includes('Non-serious')) return '<span class="badge badge-mild">ไม่ร้ายแรง</span>';
     if (s.includes('เสียชีวิต')||s.includes('Death')) return '<span class="badge badge-sev" style="background:#18181b;color:#fff">เสียชีวิต</span>';
     if (s.includes('อันตรายถึงชีวิต')||s.includes('Life-threat')) return '<span class="badge badge-sev">Life-threatening</span>';
@@ -909,7 +910,7 @@ function renderTable(fRecs) {
     if (s.includes('Hospitalization-prolonged')||s.includes('เพิ่มระยะเวลา')) return '<span class="badge badge-mod">Hospitalize-prolonged</span>';
     if (s.includes('พิการ')||s.includes('Disability')) return '<span class="badge badge-sev">พิการ</span>';
     if (s.includes('แต่กำเนิด')||s.includes('Congenital')) return '<span class="badge badge-mod">Congenital anomaly</span>';
-    return `<span class="badge badge-na">${s}</span>`;
+    return `<span class="badge badge-na">${escHtml(s)}</span>`;
   };
 
   wrap.innerHTML = `
@@ -925,15 +926,15 @@ function renderTable(fRecs) {
         ${fRecs.map(r=>`
           <tr class="${!r.symptom?'missing-symptom':''}">
             <td style="white-space:nowrap">${thDate(r.date)}</td>
-            <td><strong>${r.hn||'-'}</strong>${r.name?`<br><small style="color:var(--text-light)">${r.name}</small>`:''}</td>
+            <td><strong>${escHtml(r.hn||'-')}</strong>${r.name?`<br><small style="color:var(--text-light)">${escHtml(r.name)}</small>`:''}</td>
 
-            <td>${r.drug||'-'}</td>
+            <td>${escHtml(r.drug||'-')}</td>
             <td>${typeBadge(r.type)}</td>
-            <td>${r.symptom||'<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
+            <td>${r.symptom?escHtml(r.symptom):'<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
             <td>${sevBadge(r.severity)}</td>
             <td style="white-space:nowrap">
-              <button class="btn-edit" onclick="editRecord('${r.id}')" title="แก้ไข">✏️</button>
-              <button class="btn-del" onclick="deleteRecord('${r.id}')" title="ลบ">🗑️</button>
+              <button class="btn-edit" onclick="editRecord(${escHtml(JSON.stringify(r.id))})" title="แก้ไข">✏️</button>
+              <button class="btn-del" onclick="deleteRecord(${escHtml(JSON.stringify(r.id))})" title="ลบ">🗑️</button>
             </td>
           </tr>`).join('')}
       </tbody>

@@ -581,6 +581,7 @@
 
 <script src="lib/tesseract.min.js"></script>
 <script src="lib/chart.min.js"></script>
+<script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-10.js"></script>
 <script src="lib/firebase-firestore-compat-10.js"></script>
 <script>
@@ -931,14 +932,14 @@ function renderPatientsPage() {
   if (!el) return;
   el.innerHTML = PATIENTS.map(p => `
     <div class="pt-card">
-      <div class="pt-card-avatar">${p.shortName.charAt(0)}</div>
+      <div class="pt-card-avatar">${escHtml(p.shortName.charAt(0))}</div>
       <div class="pt-card-info">
-        <div class="pt-card-name">${p.name}</div>
-        <div class="pt-card-sub">HN: ${p.hn||'-'} · ${p.dx||'-'}</div>
+        <div class="pt-card-name">${escHtml(p.name)}</div>
+        <div class="pt-card-sub">HN: ${escHtml(p.hn||'-')} · ${escHtml(p.dx||'-')}</div>
       </div>
       <div class="pt-card-actions">
-        <button class="icon-btn" title="แก้ไข" onclick="openPatientModal('${p.id}')">✏️</button>
-        <button class="icon-btn danger" title="ลบ" onclick="deletePatient('${p.id}')">🗑️</button>
+        <button class="icon-btn" title="แก้ไข" onclick="openPatientModal(${escHtml(JSON.stringify(p.id))})">✏️</button>
+        <button class="icon-btn danger" title="ลบ" onclick="deletePatient(${escHtml(JSON.stringify(p.id))})">🗑️</button>
       </div>
     </div>
   `).join('');
@@ -1293,15 +1294,15 @@ function renderHistory(p) {
         ${visits.map(v => `
           <tr>
             <td><strong>${formatDate(v.date)}</strong></td>
-            <td>${v.weight||'-'} kg</td>
-            <td>${v.bmi||'-'}</td>
-            <td ${flagBPClass(v.bp)}>${v.bp||'-'}</td>
-            <td ${flagNumClass(v.fbs,130)}>${v.fbs||'-'}</td>
-            <td ${flagHbA1cClass(v.hba1c)}>${v.hba1c||'-'}${v.hba1c?'%':''}</td>
-            <td ${flagNumClass(v.egfr,60,'low')}>${v.egfr||'-'}</td>
-            <td><div class="drug-pills">${(v.drugs||[]).map(d=>`<span class="drug-pill">${d.name.substring(0,18)}</span>`).join('')}</div></td>
+            <td>${escHtml(v.weight||'-')} kg</td>
+            <td>${escHtml(v.bmi||'-')}</td>
+            <td ${flagBPClass(v.bp)}>${escHtml(v.bp||'-')}</td>
+            <td ${flagNumClass(v.fbs,130)}>${escHtml(v.fbs||'-')}</td>
+            <td ${flagHbA1cClass(v.hba1c)}>${escHtml(v.hba1c||'-')}${v.hba1c?'%':''}</td>
+            <td ${flagNumClass(v.egfr,60,'low')}>${escHtml(v.egfr||'-')}</td>
+            <td><div class="drug-pills">${(v.drugs||[]).map(d=>`<span class="drug-pill">${escHtml(d.name.substring(0,18))}</span>`).join('')}</div></td>
             <td><strong>${v.grandTotal > 0 ? v.grandTotal.toFixed(2) : '-'}</strong></td>
-            <td style="font-size:11px;">${v.drugChange||v.note||''}</td>
+            <td style="font-size:11px;">${escHtml(v.drugChange||v.note||'')}</td>
             <td>
               <div style="display:flex;gap:3px;">
                 <button class="icon-btn" title="แก้ไข" onclick="openEditVisit(${v._globalIdx})">✏️</button>
@@ -1322,7 +1323,7 @@ function openEditVisit(globalIdx) {
   if (!v) return;
   pendingEditIdx = globalIdx;
   document.getElementById('visit-modal-info').innerHTML =
-    `<strong>${v.patientName}</strong> · ${formatDate(v.date)}<br>ยา ${(v.drugs||[]).length} รายการ · ค่ายา ${v.grandTotal||0} บาท`;
+    `<strong>${escHtml(v.patientName)}</strong> · ${formatDate(v.date)}<br>ยา ${(v.drugs||[]).length} รายการ · ค่ายา ${v.grandTotal||0} บาท`;
   document.getElementById('visit-modal').classList.add('open');
 }
 
@@ -1536,7 +1537,7 @@ function renderDashboard() {
             const pct = val ? Math.min((val/10)*100, 100) : 0;
             const color = val ? (val >= 7 ? 'red' : val >= 6.5 ? 'yellow' : 'green') : '';
             return `<div class="bar-row">
-              <span class="bar-label">${p.shortName}</span>
+              <span class="bar-label">${escHtml(p.shortName)}</span>
               <div class="bar-bg">
                 ${val ? `<div class="bar-fill ${color}" style="width:${pct}%">${val}%</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">ไม่มีข้อมูล</div>'}
               </div>
@@ -1553,7 +1554,7 @@ function renderDashboard() {
               const val = patientTotals[p.id];
               const pct = (val/maxVal)*100;
               return `<div class="bar-row">
-                <span class="bar-label">${p.shortName}</span>
+                <span class="bar-label">${escHtml(p.shortName)}</span>
                 <div class="bar-bg">
                   ${val > 0 ? `<div class="bar-fill" style="width:${pct}%">${val.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">-</div>'}
                 </div>
@@ -1576,7 +1577,7 @@ function renderDashboard() {
             ${PATIENTS.map(p => {
               const hba = patientLastHbA1c[p.id];
               const icon = !hba ? '⬜' : hba.val >= 7 ? '🔴' : hba.val >= 6.5 ? '🟡' : '🟢';
-              return `${icon} ${p.name}${hba && hba.val >= 7 ? ' — <span class="badge badge-red">HbA1c สูง</span>' : ''}`;
+              return `${icon} ${escHtml(p.name)}${hba && hba.val >= 7 ? ' — <span class="badge badge-red">HbA1c สูง</span>' : ''}`;
             }).join('<br>')}
           </div>
         </div>
@@ -1631,7 +1632,7 @@ function initLabDashboard() {
 
   // Patient selector chips
   strip.innerHTML = PATIENTS.map((p, i) =>
-    `<button class="p-chip${i===0?' active':''}" onclick="selectDashPatient('${p.id}',this)">${p.shortName}</button>`
+    `<button class="p-chip${i===0?' active':''}" onclick="selectDashPatient(${escHtml(JSON.stringify(p.id))},this)">${escHtml(p.shortName)}</button>`
   ).join('');
 
   if (PATIENTS.length) {
@@ -1865,7 +1866,7 @@ function renderOcrQueue() {
     container.innerHTML += `
       <div class="ocr-thumb" id="thumb-${item.id}">
         <img src="${item.url}">
-        <button class="remove-btn" onclick="removeOcrItem('${item.id}')">✕</button>
+        <button class="remove-btn" onclick="removeOcrItem(${escHtml(JSON.stringify(item.id))})">✕</button>
         <div class="status-badge">${badge}</div>
       </div>`;
   }
@@ -2201,18 +2202,18 @@ function parseAndPreview() {
   const d = _parsedData;
 
   const vitals = [
-    d.visitDate        ? `📅 วันที่ <b>${isoToThaiDate(d.visitDate)}</b>` : null,
-    d.weight   != null ? `น้ำหนัก <b>${d.weight}</b> kg` : null,
-    d.height   != null ? `ส่วนสูง <b>${d.height}</b> cm` : null,
-    d.bp               ? `ความดัน <b>${d.bp}</b>` : null,
-    d.dtx      != null ? `DTX <b>${d.dtx}</b>` : null,
-    d.fbs      != null ? `FBS <b>${d.fbs}</b>` : null,
-    d.hba1c    != null ? `HbA1c <b>${d.hba1c}</b>` : null,
-    d.ldl      != null ? `LDL <b>${d.ldl}</b>` : null,
-    d.tg       != null ? `TG <b>${d.tg}</b>` : null,
-    d.cr       != null ? `Cr <b>${d.cr}</b>` : null,
-    d.egfr     != null ? `eGFR <b>${d.egfr}</b>` : null,
-    d.urineAlb != null ? `Urine Albumin <b>${d.urineAlb}</b>` : null,
+    d.visitDate        ? `📅 วันที่ <b>${escHtml(isoToThaiDate(d.visitDate))}</b>` : null,
+    d.weight   != null ? `น้ำหนัก <b>${escHtml(d.weight)}</b> kg` : null,
+    d.height   != null ? `ส่วนสูง <b>${escHtml(d.height)}</b> cm` : null,
+    d.bp               ? `ความดัน <b>${escHtml(d.bp)}</b>` : null,
+    d.dtx      != null ? `DTX <b>${escHtml(d.dtx)}</b>` : null,
+    d.fbs      != null ? `FBS <b>${escHtml(d.fbs)}</b>` : null,
+    d.hba1c    != null ? `HbA1c <b>${escHtml(d.hba1c)}</b>` : null,
+    d.ldl      != null ? `LDL <b>${escHtml(d.ldl)}</b>` : null,
+    d.tg       != null ? `TG <b>${escHtml(d.tg)}</b>` : null,
+    d.cr       != null ? `Cr <b>${escHtml(d.cr)}</b>` : null,
+    d.egfr     != null ? `eGFR <b>${escHtml(d.egfr)}</b>` : null,
+    d.urineAlb != null ? `Urine Albumin <b>${escHtml(d.urineAlb)}</b>` : null,
   ].filter(Boolean);
 
   let html = '';
@@ -2229,9 +2230,9 @@ function parseAndPreview() {
       </tr>`;
     for (const dr of d.drugs) {
       html += `<tr>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);">${dr.name}</td>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${dr.dosage||'-'}</td>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${dr.qty||'-'}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);">${escHtml(dr.name)}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${escHtml(dr.dosage||'-')}</td>
+        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${escHtml(dr.qty||'-')}</td>
         <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:right;">${dr.price > 0 ? dr.price.toFixed(2)+' ฿' : '-'}</td>
       </tr>`;
     }
@@ -2498,10 +2499,10 @@ function renderSummary() {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
           ${PATIENTS.map(p => `
             <div class="field">
-              <label>${p.shortName}</label>
-              <input type="number" min="0" step="0.01" value="${baseline[p.id] || ''}"
+              <label>${escHtml(p.shortName)}</label>
+              <input type="number" min="0" step="0.01" value="${escHtml(baseline[p.id] || '')}"
                 placeholder="บาท/ครั้ง"
-                onchange="updateBaseline('${p.id}', this.value)"
+                onchange="updateBaseline(${escHtml(JSON.stringify(p.id))}, this.value)"
                 style="text-align:right;">
             </div>
           `).join('')}
@@ -2547,7 +2548,7 @@ function renderSummary() {
                           : s.diff < 0 ? '<span class="badge badge-red">⚠️ เพิ่มขึ้น</span>'
                           : '<span class="badge badge-yellow">→ เท่าเดิม</span>';
               return `<tr>
-                <td>${s.p.name}</td>
+                <td>${escHtml(s.p.name)}</td>
                 <td style="text-align:center;">${s.pvs.length}</td>
                 <td style="text-align:right;">${s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
                 <td style="text-align:right;">${s.lastCost > 0 ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
