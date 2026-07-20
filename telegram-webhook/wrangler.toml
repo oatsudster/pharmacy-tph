@@ -1,0 +1,17 @@
+name = "expiry-telegram-webhook"
+main = "worker.js"
+compatibility_date = "2026-07-20"
+
+[vars]
+GITHUB_OWNER = "oatsudster"
+GITHUB_REPO = "pharmacy-tph"
+GITHUB_WORKFLOW_FILE = "expiry-telegram-notify.yml"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "020396f504974910b859d473e5e1a457"
+
+# secrets (ตั้งด้วย `wrangler secret put <ชื่อ>` — ห้ามใส่ค่าจริงในไฟล์นี้):
+#   TELEGRAM_BOT_TOKEN
+#   GITHUB_TOKEN
+#   ALLOWED_CHAT_ID

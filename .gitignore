@@ -1,2 +1,4 @@
 .claude/
 open-claude-code.bat
+telegram-webhook/.wrangler/
+telegram-webhook/node_modules/
