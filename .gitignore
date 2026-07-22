@@ -2,3 +2,4 @@
 open-claude-code.bat
 telegram-webhook/.wrangler/
 telegram-webhook/node_modules/
+.expiry-notify-sent
