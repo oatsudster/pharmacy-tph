@@ -1466,6 +1466,22 @@
         <!-- ส่วนที่ 4: รายละเอียด ME (ซ่อน/แสดงตาม toggle) -->
         <div id="me-detail-section" style="display:none; grid-column:1/-1">
           <div class="form-grid" style="margin-top:4px">
+            <div class="section-label">👤 ข้อมูลผู้ป่วย</div>
+            <div class="form-group">
+              <label>HN</label>
+              <input type="text" id="f-hn" placeholder="รหัส HN">
+            </div>
+            <div class="form-group">
+              <label>ชื่อ-สกุล</label>
+              <input type="text" id="f-patient" placeholder="ชื่อผู้ป่วย">
+            </div>
+            <div class="form-group">
+              <label>อายุ</label>
+              <div class="input-unit">
+                <input type="number" id="f-age" min="0" max="150" placeholder="0">
+                <span>ปี</span>
+              </div>
+            </div>
             <div class="section-label">🔍 รายละเอียดความคลาดเคลื่อน</div>
             <div class="form-group">
               <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
@@ -1575,7 +1591,7 @@
     <div class="filter-bar">
       <div class="form-group">
         <label>ค้นหา</label>
-        <input type="text" id="filter-search" placeholder="ยา / ward / ประเภท..." oninput="renderTable()">
+        <input type="text" id="filter-search" placeholder="ยา / HN / ชื่อผู้ป่วย / ward / ประเภท..." oninput="renderTable()">
       </div>
       <div class="form-group">
         <label>ขั้นตอน</label>
@@ -1610,6 +1626,9 @@
             <th>#</th>
             <th>วันที่</th>
             <th>เวลา</th>
+            <th>HN</th>
+            <th>ชื่อผู้ป่วย</th>
+            <th>อายุ</th>
             <th>ขั้นตอน</th>
             <th>ประเภท ME</th>
             <th>ยา</th>
@@ -2150,6 +2169,9 @@ function submitForm(e) {
     hasME,
     rxType: 'ER',
     rxDaily: parseInt(document.getElementById('f-rx-daily').value) || 0,
+    hn:       hasME ? document.getElementById('f-hn').value : '',
+    patient:  hasME ? document.getElementById('f-patient').value : '',
+    age:      hasME ? (document.getElementById('f-age').value ? parseInt(document.getElementById('f-age').value) : '') : '',
     stage:    hasME ? document.getElementById('f-stage').value : '',
     meType:   hasME ? document.getElementById('f-me-type').value : '',
     severity: hasME ? document.getElementById('f-severity').value : '',
@@ -2196,6 +2218,9 @@ function editRecord(id) {
   document.getElementById('f-has-me').checked = hasME;
   toggleMESection();
 
+  document.getElementById('f-hn').value      = rec.hn || '';
+  document.getElementById('f-patient').value = rec.patient || '';
+  document.getElementById('f-age').value     = rec.age || '';
   document.getElementById('f-stage').value    = rec.stage || '';
   document.getElementById('f-me-type').value  = rec.meType || '';
   document.getElementById('f-severity').value = rec.severity || '';
@@ -2250,7 +2275,7 @@ function renderTable() {
           <td>${i+1}</td>
           <td>${formatDateThai(r.date)}</td>
           <td>—</td>
-          <td colspan="4" style="color:var(--text-light); font-style:italic">
+          <td colspan="7" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
           <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
@@ -2265,6 +2290,9 @@ function renderTable() {
         <td style="color:var(--text-light)">${i+1}</td>
         <td>${formatDateThai(r.date)}</td>
         <td style="white-space:nowrap">${formatTimeThai(r.time)}</td>
+        <td>${escHtml(r.hn) || '—'}</td>
+        <td>${escHtml(r.patient) || '—'}</td>
+        <td style="text-align:center">${escHtml(r.age) || '—'}</td>
         <td>${escHtml((r.stage||'').split(' ')[0])}</td>
         <td>${escHtml(r.meType)||'—'}</td>
         <td>${(() => {
@@ -2607,7 +2635,7 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
 function _buildERDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
   return '<table><thead><tr>' +
-    '<th>#</th><th>วันที่</th><th>เวลา</th><th>ยา</th>' +
+    '<th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
     '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
     '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
     '</tr></thead><tbody>' +
@@ -2620,6 +2648,9 @@ function _buildERDetailTable(recs) {
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
         '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
         '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
+        '<td>'+(escHtml(r.hn)||'—')+'</td>' +
+        '<td>'+(escHtml(r.patient)||'—')+'</td>' +
+        '<td style="text-align:center">'+(escHtml(r.age)||'—')+'</td>' +
         '<td>'+drugStr+'</td>' +
         '<td>'+(escHtml((r.stage||'').split(' ')[0])||'—')+'</td>' +
         '<td>'+(escHtml(r.meType)||'—')+'</td>' +
@@ -2637,11 +2668,11 @@ function closeDetailModal() {
 
 // ======= EXPORT CSV =======
 function exportCSV() {
-  const headers = ['ลำดับ','วันที่','เวลา','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
+  const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
   const rows = records.map((r,i) => {
     const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
     const drugStr = list.map(d => (d.form ? '['+d.form+'] ' : '') + d.name).join(' / ');
-    return [i+1, r.date, formatTimeThai(r.time), r.stage, r.meType,
+    return [i+1, r.date, formatTimeThai(r.time), r.hn, r.patient, r.age, r.stage, r.meType,
       r.severity, drugStr, r.ward, r.rxDaily, r.detail, r.intervention, r.reporter
     ].map(v => '"' + (v||'').toString().replace(/"/g,'""') + '"').join(',');
   });
@@ -4014,6 +4045,9 @@ function pageDoExport(fmt) {
       'ลำดับ':           i+1,
       'วันที่':          expISOtoTH(r.date),
       'เวลา':            r.time||'',
+      'HN':              r.hn||'',
+      'ชื่อผู้ป่วย':      r.patient||'',
+      'อายุ':            r.age||'',
       'ขั้นตอนที่พบ':   r.stage||'',
       'ประเภท ME':       r.meType||'',
       'ระดับความรุนแรง': r.severity||'',
@@ -4028,9 +4062,9 @@ function pageDoExport(fmt) {
   }
 
   if (fmt === 'pdf') {
-    const headers = ['ลำดับ','วันที่','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','รายละเอียด'];
+    const headers = ['ลำดับ','วันที่','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','รายละเอียด'];
     const rows = recs.map((r,i) => [
-      i+1, expISOtoTH(r.date), r.stage||'', r.meType||'', r.severity||'',
+      i+1, expISOtoTH(r.date), r.hn||'', r.patient||'', r.age||'', r.stage||'', r.meType||'', r.severity||'',
       drugStr(r), r.ward||'', r.detail||'',
     ]);
     expPDF({ title:'รายงาน Medication Error (ER)', subtitle: label, headers, rows, landscape:true });
