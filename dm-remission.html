@@ -613,7 +613,7 @@ function savePatients(list) {
 }
 
 function _patientsDoc() {
-  return _db ? _db.collection('dm_data').doc('patients') : null;
+  return _db ? _db.collection('pharmacy_tph').doc('dm_patients') : null;
 }
 
 function _fbSavePatients() {
@@ -670,55 +670,53 @@ function _localSave() {
 }
 
 // ── Firestore helpers ──
-function _col() { return _db ? _db.collection('dm_visits') : null; }
+// เก็บ visits ทั้งหมดเป็น array ในเอกสารเดียว (pharmacy_tph/dm_visits)
+// ให้ตรงกับ path ที่ Firestore rules ของโปรเจกต์อนุญาตไว้ (เหมือน clinic_data/expiry_tracker)
+function _visitsDocRef() { return _db ? _db.collection('pharmacy_tph').doc('dm_visits') : null; }
+
+async function _fbSaveVisits() {
+  const ref = _visitsDocRef();
+  if (!ref) return;
+  await ref.set({ list: _visitsCache, updated: Date.now() });
+}
 
 async function saveVisitDoc(visit) {
-  const col = _col();
-  if (col) {
-    await col.doc(visit.id).set(visit);
-    // onSnapshot will update cache
+  const idx = _visitsCache.findIndex(v => v.id === visit.id);
+  if (idx >= 0) _visitsCache[idx] = visit; else _visitsCache.push(visit);
+  if (_db) {
+    await _fbSaveVisits();
+    // onSnapshot จะอัปเดต cache/UI ให้ทุกเครื่องอีกที
   } else {
-    const idx = _visitsCache.findIndex(v => v.id === visit.id);
-    if (idx >= 0) _visitsCache[idx] = visit; else _visitsCache.push(visit);
     _localSave();
     _afterChange();
   }
 }
 
 async function deleteVisitsByPatient(patientId) {
-  const col = _col();
-  if (col) {
-    const snap = await col.where('patientId','==',patientId).get();
-    const batch = _db.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+  _visitsCache = _visitsCache.filter(v => v.patientId !== patientId);
+  if (_db) {
+    await _fbSaveVisits();
   } else {
-    _visitsCache = _visitsCache.filter(v => v.patientId !== patientId);
     _localSave();
     _afterChange();
   }
 }
 
 async function deleteVisitDoc(visitId) {
-  const col = _col();
-  if (col) {
-    await col.doc(visitId).delete();
+  _visitsCache = _visitsCache.filter(v => v.id !== visitId);
+  if (_db) {
+    await _fbSaveVisits();
   } else {
-    _visitsCache = _visitsCache.filter(v => v.id !== visitId);
     _localSave();
     _afterChange();
   }
 }
 
 async function clearAllVisitDocs() {
-  const col = _col();
-  if (col) {
-    const snap = await col.get();
-    const batch = _db.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+  _visitsCache = [];
+  if (_db) {
+    await _fbSaveVisits();
   } else {
-    _visitsCache = [];
     localStorage.removeItem('dm_visits');
     _afterChange();
   }
@@ -748,28 +746,17 @@ function _startSync() {
   if (_unsubscribeSync) _unsubscribeSync();
   _setSyncStatus('connecting');
 
-  // Migration: ถ้า Firestore ว่างแต่มีข้อมูลใน localStorage → ย้ายขึ้น Firebase
   const localData = JSON.parse(localStorage.getItem('dm_visits') || '[]');
-  if (localData.length) {
-    _col().limit(1).get().then(snap => {
-      if (snap.empty) {
-        // Firestore ยังว่าง → migrate
-        const batch = _db.batch();
-        localData.forEach(v => { if (v.id) batch.set(_col().doc(v.id), v); });
-        batch.commit().then(() => {
-          localStorage.removeItem('dm_visits');
-          showToast(`✅ ย้ายข้อมูลเก่า ${localData.length} รายการขึ้น Firebase เรียบร้อย`);
-        }).catch(e => console.warn('Migration failed', e));
-      } else {
-        // Firestore มีข้อมูลแล้ว → ลบ local เพื่อหลีกเลี่ยง conflict
-        localStorage.removeItem('dm_visits');
-      }
-    }).catch(() => {});
-  }
 
-  _unsubscribeSync = _col().onSnapshot(
+  _unsubscribeSync = _visitsDocRef().onSnapshot(
     snap => {
-      _visitsCache = snap.docs.map(d => d.data());
+      if (snap.exists) {
+        _visitsCache = snap.data().list || [];
+      } else if (localData.length) {
+        // Firestore ยังไม่มีเอกสาร แต่เครื่องนี้มีข้อมูลเก่าใน localStorage → ย้ายขึ้น Firebase
+        _visitsCache = localData;
+        _fbSaveVisits().then(() => showToast(`✅ ย้ายข้อมูลเก่า ${localData.length} รายการขึ้น Firebase เรียบร้อย`));
+      }
       localStorage.setItem('dm_visits', JSON.stringify(_visitsCache));
       _setSyncStatus('online');
       _afterChange();
