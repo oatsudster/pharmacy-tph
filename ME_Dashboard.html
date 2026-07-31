@@ -318,13 +318,14 @@
     z-index: 100;
   }
   .sidebar-back {
-    display: flex; align-items: center; gap: 6px;
-    padding: 11px 16px; font-size: 12.5px; font-weight: 600;
-    color: rgba(255,255,255,.55); text-decoration: none;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 13px 16px; font-size: 14px; font-weight: 600;
+    color: rgba(255,255,255,.6); text-decoration: none;
     border-bottom: 1px solid rgba(255,255,255,.08);
     transition: all .18s;
   }
   .sidebar-back:hover { color: #fff; background: rgba(255,255,255,.06); }
+  .sidebar-back .sb-icon { font-size: 17px; line-height: 1; }
 
   .sidebar-brand {
     padding: 24px 16px 20px;
@@ -515,7 +516,9 @@
 <div class="app-wrapper">
 
 <aside class="sidebar">
-  <a href="index.html" class="sidebar-back" title="กลับสู่เมนูรวมระบบ">⬅ เมนูรวมระบบ</a>
+  <a href="index.html" class="sidebar-back" title="กลับสู่เมนูรวมระบบ">
+    <span class="sb-icon">🏢</span> เมนูรวมระบบ
+  </a>
   <div class="sidebar-brand">
     <div class="brand-icon">💊</div>
     <div class="brand-hosp">โรงพยาบาลถ้ำพรรณรา<br>จ.นครศรีธรรมราช</div>
