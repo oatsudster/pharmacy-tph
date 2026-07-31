@@ -2,4 +2,6 @@
 open-claude-code.bat
 telegram-webhook/.wrangler/
 telegram-webhook/node_modules/
+admin-error-classify/.wrangler/
+admin-error-classify/node_modules/
 .expiry-notify-sent

@@ -990,6 +990,7 @@
     <button class="tab-btn"        id="tab-ipd-records" onclick="showHosXPTab('ipd','records',this)">📋 รายการ</button>
     <button class="tab-btn"        id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">📤 นำเข้าข้อมูล</button>
     <button class="tab-btn"        id="tab-ipd-manual"  onclick="showHosXPTab('ipd','manual',this)">✏️ บันทึกเอง</button>
+    <button class="tab-btn"        id="tab-ipd-adminrpt" onclick="showHosXPTab('ipd','adminrpt',this)">🧾 Admin Error รายเดือน</button>
   </div>
 
   <!-- IPD DASHBOARD -->
@@ -1241,7 +1242,7 @@
         </div>
         <div class="form-group">
           <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
-          <select id="mf-ipd-stage">
+          <select id="mf-ipd-stage" onchange="updateIpdMetypeOptions()">
             <option value="">-- เลือก --</option>
             <option value="Pre-dispensing">Pre-dispensing (ก่อนจ่ายยา)</option>
             <option value="Prescribing">Prescribing (การสั่งยา)</option>
@@ -1268,6 +1269,11 @@
             <option>Near miss (เกือบพลาด)</option>
             <option>อื่นๆ</option>
           </select>
+        </div>
+        <div class="form-group full" style="margin-top:-10px">
+          <div style="font-size:12px;color:var(--text-light)">
+            💡 เมื่อเลือกขั้นตอน = Administration ตัวเลือกด้านบนจะเปลี่ยนเป็น 15 หมวด Administration Error โดยอัตโนมัติ
+          </div>
         </div>
         <div class="form-group">
           <label>ระดับความรุนแรง (NCC MERP) <span class="req">*</span></label>
@@ -1313,6 +1319,52 @@
       </div>
     </div>
 </div>
+
+  <!-- IPD ADMIN ERROR REPORT -->
+  <div class="page" id="page-ipd-adminrpt" style="padding:24px;overflow-y:auto;background:var(--bg)">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <span>🧾 รายงาน Administration Error (IPD)</span>
+      <button class="btn btn-secondary" onclick="exportAdminErrorReport()" style="font-size:13px;padding:7px 14px">📊 Export Excel (รายเดือนเต็มปี)</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-light);margin:-6px 0 18px">
+      นับเฉพาะรายการขั้นตอน = Administration ที่ประเภทตรงกับ 15 หมวดด้านล่างเท่านั้น (ไม่รวมรายการเก่า/อื่นๆ ที่ยังไม่ระบุหมวด)
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+      <div style="margin:0">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:5px">ปีงบประมาณ</label>
+        <select id="adminrpt-fy" onchange="populateAdminRptMonth();renderAdminErrorReport()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px"></select>
+      </div>
+      <div style="margin:0">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:5px">เดือน</label>
+        <select id="adminrpt-month" onchange="renderAdminErrorReport()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px"></select>
+      </div>
+      <div style="margin:0" id="adminrpt-denom-wrap">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:5px">จำนวนวันนอน</label>
+        <div id="adminrpt-denom-display" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);min-width:120px;text-align:center;font-weight:700">—</div>
+      </div>
+      <div style="margin:0 0 8px;font-size:13px;color:var(--text-light)">
+        ดึงอัตโนมัติจากแท็บ 🎯 ตัวชี้วัด — <a href="#" onclick="event.preventDefault();showHosXPTab('ipd','kpi',document.getElementById('tab-ipd-kpi'))" style="color:var(--primary);font-weight:600">ไปกรอก/แก้ที่นั่น →</a>
+      </div>
+    </div>
+
+    <div id="adminrpt-ai-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:18px">
+      <div style="font-size:13px;color:#854d0e">
+        📥 มี <strong id="adminrpt-pending-count">0</strong> รายการที่ import จาก HosXP แล้วยังไม่มีหมวด Administration Error ชัดเจน
+      </div>
+      <button class="btn btn-secondary" id="adminrpt-ai-btn" onclick="classifyAdminErrorsWithAI()" style="font-size:13px;padding:7px 14px">🤖 จัดหมวดด้วย AI</button>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:var(--primary-dark);margin-bottom:8px">
+      อุบัติการณ์ <span id="adminrpt-cat-total" style="font-weight:400;color:var(--text-light);font-size:13px"></span>
+    </div>
+    <div class="table-wrap" style="margin-bottom:28px">
+      <table id="adminrpt-cat-table"></table>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:var(--primary-dark);margin-bottom:10px">ระดับความรุนแรง (NCC MERP)</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap" id="adminrpt-sev-chips"></div>
+  </div>
 </div>
 
 <!-- ========== ER SECTION ========== -->
@@ -2912,6 +2964,7 @@ function clearManualME(dept) {
     });
   document.getElementById('mf-'+d+'-date').value = todayME();
   switchMECategory(dept, 'drug');
+  if (d === 'ipd') updateIpdMetypeOptions();
 }
 
 function renderManualRecent(dept) {
@@ -3015,6 +3068,7 @@ function showHosXPTab(dept, tab, btn) {
   if (tab === 'records') { populateHosXPMonthFilter(deptUpper); renderHosXPTable(deptUpper); }
   if (tab === 'kpi') renderHosXPKPI(deptUpper);
   if (tab === 'upload') { updateHosXPStatus(); populateDeleteMonthSelector(deptUpper); }
+  if (tab === 'adminrpt') { populateAdminRptFY(); populateAdminRptMonth(); renderAdminErrorReport(); }
 }
 
 // ======= EXCEL DATE CONVERSION =======
@@ -3263,6 +3317,241 @@ function fiscalYearMonths(fy) {
     months.push(y + '-' + String(m + 1).padStart(2, '0'));
   }
   return months;
+}
+
+// ══ IPD ADMINISTRATION ERROR REPORT ═══════════════════════════════
+const IPD_METYPE_GENERIC = [
+  'Wrong drug (ยาผิด)', 'Wrong dose (ขนาดผิด)', 'Wrong route (ทางผิด)', 'Wrong patient (ผู้ป่วยผิด)',
+  'Wrong time (เวลาผิด)', 'Wrong frequency (ความถี่ผิด)', 'Wrong form (รูปแบบผิด)', 'Omission (ขาดยา)',
+  'Extra dose (ยาเกิน)', 'Labeling error (ฉลากผิด)', 'Near miss (เกือบพลาด)', 'อื่นๆ'
+];
+const IPD_METYPE_ADMIN = [
+  'ให้ยาไม่ครบรายการ', 'ให้ยาผิดชนิด', 'ให้ยาที่ไม่ได้สั่ง', 'ให้ยาผิดวิธีใช้', 'ให้ยาผิดจำนวน',
+  'ให้ยาผิดคน', 'ให้ยาผิดขนาด', 'ให้ยาผิดวิถีทาง', 'ให้ยาผิดเวลา', 'ให้ยาในอัตราเร็วที่ผิด',
+  'ให้ยาผิดเทคนิค', 'ให้ยาที่แพ้', 'ให้ยาที่มี DI กัน', 'ให้ยาผิดรูปแบบยา', 'ไม่ได้เก็บยากลับคืนเที่ยง', 'อื่นๆ'
+];
+const NCC_SEVERITY = ['A','B','C','D','E','F','G','H','I'];
+const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function fmtMonthFull(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1] + ' ' + (parseInt(y)+543); }
+const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ'));
+
+// -- AI classification (Gemini ผ่าน Cloudflare Worker แยก — ดู admin-error-classify/README.md) --
+// worker deploy แล้วที่ URL นี้ — ยังต้องตั้ง secret (GEMINI_API_KEY, APP_TOKEN) แล้วใส่ APP_TOKEN ตัวเดียวกันไว้ที่ ADMIN_CLASSIFY_TOKEN ด้านล่างก่อนถึงจะใช้งานได้
+const ADMIN_CLASSIFY_URL   = 'https://admin-error-classify.oatsudster.workers.dev';
+const ADMIN_CLASSIFY_TOKEN = '';
+let hosxpAiCat = JSON.parse(localStorage.getItem('hosxp_ai_cat') || '{}');
+function saveHosxpAiCat() { localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat)); }
+
+function getEffectiveAdminCategory(r) {
+  if (IPD_METYPE_ADMIN_SET.has(r.meType || '')) return r.meType;
+  const ai = hosxpAiCat[r.id];
+  return IPD_METYPE_ADMIN_SET.has(ai) ? ai : null;
+}
+
+function updateIpdMetypeOptions() {
+  const stageEl = document.getElementById('mf-ipd-stage');
+  const sel = document.getElementById('mf-ipd-metype');
+  if (!stageEl || !sel) return;
+  const cur = sel.value;
+  const list = stageEl.value === 'Administration' ? IPD_METYPE_ADMIN : IPD_METYPE_GENERIC;
+  sel.innerHTML = '<option value="">-- เลือก --</option>' + list.map(t => '<option>'+escHtml(t)+'</option>').join('');
+  if (list.includes(cur)) sel.value = cur;
+}
+
+function computeAdminErrorReportData(fy) {
+  const months = fiscalYearMonths(fy);
+  const knownCats = IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ');
+  // ใช้ขั้นตอนความคลาดเคลื่อน (จากไฟล์ที่ import หรือที่บันทึกเอง) เป็นตัวกรองหลัก — ไม่สนใจว่ามาจาก manual หรือ hosxp
+  const adminRecs = hosxpRecords.filter(r => r.dept === 'IPD' &&
+    extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
+    months.includes((r.date||'').substring(0,7)));
+  const recs = adminRecs.filter(r => getEffectiveAdminCategory(r));
+  const denomByMonth = months.map(m => hosxpDenom[m+'_IPD'] || 0);
+  const totalDenom = denomByMonth.reduce((a,b)=>a+b, 0);
+  const rateOf = (count, denom) => denom > 0 ? Math.round(count/denom*1000*100)/100 : null;
+
+  const catRows = knownCats.map(cat => {
+    const counts = months.map(m => recs.filter(r => r.date.substring(0,7)===m && getEffectiveAdminCategory(r)===cat).length);
+    return { cat, counts, total: counts.reduce((a,b)=>a+b,0) };
+  });
+
+  const monthTotals = months.map((m,i) => catRows.reduce((s,r)=>s+r.counts[i], 0));
+  const grandTotal = monthTotals.reduce((a,b)=>a+b, 0);
+
+  const sevRows = NCC_SEVERITY.map(sev => {
+    const counts = months.map(m => recs.filter(r => r.date.substring(0,7)===m && r.severity===sev).length);
+    return { sev, counts, total: counts.reduce((a,b)=>a+b,0) };
+  });
+  const sevMonthTotals = months.map((m,i) => sevRows.reduce((s,r)=>s+r.counts[i], 0));
+  const sevGrandTotal = sevMonthTotals.reduce((a,b)=>a+b, 0);
+
+  return { months, denomByMonth, totalDenom, rateOf, catRows, monthTotals, grandTotal, sevRows, sevMonthTotals, sevGrandTotal };
+}
+
+function getAllPendingAdminRecs() {
+  // รายการ import จาก HosXP ที่ขั้นตอน = Administration แต่ยังไม่มีหมวดที่ตรงกับ 15 รายการ (รอ AI ช่วยจัด)
+  return hosxpRecords.filter(r => r.dept === 'IPD' &&
+    extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
+    r.source !== 'manual' && !getEffectiveAdminCategory(r));
+}
+
+async function classifyAdminErrorsWithAI() {
+  if (!ADMIN_CLASSIFY_URL || !ADMIN_CLASSIFY_TOKEN) {
+    alert('ยังไม่ได้ตั้งค่า AI classify worker — ดูขั้นตอนใน admin-error-classify/README.md');
+    return;
+  }
+  const pending = getAllPendingAdminRecs();
+  if (!pending.length) return;
+
+  const btn = document.getElementById('adminrpt-ai-btn');
+  const BATCH = 60;
+  let done = 0;
+  btn.disabled = true;
+
+  try {
+    for (let i = 0; i < pending.length; i += BATCH) {
+      const batch = pending.slice(i, i + BATCH);
+      btn.textContent = `🤖 กำลังจัดหมวด... (${done}/${pending.length})`;
+      const res = await fetch(ADMIN_CLASSIFY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-App-Token': ADMIN_CLASSIFY_TOKEN },
+        body: JSON.stringify({ items: batch.map(r => ({ id: String(r.id), text: r.detail || '' })) }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      (data.results || []).forEach(r => { if (r.category) hosxpAiCat[r.id] = r.category; });
+      done += batch.length;
+      saveHosxpAiCat();
+      renderAdminErrorReport();
+    }
+    showToast('✅ จัดหมวดด้วย AI เสร็จแล้ว ' + done + ' รายการ');
+  } catch (e) {
+    console.error('classifyAdminErrorsWithAI:', e);
+    alert('❌ จัดหมวดด้วย AI ไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    renderAdminErrorReport();
+  }
+}
+
+function populateAdminRptFY() {
+  const fyEl = document.getElementById('adminrpt-fy');
+  if (!fyEl) return;
+  const recs = hosxpRecords.filter(r => r.dept === 'IPD' && extractStageShort(r.stageRaw || r.stage || '') === 'Administration');
+  const fys = new Set(recs.map(r => getFiscalYear(r.date)).filter(Boolean));
+  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  fys.add(curFY);
+  const sorted = [...fys].sort((a,b)=>b-a);
+  const prev = fyEl.value;
+  fyEl.innerHTML = sorted.map(fy => `<option value="${fy}">ปีงบ ${fy}</option>`).join('');
+  fyEl.value = (prev && sorted.includes(parseInt(prev))) ? prev : String(curFY);
+}
+
+function populateAdminRptMonth() {
+  const fyEl = document.getElementById('adminrpt-fy');
+  const monthEl = document.getElementById('adminrpt-month');
+  if (!fyEl || !monthEl) return;
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const months = fiscalYearMonths(fy);
+  const curMonth = new Date().toISOString().slice(0,7);
+  const prev = monthEl.value;
+  monthEl.innerHTML = '<option value="ALL">รวมทั้งปีงบ</option>' +
+    months.map(m => `<option value="${m}">${fmtMonthFull(m)}</option>`).join('');
+  monthEl.value = (prev && (prev === 'ALL' || months.includes(prev))) ? prev : (months.includes(curMonth) ? curMonth : 'ALL');
+}
+
+function renderAdminErrorReport() {
+  const fyEl = document.getElementById('adminrpt-fy');
+  const monthEl = document.getElementById('adminrpt-month');
+  const catTable = document.getElementById('adminrpt-cat-table');
+  const sevChips = document.getElementById('adminrpt-sev-chips');
+  if (!fyEl || !monthEl || !catTable || !sevChips) return;
+  if (!fyEl.options.length) populateAdminRptFY();
+  if (!monthEl.options.length) populateAdminRptMonth();
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const d = computeAdminErrorReportData(fy);
+  const rateTxt = v => v === null ? '—' : v.toFixed(2);
+  const sel = monthEl.value || 'ALL';
+  const idx = sel === 'ALL' ? -1 : d.months.indexOf(sel);
+
+  // -- จำนวนวันนอน (read-only, ดึงจาก hosxpDenom ที่กรอกในแท็บตัวชี้วัด) --
+  const denomDisplay = document.getElementById('adminrpt-denom-display');
+  denomDisplay.textContent = (idx === -1 ? d.totalDenom : d.denomByMonth[idx]) || '—';
+
+  // -- แถบแจ้งรายการรอจัดหมวดด้วย AI --
+  const pending = getAllPendingAdminRecs();
+  const banner = document.getElementById('adminrpt-ai-banner');
+  const aiBtn = document.getElementById('adminrpt-ai-btn');
+  if (pending.length && ADMIN_CLASSIFY_URL && ADMIN_CLASSIFY_TOKEN) {
+    banner.style.display = 'flex';
+    document.getElementById('adminrpt-pending-count').textContent = pending.length;
+    aiBtn.disabled = false;
+    aiBtn.textContent = '🤖 จัดหมวดด้วย AI';
+  } else if (pending.length) {
+    banner.style.display = 'flex';
+    document.getElementById('adminrpt-pending-count').textContent = pending.length;
+    aiBtn.disabled = true;
+    aiBtn.textContent = 'ยังไม่ได้ตั้งค่า AI (ดู admin-error-classify/README.md)';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // -- category table (single month or year total) --
+  const catTotal = idx === -1 ? d.grandTotal : d.monthTotals[idx];
+  document.getElementById('adminrpt-cat-total').textContent =
+    (idx === -1 ? 'รวมทั้งปีงบ' : fmtMonthFull(sel)) + ' — ' + catTotal + ' ครั้ง';
+
+  let catHtml = '<thead><tr><th>ประเภท</th><th>ครั้ง</th><th>/1,000 วันนอน</th></tr></thead><tbody>';
+  d.catRows.forEach(r => {
+    const c = idx === -1 ? r.total : r.counts[idx];
+    const denom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
+    catHtml += `<tr><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
+  });
+  const totalDenom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
+  catHtml += `<tr style="font-weight:800;background:var(--primary-light)"><td>รวม</td><td>${catTotal}</td><td>${rateTxt(d.rateOf(catTotal, totalDenom))}</td></tr>`;
+  catHtml += '</tbody>';
+  catTable.innerHTML = catHtml;
+
+  // -- severity chips --
+  sevChips.innerHTML = d.sevRows.map(r => {
+    const c = idx === -1 ? r.total : r.counts[idx];
+    return `<span class="badge sev-${r.sev}" style="font-size:15px">${r.sev}: ${c}</span>`;
+  }).join('') + `<span class="badge" style="background:var(--primary-light);color:var(--primary-dark);font-size:15px">รวม: ${idx === -1 ? d.sevGrandTotal : d.sevMonthTotals[idx]}</span>`;
+}
+
+function exportAdminErrorReport() {
+  const fyEl = document.getElementById('adminrpt-fy');
+  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const d = computeAdminErrorReportData(fy);
+  const rateTxt = v => v === null ? '' : v.toFixed(2);
+
+  const catData = d.catRows.map(r => {
+    const row = { 'Admin Errors': r.cat };
+    d.months.forEach((m,i) => {
+      const lbl = fmtMonthFull(m);
+      row[lbl+' ครั้ง'] = r.counts[i];
+      row[lbl+' /1000'] = rateTxt(d.rateOf(r.counts[i], d.denomByMonth[i]));
+    });
+    row['รวม ครั้ง'] = r.total;
+    row['รวม /1000'] = rateTxt(d.rateOf(r.total, d.totalDenom));
+    return row;
+  });
+  const denomRow = { 'Admin Errors': 'จำนวนวันนอน' };
+  d.months.forEach((m,i) => { denomRow[fmtMonthFull(m)+' ครั้ง'] = d.denomByMonth[i]; denomRow[fmtMonthFull(m)+' /1000'] = ''; });
+  denomRow['รวม ครั้ง'] = d.totalDenom; denomRow['รวม /1000'] = '';
+  catData.unshift(denomRow);
+
+  const sevData = d.sevRows.map(r => {
+    const row = { 'ระดับ': r.sev };
+    d.months.forEach((m,i) => { row[fmtMonthFull(m)] = r.counts[i]; });
+    row['รวม'] = r.total;
+    return row;
+  });
+
+  expExcel([
+    { name: 'อุบัติการณ์', data: catData },
+    { name: 'ระดับความรุนแรง', data: sevData }
+  ], 'Admin_Error_IPD_FY' + fy);
 }
 
 let erFilterDefaultsApplied = false;
