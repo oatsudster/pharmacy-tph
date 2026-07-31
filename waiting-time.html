@@ -855,21 +855,58 @@ function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy
 function renderStatCharts() {
   // Monthly avg
   const monthly = groupByMonth(statRecords);
+  const sTrend = movingAvg(monthly.map(m => m.avg), 3);
   destroyChart('s-monthly');
   chartInstances['s-monthly'] = new Chart(document.getElementById('s-chart-monthly'), {
     type: 'bar',
     data: {
       labels: monthly.map(m => labelMonth(m.key)),
-      datasets: [{
-        label: 'ค่าเฉลี่ย (นาที)',
-        data: monthly.map(m => m.avg),
-        backgroundColor: monthly.map(m => m.avg <= STAT_LIMIT ? '#16a34a' : '#ef4444'),
-        borderRadius: 6
-      }]
+      datasets: [
+        {
+          label: 'ค่าเฉลี่ย (นาที)',
+          data: monthly.map(m => m.avg),
+          backgroundColor: monthly.map(m => m.avg <= STAT_LIMIT ? '#16a34a' : '#ef4444'),
+          borderRadius: 6,
+          order: 2
+        },
+        {
+          type: 'line',
+          label: `เป้าหมาย (≤ ${STAT_LIMIT} นาที)`,
+          data: monthly.map(() => STAT_LIMIT),
+          borderColor: '#94a3b8',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          order: 0
+        },
+        {
+          type: 'line',
+          label: 'แนวโน้ม (เฉลี่ยเคลื่อนที่ 3 เดือน)',
+          data: sTrend,
+          borderColor: '#C49A22',
+          backgroundColor: '#C49A22',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointBackgroundColor: '#C49A22',
+          tension: .3,
+          spanGaps: true,
+          fill: false,
+          order: 1
+        }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: {
+            font: { family: 'Noto Sans Thai', size: 11 }, boxWidth: 14, usePointStyle: true,
+            filter: item => item.text !== 'ค่าเฉลี่ย (นาที)'
+          }
+        }
+      },
       scales: {
         y: { beginAtZero: true, grid: { color: '#e5e7eb' },
           ticks: { font: { family: 'Noto Sans Thai' } } },
@@ -906,21 +943,58 @@ function renderStatCharts() {
 
 function renderCartCharts() {
   const monthly = groupByMonth(cartRecords);
+  const cTrend = movingAvg(monthly.map(m => m.avg), 3);
   destroyChart('c-monthly');
   chartInstances['c-monthly'] = new Chart(document.getElementById('c-chart-monthly'), {
     type: 'bar',
     data: {
       labels: monthly.map(m => labelMonth(m.key)),
-      datasets: [{
-        label: 'ค่าเฉลี่ย (นาที)',
-        data: monthly.map(m => m.avg),
-        backgroundColor: monthly.map(m => m.avg <= CART_LIMIT ? '#16a34a' : '#ef4444'),
-        borderRadius: 6
-      }]
+      datasets: [
+        {
+          label: 'ค่าเฉลี่ย (นาที)',
+          data: monthly.map(m => m.avg),
+          backgroundColor: monthly.map(m => m.avg <= CART_LIMIT ? '#16a34a' : '#ef4444'),
+          borderRadius: 6,
+          order: 2
+        },
+        {
+          type: 'line',
+          label: `เป้าหมาย (≤ ${CART_LIMIT} นาที)`,
+          data: monthly.map(() => CART_LIMIT),
+          borderColor: '#94a3b8',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          order: 0
+        },
+        {
+          type: 'line',
+          label: 'แนวโน้ม (เฉลี่ยเคลื่อนที่ 3 เดือน)',
+          data: cTrend,
+          borderColor: '#C49A22',
+          backgroundColor: '#C49A22',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointBackgroundColor: '#C49A22',
+          tension: .3,
+          spanGaps: true,
+          fill: false,
+          order: 1
+        }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: {
+            font: { family: 'Noto Sans Thai', size: 11 }, boxWidth: 14, usePointStyle: true,
+            filter: item => item.text !== 'ค่าเฉลี่ย (นาที)'
+          }
+        }
+      },
       scales: {
         y: { beginAtZero: true, ticks: { font: { family: 'Noto Sans Thai' } } },
         x: { ticks: { font: { family: 'Noto Sans Thai' } } }
@@ -1001,6 +1075,14 @@ function groupByMonth(recs) {
     key: k,
     avg: Math.round(map[k].reduce((s,v)=>s+v,0)/map[k].length * 10)/10
   }));
+}
+
+function movingAvg(values, window) {
+  return values.map((_, i) => {
+    if (i < window - 1) return null;
+    const slice = values.slice(i - window + 1, i + 1);
+    return Math.round(slice.reduce((s,v)=>s+v,0) / window * 10) / 10;
+  });
 }
 
 function groupByField(recs, field, limit = 999) {
