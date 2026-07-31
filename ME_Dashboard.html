@@ -317,6 +317,15 @@
     position: sticky; top: 0; height: 100vh; overflow-y: auto;
     z-index: 100;
   }
+  .sidebar-back {
+    display: flex; align-items: center; gap: 6px;
+    padding: 11px 16px; font-size: 12.5px; font-weight: 600;
+    color: rgba(255,255,255,.55); text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    transition: all .18s;
+  }
+  .sidebar-back:hover { color: #fff; background: rgba(255,255,255,.06); }
+
   .sidebar-brand {
     padding: 24px 16px 20px;
     border-bottom: 1px solid rgba(255,255,255,.1);
@@ -370,6 +379,15 @@
     border-top: 1px solid rgba(255,255,255,.1);
     font-size: 12px; color: rgba(255,255,255,.35);
     text-align: center;
+  }
+
+  .sidebar-utility {
+    margin: 10px 12px; padding: 12px 14px;
+    background: rgba(0,0,0,.15); border-radius: 10px;
+  }
+  .sidebar-utility-label {
+    font-size: 11px; color: rgba(255,255,255,.5);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
   }
 
   /* ── MAIN AREA ───────────────────────────────────────── */
@@ -497,6 +515,7 @@
 <div class="app-wrapper">
 
 <aside class="sidebar">
+  <a href="index.html" class="sidebar-back" title="กลับสู่เมนูรวมระบบ">⬅ เมนูรวมระบบ</a>
   <div class="sidebar-brand">
     <div class="brand-icon">💊</div>
     <div class="brand-hosp">โรงพยาบาลถ้ำพรรณรา<br>จ.นครศรีธรรมราช</div>
@@ -521,8 +540,8 @@
       <span class="si-icon">🚑</span> ER ห้องฉุกเฉิน
     </a>
   </nav>
-  <div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);">
-    <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">สำรอง / นำเข้าข้อมูล</div>
+  <div class="sidebar-utility">
+    <div class="sidebar-utility-label">สำรอง / นำเข้าข้อมูล</div>
     <button onclick="exportData()" style="width:100%;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;margin-bottom:6px;font-family:inherit;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.22)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">
       💾 Export ข้อมูล (JSON)
     </button>
@@ -536,9 +555,6 @@
 
 <div class="main-area">
   <div class="main-topbar">
-    <a href="index.html" title="กลับหน้าหลัก" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0;transition:background .2s;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
-      🏠 หน้าหลัก
-    </a>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
     <button onclick="expModalOpen(f=>expFilter(records,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
     <div class="main-topbar-badge">ปีงบประมาณ 2569</div>
