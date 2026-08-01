@@ -7,5 +7,5 @@ binding = "RATE_LIMIT"
 id = "189b243fbc3f44dda70b2eaeab048f6c"
 
 # secrets (ตั้งด้วย `wrangler secret put <ชื่อ>` — ห้ามใส่ค่าจริงในไฟล์นี้):
-#   GEMINI_API_KEY   — จาก https://aistudio.google.com/apikey
+#   GROQ_API_KEY     — จาก https://console.groq.com/keys
 #   APP_TOKEN        — สตริงลับที่ตั้งเอง (กันคนอื่นยิง endpoint นี้เล่น) ต้องตรงกับค่าใน ME_Dashboard.html

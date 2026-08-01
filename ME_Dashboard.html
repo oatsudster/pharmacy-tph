@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3335,10 +3335,9 @@ const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์',
 function fmtMonthFull(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1] + ' ' + (parseInt(y)+543); }
 const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ'));
 
-// -- AI classification (Gemini ผ่าน Cloudflare Worker แยก — ดู admin-error-classify/README.md) --
-// worker deploy แล้วที่ URL นี้ — ยังต้องตั้ง secret (GEMINI_API_KEY, APP_TOKEN) แล้วใส่ APP_TOKEN ตัวเดียวกันไว้ที่ ADMIN_CLASSIFY_TOKEN ด้านล่างก่อนถึงจะใช้งานได้
+// -- AI classification (Groq ผ่าน Cloudflare Worker แยก — ดู admin-error-classify/README.md) --
 const ADMIN_CLASSIFY_URL   = 'https://admin-error-classify.oatsudster.workers.dev';
-const ADMIN_CLASSIFY_TOKEN = '';
+const ADMIN_CLASSIFY_TOKEN = 'x9kQm2vLpR7wZaN4tY8bJ3cH';
 let hosxpAiCat = JSON.parse(localStorage.getItem('hosxp_ai_cat') || '{}');
 function saveHosxpAiCat() { localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat)); }
 
@@ -3415,7 +3414,12 @@ async function classifyAdminErrorsWithAI() {
       const res = await fetch(ADMIN_CLASSIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-App-Token': ADMIN_CLASSIFY_TOKEN },
-        body: JSON.stringify({ items: batch.map(r => ({ id: String(r.id), text: r.detail || '' })) }),
+        body: JSON.stringify({
+          items: batch.map(r => ({ id: String(r.id), text: r.detail || '' })),
+          categories: IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ'),
+          context: 'คุณเป็นเภสัชกรที่ช่วยจัดหมวดหมู่ "Administration Error" ' +
+            '(ความคลาดเคลื่อนในขั้นตอนการให้ยาแก่ผู้ป่วย IPD) จากข้อความหมายเหตุ/รายละเอียดเหตุการณ์ที่บันทึกไว้ในระบบ',
+        }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();

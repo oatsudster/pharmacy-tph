@@ -1,10 +1,10 @@
-# Worker จัดหมวด Administration Error ด้วย Gemini AI
+# Worker จัดหมวด Administration Error ด้วย Groq AI (Llama)
 
 Worker นี้รับข้อความ "หมายเหตุ/รายละเอียด" ของรายการ ME (IPD) ที่ import จาก HosXP แล้วยังไม่มี
-"ประเภทความคลาดเคลื่อน" ชัดเจน ส่งให้ Gemini ช่วยจัดเข้าหนึ่งใน 15 หมวด Administration Error
+"ประเภทความคลาดเคลื่อน" ชัดเจน ส่งให้ AI (Groq/Llama) ช่วยจัดเข้าหนึ่งใน 15 หมวด Administration Error
 ให้อัตโนมัติ — ใช้จากปุ่ม "🤖 จัดหมวดด้วย AI" ในหน้า Admin Error รายเดือน ของ ME_Dashboard.html
 
-API key ของ Gemini เก็บเป็น secret ฝั่งเซิร์ฟเวอร์เท่านั้น ไม่ฝังลงในหน้าเว็บ (หน้าเว็บเรียก Worker นี้แทน)
+API key ของ Groq เก็บเป็น secret ฝั่งเซิร์ฟเวอร์เท่านั้น ไม่ฝังลงในหน้าเว็บ (หน้าเว็บเรียก Worker นี้แทน)
 
 Deploy ฟรีบน Cloudflare Workers ทำตามขั้นตอนนี้ (ทำครั้งเดียว):
 
@@ -24,12 +24,11 @@ wrangler kv namespace create RATE_LIMIT
 
 จะได้ id กลับมา เอาไปแทนที่ `REPLACE_WITH_KV_NAMESPACE_ID` ใน `wrangler.toml`
 
-## 3. สร้าง Gemini API key
+## 3. สร้าง Groq API key
 
-ไปที่ https://aistudio.google.com/apikey → **Create API key** → คัดลอกค่าที่ได้ไว้ใช้ขั้นตอนถัดไป
-(หมายเหตุ: คนละอย่างกับ Gemini Advanced/Plus ที่ใช้ผ่านแอป/เว็บ Gemini — ต้องสร้าง API key แยกที่นี่)
+ไปที่ https://console.groq.com/keys → **Create API Key** → คัดลอกค่าที่ได้ไว้ใช้ขั้นตอนถัดไป
 
-Free tier ของ Gemini API เพียงพอสำหรับงานนี้แน่นอน เพราะมีแค่ไม่กี่สิบรายการ/เดือน
+Free tier ของ Groq เพียงพอสำหรับงานนี้แน่นอน เพราะมีแค่ไม่กี่สิบรายการ/เดือน ไม่ต้องผูกบัตรเครดิต
 
 ## 4. Deploy worker
 
@@ -42,11 +41,11 @@ wrangler deploy
 ## 5. ตั้งค่า secrets (ทำทีละคำสั่ง จะมีให้พิมพ์ค่าแบบซ่อน)
 
 ```
-wrangler secret put GEMINI_API_KEY
+wrangler secret put GROQ_API_KEY
 wrangler secret put APP_TOKEN
 ```
 
-- `GEMINI_API_KEY` — ค่าจากขั้นตอนที่ 3
+- `GROQ_API_KEY` — ค่าจากขั้นตอนที่ 3
 - `APP_TOKEN` — ตั้งสตริงลับอะไรก็ได้เอง (เช่นสุ่มยาวๆ) กันไม่ให้คนอื่นยิง endpoint นี้เล่นแล้วเปลืองโควตา
   ต้องเอาค่าเดียวกันนี้ไปใส่ในตัวแปร `ADMIN_CLASSIFY_TOKEN` ที่ `ME_Dashboard.html` ด้วย (ดูขั้นตอนที่ 6)
 
