@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -360,6 +360,12 @@ tr.missing-symptom:hover td { background: #fef3c7; }
           <input type="text" id="fil-q" placeholder="🔍 HN/ชื่อ/ยา" oninput="renderAll()">
         </div>
       </div>
+      <div id="adr-ai-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+        <div style="font-size:13px;color:#854d0e">
+          📥 มี <strong id="adr-ai-pending-count">0</strong> รายการที่ import จาก HosXP แล้วยังไม่ได้ระบุลักษณะอาการ
+        </div>
+        <button class="btn-ok" id="adr-ai-btn" onclick="classifyAdrSymptomsWithAI()" style="font-size:13px;padding:7px 14px">🤖 ระบุอาการด้วย AI</button>
+      </div>
       <div class="tbl-wrap" id="tbl-wrap"></div>
     </div>
   </div>
@@ -433,6 +439,74 @@ const TYPE_B_SYMPTOMS = [
 ];
 
 const G6PD_SYMPTOMS = ['Hemolytic anemia','Methemoglobinemia','อาการอื่นๆ'];
+
+// -- AI classification (Groq ผ่าน Cloudflare Worker เดียวกับ ME_Dashboard — ดู admin-error-classify/README.md) --
+const ADR_CLASSIFY_URL   = 'https://admin-error-classify.oatsudster.workers.dev';
+const ADR_CLASSIFY_TOKEN = 'x9kQm2vLpR7wZaN4tY8bJ3cH';
+const ADR_SYMPTOM_CATEGORIES = {
+  A: TYPE_A_SYMPTOMS.filter(s => s !== 'อื่นๆ'),
+  B: TYPE_B_SYMPTOMS.filter(s => s !== 'อื่นๆ'),
+  G6PD: G6PD_SYMPTOMS.filter(s => s !== 'อาการอื่นๆ'),
+};
+const ADR_TYPE_CONTEXT = {
+  A: 'คุณเป็นเภสัชกรที่ช่วยระบุ "ลักษณะอาการ" ของอาการไม่พึงประสงค์จากยา (ADR) ชนิด Type A ' +
+     '(ผลข้างเคียงที่สัมพันธ์กับฤทธิ์ทางเภสัชวิทยาของยา) จากรายการยาและผลการวินิจฉัย/รายละเอียดที่บันทึกไว้ในระบบ',
+  B: 'คุณเป็นเภสัชกรที่ช่วยระบุ "ลักษณะอาการ" ของอาการไม่พึงประสงค์จากยา (ADR) ชนิด Type B ' +
+     '(ปฏิกิริยาการแพ้ยา) จากรายการยาและผลการวินิจฉัย/รายละเอียดที่บันทึกไว้ในระบบ',
+  G6PD: 'คุณเป็นเภสัชกรที่ช่วยระบุ "ลักษณะอาการ" ของอาการไม่พึงประสงค์จากยาในผู้ป่วยพร่องเอนไซม์ G6PD ' +
+        'จากรายการยาและผลการวินิจฉัย/รายละเอียดที่บันทึกไว้ในระบบ',
+};
+
+function getAllPendingAdrRecs() {
+  // รายการที่ยังไม่ได้ระบุลักษณะอาการ แต่มีชนิดรายงาน (A/B/G6PD) ชัดเจนแล้ว (รอ AI ช่วยระบุ)
+  return records.filter(r => !r.symptom && ADR_SYMPTOM_CATEGORIES[r.type]);
+}
+
+async function classifyAdrSymptomsWithAI() {
+  const pending = getAllPendingAdrRecs();
+  if (!pending.length) return;
+
+  const btn = document.getElementById('adr-ai-btn');
+  const BATCH = 60;
+  let done = 0;
+  btn.disabled = true;
+
+  try {
+    for (const type of Object.keys(ADR_SYMPTOM_CATEGORIES)) {
+      const typeRecs = pending.filter(r => r.type === type);
+      for (let i = 0; i < typeRecs.length; i += BATCH) {
+        const batch = typeRecs.slice(i, i + BATCH);
+        btn.textContent = `🤖 กำลังระบุอาการ... (${done}/${pending.length})`;
+        const res = await fetch(ADR_CLASSIFY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-App-Token': ADR_CLASSIFY_TOKEN },
+          body: JSON.stringify({
+            items: batch.map(r => ({ id: r.id, text: [r.drug, r.diagnosis].filter(Boolean).join(' — ') })),
+            categories: ADR_SYMPTOM_CATEGORIES[type],
+            context: ADR_TYPE_CONTEXT[type],
+          }),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        (data.results || []).forEach(r => {
+          if (!r.category) return;
+          const rec = records.find(x => x.id === r.id);
+          if (rec) { rec.symptom = r.category; rec.symptomAI = true; }
+        });
+        done += batch.length;
+        saveLocal(); window.fbSaveADR && fbSaveADR();
+        renderAll();
+      }
+    }
+    showToast('✅ ระบุอาการด้วย AI เสร็จแล้ว ' + done + ' รายการ (โปรดตรวจสอบก่อนยืนยัน)');
+  } catch (e) {
+    console.error('classifyAdrSymptomsWithAI:', e);
+    alert('❌ ระบุอาการด้วย AI ไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    renderAll();
+  }
+}
 
 const ADR_DRUGS = [
   'Allopurinol','Amlodipine','Amoxicillin','Amoxycillin','Aspirin','Atorvastatin',
@@ -617,6 +691,7 @@ function saveModal() {
   const idx = records.findIndex(r=>r.id===editingId); if (idx<0) return;
   records[idx].type = document.getElementById('m-type').value;
   records[idx].symptom = document.getElementById('m-symptom').value;
+  delete records[idx].symptomAI;
   records[idx].drug = document.getElementById('m-drug').value.trim();
   records[idx].severity = document.getElementById('m-sev').value;
   records[idx].diagnosis = document.getElementById('m-diag').value.trim();
@@ -780,6 +855,22 @@ function renderAll() {
   renderKPI(tabRecs, fRecs);
   renderCharts(fRecs);
   renderTable(fRecs);
+  updateAdrAiBanner();
+}
+
+function updateAdrAiBanner() {
+  const pending = getAllPendingAdrRecs();
+  const banner = document.getElementById('adr-ai-banner');
+  const btn = document.getElementById('adr-ai-btn');
+  if (!banner || !btn) return;
+  if (pending.length) {
+    banner.style.display = 'flex';
+    document.getElementById('adr-ai-pending-count').textContent = pending.length;
+    btn.disabled = false;
+    btn.textContent = '🤖 ระบุอาการด้วย AI';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 // ═══ KPI ════════════════════════════════════════════════════════
@@ -930,7 +1021,7 @@ function renderTable(fRecs) {
 
             <td>${escHtml(r.drug||'-')}</td>
             <td>${typeBadge(r.type)}</td>
-            <td>${r.symptom?escHtml(r.symptom):'<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
+            <td>${r.symptom ? escHtml(r.symptom) + (r.symptomAI ? ' <span class="badge" style="background:#e0e7ff;color:#3730a3">🤖 AI</span>' : '') : '<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
             <td>${sevBadge(r.severity)}</td>
             <td style="white-space:nowrap">
               <button class="btn-edit" onclick="editRecord(${escHtml(JSON.stringify(r.id))})" title="แก้ไข">✏️</button>
