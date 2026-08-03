@@ -169,6 +169,8 @@ tr:hover td { background: var(--bg); }
 .badge-over { background: #fee2e2; color: #991b1b; }
 .btn-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 16px; padding: 2px 6px; border-radius: 5px; }
 .btn-del:hover { background: #fee2e2; }
+.btn-edit { background: none; border: none; cursor: pointer; color: var(--primary); font-size: 16px; padding: 2px 6px; border-radius: 5px; }
+.btn-edit:hover { background: var(--primary-light); }
 
 /* ── MONTH FILTER ── */
 .month-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -233,6 +235,10 @@ tr:hover td { background: var(--bg); }
   <!-- ══════════════ STAT DOSE SIDEBAR ══════════════ -->
   <div class="sidebar-form" id="form-stat">
     <div class="form-title">➕ บันทึก Stat Dose</div>
+    <div id="stat-edit-banner" style="display:none;background:#fff7e6;border:1.5px solid var(--gold);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:12px;color:#8a6d1a;">
+      ✏️ กำลังแก้ไขรายการที่บันทึกไว้แล้ว — แก้ไขข้อมูลด้านล่างแล้วกด "บันทึกการแก้ไข"
+      <button type="button" onclick="cancelEditStat()" style="display:block;margin-top:6px;background:none;border:1px solid var(--gold);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#8a6d1a;font-family:inherit;">ยกเลิกการแก้ไข</button>
+    </div>
 
     <div class="form-group">
       <label>วันที่</label>
@@ -273,14 +279,18 @@ tr:hover td { background: var(--bg); }
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 15 นาที</div>
     </div>
 
-    <button class="btn-submit" onclick="submitStat()">✅ บันทึก (ครบทั้งสองเวลา)</button>
+    <button class="btn-submit" id="stat-submit-btn" onclick="submitStat()">✅ บันทึก (ครบทั้งสองเวลา)</button>
     <button class="btn-submit" onclick="submitStatPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลารับ (รอจ่าย)</button>
-    <button class="btn-clear" onclick="clearStat()">ล้างฟอร์ม</button>
+    <button class="btn-clear" onclick="resetStatForm()">ล้างฟอร์ม</button>
   </div>
 
   <!-- ══════════════ CART SIDEBAR ══════════════ -->
   <div class="sidebar-form" id="form-cart" style="display:none">
     <div class="form-title">➕ บันทึกรถยา IPD</div>
+    <div id="cart-edit-banner" style="display:none;background:#fff7e6;border:1.5px solid var(--gold);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:12px;color:#8a6d1a;">
+      ✏️ กำลังแก้ไขรายการที่บันทึกไว้แล้ว — แก้ไขข้อมูลด้านล่างแล้วกด "บันทึกการแก้ไข"
+      <button type="button" onclick="cancelEditCart()" style="display:block;margin-top:6px;background:none;border:1px solid var(--gold);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#8a6d1a;font-family:inherit;">ยกเลิกการแก้ไข</button>
+    </div>
 
     <div class="form-group">
       <label>วันที่</label>
@@ -311,9 +321,9 @@ tr:hover td { background: var(--bg); }
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 120 นาที</div>
     </div>
 
-    <button class="btn-submit" onclick="submitCart()">✅ บันทึก (ครบทั้งสองเวลา)</button>
+    <button class="btn-submit" id="cart-submit-btn" onclick="submitCart()">✅ บันทึก (ครบทั้งสองเวลา)</button>
     <button class="btn-submit" onclick="submitCartPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลาส่งรถ (รอรับ)</button>
-    <button class="btn-clear" onclick="clearCart()">ล้างฟอร์ม</button>
+    <button class="btn-clear" onclick="resetCartForm()">ล้างฟอร์ม</button>
   </div>
 
   <!-- ══════════════ MAIN CONTENT ══════════════ -->
@@ -597,6 +607,14 @@ function submitStat() {
   if (!date || !tIn || !tOut) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tIn, tOut);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  if (editingStatId) {
+    const idx = statRecords.findIndex(r => r.id === editingStatId);
+    if (idx >= 0) statRecords[idx] = { ...statRecords[idx], date, timeIn: tIn, timeOut: tOut, an, drug, mins };
+    cancelEditStat();
+    saveStatLocal(); fbSaveStat(); buildMonthFilter(); renderAll();
+    showToast('✅ แก้ไขแล้ว — ' + mins + ' นาที' + (mins <= STAT_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+    return;
+  }
   const rec = { id: 'stat_'+Date.now(), date, timeIn: tIn, timeOut: tOut, an, drug, mins };
   statRecords.push(rec);
   saveStatLocal();
@@ -614,6 +632,14 @@ function submitCart() {
   if (!date || !tSent || !tCalled) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tSent, tCalled);
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
+  if (editingCartId) {
+    const idx = cartRecords.findIndex(r => r.id === editingCartId);
+    if (idx >= 0) cartRecords[idx] = { ...cartRecords[idx], date, timeSent: tSent, timeCalled: tCalled, mins };
+    cancelEditCart();
+    saveCartLocal(); fbSaveCart(); buildMonthFilter(); renderAll();
+    showToast('✅ แก้ไขแล้ว — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+    return;
+  }
   const rec = { id: 'cart_'+Date.now(), date, timeSent: tSent, timeCalled: tCalled, mins };
   cartRecords.push(rec);
   saveCartLocal();
@@ -621,6 +647,69 @@ function submitCart() {
   buildMonthFilter();
   renderAll();
   showToast('✅ บันทึกแล้ว — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
+}
+
+// ── EDIT ─────────────────────────────────────────────────
+let editingStatId = null;
+let editingCartId = null;
+
+function isoToTH(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return d + '/' + m + '/' + String(parseInt(y)+543).slice(-2);
+}
+
+function editStat(id) {
+  const r = statRecords.find(r => r.id === id); if (!r) return;
+  if (activeTab !== 'stat') switchTab('stat');
+  editingStatId = id;
+  document.getElementById('s-date').value = isoToTH(r.date);
+  document.getElementById('s-time-in').value = r.timeIn || '';
+  document.getElementById('s-time-out').value = r.timeOut || '';
+  document.getElementById('s-an').value = r.an || '';
+  const drugs = (r.drug||'').split(',').map(d=>d.trim()).filter(Boolean);
+  [1,2,3].forEach(n => document.getElementById('s-drug-'+n).value = drugs[n-1] || '');
+  calcStat();
+  document.getElementById('stat-edit-banner').style.display = '';
+  document.getElementById('stat-submit-btn').textContent = '💾 บันทึกการแก้ไข';
+  document.getElementById('form-stat').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelEditStat() {
+  editingStatId = null;
+  document.getElementById('stat-edit-banner').style.display = 'none';
+  document.getElementById('stat-submit-btn').textContent = '✅ บันทึก (ครบทั้งสองเวลา)';
+  clearStat();
+}
+
+function resetStatForm() {
+  if (editingStatId) cancelEditStat();
+  else clearStat();
+}
+
+function editCart(id) {
+  const r = cartRecords.find(r => r.id === id); if (!r) return;
+  if (activeTab !== 'cart') switchTab('cart');
+  editingCartId = id;
+  document.getElementById('c-date').value = isoToTH(r.date);
+  document.getElementById('c-time-sent').value = r.timeSent || '';
+  document.getElementById('c-time-called').value = r.timeCalled || '';
+  calcCart();
+  document.getElementById('cart-edit-banner').style.display = '';
+  document.getElementById('cart-submit-btn').textContent = '💾 บันทึกการแก้ไข';
+  document.getElementById('form-cart').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelEditCart() {
+  editingCartId = null;
+  document.getElementById('cart-edit-banner').style.display = 'none';
+  document.getElementById('cart-submit-btn').textContent = '✅ บันทึก (ครบทั้งสองเวลา)';
+  clearCart();
+}
+
+function resetCartForm() {
+  if (editingCartId) cancelEditCart();
+  else clearCart();
 }
 
 // ── PENDING STAT ─────────────────────────────────────────
@@ -1032,7 +1121,7 @@ function renderStatTable() {
       <td>${escHtml(r.drug||'—')}</td>
       <td style="font-weight:700;color:${r.mins<=STAT_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=STAT_LIMIT?'badge-ok':'badge-over'}">${r.mins<=STAT_LIMIT?'ผ่าน':'เกิน'}</span></td>
-      <td><button class="btn-del" onclick="deleteStat(${escHtml(JSON.stringify(r.id))})">🗑</button></td>
+      <td><button class="btn-edit" onclick="editStat(${escHtml(JSON.stringify(r.id))})" title="แก้ไข">✏️</button><button class="btn-del" onclick="deleteStat(${escHtml(JSON.stringify(r.id))})" title="ลบ">🗑</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1057,7 +1146,7 @@ function renderCartTable() {
       <td>${r.timeCalled ? escHtml(r.timeCalled)+' น.' : '—'}</td>
       <td style="font-weight:700;color:${r.mins<=CART_LIMIT?'var(--success)':'var(--danger)'}">${r.mins}</td>
       <td><span class="badge ${r.mins<=CART_LIMIT?'badge-ok':'badge-over'}">${r.mins<=CART_LIMIT?'ผ่าน':'เกิน'}</span></td>
-      <td><button class="btn-del" onclick="deleteCart(${escHtml(JSON.stringify(r.id))})">🗑</button></td>
+      <td><button class="btn-edit" onclick="editCart(${escHtml(JSON.stringify(r.id))})" title="แก้ไข">✏️</button><button class="btn-del" onclick="deleteCart(${escHtml(JSON.stringify(r.id))})" title="ลบ">🗑</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
