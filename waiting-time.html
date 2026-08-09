@@ -243,8 +243,8 @@ tr:hover td { background: var(--bg); }
     <div class="form-group">
       <label>วันที่</label>
       <div style="display:flex;align-items:center;gap:6px">
-      <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
-      <button type="button" onclick="document.getElementById('s-date').value=todayTH()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
+      <input type="text" id="s-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this);updateANPreview()" style="flex:1">
+      <button type="button" onclick="document.getElementById('s-date').value=todayTH();updateANPreview()" title="วันนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);flex-shrink:0;white-space:nowrap;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color='var(--primary)'">📅 วันนี้</button>
     </div>
     </div>
     <div class="form-group">
@@ -264,8 +264,9 @@ tr:hover td { background: var(--bg); }
     </div>
     </div>
     <div class="form-group">
-      <label>AN ผู้ป่วย</label>
-      <input type="text" id="s-an" placeholder="เช่น 6612345">
+      <label>เลข AN (เฉพาะลำดับผู้ป่วย ไม่ต้องใส่ปี)</label>
+      <input type="text" id="s-an" placeholder="เช่น 861" maxlength="7" inputmode="numeric" oninput="autoAN(this);updateANPreview()">
+      <div id="s-an-preview" style="font-size:12px;color:var(--text-mid);margin-top:4px">AN เต็ม: —</div>
     </div>
     <div class="form-group">
       <label>ชื่อยา (สูงสุด 3 รายการ)</label>
@@ -555,6 +556,35 @@ function autoDateTH(el) {
   el.value = v;
 }
 // ─────────────────────────────────────────────
+// ── AN AUTO-BUILD (2 หลักปี พ.ศ. + 7 หลักลำดับ) ──
+function beYear2(dateTH) {
+  if (dateTH && dateTH.includes('/')) {
+    const parts = dateTH.trim().split('/');
+    if (parts.length===3 && parts[2].length>=2) return parts[2].slice(-2);
+  }
+  return String(new Date().getFullYear()+543).slice(-2);
+}
+function autoAN(el) {
+  el.value = el.value.replace(/\D/g,'').slice(0,7);
+}
+function buildAN(runNum, dateTH) {
+  const digits = (runNum||'').replace(/\D/g,'').slice(0,7);
+  if (!digits) return '';
+  return beYear2(dateTH) + digits.padStart(7,'0');
+}
+function anRunPart(an) {
+  if (!an) return '';
+  const digits = String(an).replace(/\D/g,'');
+  if (digits.length===9 || digits.length===7) return digits.slice(2).replace(/^0+(?=\d)/,'');
+  return digits;
+}
+function updateANPreview() {
+  const el = document.getElementById('s-an-preview');
+  if (!el) return;
+  const full = buildAN(document.getElementById('s-an').value, document.getElementById('s-date').value);
+  el.textContent = 'AN เต็ม: ' + (full || '—');
+}
+// ─────────────────────────────────────────────
 // ── TIME CALC ────────────────────────────────────────────
 function nowHHMM() {
   const now = new Date();
@@ -602,7 +632,7 @@ function submitStat() {
   const date   = thToISO(document.getElementById('s-date').value);
   const tIn    = document.getElementById('s-time-in').value;
   const tOut   = document.getElementById('s-time-out').value;
-  const an     = document.getElementById('s-an').value.trim();
+  const an     = buildAN(document.getElementById('s-an').value, document.getElementById('s-date').value);
   const drug   = [1,2,3].map(n=>document.getElementById('s-drug-'+n).value.trim()).filter(Boolean).join(', ');
   if (!date || !tIn || !tOut) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
   const mins = timeDiff(tIn, tOut);
@@ -666,7 +696,8 @@ function editStat(id) {
   document.getElementById('s-date').value = isoToTH(r.date);
   document.getElementById('s-time-in').value = r.timeIn || '';
   document.getElementById('s-time-out').value = r.timeOut || '';
-  document.getElementById('s-an').value = r.an || '';
+  document.getElementById('s-an').value = anRunPart(r.an);
+  updateANPreview();
   const drugs = (r.drug||'').split(',').map(d=>d.trim()).filter(Boolean);
   [1,2,3].forEach(n => document.getElementById('s-drug-'+n).value = drugs[n-1] || '');
   calcStat();
@@ -716,7 +747,7 @@ function resetCartForm() {
 function submitStatPending() {
   const date  = thToISO(document.getElementById('s-date').value);
   const tIn   = document.getElementById('s-time-in').value;
-  const an    = document.getElementById('s-an').value.trim();
+  const an    = buildAN(document.getElementById('s-an').value, document.getElementById('s-date').value);
   const drug  = [1,2,3].map(n=>document.getElementById('s-drug-'+n).value.trim()).filter(Boolean).join(', ');
   if (!date || !tIn) { showToast('❌ กรุณากรอกวันที่และเวลารับ'); return; }
   const rec = { id: 'sp_'+Date.now(), date, timeIn: tIn, an, drug, createdAt: new Date().toISOString() };
@@ -852,6 +883,7 @@ function clearStat() {
   document.getElementById('s-time-in').value = '';
   document.getElementById('s-time-out').value = '';
   document.getElementById('s-an').value = '';
+  updateANPreview();
   [1,2,3].forEach(n=>{ document.getElementById('s-drug-'+n).value=''; });
   document.getElementById('s-calc').textContent = '— นาที';
   document.getElementById('s-calc').className = 'calc-display';
