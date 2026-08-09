@@ -242,8 +242,8 @@ tr.missing-symptom:hover td { background: #fef3c7; }
     <div class="form-group">
       <label>วันที่รายงาน</label>
       <div class="input-row">
-        <div class="form-group"><input type="text" id="f-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)"></div>
-        <button class="btn-stamp" onclick="document.getElementById('f-date').value=todayTH()">📅</button>
+        <div class="form-group"><input type="text" id="f-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this);updateANPreview()"></div>
+        <button class="btn-stamp" onclick="document.getElementById('f-date').value=todayTH();updateANPreview()">📅</button>
       </div>
     </div>
     <div class="form-group">
@@ -256,8 +256,9 @@ tr.missing-symptom:hover td { background: #fef3c7; }
     </div>
 
     <div class="form-group">
-      <label>AN (IPD)</label>
-      <input type="text" id="f-an" placeholder="เลขผู้ป่วยใน (ถ้ามี)">
+      <label>AN (IPD) — เฉพาะลำดับผู้ป่วย ไม่ต้องใส่ปี</label>
+      <input type="text" id="f-an" placeholder="เช่น 861 (ถ้ามี)" maxlength="7" inputmode="numeric" oninput="autoAN(this);updateANPreview()">
+      <div id="f-an-preview" style="font-size:12px;color:var(--text-light);margin-top:4px">AN เต็ม: —</div>
     </div>
 
     <hr class="divider">
@@ -552,6 +553,29 @@ function autoDateTH(el) {
   el.value = v;
 }
 // ─────────────────────────────────────────────
+// ── AN AUTO-BUILD (2 หลักปี พ.ศ. + 7 หลักลำดับ) ──
+function beYear2(dateTH) {
+  if (dateTH && dateTH.includes('/')) {
+    const parts = dateTH.trim().split('/');
+    if (parts.length===3 && parts[2].length>=2) return parts[2].slice(-2);
+  }
+  return String(new Date().getFullYear()+543).slice(-2);
+}
+function autoAN(el) {
+  el.value = el.value.replace(/\D/g,'').slice(0,7);
+}
+function buildAN(runNum, dateTH) {
+  const digits = (runNum||'').replace(/\D/g,'').slice(0,7);
+  if (!digits) return '';
+  return beYear2(dateTH) + digits.padStart(7,'0');
+}
+function updateANPreview() {
+  const el = document.getElementById('f-an-preview');
+  if (!el) return;
+  const full = buildAN(document.getElementById('f-an').value, document.getElementById('f-date').value);
+  el.textContent = 'AN เต็ม: ' + (full || '—');
+}
+// ─────────────────────────────────────────────
 
 function showToast(msg, dur=2800) {
   const el = document.getElementById('toast');
@@ -635,7 +659,7 @@ function submitForm() {
     hn: document.getElementById('f-hn').value.trim(),
     name: document.getElementById('f-name').value.trim(),
     dept: 'หอผู้ป่วยใน',
-    an: document.getElementById('f-an').value.trim(),
+    an: buildAN(document.getElementById('f-an').value, document.getElementById('f-date').value),
     symptom: document.getElementById('f-symptom').value,
     drug,
     productType: document.getElementById('f-prodtype').value,
@@ -704,6 +728,7 @@ function resetForm() {
   document.getElementById('form-title').textContent = '➕ เพิ่มรายการ ADR';
   ['f-hn','f-name','f-an','f-drug','f-diag'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-date').value = todayTH();
+  updateANPreview();
   document.getElementById('f-type').value = '';
   document.getElementById('f-sev').value = 'ไม่ร้ายแรง (Non-serious)';
   document.getElementById('f-prodtype').value = 'ยา';
