@@ -967,8 +967,11 @@ function submitVisit() {
   const name = document.getElementById('f-name').value.trim();
   if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
   if (!hn && !name) { showToast('⚠️ กรุณาระบุ HN หรือชื่อผู้ป่วย'); return; }
-  const drps = getDrpData();
   const leftovers = getLoData();
+  if (!quickDrpActive && leftovers.some(l=>l.qty>0)) {
+    toggleQuickDrp(true);
+  }
+  const drps = getDrpData();
   const totalSaving = leftovers.reduce((s,l)=>s+l.total,0);
   const hasInsulin = document.getElementById('chk-insulin').checked;
   const checks = {
