@@ -167,6 +167,7 @@ tr:hover td { background: var(--bg); }
 }
 .badge-ok { background: #d1fae5; color: #065f46; }
 .badge-over { background: #fee2e2; color: #991b1b; }
+.badge-neutral { background: #e5e7eb; color: #4b5563; }
 .btn-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 16px; padding: 2px 6px; border-radius: 5px; }
 .btn-del:hover { background: #fee2e2; }
 .btn-edit { background: none; border: none; cursor: pointer; color: var(--primary); font-size: 16px; padding: 2px 6px; border-radius: 5px; }
@@ -301,6 +302,13 @@ tr:hover td { background: var(--bg); }
     </div>
     </div>
     <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#fff7e6;border:1.5px solid var(--gold);border-radius:8px;padding:8px 10px;font-weight:600;color:#8a6d1a;">
+        <input type="checkbox" id="c-no-cart" onchange="toggleNoCart()" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--gold);">
+        วันนี้ไม่ต้องส่งรถยา (ผู้ป่วย IPD กลับบ้านหมดแล้ว)
+      </label>
+    </div>
+    <div id="c-time-fields">
+    <div class="form-group">
       <label>เวลาส่งรถยา (เริ่มจัด)</label>
       <div style="display:flex;align-items:center;gap:6px">
       <input type="text" id="c-time-sent" maxlength="5" placeholder="00:00" inputmode="numeric" oninput="autoTime(this);calcCart()" style="flex:1">
@@ -321,9 +329,10 @@ tr:hover td { background: var(--bg); }
       <div class="calc-display" id="c-calc">— นาที</div>
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 120 นาที</div>
     </div>
+    </div>
 
     <button class="btn-submit" id="cart-submit-btn" onclick="submitCart()">✅ บันทึก (ครบทั้งสองเวลา)</button>
-    <button class="btn-submit" onclick="submitCartPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลาส่งรถ (รอรับ)</button>
+    <button class="btn-submit" id="cart-pending-btn" onclick="submitCartPending()" style="background:var(--gold);margin-top:6px">🕐 บันทึกเวลาส่งรถ (รอรับ)</button>
     <button class="btn-clear" onclick="resetCartForm()">ล้างฟอร์ม</button>
   </div>
 
@@ -627,6 +636,15 @@ function calcCart() {
   el.className = 'calc-display' + (diff > CART_LIMIT ? ' over' : '');
 }
 
+function toggleNoCart() {
+  const noCart = document.getElementById('c-no-cart').checked;
+  document.getElementById('c-time-fields').style.display = noCart ? 'none' : '';
+  document.getElementById('cart-pending-btn').style.display = noCart ? 'none' : '';
+  document.getElementById('cart-submit-btn').textContent = editingCartId
+    ? '💾 บันทึกการแก้ไข'
+    : (noCart ? '✅ บันทึก (ไม่มีการส่งรถยา)' : '✅ บันทึก (ครบทั้งสองเวลา)');
+}
+
 // ── SUBMIT STAT ──────────────────────────────────────────
 function submitStat() {
   const date   = thToISO(document.getElementById('s-date').value);
@@ -656,7 +674,29 @@ function submitStat() {
 
 // ── SUBMIT CART ──────────────────────────────────────────
 function submitCart() {
-  const date    = thToISO(document.getElementById('c-date').value);
+  const date   = thToISO(document.getElementById('c-date').value);
+  const noCart = document.getElementById('c-no-cart').checked;
+
+  if (noCart) {
+    if (!date) { showToast('❌ กรุณากรอกวันที่'); return; }
+    if (editingCartId) {
+      const idx = cartRecords.findIndex(r => r.id === editingCartId);
+      if (idx >= 0) cartRecords[idx] = { id: editingCartId, date, noCart: true, timeSent: '', timeCalled: '', mins: null };
+      cancelEditCart();
+      saveCartLocal(); fbSaveCart(); buildMonthFilter(); renderAll();
+      showToast('✅ แก้ไขแล้ว — วันนี้ไม่มีการส่งรถยา');
+      return;
+    }
+    const rec = { id: 'cart_'+Date.now(), date, noCart: true, timeSent: '', timeCalled: '', mins: null };
+    cartRecords.push(rec);
+    saveCartLocal();
+    fbSaveCart();
+    buildMonthFilter();
+    renderAll();
+    showToast('✅ บันทึกแล้ว — วันนี้ไม่มีการส่งรถยา');
+    return;
+  }
+
   const tSent   = document.getElementById('c-time-sent').value;
   const tCalled = document.getElementById('c-time-called').value;
   if (!date || !tSent || !tCalled) { showToast('❌ กรุณากรอกวันที่และเวลา'); return; }
@@ -664,7 +704,7 @@ function submitCart() {
   if (mins === null || mins < 0) { showToast('❌ เวลาไม่ถูกต้อง'); return; }
   if (editingCartId) {
     const idx = cartRecords.findIndex(r => r.id === editingCartId);
-    if (idx >= 0) cartRecords[idx] = { ...cartRecords[idx], date, timeSent: tSent, timeCalled: tCalled, mins };
+    if (idx >= 0) cartRecords[idx] = { ...cartRecords[idx], date, timeSent: tSent, timeCalled: tCalled, mins, noCart: false };
     cancelEditCart();
     saveCartLocal(); fbSaveCart(); buildMonthFilter(); renderAll();
     showToast('✅ แก้ไขแล้ว — ' + mins + ' นาที' + (mins <= CART_LIMIT ? ' ✔ ผ่านเกณฑ์' : ' ⚠ เกินเกณฑ์'));
@@ -725,6 +765,8 @@ function editCart(id) {
   document.getElementById('c-date').value = isoToTH(r.date);
   document.getElementById('c-time-sent').value = r.timeSent || '';
   document.getElementById('c-time-called').value = r.timeCalled || '';
+  document.getElementById('c-no-cart').checked = !!r.noCart;
+  toggleNoCart();
   calcCart();
   document.getElementById('cart-edit-banner').style.display = '';
   document.getElementById('cart-submit-btn').textContent = '💾 บันทึกการแก้ไข';
@@ -894,6 +936,8 @@ function clearCart() {
   document.getElementById('c-time-called').value = '';
   document.getElementById('c-calc').textContent = '— นาที';
   document.getElementById('c-calc').className = 'calc-display';
+  document.getElementById('c-no-cart').checked = false;
+  toggleNoCart();
 }
 
 // ── LOCAL SAVE ───────────────────────────────────────────
@@ -941,7 +985,7 @@ function renderStatKPI() {
 
 // ── CART KPI ─────────────────────────────────────────────
 function renderCartKPI() {
-  const recs = filterByMonth(cartRecords);
+  const recs = filterByMonth(cartRecords).filter(r => !r.noCart);
   const g = id => document.getElementById(id);
   if (!recs.length) {
     ['c-kpi-total','c-kpi-avg','c-kpi-pass','c-kpi-max'].forEach(id => g(id).textContent = '—');
@@ -1063,7 +1107,7 @@ function renderStatCharts() {
 }
 
 function renderCartCharts() {
-  const monthly = groupByMonth(cartRecords);
+  const monthly = groupByMonth(cartRecords.filter(r => !r.noCart));
   const cTrend = movingAvg(monthly.map(m => m.avg), 3);
   destroyChart('c-monthly');
   chartInstances['c-monthly'] = new Chart(document.getElementById('c-chart-monthly'), {
@@ -1172,7 +1216,12 @@ function renderCartTable() {
       <th>วันที่</th><th>เวลาส่งรถยา</th><th>เวลาโทรรับ</th>
       <th>นาที</th><th>ผล</th><th></th>
     </tr></thead>
-    <tbody>${recs.map(r => `<tr>
+    <tbody>${recs.map(r => r.noCart ? `<tr>
+      <td>${escHtml(formatDate(r.date))}</td>
+      <td colspan="3" style="color:var(--text-light);font-style:italic">ไม่มีการส่งรถยา (คนไข้ IPD กลับบ้านหมดแล้ว)</td>
+      <td><span class="badge badge-neutral">ไม่มีเคส</span></td>
+      <td><button class="btn-edit" onclick="editCart(${escHtml(JSON.stringify(r.id))})" title="แก้ไข">✏️</button><button class="btn-del" onclick="deleteCart(${escHtml(JSON.stringify(r.id))})" title="ลบ">🗑</button></td>
+    </tr>` : `<tr>
       <td>${escHtml(formatDate(r.date))}</td>
       <td>${r.timeSent ? escHtml(r.timeSent)+' น.' : '—'}</td>
       <td>${r.timeCalled ? escHtml(r.timeCalled)+' น.' : '—'}</td>
@@ -1794,10 +1843,10 @@ function pageDoExport(fmt) {
     const cartData = cartRecs.map((r,i) => ({
       'ลำดับ':         i+1,
       'วันที่':        expISOtoTH(r.date),
-      'เวลาส่ง':       r.timeSent||'',
-      'เวลาเรียก':     r.timeCalled||'',
-      'เวลารอ (นาที)': r.mins??'',
-      'ผ่านเกณฑ์':     r.mins!=null && r.mins<=PASS_CART ? 'ผ่าน' : 'ไม่ผ่าน',
+      'เวลาส่ง':       r.noCart ? 'ไม่มีการส่งรถยา' : (r.timeSent||''),
+      'เวลาเรียก':     r.noCart ? '' : (r.timeCalled||''),
+      'เวลารอ (นาที)': r.noCart ? '' : (r.mins??''),
+      'ผ่านเกณฑ์':     r.noCart ? 'ไม่มีเคส' : (r.mins!=null && r.mins<=PASS_CART ? 'ผ่าน' : 'ไม่ผ่าน'),
     }));
     expExcel([
       { name:'Stat Dose', data: statData.length ? statData : [{หมายเหตุ:'ไม่มีข้อมูล'}] },
@@ -1813,7 +1862,9 @@ function pageDoExport(fmt) {
       r.mins!=null && r.mins<=PASS_STAT ? '✓' : '✗',
     ]);
     const cartHeaders = ['ลำดับ','วันที่','เวลาส่ง','เวลาเรียก','รอ (นาที)','ผ่านเกณฑ์'];
-    const cartRows = cartRecs.map((r,i) => [
+    const cartRows = cartRecs.map((r,i) => r.noCart ? [
+      i+1, expISOtoTH(r.date), 'ไม่มีการส่งรถยา', '', '', '—',
+    ] : [
       i+1, expISOtoTH(r.date), r.timeSent||'', r.timeCalled||'',
       r.mins??'', r.mins!=null && r.mins<=PASS_CART ? '✓' : '✗',
     ]);
