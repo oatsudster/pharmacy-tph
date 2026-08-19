@@ -1553,6 +1553,13 @@
                 <span>ปี</span>
               </div>
             </div>
+            <div class="form-group">
+              <label>เวลาที่สั่งยา <span style="font-size:13px;color:var(--text-light);font-weight:400">(ในใบสั่งยาที่เกิด ME)</span></label>
+              <input type="text" id="f-order-time-text" placeholder="14:30" maxlength="5"
+                     oninput="formatTimeInput(this); updateOrderTimePreview()"
+                     style="letter-spacing:.08em">
+              <span class="hint" id="order-time-preview"></span>
+            </div>
             <div class="section-label">🔍 รายละเอียดความคลาดเคลื่อน</div>
             <div class="form-group">
               <label>ขั้นตอนที่เกิด ME <span class="req">*</span></label>
@@ -1697,6 +1704,7 @@
             <th>#</th>
             <th>วันที่</th>
             <th>เวลา</th>
+            <th>เวลาสั่งยา</th>
             <th>HN</th>
             <th>ชื่อผู้ป่วย</th>
             <th>อายุ</th>
@@ -2159,6 +2167,23 @@ function updateTimePreview() {
   }
 }
 
+function getOrderTimeValue() {
+  return parseTimeThai(document.getElementById('f-order-time-text').value);
+}
+
+function updateOrderTimePreview() {
+  const iso = getOrderTimeValue();
+  const el  = document.getElementById('order-time-preview');
+  if (iso) {
+    el.textContent = `✓ ${formatTimeThai(iso)}`;
+    el.style.color = 'var(--success)';
+  } else {
+    const raw = document.getElementById('f-order-time-text').value;
+    el.textContent = raw.length > 0 ? '⚠ รูปแบบ: ชม:นาที  เช่น 14:30 หรือ 2:39' : '';
+    el.style.color = 'var(--warning)';
+  }
+}
+
 function setDefaultDateTime() {
   const now = new Date();
   const d  = String(now.getDate()).padStart(2,'0');
@@ -2204,6 +2229,7 @@ function clearForm() {
   document.getElementById('btn-submit').textContent = '💾 บันทึกข้อมูลประจำวัน';
   // reset drug chips
   drugClear();
+  document.getElementById('order-time-preview').textContent = '';
   setDefaultDateTime();
   // reset edit state
   editingRecordId = null;
@@ -2243,6 +2269,7 @@ function submitForm(e) {
     hn:       hasME ? document.getElementById('f-hn').value : '',
     patient:  hasME ? document.getElementById('f-patient').value : '',
     age:      hasME ? (document.getElementById('f-age').value ? parseInt(document.getElementById('f-age').value) : '') : '',
+    orderTime: hasME ? (getOrderTimeValue() || '') : '',
     stage:    hasME ? document.getElementById('f-stage').value : '',
     meType:   hasME ? document.getElementById('f-me-type').value : '',
     severity: hasME ? document.getElementById('f-severity').value : '',
@@ -2292,6 +2319,8 @@ function editRecord(id) {
   document.getElementById('f-hn').value      = rec.hn || '';
   document.getElementById('f-patient').value = rec.patient || '';
   document.getElementById('f-age').value     = rec.age || '';
+  document.getElementById('f-order-time-text').value = rec.orderTime || '';
+  updateOrderTimePreview();
   document.getElementById('f-stage').value    = rec.stage || '';
   document.getElementById('f-me-type').value  = rec.meType || '';
   document.getElementById('f-severity').value = rec.severity || '';
@@ -2346,6 +2375,7 @@ function renderTable() {
           <td>${i+1}</td>
           <td>${formatDateThai(r.date)}</td>
           <td>—</td>
+          <td>—</td>
           <td colspan="7" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
@@ -2361,6 +2391,7 @@ function renderTable() {
         <td style="color:var(--text-light)">${i+1}</td>
         <td>${formatDateThai(r.date)}</td>
         <td style="white-space:nowrap">${formatTimeThai(r.time)}</td>
+        <td style="white-space:nowrap">${r.orderTime ? formatTimeThai(r.orderTime) : '—'}</td>
         <td>${escHtml(r.hn) || '—'}</td>
         <td>${escHtml(r.patient) || '—'}</td>
         <td style="text-align:center">${escHtml(r.age) || '—'}</td>
@@ -2706,7 +2737,7 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
 function _buildERDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
   return '<table><thead><tr>' +
-    '<th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
+    '<th>#</th><th>วันที่</th><th>เวลา</th><th>เวลาสั่งยา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
     '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
     '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
     '</tr></thead><tbody>' +
@@ -2719,6 +2750,7 @@ function _buildERDetailTable(recs) {
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
         '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
         '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
+        '<td style="white-space:nowrap">'+(r.orderTime ? formatTimeThai(r.orderTime) : '—')+'</td>' +
         '<td>'+(escHtml(r.hn)||'—')+'</td>' +
         '<td>'+(escHtml(r.patient)||'—')+'</td>' +
         '<td style="text-align:center">'+(escHtml(r.age)||'—')+'</td>' +
@@ -2739,11 +2771,11 @@ function closeDetailModal() {
 
 // ======= EXPORT CSV =======
 function exportCSV() {
-  const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
+  const headers = ['ลำดับ','วันที่','เวลา','เวลาสั่งยา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
   const rows = records.map((r,i) => {
     const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
     const drugStr = list.map(d => (d.form ? '['+d.form+'] ' : '') + d.name).join(' / ');
-    return [i+1, r.date, formatTimeThai(r.time), r.hn, r.patient, r.age, r.stage, r.meType,
+    return [i+1, r.date, formatTimeThai(r.time), r.orderTime ? formatTimeThai(r.orderTime) : '', r.hn, r.patient, r.age, r.stage, r.meType,
       r.severity, drugStr, r.ward, r.rxDaily, r.detail, r.intervention, r.reporter
     ].map(v => '"' + (v||'').toString().replace(/"/g,'""') + '"').join(',');
   });
