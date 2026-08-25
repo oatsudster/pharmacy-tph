@@ -613,6 +613,81 @@ function computeRemissionStatus(pvsAsc) {
   return { inRemission: streakVisits >= 3 || daySpan >= 90, sinceDate, streakVisits };
 }
 
+// ===== DRUG CLASS CLASSIFICATION (สำหรับกราฟแนวโน้มการหยุดยา) =====
+// จับกลุ่มยาเรื้อรังที่พบบ่อยในคลินิก DM ด้วย keyword matching (เช็คตามลำดับ, ตัวแรกที่ match ใช้เลย)
+const DRUG_CLASS_RULES = [
+  { cls: 'Biguanide (Metformin)',   kws: ['metformin'] },
+  { cls: 'Sulfonylurea',            kws: ['glipizide','gliclazide','glyburide','glibenclamide','glimepiride'] },
+  { cls: 'TZD (Pioglitazone)',      kws: ['pioglitazone'] },
+  { cls: 'DPP-4 inhibitor',         kws: ['sitagliptin','vildagliptin','linagliptin','saxagliptin'] },
+  { cls: 'SGLT2 inhibitor',         kws: ['dapagliflozin','empagliflozin','canagliflozin'] },
+  { cls: 'AGI (Acarbose)',          kws: ['acarbose'] },
+  { cls: 'Meglitinide',             kws: ['repaglinide','nateglinide'] },
+  { cls: 'GLP-1 agonist',           kws: ['liraglutide','semaglutide','dulaglutide'] },
+  { cls: 'Insulin',                 kws: ['insulin','nph','mixtard','lantus','actrapid','levemir','ri stat','regular insulin'] },
+  { cls: 'ACEI',                    kws: ['enalapril','captopril','ramipril','lisinopril','perindopril'] },
+  { cls: 'ARB',                     kws: ['losartan','valsartan','telmisartan','irbesartan','candesartan'] },
+  { cls: 'CCB',                     kws: ['amlodipine','nifedipine','felodipine'] },
+  { cls: 'Beta-blocker',            kws: ['atenolol','metoprolol','propranolol','carvedilol','bisoprolol'] },
+  { cls: 'Diuretic',                kws: ['hctz','hydrochlorothiazide','furosemide','spironolactone','indapamide'] },
+  { cls: 'Alpha-blocker',           kws: ['doxazosin','prazosin'] },
+  { cls: 'Vasodilator/Central-acting', kws: ['hydralazine','methyldopa'] },
+  { cls: 'Statin',                  kws: ['simvastatin','atorvastatin','rosuvastatin'] },
+  { cls: 'Fibrate',                 kws: ['gemfibrozil','fenofibrate'] },
+  { cls: 'Antiplatelet',            kws: ['aspirin','asa)','clopidogrel'] },
+  { cls: 'PPI',                     kws: ['omeprazole'] },
+];
+function classifyDrugClass(name) {
+  const n = (name || '').toLowerCase();
+  for (const r of DRUG_CLASS_RULES) { if (r.kws.some(k => n.includes(k))) return r.cls; }
+  return 'อื่นๆ';
+}
+
+// เทียบรายการยาระหว่าง visit ก่อนหน้ากับ visit ถัดไปของคนไข้แต่ละคน เพื่อหาแนวโน้มการ "หยุดยา"
+// ต่อเดือน ทั้งแบบรายชื่อยา และแบบกลุ่มยา — % = จำนวนที่หยุด / จำนวนคนที่เคยได้ยานั้นใน visit ก่อนหน้า
+function computeDrugStopTrends() {
+  const visits = getVisits();
+  const byPatient = {};
+  visits.forEach(v => { (byPatient[v.patientId] = byPatient[v.patientId] || []).push(v); });
+
+  const monthsSet = new Set();
+  const byName = {}, byClass = {}, totalByName = {}, totalByClass = {};
+  const bump = (map, month, key) => {
+    if (!map[month]) map[month] = {};
+    if (!map[month][key]) map[month][key] = { denom: 0, stop: 0 };
+    return map[month][key];
+  };
+  const bumpTotal = (map, key) => {
+    if (!map[key]) map[key] = { denom: 0, stop: 0 };
+    return map[key];
+  };
+
+  Object.values(byPatient).forEach(pvs => {
+    pvs.sort((a, b) => a.date.localeCompare(b.date));
+    for (let i = 1; i < pvs.length; i++) {
+      const prev = pvs[i - 1], curr = pvs[i];
+      const currNames = new Set((curr.drugs || []).map(d => (d.name || '').trim()));
+      const month = curr.date.slice(0, 7);
+      monthsSet.add(month);
+      const seen = new Set();
+      (prev.drugs || []).forEach(d => {
+        const name = (d.name || '').trim();
+        if (!name || seen.has(name)) return;
+        seen.add(name);
+        const stopped = currNames.has(name) ? 0 : 1;
+        const cls = classifyDrugClass(name);
+
+        const mName = bump(byName, month, name); mName.denom++; mName.stop += stopped;
+        const mClass = bump(byClass, month, cls); mClass.denom++; mClass.stop += stopped;
+        const tName = bumpTotal(totalByName, name); tName.denom++; tName.stop += stopped;
+        const tClass = bumpTotal(totalByClass, cls); tClass.denom++; tClass.stop += stopped;
+      });
+    }
+  });
+
+  return { months: [...monthsSet].sort(), byName, byClass, totalByName, totalByClass };
+}
+
 // ===== PATIENTS (dynamic, stored in localStorage) =====
 const DEFAULT_PATIENTS = [
   { id:'bungha',   name:'บุหงา',         hn:'5300001', dx:'DM type 2', shortName:'บุหงา' },
@@ -1657,9 +1732,34 @@ function renderDashboard() {
         <div id="dash-lab-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
       </div>
     </div>
+
+    <!-- ── Drug Discontinuation Trend (Interactive) ── -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">💊 แนวโน้มการหยุดยา</div>
+      <div class="card-body">
+        <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 12px;">
+          เทียบรายการยาระหว่างครั้งตรวจก่อนหน้ากับครั้งถัดไปของคนไข้แต่ละคน — นับเป็น "หยุดยา" เมื่อยาที่เคยได้ในครั้งก่อนไม่ปรากฏในครั้งถัดไปแล้ว
+        </p>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px;">
+          <div id="drug-stop-mode-group" style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button class="p-chip active" onclick="setDrugStopMode('class',this)">แยกตามกลุ่มยา</button>
+            <button class="p-chip" onclick="setDrugStopMode('name',this)">แยกตามรายชื่อยา</button>
+          </div>
+          <span style="width:1px;align-self:stretch;background:var(--gray-border);"></span>
+          <div id="drug-stop-metric-group" style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button class="p-chip active" onclick="setDrugStopMetric('pct',this)">% ของผู้ที่เคยใช้</button>
+            <button class="p-chip" onclick="setDrugStopMetric('count',this)">จำนวนคน</button>
+          </div>
+        </div>
+        <div style="position:relative;height:260px;">
+          <canvas id="drug-stop-chart"></canvas>
+        </div>
+        <div id="drug-stop-rank" style="margin-top:16px;display:flex;flex-direction:column;gap:2px;"></div>
+      </div>
+    </div>
   `;
-  // Init interactive lab chart after DOM is ready
-  setTimeout(initLabDashboard, 0);
+  // Init interactive charts after DOM is ready
+  setTimeout(() => { initLabDashboard(); renderDrugStopSection(); }, 0);
 }
 
 // ===== INTERACTIVE LAB DASHBOARD =====
@@ -1822,6 +1922,122 @@ function selectDashPatient(pid, chip) {
     });
     _dashCharts.push(chart);
   });
+}
+
+// ===== INTERACTIVE DRUG-STOP TREND DASHBOARD =====
+let _drugStopData = null;
+let _drugStopChart = null;
+let _drugStopMode = 'class';   // 'class' | 'name'
+let _drugStopMetric = 'pct';   // 'pct' | 'count'
+const DRUG_STOP_COLORS = ['#1A5E38','#e74c3c','#e67e22','#9b59b6','#1abc9c','#c2185b'];
+const TH_MONTH_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function renderDrugStopSection() {
+  _drugStopData = computeDrugStopTrends();
+  renderDrugStopChart();
+}
+
+function setDrugStopMode(mode, btn) {
+  _drugStopMode = mode;
+  document.querySelectorAll('#drug-stop-mode-group .p-chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderDrugStopChart();
+}
+
+function setDrugStopMetric(metric, btn) {
+  _drugStopMetric = metric;
+  document.querySelectorAll('#drug-stop-metric-group .p-chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderDrugStopChart();
+}
+
+function renderDrugStopChart() {
+  const data = _drugStopData;
+  const canvas = document.getElementById('drug-stop-chart');
+  const rankEl = document.getElementById('drug-stop-rank');
+  if (!canvas || !rankEl || !data) return;
+
+  if (_drugStopChart) { try { _drugStopChart.destroy(); } catch(e) {} _drugStopChart = null; }
+
+  const byPeriod = _drugStopMode === 'name' ? data.byName : data.byClass;
+  const totals   = _drugStopMode === 'name' ? data.totalByName : data.totalByClass;
+  const months = data.months;
+
+  const ranked = Object.entries(totals)
+    .map(([key, v]) => ({ key, denom: v.denom, stop: v.stop, pct: v.denom > 0 ? v.stop / v.denom * 100 : 0 }))
+    .sort((a, b) => (_drugStopMetric === 'pct' ? b.pct - a.pct : b.stop - a.stop));
+
+  if (!months.length || !ranked.length) {
+    rankEl.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">ยังไม่มีข้อมูลเพียงพอ (ต้องมีอย่างน้อย 2 ครั้งตรวจต่อคนไข้)</div>';
+    return;
+  }
+
+  const xLabels = months.map(m => {
+    const [y, mo] = m.split('-');
+    return `${TH_MONTH_SHORT[parseInt(mo, 10) - 1]} ${parseInt(y, 10) + 543}`;
+  });
+
+  const topKeys = ranked.slice(0, 6).map(r => r.key);
+  const datasets = topKeys.map((key, i) => {
+    const values = months.map(m => {
+      const cell = byPeriod[m] && byPeriod[m][key];
+      if (!cell || cell.denom === 0) return null;
+      return _drugStopMetric === 'pct' ? +(cell.stop / cell.denom * 100).toFixed(1) : cell.stop;
+    });
+    const color = DRUG_STOP_COLORS[i % DRUG_STOP_COLORS.length];
+    return {
+      label: key,
+      data: values,
+      borderColor: color,
+      backgroundColor: color + '22',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      spanGaps: true,
+      tension: 0.3,
+    };
+  });
+
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = 'inherit';
+    _drugStopChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: xLabels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.parsed.y === null ? `${ctx.dataset.label}: ไม่มีข้อมูล`
+                : `${ctx.dataset.label}: ${ctx.parsed.y}${_drugStopMetric === 'pct' ? '%' : ' คน'}`,
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 10 }, maxRotation: 40, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, maxTicksLimit: 6, callback: v => _drugStopMetric === 'pct' ? v + '%' : v }, grid: { color: 'rgba(0,0,0,0.06)' } },
+        }
+      }
+    });
+  }
+
+  // Rank list (ทุกรายการ ไม่ใช่แค่ top 6 ในกราฟ)
+  const maxVal = Math.max(...ranked.map(r => _drugStopMetric === 'pct' ? r.pct : r.stop), 1);
+  rankEl.innerHTML = ranked.map(r => {
+    const val = _drugStopMetric === 'pct' ? r.pct : r.stop;
+    const displayVal = _drugStopMetric === 'pct' ? val.toFixed(1) + '%' : val;
+    const width = (val / maxVal * 100);
+    return `<div class="bar-row">
+      <span class="bar-label" style="width:150px;" title="${escHtml(r.key)}">${escHtml(r.key)}</span>
+      <div class="bar-bg">
+        ${val > 0 ? `<div class="bar-fill" style="width:${width}%">${displayVal}</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">0</div>'}
+      </div>
+      <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${r.stop}/${r.denom}</span>
+    </div>`;
+  }).join('');
 }
 
 function nextLastFriday() {
