@@ -1303,8 +1303,8 @@ function flagHbA1c(el) {
   const v = parseFloat(el.value);
   el.className = '';
   if (!isNaN(v)) {
-    if (v >= 7) el.className = 'flag-red';
-    else if (v < 6) el.className = 'flag-green';
+    if (v > 6.5) el.className = 'flag-red';
+    else el.className = 'flag-green';
   }
 }
 
@@ -1718,7 +1718,7 @@ function flagNumClass(val, threshold, mode='high') {
 function flagHbA1cClass(val) {
   const v = parseFloat(val);
   if (isNaN(v)) return '';
-  return v >= 7 ? 'style="color:var(--red);font-weight:600"' : 'style="color:var(--green);font-weight:600"';
+  return v > 6.5 ? 'style="color:var(--red);font-weight:600"' : 'style="color:var(--green);font-weight:600"';
 }
 
 // แปลง ISO "2025-06-28" → วันที่ไทย "28/06/2568"
@@ -1803,7 +1803,7 @@ function renderDashboard() {
 
   const totalAll = Object.values(patientTotals).reduce((a,b)=>a+b,0);
   const totalVisits = visits.length;
-  const goodHbA1c = PATIENTS.filter(p => patientLastHbA1c[p.id] && patientLastHbA1c[p.id].val < 7).length;
+  const goodHbA1c = PATIENTS.filter(p => patientLastHbA1c[p.id] && patientLastHbA1c[p.id].val <= 6.5).length;
 
   // Remission status ต่อคนไข้ (ตามเกณฑ์คลินิก ไม่ใช่แค่ค่ายาลดลง)
   const remissionByPatient = {};
@@ -1820,7 +1820,7 @@ function renderDashboard() {
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-val">${PATIENTS.length}</div><div class="kpi-label">คนไข้ทั้งหมด</div></div>
       <div class="kpi-card"><div class="kpi-val">${totalVisits}</div><div class="kpi-label">การตรวจทั้งหมด</div></div>
-      <div class="kpi-card"><div class="kpi-val">${goodHbA1c}/${PATIENTS.length}</div><div class="kpi-label">HbA1c &lt;7% (ควบคุมได้)</div></div>
+      <div class="kpi-card"><div class="kpi-val">${goodHbA1c}/${PATIENTS.length}</div><div class="kpi-label">HbA1c &le;6.5% (ควบคุมได้)</div></div>
       <div class="kpi-card ${inRemissionCount > 0 ? 'kpi-green' : ''}"><div class="kpi-val">${inRemissionCount}/${PATIENTS.length}</div><div class="kpi-label">เข้าเกณฑ์ Remission (HbA1c&le;6.5% + หยุดยาลดน้ำตาล ≥3 เดือน)</div></div>
       <div class="kpi-card"><div class="kpi-val">${totalAll.toLocaleString('th-TH',{maximumFractionDigits:0})}</div><div class="kpi-label">ค่ายารวมทั้งหมด (บาท)</div></div>
     </div>
@@ -1832,7 +1832,7 @@ function renderDashboard() {
             const hba = patientLastHbA1c[p.id];
             const val = hba ? hba.val : null;
             const pct = val ? Math.min((val/10)*100, 100) : 0;
-            const color = val ? (val >= 7 ? 'red' : val > 6.5 ? 'yellow' : 'green') : '';
+            const color = val ? (val > 6.5 ? 'red' : 'green') : '';
             return `<div class="bar-row">
               <span class="bar-label">${escHtml(p.shortName)}</span>
               <div class="bar-bg">
@@ -1873,9 +1873,9 @@ function renderDashboard() {
           <div style="margin-top:10px; font-size:12px; line-height:2;">
             ${PATIENTS.map(p => {
               const hba = patientLastHbA1c[p.id];
-              const icon = !hba ? '⬜' : hba.val >= 7 ? '🔴' : hba.val > 6.5 ? '🟡' : '🟢';
+              const icon = !hba ? '⬜' : hba.val > 6.5 ? '🔴' : '🟢';
               const rem = remissionByPatient[p.id];
-              const badge = hba && hba.val >= 7 ? ' — <span class="badge badge-red">HbA1c สูง</span>'
+              const badge = hba && hba.val > 6.5 ? ' — <span class="badge badge-red">HbA1c สูง</span>'
                           : rem.inRemission ? ' — <span class="badge badge-green">✅ Remission</span>' : '';
               return `${icon} ${escHtml(p.name)}${badge}`;
             }).join('<br>')}
@@ -1952,7 +1952,7 @@ let _dashCharts = [];
 
 const LAB_FIELDS_DASH = [
   { key:'fbs',   label:'FBS',        unit:'mg/dl', color:'#e67e22', bg:'rgba(230,126,34,0.1)',  ref:120, refLabel:'<120' },
-  { key:'hba1c', label:'HbA1c',      unit:'%',     color:'#e74c3c', bg:'rgba(231,76,60,0.1)',   ref:7,   refLabel:'<7%' },
+  { key:'hba1c', label:'HbA1c',      unit:'%',     color:'#e74c3c', bg:'rgba(231,76,60,0.1)',   ref:6.5, refLabel:'≤6.5%' },
   { key:'ldl',   label:'LDL',        unit:'mg/dl', color:'#9b59b6', bg:'rgba(155,89,182,0.1)',  ref:100, refLabel:'<100' },
   { key:'tc',    label:'Total Chol', unit:'mg/dl', color:'#8e44ad', bg:'rgba(142,68,173,0.1)',  ref:200, refLabel:'<200' },
   { key:'tg',    label:'TG',         unit:'mg/dl', color:'#f39c12', bg:'rgba(243,156,18,0.1)',  ref:150, refLabel:'<150' },
