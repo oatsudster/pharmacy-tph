@@ -271,6 +271,7 @@ tr:hover td{background:#f8faf9;}
 .lo-section-wrap.highlighted .form-title{color:#065f46;}
 
 .session-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px;}
+.session-grid-3col{grid-template-columns:1fr 1fr 2fr;}
 
 /* ══ RESPONSIVE: TABLET ══ */
 @media (max-width: 900px) {
@@ -281,7 +282,7 @@ tr:hover td{background:#f8faf9;}
 /* ══ RESPONSIVE: MOBILE/TABLET (แนวตั้ง) ══ */
 @media (max-width: 760px) {
   .entry-grid{grid-template-columns:1fr;gap:20px 0;}
-  .session-grid{grid-template-columns:1fr 1fr;}
+  .session-grid,.session-grid-3col{grid-template-columns:1fr 1fr;}
 
   .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 14px;row-gap:8px;}
   .topbar-title{flex:1 1 auto;}
@@ -297,11 +298,23 @@ tr:hover td{background:#f8faf9;}
   .lo-section-wrap{overflow-x:auto;}
   .lo-header,.lo-row,.mlo-row{min-width:460px;}
   .modal-box{overflow-x:auto;}
+
+  /* ปุ่ม/checkbox ให้กดง่ายขึ้นบนจอสัมผัส */
+  .check-item input[type=checkbox]{width:22px;height:22px;}
+  .lo-row .btn-rm,.mlo-row .btn-rm{width:34px;height:34px;}
+  .btn-rm{padding:8px 10px;}
+  .btn-edit,.btn-del{padding:6px 10px;font-size:12px;}
+  .modal-box{padding:16px;}
 }
 
 @media (max-width: 480px) {
   .kpi-grid{grid-template-columns:1fr;}
-  .session-grid{grid-template-columns:1fr;}
+  .session-grid,.session-grid-3col{grid-template-columns:1fr;}
+
+  .topbar-title{font-size:15px;}
+  .clinic-tab{font-size:12px;padding:9px 4px;}
+  .clinic-tab small{font-size:10px !important;}
+  .view-btn{padding:11px 8px;font-size:13px;}
 }
 
 </style>
@@ -520,7 +533,7 @@ tr:hover td{background:#f8faf9;}
   <div class="entry-full" style="margin-top:10px">
     <div class="session-panel open" style="border-color:#ddd6fe;background:#f5f3ff">
       <div class="table-title" style="margin-bottom:4px;color:#6d28d9">🫀 จำนวนคนไข้ HT บ่าย (เภสัชไม่ได้ดู)</div>
-      <div class="session-grid" style="grid-template-columns:1fr 1fr 2fr">
+      <div class="session-grid session-grid-3col">
         <div class="form-group">
           <label>วันที่</label>
           <div class="input-row">

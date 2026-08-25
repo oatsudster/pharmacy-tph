@@ -303,6 +303,63 @@
     .tab-btn { padding: 12px 14px; font-size: 16px; }
   }
 
+  /* ── MOBILE / TABLET NAV ─────────────────────────────── */
+  .hamburger-btn { display: none; }
+  .sidebar-overlay { display: none; }
+
+  @media (max-width: 900px) {
+    .app-wrapper { position: relative; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; height: 100%;
+      transform: translateX(-100%); transition: transform .25s ease;
+      z-index: 300; box-shadow: 4px 0 24px rgba(0,0,0,.3);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 290;
+    }
+    .sidebar-overlay.show { display: block; }
+    .hamburger-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 8px; border: none;
+      background: var(--primary-light); color: var(--primary-dark);
+      font-size: 20px; cursor: pointer; flex-shrink: 0;
+    }
+    .main-topbar { padding: 0 14px; gap: 10px; }
+    .main-topbar-title { font-size: 15px; }
+
+    /* vertical section tabs -> horizontal scrollable tabs */
+    .section.active:not(#section-overview) { flex-direction: column !important; }
+    .section-header {
+      width: 100% !important; flex-direction: row !important;
+      overflow-x: auto; overflow-y: hidden; border-right: none;
+      border-bottom: 1px solid var(--border); padding: 6px 8px; box-shadow: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .section-header .tab-btn {
+      white-space: nowrap; flex-shrink: 0; padding: 10px 14px; font-size: 14px;
+      border-left: none !important; border-bottom: 3px solid transparent !important;
+    }
+    .section-header .tab-btn.active {
+      border-bottom-color: var(--primary) !important;
+      background: var(--primary-light);
+    }
+
+    [style*="padding:24px"] { padding: 14px !important; }
+    .kpi-grid[style*="repeat(5"] { grid-template-columns: repeat(2,1fr) !important; }
+    div[style*="grid-template-columns:1fr 1fr 1.5fr"] { grid-template-columns: 1fr !important; }
+  }
+
+  @media (max-width: 480px) {
+    .kpi-value { font-size: 32px; }
+    .kpi-grid[style*="repeat(5"] { grid-template-columns: 1fr !important; }
+    .landing-hosp { font-size: 22px; }
+    .landing-sys { font-size: 16px; }
+    .lc-icon { font-size: 38px; }
+    .modal-box { padding: 16px; }
+    .filter-bar .form-group { min-width: 0; flex: 1 1 140px; }
+  }
+
 
   /* ── APP WRAPPER / SIDEBAR ───────────────────────────── */
   html, body { height: 100%; }
@@ -556,8 +613,10 @@
   <div class="sidebar-footer">ปีงบประมาณ <span id="nav-year">2569</span></div>
 </aside>
 
+<div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('show')"></div>
 <div class="main-area">
   <div class="main-topbar">
+    <button class="hamburger-btn" title="เมนู" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('show')">☰</button>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
     <button onclick="expModalOpen(f=>expFilter(records,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
     <div class="main-topbar-badge">ปีงบประมาณ 2569</div>
@@ -3055,6 +3114,8 @@ function saveHosXP() { localStorage.setItem('hosxp_records', JSON.stringify(hosx
 // ======= SECTION NAVIGATION =======
 function showSection(name) {
   console.log('[DEBUG] showSection('+name+')', new Error().stack.split('\n').slice(1,4).join(' | '));
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.querySelector('.sidebar-overlay')?.classList.remove('show');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
   const sec = document.getElementById('section-' + name);

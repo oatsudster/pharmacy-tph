@@ -191,12 +191,43 @@
   .icon-btn:hover { border-color:var(--blue); color:var(--blue); background: var(--blue-light); }
   .icon-btn.danger:hover { border-color:var(--red); color:var(--red); background:var(--red-light); }
 
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    .app-header { height: auto; flex-wrap: wrap; padding: 10px 16px; row-gap: 8px; }
+    .app-header h1 { font-size: 17px; }
+    .app-header .sub { font-size: 12px; }
+    .nav-tabs { margin-left: 0; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; justify-content: flex-start; }
+    .nav-tab { white-space: nowrap; padding: 9px 13px; font-size: 13px; flex-shrink: 0; }
+    .container { padding: 16px; }
+  }
   @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .container { padding: 12px; }
+    .card-header { padding: 12px 14px; font-size: 15px; }
+    .card-body { padding: 14px; }
     .g4, .g5 { grid-template-columns: 1fr 1fr; }
     .g3 { grid-template-columns: 1fr 1fr; }
     .kpi-row { grid-template-columns: 1fr 1fr; }
+    .kpi-val { font-size: 28px; }
     .dash-grid { grid-template-columns: 1fr; }
     .pt-cards { grid-template-columns: 1fr; }
+    .btn, .nav-tab, .icon-btn, .del-btn, .p-chip { min-height: 40px; }
+    .icon-btn, .del-btn { padding: 8px 12px; }
+    .btn-row { gap: 8px; }
+    .btn-row .btn { flex: 1 1 auto; }
+    .modal-footer { flex-wrap: wrap; }
+    .modal-footer .btn { flex: 1 1 auto; }
+    .modal { width: 94%; max-height: 90vh; display: flex; flex-direction: column; }
+    .modal-body { overflow-y: auto; }
+    .drug-dropdown { min-width: 0; width: 100%; max-width: calc(100vw - 40px); }
+    .toast { left: 16px; right: 16px; bottom: 16px; text-align: center; }
+    #hist-content, #parse-preview-body { overflow-x: auto; }
+    .hist-tbl, table.drug-tbl { min-width: 640px; }
+  }
+  @media (max-width: 420px) {
+    .g2, .g3, .g4, .g5 { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: 1fr; }
+    .app-header h1 { font-size: 15px; }
   }
   /* ===== OCR DROP ZONE ===== */
   .ocr-zone { border: 2px dashed var(--gray-border); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all .2s; background: var(--gray-light); }

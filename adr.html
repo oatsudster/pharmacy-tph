@@ -206,6 +206,51 @@ tr.missing-symptom:hover td { background: #fef3c7; }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
 .btn-ok { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .btn-cancel { padding: 8px 18px; background: var(--bg); color: var(--text-mid); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+  .sidebar-form { width: 240px; }
+}
+@media (max-width: 900px) {
+  .page-wrap { flex-direction: column; overflow: visible; }
+  .sidebar-form {
+    width: 100%; height: auto; max-height: none; position: static;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  body { overflow-y: auto; }
+  .main-content { overflow-y: visible; }
+}
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap; height: auto; min-height: 56px; padding: 8px 12px; row-gap: 8px;
+  }
+  .topbar-title { font-size: 15px; order: 1; flex: 1 1 auto; }
+  .topbar-home { order: 0; }
+  .topbar-badge { order: 2; }
+  .sync-badge { order: 3; }
+  .topbar-btns {
+    order: 4; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0 10px; }
+  .tab-btn { padding: 11px 14px; white-space: nowrap; flex-shrink: 0; }
+  .main-content { padding: 12px; }
+  .sidebar-form { padding: 12px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi-card { padding: 11px 12px; }
+  .kpi-val { font-size: 21px; }
+  .chart-wrap { height: 170px; }
+  .chart-card { padding: 12px; }
+  .table-head { flex-direction: column; align-items: stretch; }
+  .filter-row { flex-direction: column; }
+  .filter-row select, .filter-row input { width: 100%; }
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; }
+  .btn-submit, .btn-clear { min-height: 44px; }
+  .modal-box { padding: 16px; width: 100%; }
+  table { font-size: 11px; }
+}
 </style>
 </head>
 <body>
