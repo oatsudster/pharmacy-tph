@@ -322,6 +322,12 @@
       </div>
     </div>
 
+    <!-- Pre-visit Summary (AI, rule-based) -->
+    <div class="card" id="pre-visit-summary-card" style="display:none;">
+      <div class="card-header">📝 สรุปก่อนพบแพทย์</div>
+      <div class="card-body" id="pre-visit-summary"></div>
+    </div>
+
     <!-- Paste & Parse -->
     <div class="card" id="parse-card">
       <div class="card-header">📋 วาง & แยกข้อมูลจาก HosXP</div>
@@ -442,6 +448,7 @@
           </table>
         </div>
         <button class="btn btn-outline btn-sm mt-8" onclick="addDrugRow()">+ เพิ่มรายการยา</button>
+        <div id="polypharm-warn"></div>
       </div>
     </div>
 
@@ -651,6 +658,69 @@ function classifyDrugClass(name) {
   const n = (name || '').toLowerCase();
   for (const r of DRUG_CLASS_RULES) { if (r.kws.some(k => n.includes(k))) return r.cls; }
   return null;
+}
+
+// ===== POLYPHARMACY CHECK (ยากลุ่มเดียวกันซ้ำกันในรายการเดียวกัน) =====
+// รับ array ของชื่อยา คืน array ของกลุ่มยาที่มีมากกว่า 1 รายการในกลุ่มเดียวกัน
+function checkPolypharmacy(drugNames) {
+  const byClass = {};
+  (drugNames || []).forEach(name => {
+    const n = (name || '').trim();
+    if (!n) return;
+    const cls = classifyDrugClass(n);
+    if (!cls) return; // ยาบรรเทาอาการ ไม่เกี่ยวกับ NCD ไม่ต้องเช็คซ้ำ
+    if (!byClass[cls]) byClass[cls] = [];
+    if (!byClass[cls].includes(n)) byClass[cls].push(n);
+  });
+  return Object.entries(byClass)
+    .filter(([, names]) => names.length > 1)
+    .map(([cls, names]) => ({ cls, names }));
+}
+
+// ===== พยากรณ์โอกาสเข้าเกณฑ์ Remission (rule-based, อธิบายเหตุผลได้ทุกขั้นตอน) =====
+// ไม่ใช่ ML — ใช้กฎเกณฑ์ทางคลินิกที่ตรวจสอบย้อนกลับได้ เพื่อความโปร่งใสและปลอดภัยกว่าในบริบทการรักษา
+function predictRemission(patientId) {
+  const pvsAsc = getVisits().filter(v => v.patientId === patientId).sort((a, b) => a.date.localeCompare(b.date));
+  const status = computeRemissionStatus(pvsAsc);
+  if (status.inRemission) return { level: 'achieved', text: 'เข้าเกณฑ์ remission แล้ว', status };
+
+  const withHba = pvsAsc.filter(v => !isNaN(parseFloat(v.hba1c)));
+  if (withHba.length < 2) return { level: 'unknown', text: 'ข้อมูลไม่พอสำหรับพยากรณ์ (ต้องมี HbA1c อย่างน้อย 2 ครั้ง)', status };
+
+  const last = withHba[withHba.length - 1];
+  const prev = withHba[withHba.length - 2];
+  const lastVal = parseFloat(last.hba1c), prevVal = parseFloat(prev.hba1c);
+  const delta = lastVal - prevVal; // ลบ = ดีขึ้น (HbA1c ลดลง)
+  const dmDrugs = (last.drugs || []).filter(d => isDiabetesDrug(d.name));
+  const lastMeetsLab = lastVal <= 6.5;
+
+  if (lastMeetsLab && dmDrugs.length === 0) {
+    return {
+      level: 'high',
+      text: `HbA1c ล่าสุด ${lastVal}% เข้าเกณฑ์แล้วและหยุดยาลดน้ำตาลครบ — รออีก ${Math.max(0, 3 - status.streakVisits)} ครั้ง หรือครบ 90 วัน เพื่อยืนยัน remission`,
+      status, delta,
+    };
+  }
+  if (lastMeetsLab && dmDrugs.length > 0) {
+    return {
+      level: 'medium',
+      text: `HbA1c ล่าสุด ${lastVal}% เข้าเกณฑ์แล้ว แต่ยังใช้ยาลดน้ำตาล ${dmDrugs.length} ตัว (${dmDrugs.map(d => d.name).join(', ')}) — ต้องหยุดยาก่อนจึงเข้าเกณฑ์ remission`,
+      status, delta,
+    };
+  }
+  if (delta < -0.3) {
+    const visitsNeeded = Math.ceil((lastVal - 6.5) / Math.abs(delta));
+    return {
+      level: visitsNeeded <= 2 ? 'medium' : 'low',
+      text: `HbA1c ลดลงต่อเนื่อง (${prevVal}% → ${lastVal}%) ถ้าแนวโน้มนี้คงที่ คาดว่าจะถึง ≤6.5% ในอีกประมาณ ${visitsNeeded} ครั้ง`,
+      status, delta,
+    };
+  }
+  return {
+    level: 'low',
+    text: `HbA1c ${lastVal}% ${delta > 0 ? 'เพิ่มขึ้น' : 'ทรงตัว'}จากครั้งก่อน (${prevVal}%) ยังห่างจากเกณฑ์ remission (≤6.5% + หยุดยาลดน้ำตาล)`,
+    status, delta,
+  };
 }
 
 // เทียบรายการยาระหว่าง visit ก่อนหน้ากับ visit ถัดไปของคนไข้แต่ละคน เพื่อหาแนวโน้มการ "หยุดยา"
@@ -1042,7 +1112,78 @@ function selectPatient(p, chip, stripId) {
   document.getElementById('pt-hn').value = p.hn;
   document.getElementById('pt-dx').value = p.dx;
   // ล้างฟอร์มเมื่อเปลี่ยนผู้ป่วย เพื่อไม่ให้ค่า vitals/lab ของคนก่อนค้างอยู่
-  resetForm();
+  resetForm(); // resetForm() เรียก renderPolypharmacyWarnings() ให้แล้ว
+  renderPreVisitSummary();
+}
+
+// ===== PRE-VISIT SUMMARY (AI, rule-based) =====
+// สรุปแนวโน้ม lab, ยาที่ใช้อยู่ครั้งล่าสุด, และโอกาสเข้าเกณฑ์ remission ของคนไข้ที่เลือกไว้
+// เพื่อให้ทีม/แพทย์อ่านเร็วๆ ก่อนเรียกคนไข้เข้าตรวจ
+function renderPreVisitSummary() {
+  const card = document.getElementById('pre-visit-summary-card');
+  const el = document.getElementById('pre-visit-summary');
+  if (!card || !el) return;
+  if (!currentPatient) { card.style.display = 'none'; return; }
+
+  const pvsAsc = getVisits().filter(v => v.patientId === currentPatient.id).sort((a, b) => a.date.localeCompare(b.date));
+  card.style.display = '';
+
+  if (!pvsAsc.length) {
+    el.innerHTML = `<div class="alert alert-info"><span>ℹ️</span><div>ยังไม่มีประวัติการตรวจของคนไข้รายนี้ — เป็นการตรวจครั้งแรก</div></div>`;
+    return;
+  }
+
+  const last = pvsAsc[pvsAsc.length - 1];
+  const prev = pvsAsc.length >= 2 ? pvsAsc[pvsAsc.length - 2] : null;
+
+  const trendChip = (label, key, unit, lowerIsBetter = true) => {
+    const lastN = parseFloat(last[key]);
+    if (isNaN(lastN)) return '';
+    const prevN = prev ? parseFloat(prev[key]) : NaN;
+    let arrow = '';
+    if (!isNaN(prevN) && lastN !== prevN) {
+      const better = lowerIsBetter ? lastN < prevN : lastN > prevN;
+      arrow = better ? ' ↓' : ' ↑';
+    } else if (!isNaN(prevN)) {
+      arrow = ' →';
+    }
+    return `<span style="display:inline-block;margin:0 14px 6px 0;">${label} <strong>${lastN}${unit}</strong>${arrow}</span>`;
+  };
+
+  const pred = predictRemission(currentPatient.id);
+  const LEVEL_META = {
+    achieved: { icon: '✅', alertClass: 'alert-success' },
+    high:     { icon: '🟢', alertClass: 'alert-success' },
+    medium:   { icon: '🟡', alertClass: 'alert-warning' },
+    low:      { icon: '🔴', alertClass: 'alert-error' },
+    unknown:  { icon: '❔', alertClass: 'alert-info' },
+  };
+  const meta = LEVEL_META[pred.level];
+
+  const dmDrugs = (last.drugs || []).filter(d => isDiabetesDrug(d.name));
+  const otherDrugs = (last.drugs || []).filter(d => !isDiabetesDrug(d.name));
+  const dup = checkPolypharmacy((last.drugs || []).map(d => d.name));
+
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">ตรวจครั้งล่าสุด: ${formatDate(last.date)}</div>
+    <div style="margin-bottom:10px;">
+      ${trendChip('HbA1c', 'hba1c', '%')}
+      ${trendChip('FBS', 'fbs', ' mg/dl')}
+      ${trendChip('น้ำหนัก', 'weight', ' kg')}
+      ${trendChip('LDL', 'ldl', ' mg/dl')}
+      ${trendChip('Total Chol', 'tc', ' mg/dl')}
+    </div>
+    <div class="alert ${meta.alertClass}" style="margin-bottom:10px;">
+      <span>${meta.icon}</span>
+      <div>${escHtml(pred.text)}</div>
+    </div>
+    ${dmDrugs.length ? `<div style="margin-bottom:8px;"><strong style="font-size:12px;">ยาลดน้ำตาลที่ใช้อยู่ (${dmDrugs.length}):</strong>
+      <div class="drug-pills" style="margin-top:4px;">${dmDrugs.map(d => `<span class="drug-pill">${escHtml(d.name)}</span>`).join('')}</div></div>` : ''}
+    ${otherDrugs.length ? `<div style="margin-bottom:8px;"><strong style="font-size:12px;">ยาอื่นๆ (${otherDrugs.length}):</strong>
+      <div class="drug-pills" style="margin-top:4px;">${otherDrugs.map(d => `<span class="drug-pill">${escHtml(d.name)}</span>`).join('')}</div></div>` : ''}
+    ${dup.map(g => `<div class="alert alert-warning" style="margin-top:6px;"><span>⚠️</span><div>ครั้งก่อนมียากลุ่ม <strong>${escHtml(g.cls)}</strong> ซ้ำกัน: ${g.names.map(escHtml).join(', ')}</div></div>`).join('')}
+    ${last.drugProblem ? `<div style="margin-top:8px;font-size:12px;"><strong>ปัญหาที่พบครั้งก่อน:</strong> ${escHtml(last.drugProblem)}</div>` : ''}
+  `;
 }
 
 // ===== PATIENT MANAGEMENT =====
@@ -1213,6 +1354,7 @@ function removeDrugRow(id) {
   const row = document.getElementById(`drug-row-${id}`);
   if (row) row.remove();
   calcGrandTotal();
+  renderPolypharmacyWarnings();
 }
 
 function filterDrugs(id) {
@@ -1258,6 +1400,7 @@ function selectDrug(id, name, price, unit) {
   document.getElementById(`drug-dd-${id}`).classList.remove('open');
   document.getElementById(`drug-qty-${id}`).focus();
   calcRowTotal(id);
+  renderPolypharmacyWarnings();
 }
 
 function closeDrugDD(id) {
@@ -1301,6 +1444,20 @@ function collectDrugs() {
     });
   });
   return drugs;
+}
+
+// ตรวจยาซ้ำกลุ่มเดียวกันในรายการยาที่กำลังกรอกอยู่ ณ ตอนนี้ในฟอร์ม
+function renderPolypharmacyWarnings() {
+  const el = document.getElementById('polypharm-warn');
+  if (!el) return;
+  const names = collectDrugs().map(d => d.name);
+  const dup = checkPolypharmacy(names);
+  if (!dup.length) { el.innerHTML = ''; return; }
+  el.innerHTML = dup.map(g => `
+    <div class="alert alert-warning" style="margin-top:8px;margin-bottom:0;">
+      <span>⚠️</span>
+      <div>ยากลุ่ม <strong>${escHtml(g.cls)}</strong> ซ้ำกัน ${g.names.length} รายการ: ${g.names.map(escHtml).join(', ')}</div>
+    </div>`).join('');
 }
 
 // ===== SAVE =====
@@ -1388,6 +1545,7 @@ function resetForm() {
   editingVisitIdx = null;
   document.querySelector('.btn-green').textContent = '💾 บันทึกการตรวจ';
   addDrugRow(); addDrugRow(); addDrugRow();
+  renderPolypharmacyWarnings();
 }
 
 // ===== HISTORY PAGE =====
@@ -1525,6 +1683,8 @@ function loadVisitToForm(v, globalIdx) {
   });
   if (!v.drugs || !v.drugs.length) { addDrugRow(); addDrugRow(); addDrugRow(); }
   calcGrandTotal();
+  renderPolypharmacyWarnings();
+  renderPreVisitSummary();
   // Mark as editing
   editingVisitIdx = globalIdx;
   document.querySelector('.btn-green').textContent = '💾 บันทึกการแก้ไข';
@@ -1737,6 +1897,17 @@ function renderDashboard() {
       </div>
     </div>
 
+    <!-- ── Remission Likelihood Prediction (rule-based) ── -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">🔮 พยากรณ์โอกาสเข้าเกณฑ์ Remission</div>
+      <div class="card-body">
+        <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 12px;">
+          ประเมินจากแนวโน้ม HbA1c 2 ครั้งล่าสุดและจำนวนยาลดน้ำตาลที่ยังใช้อยู่ — เป็นการประเมินเบื้องต้นด้วยกฎเกณฑ์ที่ตรวจสอบได้ ไม่ใช่การวินิจฉัยทางการแพทย์
+        </p>
+        <div id="dash-remission-predict"></div>
+      </div>
+    </div>
+
     <!-- ── Lab Trends (Interactive) ── -->
     <div class="card" style="margin-top:14px;">
       <div class="card-header">📈 แนวโน้ม Lab รายคน</div>
@@ -1773,7 +1944,7 @@ function renderDashboard() {
     </div>
   `;
   // Init interactive charts after DOM is ready
-  setTimeout(() => { initLabDashboard(); renderDrugStopSection(); }, 0);
+  setTimeout(() => { renderRemissionPredictions(); initLabDashboard(); renderDrugStopSection(); }, 0);
 }
 
 // ===== INTERACTIVE LAB DASHBOARD =====
@@ -1937,6 +2108,41 @@ function selectDashPatient(pid, chip) {
     });
     _dashCharts.push(chart);
   });
+}
+
+// ===== REMISSION LIKELIHOOD PREDICTION (DASHBOARD) =====
+function renderRemissionPredictions() {
+  const el = document.getElementById('dash-remission-predict');
+  if (!el) return;
+
+  const LEVEL_META = {
+    achieved: { icon: '✅', alertClass: 'alert-success', label: 'เข้าเกณฑ์แล้ว' },
+    high:     { icon: '🟢', alertClass: 'alert-success', label: 'ใกล้มาก' },
+    medium:   { icon: '🟡', alertClass: 'alert-warning', label: 'ปานกลาง' },
+    low:      { icon: '🔴', alertClass: 'alert-error',   label: 'ยังห่าง' },
+    unknown:  { icon: '❔', alertClass: 'alert-info',    label: 'ข้อมูลไม่พอ' },
+  };
+  const LEVEL_ORDER = { high: 0, medium: 1, low: 2, unknown: 3, achieved: 4 };
+
+  const rows = PATIENTS.map(p => ({ p, pred: predictRemission(p.id) }))
+    .sort((a, b) => LEVEL_ORDER[a.pred.level] - LEVEL_ORDER[b.pred.level]);
+
+  if (!rows.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">ยังไม่มีคนไข้ในระบบ</div>';
+    return;
+  }
+
+  el.innerHTML = rows.map(({ p, pred }) => {
+    const meta = LEVEL_META[pred.level];
+    return `<div class="alert ${meta.alertClass}" style="margin-bottom:8px;">
+      <span>${meta.icon}</span>
+      <div>
+        <strong>${escHtml(p.name)}</strong>
+        <span class="badge" style="font-size:10px;margin-left:6px;">${meta.label}</span>
+        <div style="font-size:12px;margin-top:2px;">${escHtml(pred.text)}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ===== INTERACTIVE DRUG-STOP TREND DASHBOARD =====
@@ -2571,6 +2777,7 @@ function applyParsedData() {
       document.getElementById(`drug-qty-${id}`).value   = dr.qty;
       calcRowTotal(id);
     }
+    renderPolypharmacyWarnings();
   }
 
   document.getElementById('parse-preview').style.display = 'none';
