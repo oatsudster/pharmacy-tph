@@ -1826,7 +1826,7 @@ function renderDashboard() {
     </div>
     <div class="dash-grid">
       <div class="card">
-        <div class="card-header">📉 HbA1c ล่าสุดรายคน (เป้าหมาย &lt;7%)</div>
+        <div class="card-header">📉 HbA1c ล่าสุดรายคน (เป้าหมาย &le;6.5%)</div>
         <div class="card-body">
           ${PATIENTS.map(p => {
             const hba = patientLastHbA1c[p.id];
