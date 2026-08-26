@@ -1392,7 +1392,7 @@ function renderLeftoverReport(main) {
           style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
           ${clinicOptions}
         </select>
-        <input type="date" id="lo-f-date" onchange="filterLeftoverCards()"
+        <input type="date" id="lo-f-date" value="${thToISO(todayTH())}" onchange="filterLeftoverCards()"
           style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px">
         <button onclick="document.getElementById('lo-f-date').value='';filterLeftoverCards()"
           style="background:none;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text-mid)">ล้างวันที่</button>
