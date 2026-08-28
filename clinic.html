@@ -330,6 +330,7 @@ tr:hover td{background:#f8faf9;}
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+    <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
   </div>
 </div>
 
@@ -969,6 +970,36 @@ function onAttendedChange() {
   const v = document.getElementById('s-attended').value;
   document.getElementById('s-pharm-group').style.display = v==='yes'?'':'none';
   document.getElementById('s-reason-group').style.display = v==='no'?'':'none';
+}
+
+// ── REFRESH LEFTOVER PRICES (บันทึกเก่าที่ราคายาตอนบันทึกยังเป็น 0) ──
+// ดึงราคาปัจจุบันจาก DRUG_PRICES มาใส่ในรายการยาคงเหลือของบันทึกเก่าที่ชื่อยาตรงกันเป๊ะ แล้วคำนวณ totalSaving ใหม่
+function refreshLeftoverPrices() {
+  let changedItems = 0, changedRecs = 0;
+  visitRecords.forEach(r => {
+    if (!r.leftovers || !r.leftovers.length) return;
+    let recChanged = false;
+    r.leftovers.forEach(l => {
+      const info = DRUG_PRICES[l.drug];
+      if (!info || info.p <= 0) return;
+      const newTotal = Math.round((l.qty||0) * info.p * 100) / 100;
+      if (l.priceUnit !== info.p || l.total !== newTotal) {
+        l.priceUnit = info.p;
+        l.total = newTotal;
+        changedItems++; recChanged = true;
+      }
+    });
+    if (recChanged) {
+      r.totalSaving = Math.round(r.leftovers.reduce((s,l)=>s+(l.total||0),0)*100)/100;
+      changedRecs++;
+    }
+  });
+  if (changedItems) {
+    saveLocal(); fbSave(); renderAll();
+    showToast(`✅ อัปเดตราคาแล้ว ${changedItems} รายการ ใน ${changedRecs} บันทึก`);
+  } else {
+    showToast('ℹ️ ไม่มีรายการที่ต้องอัปเดตราคา');
+  }
 }
 
 // ── SUBMIT VISIT ─────────────────────────────────────────
