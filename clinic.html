@@ -331,6 +331,7 @@ tr:hover td{background:#f8faf9;}
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
+    <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
   </div>
 </div>
 
@@ -970,6 +971,29 @@ function onAttendedChange() {
   const v = document.getElementById('s-attended').value;
   document.getElementById('s-pharm-group').style.display = v==='yes'?'':'none';
   document.getElementById('s-reason-group').style.display = v==='no'?'':'none';
+}
+
+// ── หายาคงเหลือที่บันทึกไว้แล้วแต่ยังไม่มีราคา (DRUG_PRICES ไม่มี key นี้ หรือราคา ≤0) ──
+function showMissingPriceDrugs() {
+  const missing = {};
+  visitRecords.forEach(r => {
+    (r.leftovers||[]).forEach(l => {
+      const info = DRUG_PRICES[l.drug];
+      if (info && info.p > 0) return;
+      const key = l.drug || '(ไม่ระบุชื่อยา)';
+      if (!missing[key]) missing[key] = { count: 0, qty: 0 };
+      missing[key].count++;
+      missing[key].qty += (l.qty || 0);
+    });
+  });
+  const names = Object.keys(missing).sort();
+  document.getElementById('cl-detail-title').textContent = '❓ ยาคงเหลือที่ยังไม่มีราคา (' + names.length + ' รายการ)';
+  document.getElementById('cl-detail-body').innerHTML = names.length
+    ? '<div class="tbl-wrap"><table><thead><tr><th>ชื่อยา</th><th>จำนวนบันทึกที่พบ</th><th>รวมจำนวนคงเหลือ</th></tr></thead><tbody>' +
+      names.map(n => `<tr><td>${escHtml(cleanDrugName(n))}</td><td style="text-align:center">${missing[n].count}</td><td style="text-align:center">${missing[n].qty}</td></tr>`).join('') +
+      '</tbody></table></div>'
+    : '<p style="text-align:center;color:var(--text-light);padding:40px 0">ทุกรายการมีราคาแล้ว 🎉</p>';
+  document.getElementById('cl-detail-modal').classList.add('show');
 }
 
 // ── REFRESH LEFTOVER PRICES (บันทึกเก่าที่ราคายาตอนบันทึกยังเป็น 0) ──
