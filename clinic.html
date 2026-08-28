@@ -651,6 +651,7 @@ const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','�
 // ── STATE ────────────────────────────────────────────────
 let visitRecords = [];
 let sessionRecords = [];
+let priceOverrides = {}; // ราคายาที่เภสัชกรเพิ่มเองผ่านหน้า "ยาที่ยังไม่มีราคา" — {ชื่อยา(ตรงกับ DRUG_PRICES key): {p, u}}
 let activeTab = 'HT';
 let editingId = null;
 let chartInstances = {};
@@ -913,9 +914,16 @@ function addLoRow(drug='', qty='', unit='', price=0) {
   updateLoTotal();
 }
 
+// ราคาที่เภสัชกรเพิ่มเอง (priceOverrides) มาก่อนราคาต้นทางเสมอ ใช้จุดเดียวนี้กับทุกที่ที่ต้อง lookup ราคายา
+function getDrugPrice(name) {
+  const o = priceOverrides[name];
+  if (o && o.p > 0) return o;
+  return DRUG_PRICES[name];
+}
+
 function onDrugInput(el) {
   const row = el.closest('.lo-row');
-  const info = DRUG_PRICES[el.value];
+  const info = getDrugPrice(el.value);
   if (info) {
     row.querySelector('.lo-unit').value = info.u || 'เม็ด';
     row.querySelector('.lo-qty')._price = info.p;
@@ -974,14 +982,16 @@ function onAttendedChange() {
 }
 
 // ── หายาคงเหลือที่บันทึกไว้แล้วแต่ยังไม่มีราคา (DRUG_PRICES ไม่มี key นี้ หรือราคา ≤0) ──
+// แสดงเป็นช่องกรอกราคาให้เติมเองได้เลย กด "บันทึก" แล้วจะจำเป็น priceOverrides (sync ผ่าน Firebase)
+// และไล่อัปเดตราคาในบันทึกเก่าที่ตรงกับยาตัวนั้นให้อัตโนมัติ
 function showMissingPriceDrugs() {
   const missing = {};
   visitRecords.forEach(r => {
     (r.leftovers||[]).forEach(l => {
-      const info = DRUG_PRICES[l.drug];
+      const info = getDrugPrice(l.drug);
       if (info && info.p > 0) return;
       const key = l.drug || '(ไม่ระบุชื่อยา)';
-      if (!missing[key]) missing[key] = { count: 0, qty: 0 };
+      if (!missing[key]) missing[key] = { count: 0, qty: 0, unit: l.unit || 'เม็ด' };
       missing[key].count++;
       missing[key].qty += (l.qty || 0);
     });
@@ -989,22 +999,43 @@ function showMissingPriceDrugs() {
   const names = Object.keys(missing).sort();
   document.getElementById('cl-detail-title').textContent = '❓ ยาคงเหลือที่ยังไม่มีราคา (' + names.length + ' รายการ)';
   document.getElementById('cl-detail-body').innerHTML = names.length
-    ? '<div class="tbl-wrap"><table><thead><tr><th>ชื่อยา</th><th>จำนวนบันทึกที่พบ</th><th>รวมจำนวนคงเหลือ</th></tr></thead><tbody>' +
-      names.map(n => `<tr><td>${escHtml(cleanDrugName(n))}</td><td style="text-align:center">${missing[n].count}</td><td style="text-align:center">${missing[n].qty}</td></tr>`).join('') +
+    ? '<div class="tbl-wrap"><table><thead><tr><th>ชื่อยา</th><th>จำนวนบันทึกที่พบ</th><th>รวมจำนวนคงเหลือ</th><th>ราคา/หน่วย (฿)</th><th></th></tr></thead><tbody>' +
+      names.map(n => {
+        const id = 'mp-' + Math.abs([...n].reduce((h,c)=>(h*31+c.charCodeAt(0))|0,0));
+        return `<tr>
+          <td>${escHtml(cleanDrugName(n))}</td>
+          <td style="text-align:center">${missing[n].count}</td>
+          <td style="text-align:center">${missing[n].qty} ${escHtml(missing[n].unit)}</td>
+          <td style="text-align:center"><input id="${id}" type="number" min="0" step="0.01" placeholder="0.00" style="width:80px;text-align:right"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();saveOverridePrice(${escHtml(JSON.stringify(n))},${escHtml(JSON.stringify(missing[n].unit))},'${id}')}"></td>
+          <td><button class="tbtn" style="padding:4px 10px" onclick="saveOverridePrice(${escHtml(JSON.stringify(n))},${escHtml(JSON.stringify(missing[n].unit))},'${id}')">บันทึก</button></td>
+        </tr>`;
+      }).join('') +
       '</tbody></table></div>'
     : '<p style="text-align:center;color:var(--text-light);padding:40px 0">ทุกรายการมีราคาแล้ว 🎉</p>';
   document.getElementById('cl-detail-modal').classList.add('show');
 }
 
+function saveOverridePrice(drugName, unit, inputId) {
+  const input = document.getElementById(inputId);
+  const p = parseFloat(input.value);
+  if (!p || p <= 0) { showToast('⚠️ กรุณาระบุราคามากกว่า 0'); return; }
+  priceOverrides[drugName] = { p, u: unit };
+  saveLocal(); fbSave();
+  refreshLeftoverPrices();
+  showMissingPriceDrugs();
+  showToast(`✅ บันทึกราคา ${cleanDrugName(drugName)} = ฿${p}/หน่วยแล้ว`);
+}
+
 // ── REFRESH LEFTOVER PRICES (บันทึกเก่าที่ราคายาตอนบันทึกยังเป็น 0) ──
-// ดึงราคาปัจจุบันจาก DRUG_PRICES มาใส่ในรายการยาคงเหลือของบันทึกเก่าที่ชื่อยาตรงกันเป๊ะ แล้วคำนวณ totalSaving ใหม่
+// ดึงราคาปัจจุบัน (รวม priceOverrides) มาใส่ในรายการยาคงเหลือของบันทึกเก่าที่ชื่อยาตรงกันเป๊ะ แล้วคำนวณ totalSaving ใหม่
 function refreshLeftoverPrices() {
   let changedItems = 0, changedRecs = 0;
   visitRecords.forEach(r => {
     if (!r.leftovers || !r.leftovers.length) return;
     let recChanged = false;
     r.leftovers.forEach(l => {
-      const info = DRUG_PRICES[l.drug];
+      const info = getDrugPrice(l.drug);
       if (!info || info.p <= 0) return;
       const newTotal = Math.round((l.qty||0) * info.p * 100) / 100;
       if (l.priceUnit !== info.p || l.total !== newTotal) {
@@ -1187,7 +1218,7 @@ function addMLoRow(drug='', qty='', unit='', price=0) {
 
 function onMLoDrugInput(el) {
   const row = el.closest('.mlo-row');
-  const info = DRUG_PRICES[el.value];
+  const info = getDrugPrice(el.value);
   if (info) {
     row.querySelector('.mlo-unit').value = info.u || 'เม็ด';
     row.querySelector('.mlo-qty')._price = info.p;
@@ -1743,16 +1774,18 @@ function _buildClinicDetailTable(recs) {
 function saveLocal() {
   localStorage.setItem('clinic_visits', JSON.stringify(visitRecords));
   localStorage.setItem('clinic_sessions', JSON.stringify(sessionRecords));
+  localStorage.setItem('clinic_price_overrides', JSON.stringify(priceOverrides));
 }
 function loadLocal() {
   visitRecords = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
   sessionRecords = JSON.parse(localStorage.getItem('clinic_sessions')||'[]');
+  priceOverrides = JSON.parse(localStorage.getItem('clinic_price_overrides')||'{}');
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────
 function exportJSON() {
   const d = new Date(); const ts = d.toISOString().slice(0,10);
-  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords};
+  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords,priceOverrides};
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   const a = Object.assign(document.createElement('a'),{href:url,download:'clinic_backup_'+ts+'.json'});
   a.click(); URL.revokeObjectURL(url);
@@ -1765,6 +1798,7 @@ function importJSON(e) {
       const data = JSON.parse(ev.target.result);
       if (data.visitRecords) visitRecords = data.visitRecords;
       if (data.sessionRecords) sessionRecords = data.sessionRecords;
+      if (data.priceOverrides) priceOverrides = data.priceOverrides;
       saveLocal(); fbSave(); renderAll();
       showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
     } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
@@ -1797,6 +1831,7 @@ function initFirebase() {
         const d = snap.data();
         if (d.visitRecords) visitRecords = d.visitRecords;
         if (d.sessionRecords) sessionRecords = d.sessionRecords;
+        if (d.priceOverrides) priceOverrides = d.priceOverrides;
         saveLocal(); renderAll();
         lastSyncTime = nowTH();
         badge.textContent=`☁️ ซิงค์แล้ว ${lastSyncTime}`; badge.style.background='#dcfce7'; badge.style.color='#15803d';
@@ -1811,7 +1846,7 @@ function initFirebase() {
 }
 function fbSave() {
   if (!db) return;
-  db.collection('pharmacy_tph').doc('clinic_data').set({visitRecords,sessionRecords,updated:Date.now()})
+  db.collection('pharmacy_tph').doc('clinic_data').set({visitRecords,sessionRecords,priceOverrides,updated:Date.now()})
     .catch(e=>console.warn('FB save:',e));
 }
 
