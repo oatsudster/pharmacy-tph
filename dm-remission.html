@@ -623,6 +623,19 @@ function computeRemissionStatus(pvsAsc) {
   const daySpan = (new Date(pvsAsc[i].date) - new Date(sinceDate)) / 86400000;
   return { inRemission: streakVisits >= 3 || daySpan >= 90, sinceDate, streakVisits };
 }
+// ตรวจจับ "relapse" — คนไข้เคยเข้าเกณฑ์ remission เต็มรูปแบบมาก่อน (>=3 visit ติดต่อกัน หรือ >=90 วัน)
+// แต่ visit ล่าสุดกลับไม่เข้าเกณฑ์แล้ว (HbA1c เกิน 6.5% หรือกลับไปใช้ยาลดน้ำตาล) — เพื่อเตือนแยกจากคนที่ "ยังไม่เคยถึงเกณฑ์"
+function computeRelapseStatus(pvsAsc) {
+  if (!pvsAsc.length) return { relapsed: false };
+  let everAchieved = false;
+  for (let i = 0; i < pvsAsc.length; i++) {
+    if (computeRemissionStatus(pvsAsc.slice(0, i + 1)).inRemission) { everAchieved = true; break; }
+  }
+  const current = computeRemissionStatus(pvsAsc);
+  const last = pvsAsc[pvsAsc.length - 1];
+  const relapsed = everAchieved && !current.inRemission && !visitMeetsRemission(last);
+  return { relapsed, lastDate: last.date, lastHba1c: last.hba1c };
+}
 
 // ===== DRUG CLASS CLASSIFICATION (สำหรับกราฟแนวโน้มการหยุดยา) =====
 // จับกลุ่มยาเรื้อรังที่พบบ่อยในคลินิก DM ด้วย keyword matching (เช็คตามลำดับ, ตัวแรกที่ match ใช้เลย)
@@ -683,6 +696,16 @@ function predictRemission(patientId) {
   const pvsAsc = getVisits().filter(v => v.patientId === patientId).sort((a, b) => a.date.localeCompare(b.date));
   const status = computeRemissionStatus(pvsAsc);
   if (status.inRemission) return { level: 'achieved', text: 'เข้าเกณฑ์ remission แล้ว', status };
+
+  const relapse = computeRelapseStatus(pvsAsc);
+  if (relapse.relapsed) {
+    const hbaTxt = isNaN(parseFloat(relapse.lastHba1c)) ? '' : ` (HbA1c ล่าสุด ${relapse.lastHba1c}%)`;
+    return {
+      level: 'relapsed',
+      text: `⚠️ เคยเข้าเกณฑ์ remission มาก่อน แต่ตรวจครั้งล่าสุด (${formatDate(relapse.lastDate)}) กลับไม่เข้าเกณฑ์แล้ว${hbaTxt} — ควรทบทวนแผนการรักษา`,
+      status, relapse,
+    };
+  }
 
   const withHba = pvsAsc.filter(v => !isNaN(parseFloat(v.hba1c)));
   if (withHba.length < 2) return { level: 'unknown', text: 'ข้อมูลไม่พอสำหรับพยากรณ์ (ต้องมี HbA1c อย่างน้อย 2 ครั้ง)', status };
@@ -1152,6 +1175,7 @@ function renderPreVisitSummary() {
 
   const pred = predictRemission(currentPatient.id);
   const LEVEL_META = {
+    relapsed: { icon: '⚠️', alertClass: 'alert-error' },
     achieved: { icon: '✅', alertClass: 'alert-success' },
     high:     { icon: '🟢', alertClass: 'alert-success' },
     medium:   { icon: '🟡', alertClass: 'alert-warning' },
@@ -2116,13 +2140,14 @@ function renderRemissionPredictions() {
   if (!el) return;
 
   const LEVEL_META = {
-    achieved: { icon: '✅', alertClass: 'alert-success', label: 'เข้าเกณฑ์แล้ว' },
+    relapsed: { icon: '⚠️', alertClass: 'alert-error',   label: 'กลับเป็นซ้ำ (Relapse)' },
     high:     { icon: '🟢', alertClass: 'alert-success', label: 'ใกล้มาก' },
     medium:   { icon: '🟡', alertClass: 'alert-warning', label: 'ปานกลาง' },
     low:      { icon: '🔴', alertClass: 'alert-error',   label: 'ยังห่าง' },
     unknown:  { icon: '❔', alertClass: 'alert-info',    label: 'ข้อมูลไม่พอ' },
+    achieved: { icon: '✅', alertClass: 'alert-success', label: 'เข้าเกณฑ์แล้ว' },
   };
-  const LEVEL_ORDER = { high: 0, medium: 1, low: 2, unknown: 3, achieved: 4 };
+  const LEVEL_ORDER = { relapsed: 0, high: 1, medium: 2, low: 3, unknown: 4, achieved: 5 };
 
   const rows = PATIENTS.map(p => ({ p, pred: predictRemission(p.id) }))
     .sort((a, b) => LEVEL_ORDER[a.pred.level] - LEVEL_ORDER[b.pred.level]);
