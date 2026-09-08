@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Error IPD — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/chart.min.js"></script>
+<script src="lib/esc-html.js"></script>
+<style>
+  :root {
+    --primary:       #1A5E38;
+    --primary-dark:  #124228;
+    --primary-mid:   #237A4A;
+    --primary-light: #EAF4EE;
+    --gold:          #C49A22;
+    --gold-light:    #FBF3DC;
+    --bg:            #F4F7F5;
+    --surface:       #ffffff;
+    --border:        #D6E4DA;
+    --text:          #1C2B22;
+    --text-mid:      #3D5A47;
+    --text-light:    #7A9A85;
+    --shadow:        0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
+    --shadow-md:     0 4px 16px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
+    --radius:        14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans Thai', 'Sarabun', 'TH SarabunPSK', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    padding-bottom: 48px;
+  }
+  nav {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: #fff; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .nav-icon { width: 40px; height: 40px; background: rgba(255,255,255,.15); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+  nav .titles { flex: 1; min-width: 160px; }
+  nav h1 { font-size: 17px; font-weight: 800; }
+  nav .sub { font-size: 12px; opacity: .8; margin-top: 1px; }
+  #sync-badge {
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 99px;
+    background: rgba(255,255,255,.15); color: #fff; white-space: nowrap;
+  }
+
+  main { max-width: 960px; margin: 0 auto; padding: 18px 16px 0; }
+
+  .filter-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 16px;
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .filter-bar label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); margin-bottom: 5px; }
+  .filter-bar select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 9px;
+    font-family: inherit; font-size: 15px; background: #fff; color: var(--text); min-width: 150px;
+  }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; border-top: 4px solid var(--primary);
+  }
+  .kpi-card.gold  { border-top-color: var(--gold); }
+  .kpi-card.warn  { border-top-color: #b45309; }
+  .kpi-label { font-size: 12px; font-weight: 700; color: var(--text-mid); }
+  .kpi-value { font-size: 30px; font-weight: 800; color: var(--primary-dark); margin-top: 4px; }
+  .kpi-sub { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px 18px 16px; margin-bottom: 18px;
+  }
+  .card-title { font-size: 15px; font-weight: 800; color: var(--primary-dark); margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .card-title small { font-weight: 400; color: var(--text-light); font-size: 12px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 9px 10px; border-bottom: 2px solid var(--border); color: var(--text-mid); font-size: 12px; white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid #eef2f0; }
+  tbody tr:hover { background: var(--primary-light); }
+  tbody tr.clickable { cursor: pointer; }
+  .row-total { font-weight: 800; background: var(--primary-light); }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 6px 13px; border-radius: 99px; font-size: 14px; font-weight: 700; }
+  .sev-A { background: #d1fae5; color: #065f46; }
+  .sev-B { background: #d1fae5; color: #065f46; }
+  .sev-C { background: #fef9c3; color: #713f12; }
+  .sev-D { background: #fef9c3; color: #713f12; }
+  .sev-E { background: #fed7aa; color: #9a3412; }
+  .sev-F { background: #fed7aa; color: #9a3412; }
+  .sev-G { background: #fecaca; color: #991b1b; }
+  .sev-H { background: #fecaca; color: #991b1b; }
+  .sev-I { background: #7f1d1d; color: #fff; }
+
+  .chart-wrap { position: relative; height: 220px; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-light); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+
+  #detail-panel { display: none; }
+  #detail-panel .card { border-top: 4px solid var(--gold); }
+  .close-btn {
+    background: #f3f4f6; border: none; border-radius: 50%; width: 30px; height: 30px;
+    font-size: 15px; cursor: pointer; flex-shrink: 0;
+  }
+  .footnote { text-align: center; font-size: 12px; color: var(--text-light); padding: 10px 16px 0; }
+
+  @media (max-width: 480px) {
+    .kpi-value { font-size: 24px; }
+    table { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-icon">🧾</div>
+  <div class="titles">
+    <h1>Admin Error IPD</h1>
+    <div class="sub">กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค รพ.ถ้ำพรรณรา</div>
+  </div>
+  <span id="sync-badge">🔄 กำลังเชื่อมต่อ...</span>
+</nav>
+
+<main>
+  <div class="filter-bar">
+    <div>
+      <label>ปีงบประมาณ</label>
+      <select id="fy-select" onchange="populateMonthSelect();render()"></select>
+    </div>
+    <div>
+      <label>เดือน</label>
+      <select id="month-select" onchange="render()"></select>
+    </div>
+    <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">
+      จำนวนวันนอน: <strong id="denom-display" style="color:var(--text-mid)">—</strong>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">อุบัติการณ์ทั้งหมด</div>
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-sub" id="kpi-total-sub">รายการ</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">อัตรา / 1,000 วันนอน</div>
+      <div class="kpi-value" id="kpi-rate">—</div>
+      <div class="kpi-sub">มาตรฐาน ≤ 10</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">ระดับ E ขึ้นไป</div>
+      <div class="kpi-value" id="kpi-severe">0</div>
+      <div class="kpi-sub">มีผลต่อผู้ป่วย</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">แนวโน้มรายเดือน (ปีงบที่เลือก)</div>
+    <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span>อุบัติการณ์แยกตามประเภท</span>
+      <small>คลิกแถวเพื่อดูรายละเอียดทั้งหมด</small>
+    </div>
+    <div class="table-wrap">
+      <table id="cat-table"></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">ระดับความรุนแรง (NCC MERP)</div>
+    <div class="chips" id="sev-chips"></div>
+  </div>
+
+  <div class="card" id="detail-panel">
+    <div class="card-title">
+      <span id="detail-title"></span>
+      <button class="close-btn" onclick="document.getElementById('detail-panel').style.display='none'">✕</button>
+    </div>
+    <div class="table-wrap" id="detail-body"></div>
+  </div>
+
+  <div class="footnote">หน้านี้เป็น read-only ดึงข้อมูลจากระบบบันทึก ME แบบเรียลไทม์ · อัปเดตล่าสุด <span id="last-sync">—</span></div>
+</main>
+
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
+<script>
+// ══ หมวดหมู่ Administration Error — ต้องตรงกับ IPD_METYPE_ADMIN ใน ME_Dashboard.html ══
+// (คัดลอกมาเพราะเป็นหน้า static แยกไฟล์ ไม่มี build step ร่วมกัน — แก้หมวดหมู่ต้องแก้ 2 ที่)
+const IPD_METYPE_ADMIN = [
+  'ให้ยาไม่ครบตามรายการที่สั่ง (Omission Error)',
+  'ให้ยาผิดชนิด (Wrong Drug Error)',
+  'ให้ยาที่ไม่ได้สั่ง (Unauthorized Drug Error)',
+  'ให้ยาผิดวิธีใช้ยา (Wrong Method of Use Error)',
+  'ให้ยาผิดจำนวน (Wrong Dose Error)',
+  'ให้ยาผิดคน (Wrong Patient Error)',
+  'ให้ยาผิดขนาด (Wrong Strength Error)',
+  'ให้ยาผิดวิถีทางการให้ยา (Wrong Route Error)',
+  'ให้ยาผิดเวลา (Wrong Time Error)',
+  'ให้ยาผิดอัตราเร็ว (Wrong Rate Error)',
+  'ให้ยาผิดเทคนิคการให้ยา (Wrong Administration Technique Error)',
+  'ให้ยาที่ผู้ป่วยแพ้ (Known Allergy Error)',
+  'ให้ยาที่มีปฏิกิริยาระหว่างยา (Drug Interaction Error)',
+  'ให้ยาผิดรูปแบบยา (Wrong Dosage Form Error)',
+  'ไม่ได้เก็บยากลับคืนหลังมื้อเที่ยง (Medication Not Retrieved After Administration)',
+  'ยาไม่ผ่านการตรวจสอบของพยาบาลก่อนให้ผู้ป่วย (Unverified/Bypassed Nursing Administration)',
+  'อื่นๆ (Others)'
+];
+const LEGACY_ADMIN_CAT_MAP = {
+  'ให้ยาไม่ครบรายการ':      IPD_METYPE_ADMIN[0],
+  'ให้ยาผิดชนิด':            IPD_METYPE_ADMIN[1],
+  'ให้ยาที่ไม่ได้สั่ง':         IPD_METYPE_ADMIN[2],
+  'ให้ยาผิดวิธีใช้':           IPD_METYPE_ADMIN[3],
+  'ให้ยาผิดจำนวน':           IPD_METYPE_ADMIN[4],
+  'ให้ยาผิดคน':              IPD_METYPE_ADMIN[5],
+  'ให้ยาผิดขนาด':            IPD_METYPE_ADMIN[6],
+  'ให้ยาผิดวิถีทาง':          IPD_METYPE_ADMIN[7],
+  'ให้ยาผิดเวลา':            IPD_METYPE_ADMIN[8],
+  'ให้ยาในอัตราเร็วที่ผิด':     IPD_METYPE_ADMIN[9],
+  'ให้ยาผิดเทคนิค':          IPD_METYPE_ADMIN[10],
+  'ให้ยาที่แพ้':              IPD_METYPE_ADMIN[11],
+  'ให้ยาที่มี DI กัน':         IPD_METYPE_ADMIN[12],
+  'ให้ยาผิดรูปแบบยา':        IPD_METYPE_ADMIN[13],
+  'ไม่ได้เก็บยากลับคืนเที่ยง':  IPD_METYPE_ADMIN[14],
+  'อื่นๆ':                  IPD_METYPE_ADMIN[16],
+};
+const OTHER_ADMIN_CAT = IPD_METYPE_ADMIN[IPD_METYPE_ADMIN.length - 1];
+const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN);
+const NCC_SEVERITY = ['A','B','C','D','E','F','G','H','I'];
+const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+function normalizeAdminCat(v) {
+  if (!v) return null;
+  if (IPD_METYPE_ADMIN_SET.has(v)) return v;
+  return LEGACY_ADMIN_CAT_MAP[v] || null;
+}
+function getEffectiveAdminCategory(r) {
+  const direct = normalizeAdminCat(r.meType || '');
+  if (direct) return direct;
+  return normalizeAdminCat(hosxpAiCat[r.id]);
+}
+function extractStageShort(str) {
+  if (!str) return '';
+  const m = String(str).match(/\(\s*(Pre-dispensing|Prescribing|Transcribing|Dispensing|Administration|Monitoring)[^)]*\)/i);
+  if (m) return m[1];
+  if (str.includes('สั่งยา')) return 'Prescribing';
+  if (str.includes('คัดลอก')) return 'Transcribing';
+  if (str.includes('จ่ายยา') || str.includes('Pre-dispensing')) return 'Pre-dispensing';
+  if (str.includes('ให้ยา')) return 'Administration';
+  if (str.includes('ติดตาม')) return 'Monitoring';
+  return str.split('(')[0].trim().substring(0, 25);
+}
+function getFiscalYear(dateStr) {
+  if (!dateStr) return null;
+  const [y, m] = dateStr.substring(0,7).split('-').map(Number);
+  return m >= 10 ? (y + 544) : (y + 543);
+}
+function fiscalYearMonths(fy) {
+  const startCE = fy - 544;
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const m = (9 + i) % 12;
+    const y = i < 3 ? startCE : startCE + 1;
+    months.push(y + '-' + String(m + 1).padStart(2, '0'));
+  }
+  return months;
+}
+function fmtMonthFull(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1] + ' ' + (parseInt(y)+543); }
+function fmtMonthShort(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1].slice(0,3) + ' ' + String((parseInt(y)+543)).slice(-2); }
+function formatDateThai(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${parseInt(y)+543}`;
+}
+
+// ══ Firebase (read-only) ══
+let hosxpRecords = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
+let hosxpDenom   = JSON.parse(localStorage.getItem('hosxp_denom') || '{}');
+let hosxpAiCat   = JSON.parse(localStorage.getItem('hosxp_ai_cat') || '{}');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+  authDomain: "pharmacy-tph.firebaseapp.com",
+  projectId: "pharmacy-tph",
+  storageBucket: "pharmacy-tph.firebasestorage.app",
+  messagingSenderId: "617328257113",
+  appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence().catch(() => {});
+const COL = 'pharmacy_tph';
+
+function setSyncStatus(ok) {
+  const el = document.getElementById('sync-badge');
+  if (ok) {
+    el.textContent = '☁️ เชื่อมต่อแล้ว';
+    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+  } else {
+    el.textContent = '⚠️ ออฟไลน์ — แสดงข้อมูลล่าสุดที่มี';
+  }
+}
+
+let fyPopulated = false;
+db.collection(COL).doc('hosxp_records').onSnapshot(snap => {
+  if (snap.exists) {
+    hosxpRecords = snap.data().records || [];
+    localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
+  }
+  setSyncStatus(true);
+  if (!fyPopulated) { populateFYSelect(); populateMonthSelect(); fyPopulated = true; }
+  render();
+}, () => setSyncStatus(false));
+
+db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
+  if (snap.exists) {
+    hosxpDenom = snap.data().data || {};
+    localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
+  }
+  render();
+});
+
+db.collection(COL).doc('hosxp_ai_cat').onSnapshot(snap => {
+  if (snap.exists) {
+    hosxpAiCat = snap.data().data || {};
+    localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat));
+  }
+  render();
+});
+
+// ══ Report computation (เทียบเท่า computeAdminErrorReportData ใน ME_Dashboard.html) ══
+function computeReport(fy) {
+  const months = fiscalYearMonths(fy);
+  const adminRecs = hosxpRecords.filter(r => r.dept === 'IPD' &&
+    extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
+    months.includes((r.date||'').substring(0,7)));
+  const recs = adminRecs.filter(r => getEffectiveAdminCategory(r));
+  const denomByMonth = months.map(m => hosxpDenom[m+'_IPD'] || 0);
+  const totalDenom = denomByMonth.reduce((a,b)=>a+b, 0);
+  const rateOf = (count, denom) => denom > 0 ? Math.round(count/denom*1000*100)/100 : null;
+
+  const catRows = IPD_METYPE_ADMIN.map(cat => {
+    const counts = months.map(m => recs.filter(r => r.date.substring(0,7)===m && getEffectiveAdminCategory(r)===cat).length);
+    return { cat, counts, total: counts.reduce((a,b)=>a+b,0) };
+  });
+  const monthTotals = months.map((m,i) => catRows.reduce((s,r)=>s+r.counts[i], 0));
+  const grandTotal = monthTotals.reduce((a,b)=>a+b, 0);
+
+  const sevRows = NCC_SEVERITY.map(sev => {
+    const counts = months.map(m => recs.filter(r => r.date.substring(0,7)===m && r.severity===sev).length);
+    return { sev, counts, total: counts.reduce((a,b)=>a+b,0) };
+  });
+  const sevMonthTotals = months.map((m,i) => sevRows.reduce((s,r)=>s+r.counts[i], 0));
+
+  return { months, denomByMonth, totalDenom, rateOf, catRows, monthTotals, grandTotal, sevRows, sevMonthTotals, recs };
+}
+
+function populateFYSelect() {
+  const fyEl = document.getElementById('fy-select');
+  const recs = hosxpRecords.filter(r => r.dept === 'IPD' && extractStageShort(r.stageRaw || r.stage || '') === 'Administration');
+  const fys = new Set(recs.map(r => getFiscalYear(r.date)).filter(Boolean));
+  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  fys.add(curFY);
+  const sorted = [...fys].sort((a,b)=>b-a);
+  const prev = fyEl.value;
+  fyEl.innerHTML = sorted.map(fy => `<option value="${fy}">ปีงบ ${fy}</option>`).join('');
+  fyEl.value = (prev && sorted.includes(parseInt(prev))) ? prev : String(curFY);
+}
+function populateMonthSelect() {
+  const fyEl = document.getElementById('fy-select');
+  const monthEl = document.getElementById('month-select');
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const months = fiscalYearMonths(fy);
+  const curMonth = new Date().toISOString().slice(0,7);
+  const prev = monthEl.value;
+  monthEl.innerHTML = '<option value="ALL">รวมทั้งปีงบ</option>' +
+    months.map(m => `<option value="${m}">${fmtMonthFull(m)}</option>`).join('');
+  monthEl.value = (prev && (prev === 'ALL' || months.includes(prev))) ? prev : (months.includes(curMonth) ? curMonth : 'ALL');
+}
+
+let trendChart = null;
+function render() {
+  const fyEl = document.getElementById('fy-select');
+  const monthEl = document.getElementById('month-select');
+  if (!fyEl.options.length) return;
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const d = computeReport(fy);
+  const sel = monthEl.value || 'ALL';
+  const idx = sel === 'ALL' ? -1 : d.months.indexOf(sel);
+  const rateTxt = v => v === null ? '—' : v.toFixed(2);
+
+  const total = idx === -1 ? d.grandTotal : d.monthTotals[idx];
+  const denom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
+  document.getElementById('denom-display').textContent = denom || '—';
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-total-sub').textContent = (idx === -1 ? 'รวมทั้งปีงบ' : fmtMonthFull(sel));
+  document.getElementById('kpi-rate').textContent = rateTxt(d.rateOf(total, denom));
+  const severeCount = d.sevRows.filter(r => ['E','F','G','H','I'].includes(r.sev))
+    .reduce((s,r) => s + (idx === -1 ? r.total : r.counts[idx]), 0);
+  document.getElementById('kpi-severe').textContent = severeCount;
+
+  // category table
+  const catTable = document.getElementById('cat-table');
+  let html = '<thead><tr><th>ประเภท</th><th>ครั้ง</th><th>/1,000 วันนอน</th></tr></thead><tbody>';
+  d.catRows.forEach(r => {
+    const c = idx === -1 ? r.total : r.counts[idx];
+    html += `<tr class="clickable" onclick="showDetail(${JSON.stringify(r.cat)})"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
+  });
+  html += `<tr class="row-total"><td>รวม</td><td>${total}</td><td>${rateTxt(d.rateOf(total, denom))}</td></tr></tbody>`;
+  catTable.innerHTML = html;
+
+  // severity chips
+  document.getElementById('sev-chips').innerHTML = d.sevRows.map(r => {
+    const c = idx === -1 ? r.total : r.counts[idx];
+    return `<span class="badge sev-${r.sev}">${r.sev}: ${c}</span>`;
+  }).join('') + `<span class="badge" style="background:var(--primary-light);color:var(--primary-dark)">รวม: ${idx === -1 ? d.sevRows.reduce((s,r)=>s+r.total,0) : d.sevMonthTotals[idx]}</span>`;
+
+  // trend chart — single-series magnitude, one brand hue (dataviz skill: sequential/single-series needs no legend)
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  const labels = d.months.map(fmtMonthShort);
+  const data = d.monthTotals;
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: '#1A5E38', borderRadius: 4, maxBarThickness: 34 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => fmtMonthFull(d.months[items[0].dataIndex]) } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+      }
+    }
+  });
+
+  document.getElementById('detail-panel').style.display = 'none';
+}
+
+function showDetail(cat) {
+  const fyEl = document.getElementById('fy-select');
+  const monthEl = document.getElementById('month-select');
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const months = fiscalYearMonths(fy);
+  const sel = monthEl.value || 'ALL';
+  const scope = sel === 'ALL' ? months : [sel];
+  const recs = hosxpRecords.filter(r => r.dept === 'IPD' &&
+    extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
+    scope.includes((r.date||'').substring(0,7)) &&
+    getEffectiveAdminCategory(r) === cat
+  ).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  document.getElementById('detail-title').textContent = cat + ' — ' + recs.length + ' รายการ';
+  const body = document.getElementById('detail-body');
+  body.innerHTML = recs.length ? (
+    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    recs.map(r => `<tr>
+      <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
+      <td>${escHtml(r.hn || '—')}</td>
+      <td>${escHtml(r.patient || '—')}</td>
+      <td>${escHtml(r.drug || '—')}</td>
+      <td><span class="badge sev-${escHtml(r.severity || '')}">${escHtml(r.severity || '—')}</span></td>
+      <td style="white-space:pre-wrap;max-width:360px">${escHtml(r.detail || '—')}</td>
+    </tr>`).join('') +
+    '</tbody></table>'
+  ) : '<div class="empty-state"><div class="icon">📭</div>ไม่มีรายการในช่วงที่เลือก</div>';
+  const panel = document.getElementById('detail-panel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>

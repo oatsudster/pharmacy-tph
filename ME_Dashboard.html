@@ -1388,7 +1388,7 @@
       <button class="btn btn-secondary" onclick="exportAdminErrorReport()" style="font-size:13px;padding:7px 14px">📊 Export Excel (รายเดือนเต็มปี)</button>
     </div>
     <div style="font-size:12px;color:var(--text-light);margin:-6px 0 18px">
-      นับเฉพาะรายการขั้นตอน = Administration ที่ประเภทตรงกับ 15 หมวดด้านล่างเท่านั้น (ไม่รวมรายการเก่า/อื่นๆ ที่ยังไม่ระบุหมวด)
+      นับรายการขั้นตอน = Administration ทั้งหมด — รายการที่ AI จัดหมวดไม่ได้จะรวมไว้ในหมวด "อื่นๆ" คลิกแถวในตารางเพื่อดูรายละเอียดทั้งหมดของหมวดนั้น
     </div>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
@@ -1424,7 +1424,15 @@
     </div>
 
     <div style="font-size:14px;font-weight:700;color:var(--primary-dark);margin-bottom:10px">ระดับความรุนแรง (NCC MERP)</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap" id="adminrpt-sev-chips"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px" id="adminrpt-sev-chips"></div>
+
+    <div id="adminrpt-detail-panel" style="display:none;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:20px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 id="adminrpt-detail-title" style="margin:0;font-size:16px;color:var(--primary);font-weight:800"></h3>
+        <button onclick="document.getElementById('adminrpt-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+      </div>
+      <div id="adminrpt-detail-body" class="table-wrap"></div>
+    </div>
   </div>
 </div>
 
@@ -3421,14 +3429,53 @@ const IPD_METYPE_GENERIC = [
   'Extra dose (ยาเกิน)', 'Labeling error (ฉลากผิด)', 'Near miss (เกือบพลาด)', 'อื่นๆ'
 ];
 const IPD_METYPE_ADMIN = [
-  'ให้ยาไม่ครบรายการ', 'ให้ยาผิดชนิด', 'ให้ยาที่ไม่ได้สั่ง', 'ให้ยาผิดวิธีใช้', 'ให้ยาผิดจำนวน',
-  'ให้ยาผิดคน', 'ให้ยาผิดขนาด', 'ให้ยาผิดวิถีทาง', 'ให้ยาผิดเวลา', 'ให้ยาในอัตราเร็วที่ผิด',
-  'ให้ยาผิดเทคนิค', 'ให้ยาที่แพ้', 'ให้ยาที่มี DI กัน', 'ให้ยาผิดรูปแบบยา', 'ไม่ได้เก็บยากลับคืนเที่ยง', 'อื่นๆ'
+  'ให้ยาไม่ครบตามรายการที่สั่ง (Omission Error)',
+  'ให้ยาผิดชนิด (Wrong Drug Error)',
+  'ให้ยาที่ไม่ได้สั่ง (Unauthorized Drug Error)',
+  'ให้ยาผิดวิธีใช้ยา (Wrong Method of Use Error)',
+  'ให้ยาผิดจำนวน (Wrong Dose Error)',
+  'ให้ยาผิดคน (Wrong Patient Error)',
+  'ให้ยาผิดขนาด (Wrong Strength Error)',
+  'ให้ยาผิดวิถีทางการให้ยา (Wrong Route Error)',
+  'ให้ยาผิดเวลา (Wrong Time Error)',
+  'ให้ยาผิดอัตราเร็ว (Wrong Rate Error)',
+  'ให้ยาผิดเทคนิคการให้ยา (Wrong Administration Technique Error)',
+  'ให้ยาที่ผู้ป่วยแพ้ (Known Allergy Error)',
+  'ให้ยาที่มีปฏิกิริยาระหว่างยา (Drug Interaction Error)',
+  'ให้ยาผิดรูปแบบยา (Wrong Dosage Form Error)',
+  'ไม่ได้เก็บยากลับคืนหลังมื้อเที่ยง (Medication Not Retrieved After Administration)',
+  'ยาไม่ผ่านการตรวจสอบของพยาบาลก่อนให้ผู้ป่วย (Unverified/Bypassed Nursing Administration)',
+  'อื่นๆ (Others)'
 ];
+// แปลงชื่อหมวดแบบเดิม (ก่อนเพิ่มวงเล็บภาษาอังกฤษ) ให้ตรงกับหมวดใหม่ — กันข้อมูลเก่าเพี้ยนหมวด
+const LEGACY_ADMIN_CAT_MAP = {
+  'ให้ยาไม่ครบรายการ':      IPD_METYPE_ADMIN[0],
+  'ให้ยาผิดชนิด':            IPD_METYPE_ADMIN[1],
+  'ให้ยาที่ไม่ได้สั่ง':         IPD_METYPE_ADMIN[2],
+  'ให้ยาผิดวิธีใช้':           IPD_METYPE_ADMIN[3],
+  'ให้ยาผิดจำนวน':           IPD_METYPE_ADMIN[4],
+  'ให้ยาผิดคน':              IPD_METYPE_ADMIN[5],
+  'ให้ยาผิดขนาด':            IPD_METYPE_ADMIN[6],
+  'ให้ยาผิดวิถีทาง':          IPD_METYPE_ADMIN[7],
+  'ให้ยาผิดเวลา':            IPD_METYPE_ADMIN[8],
+  'ให้ยาในอัตราเร็วที่ผิด':     IPD_METYPE_ADMIN[9],
+  'ให้ยาผิดเทคนิค':          IPD_METYPE_ADMIN[10],
+  'ให้ยาที่แพ้':              IPD_METYPE_ADMIN[11],
+  'ให้ยาที่มี DI กัน':         IPD_METYPE_ADMIN[12],
+  'ให้ยาผิดรูปแบบยา':        IPD_METYPE_ADMIN[13],
+  'ไม่ได้เก็บยากลับคืนเที่ยง':  IPD_METYPE_ADMIN[14],
+  'อื่นๆ':                  IPD_METYPE_ADMIN[16],
+};
 const NCC_SEVERITY = ['A','B','C','D','E','F','G','H','I'];
 const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 function fmtMonthFull(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1] + ' ' + (parseInt(y)+543); }
-const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ'));
+const OTHER_ADMIN_CAT = IPD_METYPE_ADMIN[IPD_METYPE_ADMIN.length - 1];
+const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN);
+function normalizeAdminCat(v) {
+  if (!v) return null;
+  if (IPD_METYPE_ADMIN_SET.has(v)) return v;
+  return LEGACY_ADMIN_CAT_MAP[v] || null;
+}
 
 // -- AI classification (Groq ผ่าน Cloudflare Worker แยก — ดู admin-error-classify/README.md) --
 const ADMIN_CLASSIFY_URL   = 'https://admin-error-classify.oatsudster.workers.dev';
@@ -3437,9 +3484,9 @@ let hosxpAiCat = JSON.parse(localStorage.getItem('hosxp_ai_cat') || '{}');
 function saveHosxpAiCat() { localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat)); }
 
 function getEffectiveAdminCategory(r) {
-  if (IPD_METYPE_ADMIN_SET.has(r.meType || '')) return r.meType;
-  const ai = hosxpAiCat[r.id];
-  return IPD_METYPE_ADMIN_SET.has(ai) ? ai : null;
+  const direct = normalizeAdminCat(r.meType || '');
+  if (direct) return direct;
+  return normalizeAdminCat(hosxpAiCat[r.id]);
 }
 
 function updateIpdMetypeOptions() {
@@ -3454,7 +3501,7 @@ function updateIpdMetypeOptions() {
 
 function computeAdminErrorReportData(fy) {
   const months = fiscalYearMonths(fy);
-  const knownCats = IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ');
+  const knownCats = IPD_METYPE_ADMIN;
   // ใช้ขั้นตอนความคลาดเคลื่อน (จากไฟล์ที่ import หรือที่บันทึกเอง) เป็นตัวกรองหลัก — ไม่สนใจว่ามาจาก manual หรือ hosxp
   const adminRecs = hosxpRecords.filter(r => r.dept === 'IPD' &&
     extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
@@ -3511,14 +3558,14 @@ async function classifyAdminErrorsWithAI() {
         headers: { 'Content-Type': 'application/json', 'X-App-Token': ADMIN_CLASSIFY_TOKEN },
         body: JSON.stringify({
           items: batch.map(r => ({ id: String(r.id), text: r.detail || '' })),
-          categories: IPD_METYPE_ADMIN.filter(c => c !== 'อื่นๆ'),
+          categories: IPD_METYPE_ADMIN.filter(c => c !== OTHER_ADMIN_CAT),
           context: 'คุณเป็นเภสัชกรที่ช่วยจัดหมวดหมู่ "Administration Error" ' +
             '(ความคลาดเคลื่อนในขั้นตอนการให้ยาแก่ผู้ป่วย IPD) จากข้อความหมายเหตุ/รายละเอียดเหตุการณ์ที่บันทึกไว้ในระบบ',
         }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      (data.results || []).forEach(r => { if (r.category) hosxpAiCat[r.id] = r.category; });
+      (data.results || []).forEach(r => { hosxpAiCat[r.id] = r.category || OTHER_ADMIN_CAT; });
       done += batch.length;
       saveHosxpAiCat();
       renderAdminErrorReport();
@@ -3604,7 +3651,7 @@ function renderAdminErrorReport() {
   d.catRows.forEach(r => {
     const c = idx === -1 ? r.total : r.counts[idx];
     const denom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
-    catHtml += `<tr><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
+    catHtml += `<tr style="cursor:pointer" onclick="showAdminCatDetail(${JSON.stringify(r.cat)})" title="คลิกดูรายละเอียดทั้งหมด"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
   });
   const totalDenom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
   catHtml += `<tr style="font-weight:800;background:var(--primary-light)"><td>รวม</td><td>${catTotal}</td><td>${rateTxt(d.rateOf(catTotal, totalDenom))}</td></tr>`;
@@ -3616,6 +3663,40 @@ function renderAdminErrorReport() {
     const c = idx === -1 ? r.total : r.counts[idx];
     return `<span class="badge sev-${r.sev}" style="font-size:15px">${r.sev}: ${c}</span>`;
   }).join('') + `<span class="badge" style="background:var(--primary-light);color:var(--primary-dark);font-size:15px">รวม: ${idx === -1 ? d.sevGrandTotal : d.sevMonthTotals[idx]}</span>`;
+}
+
+function showAdminCatDetail(cat) {
+  const fyEl = document.getElementById('adminrpt-fy');
+  const monthEl = document.getElementById('adminrpt-month');
+  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const months = fiscalYearMonths(fy);
+  const sel = (monthEl && monthEl.value) || 'ALL';
+  const scope = sel === 'ALL' ? months : [sel];
+  const recs = hosxpRecords.filter(r => r.dept === 'IPD' &&
+    extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
+    scope.includes((r.date||'').substring(0,7)) &&
+    getEffectiveAdminCategory(r) === cat
+  ).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  const panel = document.getElementById('adminrpt-detail-panel');
+  const title = document.getElementById('adminrpt-detail-title');
+  const body  = document.getElementById('adminrpt-detail-body');
+  if (!panel || !title || !body) return;
+  title.textContent = cat + ' — ' + recs.length + ' รายการ';
+  body.innerHTML = recs.length ? (
+    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    recs.map(r => `<tr>
+      <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
+      <td>${escHtml(r.hn || '—')}</td>
+      <td>${escHtml(r.patient || '—')}</td>
+      <td>${escHtml(r.drug || '—')}</td>
+      <td><span class="badge sev-${escHtml(r.severity || '')}">${escHtml(r.severity || '—')}</span></td>
+      <td style="white-space:pre-wrap;max-width:420px">${escHtml(r.detail || '—')}</td>
+    </tr>`).join('') +
+    '</tbody></table>'
+  ) : '<div style="text-align:center;color:var(--text-light);padding:24px">ไม่มีรายการ</div>';
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function exportAdminErrorReport() {
@@ -4398,6 +4479,15 @@ function renderOverview() {
         localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
       }
     });
+
+    db.collection(COL).doc('hosxp_ai_cat').onSnapshot(snap => {
+      if (snap.exists) {
+        const fbAiCat = snap.data().data || {};
+        hosxpAiCat = Object.assign({}, fbAiCat, hosxpAiCat);
+        localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat));
+        if (typeof renderAdminErrorReport === 'function') renderAdminErrorReport();
+      }
+    });
   }
 
   // ── Save to Firebase (async, non-blocking) ────────────────
@@ -4416,6 +4506,11 @@ function renderOverview() {
       await db.collection(COL).doc('hosxp_denom').set({ data: hosxpDenom, updated: new Date().toISOString() });
     } catch(e) { console.warn('[Firebase] Denom save:', e.message); }
   };
+  window._fbSaveAiCat = async function() {
+    try {
+      await db.collection(COL).doc('hosxp_ai_cat').set({ data: hosxpAiCat, updated: new Date().toISOString() });
+    } catch(e) { console.warn('[Firebase] AI cat save:', e.message); }
+  };
 
   // ── Patch existing save functions ─────────────────────────
   const _s = window.save;
@@ -4426,6 +4521,9 @@ function renderOverview() {
 
   const _sd = window.saveHosXPDenomStorage;
   window.saveHosXPDenomStorage = function() { _sd(); window._fbSaveDenom(); };
+
+  const _sa = window.saveHosxpAiCat;
+  window.saveHosxpAiCat = function() { _sa(); window._fbSaveAiCat(); };
 
   // ── Start listeners on DOMContentLoaded ──────────────────
   if (document.readyState === 'loading') {
