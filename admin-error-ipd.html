@@ -72,6 +72,11 @@
   }
   .kpi-card.gold  { border-top-color: var(--gold); }
   .kpi-card.warn  { border-top-color: #b45309; }
+  .kpi-card.clickable { cursor: pointer; transition: transform .1s, box-shadow .1s; }
+  .kpi-card.clickable:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .badge.clickable { cursor: pointer; }
+  .badge.clickable:hover { filter: brightness(0.94); }
+  .row-total.clickable { cursor: pointer; }
   .kpi-label { font-size: 12px; font-weight: 700; color: var(--text-mid); }
   .kpi-value { font-size: 30px; font-weight: 800; color: var(--primary-dark); margin-top: 4px; }
   .kpi-sub { font-size: 12px; color: var(--text-light); margin-top: 2px; }
@@ -150,17 +155,17 @@
   </div>
 
   <div class="kpi-grid">
-    <div class="kpi-card">
+    <div class="kpi-card clickable" onclick="showAllDetail()" title="คลิกดูรายการทั้งหมด">
       <div class="kpi-label">อุบัติการณ์ทั้งหมด</div>
       <div class="kpi-value" id="kpi-total">0</div>
       <div class="kpi-sub" id="kpi-total-sub">รายการ</div>
     </div>
-    <div class="kpi-card gold">
+    <div class="kpi-card gold clickable" onclick="showAllDetail()" title="คลิกดูรายการทั้งหมด">
       <div class="kpi-label">อัตรา / 1,000 วันนอน</div>
       <div class="kpi-value" id="kpi-rate">—</div>
       <div class="kpi-sub">มาตรฐาน ≤ 10</div>
     </div>
-    <div class="kpi-card warn">
+    <div class="kpi-card warn clickable" onclick="showSevDetail(['E','F','G','H','I'], 'ระดับ E ขึ้นไป')" title="คลิกดูรายการทั้งหมด">
       <div class="kpi-label">ระดับ E ขึ้นไป</div>
       <div class="kpi-value" id="kpi-severe">0</div>
       <div class="kpi-sub">มีผลต่อผู้ป่วย</div>
@@ -168,7 +173,10 @@
   </div>
 
   <div class="card">
-    <div class="card-title">แนวโน้มรายเดือน (ปีงบที่เลือก)</div>
+    <div class="card-title">
+      <span>แนวโน้มรายเดือน (ปีงบที่เลือก)</span>
+      <small>คลิกแท่งกราฟเพื่อดูเฉพาะเดือนนั้น</small>
+    </div>
     <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
   </div>
 
@@ -183,8 +191,12 @@
   </div>
 
   <div class="card">
-    <div class="card-title">ระดับความรุนแรง (NCC MERP)</div>
-    <div class="chips" id="sev-chips"></div>
+    <div class="card-title">
+      <span>ระดับความรุนแรง (NCC MERP) A–I</span>
+      <small>คลิกแท่งหรือระดับเพื่อดูรายละเอียด</small>
+    </div>
+    <div class="chart-wrap" style="height:180px"><canvas id="sev-chart"></canvas></div>
+    <div class="chips" id="sev-chips" style="margin-top:14px"></div>
   </div>
 
   <div class="card" id="detail-panel">
@@ -244,6 +256,7 @@ const OTHER_ADMIN_CAT = IPD_METYPE_ADMIN[IPD_METYPE_ADMIN.length - 1];
 const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN);
 const NCC_SEVERITY = ['A','B','C','D','E','F','G','H','I'];
 const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THAI_MONTHS_ABBR = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 function normalizeAdminCat(v) {
   if (!v) return null;
@@ -282,7 +295,7 @@ function fiscalYearMonths(fy) {
   return months;
 }
 function fmtMonthFull(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1] + ' ' + (parseInt(y)+543); }
-function fmtMonthShort(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_FULL[parseInt(mo)-1].slice(0,3) + ' ' + String((parseInt(y)+543)).slice(-2); }
+function fmtMonthShort(ym) { const [y,mo] = ym.split('-'); return THAI_MONTHS_ABBR[parseInt(mo)-1] + ' ' + String((parseInt(y)+543)).slice(-2); }
 function formatDateThai(dateStr) {
   if (!dateStr) return '—';
   const [y, m, d] = dateStr.split('-');
@@ -395,6 +408,8 @@ function populateMonthSelect() {
 }
 
 let trendChart = null;
+let sevChart = null;
+let trendMonths = [];
 function render() {
   const fyEl = document.getElementById('fy-select');
   const monthEl = document.getElementById('month-select');
@@ -420,68 +435,148 @@ function render() {
   let html = '<thead><tr><th>ประเภท</th><th>ครั้ง</th><th>/1,000 วันนอน</th></tr></thead><tbody>';
   d.catRows.forEach(r => {
     const c = idx === -1 ? r.total : r.counts[idx];
-    html += `<tr class="clickable" onclick="showDetail(${JSON.stringify(r.cat)})"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
+    html += `<tr class="clickable" onclick="showDetail(${escHtml(JSON.stringify(r.cat))})"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
   });
-  html += `<tr class="row-total"><td>รวม</td><td>${total}</td><td>${rateTxt(d.rateOf(total, denom))}</td></tr></tbody>`;
+  html += `<tr class="row-total clickable" onclick="showAllDetail()" title="คลิกดูรายการทั้งหมด"><td>รวม</td><td>${total}</td><td>${rateTxt(d.rateOf(total, denom))}</td></tr></tbody>`;
   catTable.innerHTML = html;
 
   // severity chips
   document.getElementById('sev-chips').innerHTML = d.sevRows.map(r => {
     const c = idx === -1 ? r.total : r.counts[idx];
-    return `<span class="badge sev-${r.sev}">${r.sev}: ${c}</span>`;
-  }).join('') + `<span class="badge" style="background:var(--primary-light);color:var(--primary-dark)">รวม: ${idx === -1 ? d.sevRows.reduce((s,r)=>s+r.total,0) : d.sevMonthTotals[idx]}</span>`;
+    return `<span class="badge sev-${r.sev} clickable" onclick="showSevDetail(${escHtml(JSON.stringify([r.sev]))},${escHtml(JSON.stringify('ระดับ '+r.sev))})" title="คลิกดูรายละเอียด">${r.sev}: ${c}</span>`;
+  }).join('') + `<span class="badge clickable" style="background:var(--primary-light);color:var(--primary-dark)" onclick="showAllDetail()" title="คลิกดูรายการทั้งหมด">รวม: ${idx === -1 ? d.sevRows.reduce((s,r)=>s+r.total,0) : d.sevMonthTotals[idx]}</span>`;
 
   // trend chart — single-series magnitude, one brand hue (dataviz skill: sequential/single-series needs no legend)
-  const ctx = document.getElementById('trend-chart').getContext('2d');
-  const labels = d.months.map(fmtMonthShort);
-  const data = d.monthTotals;
-  if (trendChart) trendChart.destroy();
-  trendChart = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: '#1A5E38', borderRadius: 4, maxBarThickness: 34 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => fmtMonthFull(d.months[items[0].dataIndex]) } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 11 } } },
-        y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+  // Updated in place (never destroyed from inside its own click handler) to avoid a Chart.js
+  // afterEvent crash when a click triggers a re-render of the same chart mid-event.
+  trendMonths = d.months;
+  const trendLabels = d.months.map(fmtMonthShort);
+  const trendData = d.monthTotals;
+  if (!trendChart) {
+    const ctx = document.getElementById('trend-chart').getContext('2d');
+    trendChart = new Chart(ctx, {
+      data: {
+        labels: trendLabels,
+        datasets: [
+          { type: 'bar', data: trendData, backgroundColor: '#1A5E38', borderRadius: 4, maxBarThickness: 34, order: 2 },
+          { type: 'line', data: trendData, borderColor: '#C49A22', backgroundColor: '#C49A22', borderWidth: 2,
+            pointRadius: 3, pointBackgroundColor: '#C49A22', tension: 0.3, fill: false, order: 1 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false }, tooltip: {
+          filter: (item) => item.datasetIndex === 0,
+          callbacks: { title: (items) => fmtMonthFull(trendMonths[items[0].dataIndex]) }
+        } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 11 } } },
+          y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+        },
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          onMonthPick(trendMonths[elements[0].index]);
+        }
       }
-    }
-  });
+    });
+  } else {
+    trendChart.data.labels = trendLabels;
+    trendChart.data.datasets[0].data = trendData;
+    trendChart.data.datasets[1].data = trendData;
+    trendChart.update();
+  }
+
+  // severity chart — status colors (fixed per NCC MERP letter, not cycled; matches .sev-X badge hues)
+  const SEV_COLOR = { A:'#065f46', B:'#065f46', C:'#713f12', D:'#713f12', E:'#9a3412', F:'#9a3412', G:'#991b1b', H:'#991b1b', I:'#7f1d1d' };
+  const sevLabels = d.sevRows.map(r => r.sev);
+  const sevData = d.sevRows.map(r => idx === -1 ? r.total : r.counts[idx]);
+  if (!sevChart) {
+    const sevCtx = document.getElementById('sev-chart').getContext('2d');
+    sevChart = new Chart(sevCtx, {
+      type: 'bar',
+      data: { labels: sevLabels, datasets: [{ data: sevData, backgroundColor: sevLabels.map(s => SEV_COLOR[s]), borderRadius: 4, maxBarThickness: 40 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => 'ระดับ ' + NCC_SEVERITY[items[0].dataIndex] } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 12, weight: '700' } } },
+          y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+        },
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const sev = NCC_SEVERITY[elements[0].index];
+          showSevDetail([sev], 'ระดับ ' + sev);
+        }
+      }
+    });
+  } else {
+    sevChart.data.datasets[0].data = sevData;
+    sevChart.update();
+  }
 
   document.getElementById('detail-panel').style.display = 'none';
 }
 
-function showDetail(cat) {
+function getScopedAdminRecs() {
   const fyEl = document.getElementById('fy-select');
   const monthEl = document.getElementById('month-select');
   const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
   const months = fiscalYearMonths(fy);
   const sel = monthEl.value || 'ALL';
   const scope = sel === 'ALL' ? months : [sel];
-  const recs = hosxpRecords.filter(r => r.dept === 'IPD' &&
+  return hosxpRecords.filter(r => r.dept === 'IPD' &&
     extractStageShort(r.stageRaw || r.stage || '') === 'Administration' &&
     scope.includes((r.date||'').substring(0,7)) &&
-    getEffectiveAdminCategory(r) === cat
+    getEffectiveAdminCategory(r)
   ).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+}
 
-  document.getElementById('detail-title').textContent = cat + ' — ' + recs.length + ' รายการ';
+function renderDetailList(title, recs) {
+  document.getElementById('detail-title').textContent = title + ' — ' + recs.length + ' รายการ';
   const body = document.getElementById('detail-body');
   body.innerHTML = recs.length ? (
-    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ประเภท</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
     recs.map(r => `<tr>
       <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
       <td>${escHtml(r.hn || '—')}</td>
       <td>${escHtml(r.patient || '—')}</td>
       <td>${escHtml(r.drug || '—')}</td>
+      <td style="white-space:nowrap">${escHtml(getEffectiveAdminCategory(r) || '—')}</td>
       <td><span class="badge sev-${escHtml(r.severity || '')}">${escHtml(r.severity || '—')}</span></td>
-      <td style="white-space:pre-wrap;max-width:360px">${escHtml(r.detail || '—')}</td>
+      <td style="white-space:pre-wrap;max-width:320px">${escHtml(r.detail || '—')}</td>
     </tr>`).join('') +
     '</tbody></table>'
   ) : '<div class="empty-state"><div class="icon">📭</div>ไม่มีรายการในช่วงที่เลือก</div>';
   const panel = document.getElementById('detail-panel');
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showDetail(cat) {
+  const recs = getScopedAdminRecs().filter(r => getEffectiveAdminCategory(r) === cat);
+  renderDetailList(cat, recs);
+}
+
+function showSevDetail(sevList, label) {
+  const recs = getScopedAdminRecs().filter(r => sevList.includes(r.severity));
+  renderDetailList(label, recs);
+}
+
+function showAllDetail() {
+  renderDetailList('อุบัติการณ์ทั้งหมด', getScopedAdminRecs());
+}
+
+function onMonthPick(ym) {
+  document.getElementById('month-select').value = ym;
+  // Defer: Chart.js throws in its tooltip afterEvent hook if a chart is updated
+  // synchronously from inside its own click handler, mid dispatch.
+  setTimeout(() => {
+    render();
+    document.getElementById('cat-table').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 0);
 }
 </script>
 </body>

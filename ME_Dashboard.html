@@ -3651,7 +3651,7 @@ function renderAdminErrorReport() {
   d.catRows.forEach(r => {
     const c = idx === -1 ? r.total : r.counts[idx];
     const denom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
-    catHtml += `<tr style="cursor:pointer" onclick="showAdminCatDetail(${JSON.stringify(r.cat)})" title="คลิกดูรายละเอียดทั้งหมด"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
+    catHtml += `<tr style="cursor:pointer" onclick="showAdminCatDetail(${escHtml(JSON.stringify(r.cat))})" title="คลิกดูรายละเอียดทั้งหมด"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
   });
   const totalDenom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
   catHtml += `<tr style="font-weight:800;background:var(--primary-light)"><td>รวม</td><td>${catTotal}</td><td>${rateTxt(d.rateOf(catTotal, totalDenom))}</td></tr>`;
