@@ -12,6 +12,9 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/admin-error-categories.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/export-utils.js"></script>
 <style>
   :root {
     --primary:       #1A5E38;
@@ -64,6 +67,12 @@
     padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 9px;
     font-family: inherit; font-size: 15px; background: #fff; color: var(--text); min-width: 150px;
   }
+  .tbtn {
+    padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 9px;
+    background: var(--bg); color: var(--text-mid); font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap;
+  }
+  .tbtn:hover { border-color: var(--primary); color: var(--primary); }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
   .kpi-card {
@@ -152,6 +161,10 @@
     <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">
       จำนวนวันนอน: <strong id="denom-display" style="color:var(--text-mid)">—</strong>
     </div>
+    <div style="margin-left:auto;display:flex;gap:8px;margin-bottom:1px">
+      <button class="tbtn" onclick="exportScoped('excel')" title="Export ข้อมูลตามช่วงที่เลือกเป็น Excel">📊 Excel</button>
+      <button class="tbtn" onclick="exportScoped('pdf')" title="Export ข้อมูลตามช่วงที่เลือกเป็น PDF">📄 PDF</button>
+    </div>
   </div>
 
   <div class="kpi-grid">
@@ -213,56 +226,12 @@
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <script>
-// ══ หมวดหมู่ Administration Error — ต้องตรงกับ IPD_METYPE_ADMIN ใน ME_Dashboard.html ══
-// (คัดลอกมาเพราะเป็นหน้า static แยกไฟล์ ไม่มี build step ร่วมกัน — แก้หมวดหมู่ต้องแก้ 2 ที่)
-const IPD_METYPE_ADMIN = [
-  'ให้ยาไม่ครบตามรายการที่สั่ง (Omission Error)',
-  'ให้ยาผิดชนิด (Wrong Drug Error)',
-  'ให้ยาที่ไม่ได้สั่ง (Unauthorized Drug Error)',
-  'ให้ยาผิดวิธีใช้ยา (Wrong Method of Use Error)',
-  'ให้ยาผิดจำนวน (Wrong Dose Error)',
-  'ให้ยาผิดคน (Wrong Patient Error)',
-  'ให้ยาผิดขนาด (Wrong Strength Error)',
-  'ให้ยาผิดวิถีทางการให้ยา (Wrong Route Error)',
-  'ให้ยาผิดเวลา (Wrong Time Error)',
-  'ให้ยาผิดอัตราเร็ว (Wrong Rate Error)',
-  'ให้ยาผิดเทคนิคการให้ยา (Wrong Administration Technique Error)',
-  'ให้ยาที่ผู้ป่วยแพ้ (Known Allergy Error)',
-  'ให้ยาที่มีปฏิกิริยาระหว่างยา (Drug Interaction Error)',
-  'ให้ยาผิดรูปแบบยา (Wrong Dosage Form Error)',
-  'ไม่ได้เก็บยากลับคืนหลังมื้อเที่ยง (Medication Not Retrieved After Administration)',
-  'ยาไม่ผ่านการตรวจสอบของพยาบาลก่อนให้ผู้ป่วย (Unverified/Bypassed Nursing Administration)',
-  'อื่นๆ (Others)'
-];
-const LEGACY_ADMIN_CAT_MAP = {
-  'ให้ยาไม่ครบรายการ':      IPD_METYPE_ADMIN[0],
-  'ให้ยาผิดชนิด':            IPD_METYPE_ADMIN[1],
-  'ให้ยาที่ไม่ได้สั่ง':         IPD_METYPE_ADMIN[2],
-  'ให้ยาผิดวิธีใช้':           IPD_METYPE_ADMIN[3],
-  'ให้ยาผิดจำนวน':           IPD_METYPE_ADMIN[4],
-  'ให้ยาผิดคน':              IPD_METYPE_ADMIN[5],
-  'ให้ยาผิดขนาด':            IPD_METYPE_ADMIN[6],
-  'ให้ยาผิดวิถีทาง':          IPD_METYPE_ADMIN[7],
-  'ให้ยาผิดเวลา':            IPD_METYPE_ADMIN[8],
-  'ให้ยาในอัตราเร็วที่ผิด':     IPD_METYPE_ADMIN[9],
-  'ให้ยาผิดเทคนิค':          IPD_METYPE_ADMIN[10],
-  'ให้ยาที่แพ้':              IPD_METYPE_ADMIN[11],
-  'ให้ยาที่มี DI กัน':         IPD_METYPE_ADMIN[12],
-  'ให้ยาผิดรูปแบบยา':        IPD_METYPE_ADMIN[13],
-  'ไม่ได้เก็บยากลับคืนเที่ยง':  IPD_METYPE_ADMIN[14],
-  'อื่นๆ':                  IPD_METYPE_ADMIN[16],
-};
-const OTHER_ADMIN_CAT = IPD_METYPE_ADMIN[IPD_METYPE_ADMIN.length - 1];
-const IPD_METYPE_ADMIN_SET = new Set(IPD_METYPE_ADMIN);
+// IPD_METYPE_ADMIN, LEGACY_ADMIN_CAT_MAP, OTHER_ADMIN_CAT, IPD_METYPE_ADMIN_SET, normalizeAdminCat
+// now live in lib/admin-error-categories.js (shared with ME_Dashboard.html)
 const NCC_SEVERITY = ['A','B','C','D','E','F','G','H','I'];
 const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const THAI_MONTHS_ABBR = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
-function normalizeAdminCat(v) {
-  if (!v) return null;
-  if (IPD_METYPE_ADMIN_SET.has(v)) return v;
-  return LEGACY_ADMIN_CAT_MAP[v] || null;
-}
 function getEffectiveAdminCategory(r) {
   const direct = normalizeAdminCat(r.meType || '');
   if (direct) return direct;
@@ -538,15 +507,18 @@ function renderDetailList(title, recs) {
   document.getElementById('detail-title').textContent = title + ' — ' + recs.length + ' รายการ';
   const body = document.getElementById('detail-body');
   body.innerHTML = recs.length ? (
-    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ประเภท</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    '<table><thead><tr><th>วันที่</th><th>ตึก</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ประเภท</th><th>ระดับ</th><th>รายละเอียด</th><th>การแก้ไข</th><th>ผู้รายงาน</th></tr></thead><tbody>' +
     recs.map(r => `<tr>
       <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
+      <td style="white-space:nowrap">${escHtml(r.ward || '—')}</td>
       <td>${escHtml(r.hn || '—')}</td>
       <td>${escHtml(r.patient || '—')}</td>
       <td>${escHtml(r.drug || '—')}</td>
       <td style="white-space:nowrap">${escHtml(getEffectiveAdminCategory(r) || '—')}</td>
       <td><span class="badge sev-${escHtml(r.severity || '')}">${escHtml(r.severity || '—')}</span></td>
-      <td style="white-space:pre-wrap;max-width:320px">${escHtml(r.detail || '—')}</td>
+      <td style="white-space:pre-wrap;max-width:280px">${escHtml(r.detail || '—')}</td>
+      <td style="white-space:pre-wrap;max-width:280px">${escHtml(r.intervention || '—')}</td>
+      <td style="white-space:nowrap">${escHtml(r.reporter || '—')}</td>
     </tr>`).join('') +
     '</tbody></table>'
   ) : '<div class="empty-state"><div class="icon">📭</div>ไม่มีรายการในช่วงที่เลือก</div>';
@@ -567,6 +539,56 @@ function showSevDetail(sevList, label) {
 
 function showAllDetail() {
   renderDetailList('อุบัติการณ์ทั้งหมด', getScopedAdminRecs());
+}
+
+function exportScoped(fmt) {
+  const fyEl = document.getElementById('fy-select');
+  const monthEl = document.getElementById('month-select');
+  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const d = computeReport(fy);
+  const sel = monthEl.value || 'ALL';
+  const idx = sel === 'ALL' ? -1 : d.months.indexOf(sel);
+  const denom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
+  const total = idx === -1 ? d.grandTotal : d.monthTotals[idx];
+  const rateTxt = v => v === null ? '—' : v.toFixed(2);
+  const label = sel === 'ALL' ? `ปีงบ ${fy}` : fmtMonthFull(sel);
+  const recs = getScopedAdminRecs();
+
+  if (!recs.length) { alert('ไม่มีข้อมูลในช่วงที่เลือก'); return; }
+
+  const catRows = d.catRows.map(r => {
+    const c = idx === -1 ? r.total : r.counts[idx];
+    return [r.cat, c, rateTxt(d.rateOf(c, denom))];
+  });
+  const sevRows = d.sevRows.map(r => [r.sev, idx === -1 ? r.total : r.counts[idx]]);
+  const detailRows = recs.map(r => [
+    formatDateThai(r.date), r.ward || '—', r.hn || '—', r.patient || '—', r.drug || '—',
+    getEffectiveAdminCategory(r) || '—', r.severity || '—', r.detail || '—', r.intervention || '—', r.reporter || '—',
+  ]);
+
+  if (fmt === 'excel') {
+    expExcel([
+      { name: 'สรุปตามประเภท', data: catRows.map(([cat,c,rate]) => ({ 'ประเภท': cat, 'ครั้ง': c, '/1,000 วันนอน': rate })) },
+      { name: 'สรุปตามระดับ', data: sevRows.map(([sev,c]) => ({ 'ระดับ (NCC MERP)': sev, 'ครั้ง': c })) },
+      { name: 'รายละเอียดทั้งหมด', data: detailRows.map(row => ({
+        'วันที่': row[0], 'ตึก': row[1], 'HN': row[2], 'ผู้ป่วย': row[3], 'ยา': row[4],
+        'ประเภท': row[5], 'ระดับ': row[6], 'รายละเอียด': row[7], 'การแก้ไข': row[8], 'ผู้รายงาน': row[9],
+      })) },
+    ], `AdminErrorIPD_${label}`);
+  }
+
+  if (fmt === 'pdf') {
+    expPDF({
+      title: 'รายงาน Admin Error IPD',
+      subtitle: `${label} — รวม ${total} รายการ / อัตรา ${rateTxt(d.rateOf(total, denom))} ต่อ 1,000 วันนอน`,
+      landscape: true,
+      sections: [
+        { title: 'สรุปตามประเภท', headers: ['ประเภท','ครั้ง','/1,000 วันนอน'], rows: catRows },
+        { title: 'สรุปตามระดับความรุนแรง (NCC MERP)', headers: ['ระดับ','ครั้ง'], rows: sevRows },
+        { title: 'รายละเอียดทั้งหมด', headers: ['วันที่','ตึก','HN','ผู้ป่วย','ยา','ประเภท','ระดับ','รายละเอียด','การแก้ไข','ผู้รายงาน'], rows: detailRows },
+      ],
+    });
+  }
 }
 
 function onMonthPick(ym) {
