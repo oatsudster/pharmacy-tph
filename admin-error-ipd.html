@@ -507,10 +507,9 @@ function renderDetailList(title, recs) {
   document.getElementById('detail-title').textContent = title + ' — ' + recs.length + ' รายการ';
   const body = document.getElementById('detail-body');
   body.innerHTML = recs.length ? (
-    '<table><thead><tr><th>วันที่</th><th>ตึก</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ประเภท</th><th>ระดับ</th><th>รายละเอียด</th><th>การแก้ไข</th><th>ผู้รายงาน</th></tr></thead><tbody>' +
+    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ประเภท</th><th>ระดับ</th><th>รายละเอียด</th><th>การแก้ไข</th><th>ผู้รายงาน</th></tr></thead><tbody>' +
     recs.map(r => `<tr>
       <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
-      <td style="white-space:nowrap">${escHtml(r.ward || '—')}</td>
       <td>${escHtml(r.hn || '—')}</td>
       <td>${escHtml(r.patient || '—')}</td>
       <td>${escHtml(r.drug || '—')}</td>
@@ -562,7 +561,7 @@ function exportScoped(fmt) {
   });
   const sevRows = d.sevRows.map(r => [r.sev, idx === -1 ? r.total : r.counts[idx]]);
   const detailRows = recs.map(r => [
-    formatDateThai(r.date), r.ward || '—', r.hn || '—', r.patient || '—', r.drug || '—',
+    formatDateThai(r.date), r.hn || '—', r.patient || '—', r.drug || '—',
     getEffectiveAdminCategory(r) || '—', r.severity || '—', r.detail || '—', r.intervention || '—', r.reporter || '—',
   ]);
 
@@ -571,8 +570,8 @@ function exportScoped(fmt) {
       { name: 'สรุปตามประเภท', data: catRows.map(([cat,c,rate]) => ({ 'ประเภท': cat, 'ครั้ง': c, '/1,000 วันนอน': rate })) },
       { name: 'สรุปตามระดับ', data: sevRows.map(([sev,c]) => ({ 'ระดับ (NCC MERP)': sev, 'ครั้ง': c })) },
       { name: 'รายละเอียดทั้งหมด', data: detailRows.map(row => ({
-        'วันที่': row[0], 'ตึก': row[1], 'HN': row[2], 'ผู้ป่วย': row[3], 'ยา': row[4],
-        'ประเภท': row[5], 'ระดับ': row[6], 'รายละเอียด': row[7], 'การแก้ไข': row[8], 'ผู้รายงาน': row[9],
+        'วันที่': row[0], 'HN': row[1], 'ผู้ป่วย': row[2], 'ยา': row[3],
+        'ประเภท': row[4], 'ระดับ': row[5], 'รายละเอียด': row[6], 'การแก้ไข': row[7], 'ผู้รายงาน': row[8],
       })) },
     ], `AdminErrorIPD_${label}`);
   }
@@ -585,7 +584,7 @@ function exportScoped(fmt) {
       sections: [
         { title: 'สรุปตามประเภท', headers: ['ประเภท','ครั้ง','/1,000 วันนอน'], rows: catRows },
         { title: 'สรุปตามระดับความรุนแรง (NCC MERP)', headers: ['ระดับ','ครั้ง'], rows: sevRows },
-        { title: 'รายละเอียดทั้งหมด', headers: ['วันที่','ตึก','HN','ผู้ป่วย','ยา','ประเภท','ระดับ','รายละเอียด','การแก้ไข','ผู้รายงาน'], rows: detailRows },
+        { title: 'รายละเอียดทั้งหมด', headers: ['วันที่','HN','ผู้ป่วย','ยา','ประเภท','ระดับ','รายละเอียด','การแก้ไข','ผู้รายงาน'], rows: detailRows },
       ],
     });
   }
