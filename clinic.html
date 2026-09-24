@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -390,13 +390,15 @@ tr:hover td{background:#f8faf9;}
 
       <div class="form-group">
         <label>HN ผู้ป่วย</label>
-        <input type="text" id="f-hn" placeholder="รหัส HN">
+        <input type="text" id="f-hn" placeholder="รหัส HN" oninput="onHnLookup()">
       </div>
 
       <div class="form-group">
         <label>ชื่อ-สกุล</label>
         <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
       </div>
+
+      <div id="hn-history-box" style="display:none;margin:-4px 0 14px;padding:10px 12px;background:var(--gold-light);border:1.5px solid var(--gold);border-radius:9px;font-size:12px;line-height:1.6;color:var(--text-mid)"></div>
 
       <!-- Checklist -->
       <div class="form-group">
@@ -425,17 +427,26 @@ tr:hover td{background:#f8faf9;}
     <div class="entry-col">
       <div class="form-title">DRPs ที่พบ</div>
 
-      <!-- Quick DRP: ยาเหลือสะสม (90% of cases) -->
+      <!-- Quick DRP: มียาเหลือสะสม (Leftover Medication) — 90% of cases -->
       <div class="drp-quick" id="drp-quick-wrap">
         <label class="drp-quick-label" onclick="toggleQuickDrp()">
           <div class="drp-quick-check" id="drp-quick-check">
             <span id="drp-quick-icon">☐</span>
           </div>
           <div class="drp-quick-text">
-            <div class="drp-quick-title">📦 ยาเหลือสะสม</div>
+            <div class="drp-quick-title">📦 มียาเหลือสะสม (Leftover Medication)</div>
             <div class="drp-quick-sub">DRP ที่พบบ่อยที่สุด — กรอกยาในช่องด้านล่างได้เลย</div>
           </div>
         </label>
+      </div>
+
+      <!-- AI DRP suggestion -->
+      <div style="margin-top:10px;padding:10px;background:var(--primary-light);border:1.5px dashed var(--primary);border-radius:9px">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">✨ ให้ AI แนะนำ DRP</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="drp-suggest-text" placeholder="อาการ/ข้อสังเกต (ไม่ต้องระบุชื่อผู้ป่วย)" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">
+          <button class="btn-add" id="drp-suggest-btn" onclick="suggestDrpWithAI()" style="white-space:nowrap">🤖 แนะนำ</button>
+        </div>
       </div>
 
       <!-- Other DRPs -->
@@ -617,32 +628,36 @@ const PHARMACISTS = ['ภก.พงศกร นวเลิศปัญญา',
 
 // ── DRP TYPES ────────────────────────────────────────────
 const DRP_TYPES = [
-  'ผู้ป่วยได้รับยาผิดขนาด',
-  'ผู้ป่วยไม่ได้ใช้ยาตามแพทย์สั่ง',
-  'แพทย์เปลี่ยนแปลงการรักษา',
-  'เกิด ADR จากยา',
-  'เกิด Drug interaction',
-  'ได้รับยาซ้ำซ้อนจากรพ.อื่น/รพ.ถ้ำพรรณรา',
-  'ผู้ป่วยรับประทานยาผิดขนาด',
-  'ผู้ป่วยรับประทานยาผิดวิธีใช้',
-  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง',
-  'ผู้ป่วยมาผิดนัด/ขาดนัด',
-  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน',
-  'ยาเหลือสะสม',
-  'ยาหมดก่อนนัด',
-  'ได้ยาไม่ครบรายการ',
-  'การเก็บรักษายาไม่ถูกต้อง',
-  'ได้ยาผิดจำนวน',
-  'ผู้ป่วยไม่ได้รับประทานมื้อเที่ยงจึงไม่รับประทานยา',
-  'อื่นๆ'
+  'ได้รับยาผิดขนาดจากการสั่งจ่าย (Incorrect Dosage – Prescribing/Dispensing Error)',
+  'ไม่ใช้ยาตามแพทย์สั่ง (Noncompliance / Nonadherence)',
+  'มีการปรับเปลี่ยนแผนการรักษาโดยแพทย์ (Therapy Modification)',
+  'เกิดอาการไม่พึงประสงค์จากการใช้ยา (Adverse Drug Reaction, ADR)',
+  'เกิดปฏิกิริยาระหว่างยา (Drug Interaction)',
+  'ได้รับยาซ้ำซ้อนจากหลายสถานพยาบาล (Therapeutic Duplication)',
+  'รับประทานยาผิดขนาด (Incorrect Dose Taken by Patient)',
+  'รับประทานยาผิดวิธีใช้ (Improper Drug Use Technique)',
+  'ปรับขนาด/เวลารับประทานยาเอง (Self-Adjusted Dose or Timing – Nonadherence)',
+  'มาผิดนัด/ขาดนัดติดตามการรักษา (Missed Follow-up Appointment)',
+  'ลืมรับประทานยาบางมื้อ/บางวัน (Missed Dose – Nonadherence)',
+  'มียาเหลือสะสม (Medication Nonadherence – Leftover Medication)',
+  'ยาหมดก่อนถึงวันนัด (Early Medication Depletion – Overuse)',
+  'ได้รับยาไม่ครบตามรายการที่สั่ง (Incomplete Dispensing)',
+  'เก็บรักษายาไม่ถูกต้อง (Improper Drug Storage)',
+  'ได้รับยาผิดจำนวนจากการจ่ายยา (Dispensing Quantity Error)',
+  'ไม่ได้รับประทานอาหารเที่ยงจึงงดใช้ยา (Missed Dose Due to Skipped Meal)',
+  'อื่นๆ (Others)'
 ];
 
 const DRP_CAUSES = {
-  'ผู้ป่วยรับประทานยาผิดวิธีใช้':['ไม่อ่านฉลากเป็นปัจจุบัน','ไม่อ่านฉลาก','อ่านฉลากผิด','ตามองไม่ชัด','อื่นๆ'],
-  'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน':['ไม่ได้ทานอาหารเที่ยง','ไม่ได้ทานอาหารเช้า','ไม่ได้นำยาติดตัวเมื่อไปธุระ','ติดธุระจึงลืมทาน','ผู้ป่วยจำไม่ได้ว่าทานยาแล้วหรือยัง','ลืมทานมื้อก่อนนอน','ไม่เห็นความสำคัญในการรับประทานยา','อื่นๆ'],
-  'ยาหมดก่อนนัด':['ผู้ป่วยทานยาผิดวิธีใช้','แจ้งจำนวนยาที่เหลือผิด','ผิดนัด','ไม่ทราบสาเหตุ','จ่ายยาผิดจำนวน','แบ่งยาครึ่งเม็ดจนเม็ดยาแตก','ผู้อื่นเอายาผู้ป่วยไปทาน','ไม่เห็นยาที่เหลือ','อื่นๆ'],
-  'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง':['จำนวนเม็ดยาที่ทานต่อมื้อมากเกินไป','เกิด ADR หลังทานยา','ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา','กรณีต้องแบ่งเม็ดยา วิธีบริหารยายากสำหรับผู้ป่วย','แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น','ไม่เห็นความสำคัญในการใช้ยา','คาดเดาอาการตนเองว่าป่วย เช่น ความดันสูง น้ำตาลสูง','ตรวจวัดความดัน/DTX เองที่บ้าน','ผลเลือดปกติในนัดรอบก่อน จึงไม่ทานยา คิดว่าผลเลือดปกติ','กังวลเรื่องการทานยามากเกินไป ทำให้ตับ/ไตพัง','ต้องการรวบมื้อยาในมื้อเดียวกัน','ปรับวิธีใช้ยาตามความสะดวกในการรับประทาน','ปรับยาตามขนาดที่ทานแล้วอาการยังปกติ','ผู้ป่วยมีอาการป่วยจึงหยุดใช้ยา','ผู้ป่วยอาการดีขึ้นแล้วหยุดใช้ยา/ทานเมื่อมีอาการ','อื่นๆ']
+  'รับประทานยาผิดวิธีใช้ (Improper Drug Use Technique)':['ไม่อ่านฉลากเป็นปัจจุบัน','ไม่อ่านฉลาก','อ่านฉลากผิด','ตามองไม่ชัด','อื่นๆ'],
+  'ลืมรับประทานยาบางมื้อ/บางวัน (Missed Dose – Nonadherence)':['ไม่ได้ทานอาหารเที่ยง','ไม่ได้ทานอาหารเช้า','ไม่ได้นำยาติดตัวเมื่อไปธุระ','ติดธุระจึงลืมทาน','ผู้ป่วยจำไม่ได้ว่าทานยาแล้วหรือยัง','ลืมทานมื้อก่อนนอน','ไม่เห็นความสำคัญในการรับประทานยา','อื่นๆ'],
+  'ยาหมดก่อนถึงวันนัด (Early Medication Depletion – Overuse)':['ผู้ป่วยทานยาผิดวิธีใช้','แจ้งจำนวนยาที่เหลือผิด','ผิดนัด','ไม่ทราบสาเหตุ','จ่ายยาผิดจำนวน','แบ่งยาครึ่งเม็ดจนเม็ดยาแตก','ผู้อื่นเอายาผู้ป่วยไปทาน','ไม่เห็นยาที่เหลือ','อื่นๆ'],
+  'ปรับขนาด/เวลารับประทานยาเอง (Self-Adjusted Dose or Timing – Nonadherence)':['จำนวนเม็ดยาที่ทานต่อมื้อมากเกินไป','เกิด ADR หลังทานยา','ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา','กรณีต้องแบ่งเม็ดยา วิธีบริหารยายากสำหรับผู้ป่วย','แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น','ไม่เห็นความสำคัญในการใช้ยา','คาดเดาอาการตนเองว่าป่วย เช่น ความดันสูง น้ำตาลสูง','ตรวจวัดความดัน/DTX เองที่บ้าน','ผลเลือดปกติในนัดรอบก่อน จึงไม่ทานยา คิดว่าผลเลือดปกติ','กังวลเรื่องการทานยามากเกินไป ทำให้ตับ/ไตพัง','ต้องการรวบมื้อยาในมื้อเดียวกัน','ปรับวิธีใช้ยาตามความสะดวกในการรับประทาน','ปรับยาตามขนาดที่ทานแล้วอาการยังปกติ','ผู้ป่วยมีอาการป่วยจึงหยุดใช้ยา','ผู้ป่วยอาการดีขึ้นแล้วหยุดใช้ยา/ทานเมื่อมีอาการ','อื่นๆ']
 };
+
+// ── AI (Groq ผ่าน Cloudflare Worker เดิม — ใช้ร่วมกับ ME_Dashboard.html) ──
+const AI_URL = 'https://admin-error-classify.oatsudster.workers.dev';
+const AI_TOKEN = 'x9kQm2vLpR7wZaN4tY8bJ3cH';
 
 // ── FISCAL MONTHS ────────────────────────────────────────
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -889,9 +904,82 @@ function getDrpData() {
   }).filter(Boolean);
   // Prepend quick DRP if active
   if (quickDrpActive) {
-    return [{type:'ยาเหลือสะสม', cause:'', causeNote:''}, ...others];
+    return [{type:'มียาเหลือสะสม (Medication Nonadherence – Leftover Medication)', cause:'', causeNote:''}, ...others];
   }
   return others;
+}
+
+// ── AI DRP SUGGESTION (ประเภท + สาเหตุ) ───────────────────
+async function classifyOnce(text, categories, context) {
+  const res = await fetch(AI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-App-Token': AI_TOKEN },
+    body: JSON.stringify({ items: [{ id: '1', text }], categories, context }),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return (data.results && data.results[0] && data.results[0].category) || '';
+}
+
+async function suggestDrpWithAI() {
+  const input = document.getElementById('drp-suggest-text');
+  const btn = document.getElementById('drp-suggest-btn');
+  const text = input.value.trim();
+  if (!text) { showToast('⚠️ กรุณาพิมพ์อาการ/ข้อสังเกตก่อน'); return; }
+  btn.disabled = true; btn.textContent = '🤖 กำลังคิด...';
+  try {
+    const type = await classifyOnce(text, DRP_TYPES.filter(t => t !== 'อื่นๆ (Others)'),
+      'คุณเป็นเภสัชกรคลินิก HT/DM/COPD ช่วยแนะนำประเภทปัญหาจากการใช้ยา (DRP) ที่ตรงที่สุดจากข้อความอาการ/ข้อสังเกต ห้ามอ้างอิงชื่อหรือข้อมูลตัวบุคคล');
+    if (!type) { showToast('🤖 AI ไม่พบ DRP ที่เข้าข่ายชัดเจน กรุณาเพิ่มด้วยตนเอง'); return; }
+
+    const causeOptions = (DRP_CAUSES[type] || []).filter(c => c !== 'อื่นๆ');
+    let cause = '';
+    if (causeOptions.length) {
+      cause = await classifyOnce(text, causeOptions,
+        `คุณเป็นเภสัชกรคลินิก HT/DM/COPD ช่วยแนะนำสาเหตุที่ตรงที่สุดของปัญหา "${type}" จากข้อความอาการ/ข้อสังเกต ห้ามอ้างอิงชื่อหรือข้อมูลตัวบุคคล`);
+    }
+
+    addDrpRow(type, cause);
+    if (!causeOptions.length) {
+      // ประเภทนี้ไม่มีรายการสาเหตุสำเร็จรูป — ใช้ข้อความที่พิมพ์ไว้เติมช่อง "ระบุสาเหตุ" ให้เลย
+      const row = document.getElementById('drp-list').lastElementChild;
+      const note = row && row.querySelector('.drp-cause-note');
+      if (note && !note.value) note.value = text;
+    }
+    showToast('🤖 AI แนะนำ: ' + type + (cause ? ' — สาเหตุ: ' + cause : '') + ' — กรุณาตรวจสอบก่อนบันทึก');
+  } catch (e) {
+    console.error('suggestDrpWithAI:', e);
+    showToast('❌ แนะนำ DRP ด้วย AI ไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 แนะนำ';
+  }
+}
+
+// ── HN HISTORY LOOKUP (ไม่ใช้ AI — ค้นจากข้อมูลในเครื่อง) ──
+function onHnLookup() {
+  const box = document.getElementById('hn-history-box');
+  const hn = document.getElementById('f-hn').value.trim();
+  if (hn.length < 3) { box.style.display = 'none'; return; }
+  const matches = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => b.created - a.created);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  const last = matches[0];
+
+  if (!document.getElementById('f-name').value.trim()) {
+    const names = new Set(matches.map(m => m.name).filter(Boolean));
+    if (names.size === 1) document.getElementById('f-name').value = [...names][0];
+  }
+
+  const lastDrpTypes = [...new Set((last.drps||[]).map(d => d.type).filter(Boolean))];
+  const typeCounts = {};
+  matches.forEach(m => (m.drps||[]).forEach(d => { if (d.type) typeCounts[d.type] = (typeCounts[d.type]||0) + 1; }));
+  const repeatDrps = Object.entries(typeCounts).filter(([,n]) => n >= 2).map(([t]) => t);
+
+  box.innerHTML =
+    `📖 <strong>ประวัติเดิม (${matches.length} ครั้ง):</strong> ล่าสุด ${escHtml(thDate(last.date))} (${escHtml(last.clinic)})` +
+    (lastDrpTypes.length ? `<br>🔍 พบ DRP ครั้งก่อน: ${lastDrpTypes.map(escHtml).join(', ')}` : '') +
+    (repeatDrps.length ? `<br>⚠️ DRP ที่พบซ้ำหลายครั้ง: ${repeatDrps.map(escHtml).join(', ')}` : '') +
+    (last.pharmNote ? `<br>📝 บันทึกเภสัชกรครั้งก่อน: ${escHtml(last.pharmNote)}` : '');
+  box.style.display = 'block';
 }
 
 // ── LEFTOVER ROWS ────────────────────────────────────────
@@ -1096,7 +1184,8 @@ function submitVisit() {
 
 function clearForm() {
   document.getElementById('f-date').value = todayTH();
-  ['f-hn','f-name','f-notes','f-pharmnote'].forEach(id=>document.getElementById(id).value='');
+  ['f-hn','f-name','f-notes','f-pharmnote','drp-suggest-text'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('hn-history-box').style.display = 'none';
   ['chk-adherence','chk-noleftover','chk-insulin','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
   toggleInsulinIcebox();
   document.getElementById('drp-list').innerHTML = '';
@@ -1318,12 +1407,136 @@ function calcKPIs(clinic) {
   const totalSaving = visits.reduce((s,v)=>s+(v.totalSaving||0),0);
   const htPmTotal = sessions.filter(s=>s.clinic==='HT'||clinic!=='all').reduce((s,r)=>s+(r.htPmCount||0),0);
   const attendPct = (attended.length+missed.length)>0 ? Math.round(attended.length/(attended.length+missed.length)*1000)/10 : 0;
+  // สรุปเหตุผลที่ขาดลงคลินิก เพื่อแสดงในรายงานให้ชัดเจนขึ้น (จัดกลุ่มจากข้อความเหตุผล)
+  const missedReasonCounts = {};
+  missed.forEach(s => {
+    const r = (s.reason||'').trim();
+    let bucket = 'อื่นๆ';
+    if (r.includes('ลา')) bucket = 'ลา';
+    else if (r.includes('ประชุม')) bucket = 'ติดประชุม';
+    else if (r.includes('ราชการ')) bucket = 'ติดราชการ';
+    missedReasonCounts[bucket] = (missedReasonCounts[bucket]||0) + 1;
+  });
   // "วันนี้" ไม่ควรถูกกรองด้วยตัวกรองช่วงเวลา (ปีงบ/เดือน) — ให้แสดงยอดวันนี้จริงเสมอ
   const todayISO = thToISO(todayTH());
   const todayVisits = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
   const todayCount = todayVisits.filter(v=>v.date===todayISO).length;
-  return {visits:visits.length, attended:attended.length, missed:missed.length, attendPct,
+  return {visits:visits.length, attended:attended.length, missed:missed.length, attendPct, missedReasonCounts,
           withDRP:withDRP.length, drpPct, totalSaving, htPmTotal, todayCount};
+}
+
+// ── DRP ANOMALY DETECTION (สถิติล้วน ไม่ใช้ AI) ────────────
+function monthlyDrpCounts(clinic, monthsBack=6) {
+  const list = clinic==='all' ? visitRecords : visitRecords.filter(r=>r.clinic===clinic);
+  const byMonth = {};
+  list.forEach(r => {
+    const key = (r.date||'').slice(0,7);
+    if (!key) return;
+    if (!byMonth[key]) byMonth[key] = {};
+    (r.drps||[]).forEach(d => { if (d.type) byMonth[key][d.type] = (byMonth[key][d.type]||0) + 1; });
+  });
+  const months = Object.keys(byMonth).sort();
+  return months.slice(-monthsBack).map(m => ({month:m, counts:byMonth[m]}));
+}
+
+function detectDrpAnomalies(clinic) {
+  const rows = monthlyDrpCounts(clinic, 4);
+  if (rows.length < 2) return [];
+  const latest = rows[rows.length-1];
+  const prior = rows.slice(0, -1);
+  const types = new Set();
+  prior.forEach(r => Object.keys(r.counts).forEach(t=>types.add(t)));
+  Object.keys(latest.counts).forEach(t=>types.add(t));
+  const anomalies = [];
+  types.forEach(t => {
+    const avg = prior.length ? prior.reduce((s,r)=>s+(r.counts[t]||0),0) / prior.length : 0;
+    const cur = latest.counts[t] || 0;
+    if (avg >= 2 && cur >= avg * 1.5) anomalies.push({type:t, current:cur, avg:Math.round(avg*10)/10});
+  });
+  return anomalies;
+}
+
+function anomalyBannerHtml(clinic) {
+  const anomalies = detectDrpAnomalies(clinic);
+  if (!anomalies.length) return '';
+  return `<div style="margin-bottom:16px;padding:12px 14px;background:var(--gold-light);border:1.5px solid var(--warning);border-radius:10px;font-size:13px;color:var(--warning)">
+    ${anomalies.map(a => `⚠️ DRP "${escHtml(a.type)}" เพิ่มขึ้นผิดปกติเดือนนี้ (${a.current} ครั้ง เทียบเฉลี่ย ${a.avg} ครั้ง)`).join('<br>')}
+  </div>`;
+}
+
+// ── AI SUMMARY / Q&A (ส่งเฉพาะตัวเลขสรุป ไม่มี HN/ชื่อผู้ป่วย) ──
+function buildAiStatsForPeriod(clinic) {
+  const kpi = calcKPIs(clinic);
+  const visits = getFilteredVisits(clinic);
+  const drpCounts = {};
+  visits.forEach(v => (v.drps||[]).forEach(d => { if (d.type) drpCounts[d.type] = (drpCounts[d.type]||0) + 1; }));
+  return {
+    clinic,
+    period: window.reportFY ? ('ปีงบ '+window.reportFY) : window.reportMonth ? window.reportMonth : 'ทั้งหมด',
+    totalVisits: kpi.visits, drpFoundPct: kpi.drpPct, attendPct: kpi.attendPct,
+    totalSavingBaht: Math.round(kpi.totalSaving), drpCounts,
+  };
+}
+
+async function generateAiSummary() {
+  const btn = document.getElementById('ai-summary-btn');
+  const box = document.getElementById('ai-summary-box');
+  const clinic = window.reportClinic || activeTab || 'HT';
+  btn.disabled = true; btn.textContent = '🤖 กำลังสรุป...';
+  box.textContent = '';
+  try {
+    const res = await fetch(AI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': AI_TOKEN },
+      body: JSON.stringify({
+        mode: 'ask',
+        question: 'สรุปภาพรวมผลงานเภสัชกรรมคลินิกช่วงเวลานี้เป็นภาษาไทย กระชับ 3-5 บรรทัด เน้นจุดเด่นและจุดที่ควรติดตาม',
+        data: buildAiStatsForPeriod(clinic),
+        context: 'สถิติเภสัชกรรมคลินิก HT/DM/COPD ของโรงพยาบาล ไม่มีข้อมูลผู้ป่วยรายบุคคล',
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    box.textContent = data.answer || 'ไม่มีคำตอบ';
+  } catch (e) {
+    console.error('generateAiSummary:', e);
+    showToast('❌ สรุปด้วย AI ไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 สรุปภาพรวมด้วย AI';
+  }
+}
+
+async function askAiAboutReport() {
+  const input = document.getElementById('ai-ask-input');
+  const btn = document.getElementById('ai-ask-btn');
+  const box = document.getElementById('ai-ask-box');
+  const question = input.value.trim();
+  if (!question) { showToast('⚠️ กรุณาพิมพ์คำถามก่อน'); return; }
+  const clinic = window.reportClinic || activeTab || 'HT';
+  btn.disabled = true; btn.textContent = '❓ กำลังคิด...';
+  box.textContent = '';
+  try {
+    const stats = buildAiStatsForPeriod(clinic);
+    stats.monthlyDrpCounts = monthlyDrpCounts(clinic, 6);
+    const res = await fetch(AI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': AI_TOKEN },
+      body: JSON.stringify({
+        mode: 'ask',
+        question,
+        data: stats,
+        context: 'สถิติเภสัชกรรมคลินิก HT/DM/COPD ของโรงพยาบาล ไม่มีข้อมูลผู้ป่วยรายบุคคล ตอบจากตัวเลขที่ให้มาเท่านั้น',
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    box.textContent = data.answer || 'ไม่มีคำตอบ';
+  } catch (e) {
+    console.error('askAiAboutReport:', e);
+    showToast('❌ ถาม AI ไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '❓ ถาม AI';
+  }
 }
 
 function dailySummaryRows(clinic, days=14) {
@@ -1360,9 +1573,9 @@ function renderAttendanceSummaryTable(clinic) {
   tbody.innerHTML = rows.map(r => `<tr class="${r.attended?'':' session-miss'}">
     <td style="white-space:nowrap">${escHtml(thDate(r.date))}</td>
     <td><span class="badge badge-${escHtml(String(r.clinic||'').toLowerCase())}">${escHtml(r.clinic)}</span></td>
-    <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':'<span class="tag-missed">❌ ไม่ได้ลง</span>'}</td>
+    <td>${r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger);margin-top:2px">${escHtml(r.reason||'')}</div>`}</td>
     <td style="font-size:12px">${escHtml(r.pharmacist||'')}</td>
-    <td style="font-size:11px;color:var(--text-mid)">${escHtml(r.attended?(r.notes||''):(r.reason||''))}</td>
+    <td style="font-size:11px;color:var(--text-mid)">${escHtml(r.notes||'')}</td>
   </tr>`).join('');
 }
 
@@ -1394,6 +1607,7 @@ function renderMain() {
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     ${periodBarHtml()}
+    ${anomalyBannerHtml(clinic)}
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">ผู้ป่วยที่ให้คำปรึกษา</div>
@@ -1408,7 +1622,7 @@ function renderMain() {
       <div class="kpi-card">
         <div class="kpi-label">อัตราการลงคลินิก</div>
         <div class="kpi-val ${color}">${kpi.attendPct}%</div>
-        <div class="kpi-sub">ลง ${kpi.attended} / ขาด ${kpi.missed} ครั้ง</div>
+        <div class="kpi-sub">ลง ${kpi.attended} / ขาด ${kpi.missed} ครั้ง${kpi.missed>0?`<br><span style="color:var(--danger)">${Object.entries(kpi.missedReasonCounts).map(([k,v])=>escHtml(k)+' '+v).join(', ')}</span>`:''}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">เงินประหยัดสะสม</div>
@@ -1422,6 +1636,18 @@ function renderMain() {
       </div>
     </div>
     ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
+    <div class="table-card">
+      <div class="table-head"><span class="table-title">🤖 สรุป/ถามตอบด้วย AI</span></div>
+      <div style="padding:4px 2px 8px">
+        <button class="btn-add" id="ai-summary-btn" onclick="generateAiSummary()">🤖 สรุปภาพรวมด้วย AI</button>
+        <div id="ai-summary-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <input type="text" id="ai-ask-input" placeholder="ถามคำถามเกี่ยวกับข้อมูลนี้ เช่น DRP ประเภทไหนเพิ่มขึ้นเทียบเดือนก่อน" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+          <button class="btn-add" id="ai-ask-btn" onclick="askAiAboutReport()">❓ ถาม AI</button>
+        </div>
+        <div id="ai-ask-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
+      </div>
+    </div>
     <div class="chart-grid">
       <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
