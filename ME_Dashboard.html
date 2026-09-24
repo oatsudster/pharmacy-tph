@@ -93,6 +93,8 @@
 
   /* ── KPI CARDS ───────────────────────────────── */
   .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 22px; }
+  /* minmax(0,1fr) กัน grid ถูกดันกว้างเกินจอเมื่อหัวข้อการ์ดยาว (min-content ของข้อความไทยไม่ตัดคำ) */
+  .kpi-grid > * { min-width: 0; }
   .kpi-card {
     background: var(--surface); border-radius: var(--radius);
     box-shadow: var(--shadow); padding: 20px 22px;
@@ -105,7 +107,7 @@
   .kpi-card.danger { border-top-color: var(--danger); }
   .kpi-card.success{ border-top-color: var(--success); }
   .kpi-card.teal   { border-top-color: #0891b2; }
-  .kpi-label { font-size: 16px; font-weight: 600; color: var(--text-light); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-label { font-size: 16px; font-weight: 600; color: var(--text-light); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; overflow-wrap: anywhere; }
   .kpi-value { font-size: 44px; font-weight: 800; color: var(--text); line-height: 1; }
   .kpi-sub { font-size: 15px; color: var(--text-light); margin-top: 6px; }
   .kpi-trend { font-size: 13px; font-weight: 700; margin-top: 6px; min-height: 18px; }
@@ -191,6 +193,29 @@
   tbody tr:hover { background: var(--primary-light); }
   tbody td { padding: 12px 18px; vertical-align: middle; }
   .empty-state { text-align: center; padding: 52px 20px; color: var(--text-light); }
+
+  /* -- FIT TABLE: บีบให้เห็นทุกคอลัมน์ในหน้าเดียว ไม่ต้องเลื่อนซ้าย-ขวา -- */
+  .table-wrap.fit { overflow-x: hidden; }
+  .table-wrap.fit table { table-layout: fixed; width: 100%; }
+  .table-wrap.fit thead th {
+    padding: 10px 7px; font-size: 13px !important; line-height: 1.25;
+    white-space: normal !important; overflow-wrap: anywhere; word-break: break-word;
+  }
+  .table-wrap.fit tbody td {
+    padding: 9px 7px; font-size: 14px !important; line-height: 1.4;
+    white-space: normal !important; overflow-wrap: anywhere; word-break: break-word;
+    min-width: 0 !important; max-width: none !important;
+  }
+  .table-wrap.fit td.nw { white-space: nowrap !important; }
+  .table-wrap.fit td.pw { white-space: pre-wrap !important; }
+  .table-wrap.fit .badge { padding: 2px 9px; font-size: 14px; }
+  .table-wrap.fit .btn { padding: 3px 9px !important; font-size: 12px !important; }
+  .table-wrap.fit .drug-form-badge { font-size: 10px !important; padding: 1px 4px !important; }
+  @media (max-width: 1500px) {
+    .table-wrap.fit thead th { padding: 8px 5px; font-size: 12px !important; }
+    .table-wrap.fit tbody td { padding: 8px 5px; font-size: 13px !important; }
+    .table-wrap.fit .badge { padding: 2px 7px; font-size: 13px; }
+  }
 
   /* ── FILTERS ─────────────────────────────────── */
   .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-end; }
@@ -671,7 +696,7 @@
     <span id="ov-count" style="font-size:14px;color:var(--text-light);margin-left:4px;"></span>
   </div>
   <div style="padding:24px;overflow-y:auto;background:var(--bg);flex:1;">
-    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px;">
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:20px;">
       <div class="kpi-card"><div class="kpi-label">ME รวมทั้งโรงพยาบาล</div><div class="kpi-value" id="ov-kpi-total" style="color:var(--primary)">0</div><div class="kpi-sub">ทุกแผนก</div></div>
       <div class="kpi-card" style="border-top-color:#2563eb"><div class="kpi-label">OPD ผู้ป่วยนอก</div><div class="kpi-value" id="ov-kpi-opd" style="color:#2563eb">0</div><div class="kpi-sub">รายการ</div></div>
       <div class="kpi-card" style="border-top-color:#16a34a"><div class="kpi-label">IPD ผู้ป่วยใน</div><div class="kpi-value" id="ov-kpi-ipd" style="color:#16a34a">0</div><div class="kpi-sub">รายการ</div></div>
@@ -707,7 +732,7 @@
         <h3 id="ov-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
         <button onclick="document.getElementById('ov-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
       </div>
-      <div id="ov-detail-body" class="table-wrap"></div>
+      <div id="ov-detail-body" class="table-wrap fit"></div>
     </div>
   </div>
 </div>
@@ -758,7 +783,7 @@
           <h3 id="opd-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
           <button onclick="document.getElementById('opd-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
         </div>
-        <div id="opd-detail-body" class="table-wrap"></div>
+        <div id="opd-detail-body" class="table-wrap fit"></div>
       </div>
     </div>
   </div>
@@ -830,8 +855,9 @@
         </div>
       </div>
       <div id="opd-record-count" style="font-size:14px;color:var(--text-light);margin-bottom:10px"></div>
-      <div class="table-wrap">
+      <div class="table-wrap fit">
         <table>
+          <colgroup><col style="width:3%"><col style="width:8%"><col style="width:5%"><col style="width:6%"><col style="width:10%"><col style="width:13%"><col style="width:8%"><col style="width:9%"><col style="width:5%"><col style="width:13%"><col style="width:10%"><col style="width:10%"></colgroup>
           <thead><tr>
             <th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th>
             <th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th>
@@ -1091,7 +1117,7 @@
           <h3 id="ipd-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
           <button onclick="document.getElementById('ipd-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
         </div>
-        <div id="ipd-detail-body" class="table-wrap"></div>
+        <div id="ipd-detail-body" class="table-wrap fit"></div>
       </div>
     </div>
   </div>
@@ -1163,8 +1189,9 @@
         </div>
       </div>
       <div id="ipd-record-count" style="font-size:14px;color:var(--text-light);margin-bottom:10px"></div>
-      <div class="table-wrap">
+      <div class="table-wrap fit">
         <table>
+          <colgroup><col style="width:3%"><col style="width:8%"><col style="width:5%"><col style="width:6%"><col style="width:10%"><col style="width:13%"><col style="width:8%"><col style="width:9%"><col style="width:5%"><col style="width:13%"><col style="width:10%"><col style="width:10%"></colgroup>
           <thead><tr>
             <th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th>
             <th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th>
@@ -1432,7 +1459,7 @@
         <h3 id="adminrpt-detail-title" style="margin:0;font-size:16px;color:var(--primary);font-weight:800"></h3>
         <button onclick="document.getElementById('adminrpt-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
       </div>
-      <div id="adminrpt-detail-body" class="table-wrap"></div>
+      <div id="adminrpt-detail-body" class="table-wrap fit"></div>
     </div>
   </div>
 </div>
@@ -1546,7 +1573,7 @@
       <h3 id="er-detail-title" style="margin:0;font-size:18px;color:var(--primary);font-weight:800"></h3>
       <button onclick="document.getElementById('er-detail-panel').style.display='none'" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
     </div>
-    <div id="er-detail-body" class="table-wrap"></div>
+    <div id="er-detail-body" class="table-wrap fit"></div>
   </div>
   </div>
 <!-- ========== ENTRY FORM ========== -->
@@ -1774,8 +1801,9 @@
         </select>
       </div>
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap fit">
       <table>
+        <colgroup><col style="width:3%"><col style="width:8%"><col style="width:5%"><col style="width:7%"><col style="width:11%"><col style="width:4%"><col style="width:9%"><col style="width:11%"><col style="width:16%"><col style="width:6%"><col style="width:5%"><col style="width:5%"><col style="width:10%"></colgroup>
         <thead>
           <tr>
             <th>#</th>
@@ -2507,14 +2535,14 @@ function renderTable() {
       if (!isME) {
         return `<tr style="background:#f9fafb; color:var(--text-light)">
           <td>${i+1}</td>
-          <td>${formatDateThai(r.date)}</td>
+          <td class="nw">${formatDateThai(r.date)}</td>
           <td>—</td>
           <td colspan="7" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
           <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
           <td>—</td>
-          <td style="white-space:nowrap">
+          <td>
             <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
             <button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button>
           </td>
@@ -2522,8 +2550,8 @@ function renderTable() {
       }
       return `<tr>
         <td style="color:var(--text-light)">${i+1}</td>
-        <td>${formatDateThai(r.date)}</td>
-        <td style="white-space:nowrap">${formatTimeThai(r.time)}</td>
+        <td class="nw">${formatDateThai(r.date)}</td>
+        <td class="nw">${formatTimeThai(r.time)}</td>
         <td>${escHtml(r.hn) || '—'}</td>
         <td>${escHtml(r.patient) || '—'}</td>
         <td style="text-align:center">${escHtml(r.age) || '—'}</td>
@@ -2540,7 +2568,7 @@ function renderTable() {
         <td>${escHtml(r.ward) || '—'}</td>
         <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
         <td><span class="badge sev-${escHtml(r.severity)}">${escHtml(r.severity)}</span></td>
-        <td style="white-space:nowrap">
+        <td>
           <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
           <button class="btn btn-danger" style="padding:4px 12px;font-size:14px" onclick="deleteRecord(${r.id})">ลบ</button>
         </td>
@@ -2868,7 +2896,8 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
 // ======= DETAIL MODAL =======
 function _buildERDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
-  return '<table><thead><tr>' +
+  return '<table>' + '<colgroup><col style="width:3%"><col style="width:8%"><col style="width:5%"><col style="width:6%"><col style="width:9%"><col style="width:4%"><col style="width:13%"><col style="width:8%"><col style="width:9%"><col style="width:5%"><col style="width:13%"><col style="width:9%"><col style="width:8%"></colgroup>' +
+    '<thead><tr>' +
     '<th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
     '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
     '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
@@ -2880,8 +2909,8 @@ function _buildERDetailTable(recs) {
         : '—';
       return '<tr>' +
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
-        '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-        '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
+        '<td class="nw">'+formatDateThai(r.date)+'</td>' +
+        '<td class="nw">'+formatTimeThai(r.time)+'</td>' +
         '<td>'+(escHtml(r.hn)||'—')+'</td>' +
         '<td>'+(escHtml(r.patient)||'—')+'</td>' +
         '<td style="text-align:center">'+(escHtml(r.age)||'—')+'</td>' +
@@ -2891,7 +2920,7 @@ function _buildERDetailTable(recs) {
         '<td><span class="badge sev-'+escHtml(r.severity)+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
         '<td style="font-size:14px;min-width:160px">'+(escHtml(r.detail)||'—')+'</td>' +
         '<td style="font-size:14px;min-width:120px">'+(escHtml(r.intervention)||'—')+'</td>' +
-        '<td style="white-space:nowrap;font-size:14px">'+(escHtml(r.reporter)||'—')+'</td>' +
+        '<td>'+(escHtml(r.reporter)||'—')+'</td>' +
         '</tr>';
     }).join('') +
     '</tbody></table>';
@@ -3741,14 +3770,15 @@ function showAdminCatDetail(cat) {
   if (!panel || !title || !body) return;
   title.textContent = cat + ' — ' + recs.length + ' รายการ';
   body.innerHTML = recs.length ? (
-    '<table><thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    '<table>' + '<colgroup><col style="width:10%"><col style="width:8%"><col style="width:14%"><col style="width:20%"><col style="width:7%"><col style="width:41%"></colgroup>' +
+    '<thead><tr><th>วันที่</th><th>HN</th><th>ผู้ป่วย</th><th>ยา</th><th>ระดับ</th><th>รายละเอียด</th></tr></thead><tbody>' +
     recs.map(r => `<tr>
-      <td style="white-space:nowrap">${escHtml(formatDateThai(r.date))}</td>
+      <td class="nw">${escHtml(formatDateThai(r.date))}</td>
       <td>${escHtml(r.hn || '—')}</td>
       <td>${escHtml(r.patient || '—')}</td>
       <td>${escHtml(r.drug || '—')}</td>
       <td><span class="badge sev-${escHtml(r.severity || '')}">${escHtml(r.severity || '—')}</span></td>
-      <td style="white-space:pre-wrap;max-width:420px">${escHtml(r.detail || '—')}</td>
+      <td class="pw">${escHtml(r.detail || '—')}</td>
     </tr>`).join('') +
     '</tbody></table>'
   ) : '<div style="text-align:center;color:var(--text-light);padding:24px">ไม่มีรายการ</div>';
@@ -4060,8 +4090,8 @@ function renderHosXPTable(dept) {
 
   if(tbody) tbody.innerHTML = recs.map((r,i) => `<tr>
     <td style="color:var(--text-light)">${i+1}</td>
-    <td style="white-space:nowrap">${formatDateThai(r.date)}</td>
-    <td style="white-space:nowrap">${escHtml(r.time)||'—'}</td>
+    <td class="nw">${formatDateThai(r.date)}</td>
+    <td class="nw">${escHtml(r.time)||'—'}</td>
     <td style="font-size:15px">${escHtml(r.hn)||'—'}</td>
     <td style="font-size:15px">${escHtml(r.patient)||'—'}</td>
     <td>${escHtml(r.drug)||'—'}</td>
@@ -4097,12 +4127,13 @@ function _buildHosXPDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:30px">ไม่มีข้อมูล</p>';
   const isSeed = recs[0].source === 'hosxp_manual';
   return (isSeed ? '<div style="background:#fef9c3;padding:8px 14px;border-radius:8px;font-size:14px;margin-bottom:10px;color:#92400e">⚠️ ข้อมูลสรุปรายเดือน — ไม่มีรายละเอียดผู้ป่วยรายบุคคล</div>' : '') +
-    '<table><thead><tr><th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th>' +
+    '<table>' + '<colgroup><col style="width:3%"><col style="width:9%"><col style="width:6%"><col style="width:7%"><col style="width:11%"><col style="width:15%"><col style="width:9%"><col style="width:11%"><col style="width:6%"><col style="width:15%"><col style="width:8%"></colgroup>' +
+    '<thead><tr><th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th>' +
     '<th>ชื่อผู้ป่วย</th><th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th><th>ผู้สั่งยา</th></tr></thead><tbody>' +
     recs.map((r,i) => '<tr>' +
       '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
-      '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-      '<td>'+(escHtml(r.time)||'—')+'</td>' +
+      '<td class="nw">'+formatDateThai(r.date)+'</td>' +
+      '<td class="nw">'+(escHtml(r.time)||'—')+'</td>' +
       '<td>'+(escHtml(r.hn)||'—')+'</td>' +
       '<td>'+(escHtml(r.patient)||'—')+'</td>' +
       '<td>'+(escHtml(r.drug)||'—')+'</td>' +
@@ -4117,7 +4148,8 @@ function _buildHosXPDetailTable(recs) {
 // (ต่างจาก _buildHosXPDetailTable ที่สมมติว่าเป็น OPD/IPD อย่างเดียว)
 function _buildOverviewDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:30px">ไม่มีข้อมูล</p>';
-  return '<table><thead><tr><th>#</th><th>แผนก</th><th>วันที่</th><th>เวลา</th>' +
+  return '<table>' + '<colgroup><col style="width:3%"><col style="width:8%"><col style="width:9%"><col style="width:6%"><col style="width:18%"><col style="width:10%"><col style="width:6%"><col style="width:22%"><col style="width:18%"></colgroup>' +
+    '<thead><tr><th>#</th><th>แผนก</th><th>วันที่</th><th>เวลา</th>' +
     '<th>ยา</th><th>ขั้นตอน</th><th>ระดับ</th><th>รายละเอียด</th><th>ผู้บันทึก</th></tr></thead><tbody>' +
     recs.map((r,i) => {
       const dept = r.dept || 'ER';
@@ -4128,8 +4160,8 @@ function _buildOverviewDetailTable(recs) {
       return '<tr>' +
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
         '<td><span style="background:'+deptColor+'22;color:'+deptColor+';font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">'+escHtml(dept)+'</span></td>' +
-        '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
-        '<td>'+(escHtml(r.time)||'—')+'</td>' +
+        '<td class="nw">'+formatDateThai(r.date)+'</td>' +
+        '<td class="nw">'+(escHtml(r.time)||'—')+'</td>' +
         '<td>'+drugStr+'</td>' +
         '<td style="font-size:14px">'+stage+'</td>' +
         '<td><span class="badge sev-'+escHtml(r.severity||'')+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
@@ -4229,7 +4261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <h3 id="detail-modal-title" style="margin:0;font-size:20px;color:var(--primary);font-weight:800"></h3>
       <button onclick="closeDetailModal()" style="background:#f3f4f6;border:none;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
-    <div id="detail-modal-body" class="table-wrap"></div>
+    <div id="detail-modal-body" class="table-wrap fit"></div>
   </div>
 </div>
 
