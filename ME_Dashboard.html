@@ -834,7 +834,7 @@
         <table>
           <thead><tr>
             <th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th>
-            <th>ยา</th><th>ขั้นตอน</th><th>ระดับ</th><th>หมายเหตุ</th>
+            <th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th>
             <th>ผู้สั่งยา</th><th>เจ้าหน้าที่</th>
           </tr></thead>
           <tbody id="opd-table-body"></tbody>
@@ -1167,7 +1167,7 @@
         <table>
           <thead><tr>
             <th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th>
-            <th>ยา</th><th>ขั้นตอน</th><th>ระดับ</th><th>หมายเหตุ</th>
+            <th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th>
             <th>ผู้สั่งยา</th><th>เจ้าหน้าที่</th>
           </tr></thead>
           <tbody id="ipd-table-body"></tbody>
@@ -1567,7 +1567,7 @@
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
           <input type="text" id="f-date-text" placeholder="01/06/69" maxlength="8"
-                 oninput="formatDateInput(this); updateDatePreview()"
+                 oninput="formatDateInput(this); updateDatePreview(); suggestOrderDate()"
                  style="letter-spacing:.05em">
           <span class="hint" id="date-preview"></span>
         </div>
@@ -1624,9 +1624,16 @@
               </div>
             </div>
             <div class="form-group">
+              <label>วันที่สั่งยา <span style="font-size:13px;color:var(--text-light);font-weight:400">(ในใบสั่งยาที่เกิด ME)</span></label>
+              <input type="text" id="f-order-date-text" placeholder="01/06/69" maxlength="8"
+                     oninput="formatDateInput(this); updateOrderDatePreview(); this.dataset.userEdited='1'"
+                     style="letter-spacing:.05em">
+              <span class="hint" id="order-date-preview">ระบบจะเดาวันที่ให้จากเวลาที่สั่งยา (แก้ไขเองได้)</span>
+            </div>
+            <div class="form-group">
               <label>เวลาที่สั่งยา <span style="font-size:13px;color:var(--text-light);font-weight:400">(ในใบสั่งยาที่เกิด ME)</span></label>
               <input type="text" id="f-order-time-text" placeholder="14:30" maxlength="5"
-                     oninput="formatTimeInput(this); updateOrderTimePreview()"
+                     oninput="formatTimeInput(this); updateOrderTimePreview(); suggestOrderDate()"
                      style="letter-spacing:.08em">
               <span class="hint" id="order-time-preview"></span>
             </div>
@@ -1774,7 +1781,6 @@
             <th>#</th>
             <th>วันที่</th>
             <th>เวลา</th>
-            <th>เวลาสั่งยา</th>
             <th>HN</th>
             <th>ชื่อผู้ป่วย</th>
             <th>อายุ</th>
@@ -2254,6 +2260,50 @@ function updateOrderTimePreview() {
   }
 }
 
+function getOrderDateValue() {
+  return parseDateThai(document.getElementById('f-order-date-text').value);
+}
+
+function updateOrderDatePreview() {
+  const iso = getOrderDateValue();
+  const el  = document.getElementById('order-date-preview');
+  if (iso) {
+    const [y, m, d] = iso.split('-');
+    el.textContent = `✓ ${d}/${m}/${parseInt(y)+543}`;
+    el.style.color = 'var(--success)';
+  } else {
+    const raw = document.getElementById('f-order-date-text').value;
+    el.textContent = raw.length > 0 ? '⚠ รูปแบบ: วว/ดด/ปปปป  เช่น 01/06/2569' : 'ระบบจะเดาวันที่ให้จากเวลาที่สั่งยา (แก้ไขเองได้)';
+    el.style.color = raw.length > 0 ? 'var(--warning)' : 'var(--text-light)';
+  }
+}
+
+// เดาวันที่สั่งยาให้อัตโนมัติจากเวลาที่สั่งยา: เวลาช่วงบ่าย-ดึก (>=16:00) มักเป็นของ
+// เวรบ่ายเมื่อวาน ส่วนเวลาช่วงเที่ยงคืน-เช้า (<16:00) เป็นของวันเดียวกับ "วันที่" หลัก
+// จะไม่ทับค่าที่ผู้ใช้แก้ไขเองแล้ว (dataset.userEdited)
+function suggestOrderDate() {
+  const dateEl = document.getElementById('f-order-date-text');
+  if (!dateEl || dateEl.dataset.userEdited === '1') return;
+  const mainDateIso  = getDateValue();
+  const orderTimeIso = getOrderTimeValue();
+  if (!mainDateIso || !orderTimeIso) return;
+  const hour = parseInt(orderTimeIso.split(':')[0]);
+  const base = new Date(mainDateIso + 'T00:00:00');
+  if (hour >= 16) base.setDate(base.getDate() - 1);
+  const y  = base.getFullYear(), mo = base.getMonth()+1, d = base.getDate();
+  dateEl.value = `${String(d).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${String(y+543).slice(-2)}`;
+  updateOrderDatePreview();
+}
+
+// รวมข้อมูลสถิติ ME: ใช้ "วันที่/เวลาสั่งยา" เป็นวันที่-เวลาเกิดเหตุจริง (ถ้ามี)
+// แทน "วันที่/เวลา" ที่กรอกตอนบันทึกฟอร์ม (ซึ่งอาจเป็นเช้าวันถัดไป)
+function erStatsRecords() {
+  return records.map(r => (r.hasME === false) ? r : Object.assign({}, r, {
+    date: r.orderDate || r.date,
+    time: r.orderTime || r.time,
+  }));
+}
+
 function setDefaultDateTime() {
   const now = new Date();
   const d  = String(now.getDate()).padStart(2,'0');
@@ -2300,6 +2350,10 @@ function clearForm() {
   // reset drug chips
   drugClear();
   document.getElementById('order-time-preview').textContent = '';
+  const orderDateEl = document.getElementById('f-order-date-text');
+  orderDateEl.value = '';
+  orderDateEl.dataset.userEdited = '';
+  updateOrderDatePreview();
   setDefaultDateTime();
   // reset edit state
   editingRecordId = null;
@@ -2339,6 +2393,7 @@ function submitForm(e) {
     hn:       hasME ? document.getElementById('f-hn').value : '',
     patient:  hasME ? document.getElementById('f-patient').value : '',
     age:      hasME ? (document.getElementById('f-age').value ? parseInt(document.getElementById('f-age').value) : '') : '',
+    orderDate: hasME ? (getOrderDateValue() || '') : '',
     orderTime: hasME ? (getOrderTimeValue() || '') : '',
     stage:    hasME ? document.getElementById('f-stage').value : '',
     meType:   hasME ? document.getElementById('f-me-type').value : '',
@@ -2389,6 +2444,15 @@ function editRecord(id) {
   document.getElementById('f-hn').value      = rec.hn || '';
   document.getElementById('f-patient').value = rec.patient || '';
   document.getElementById('f-age').value     = rec.age || '';
+  const orderDateEl = document.getElementById('f-order-date-text');
+  if (rec.orderDate) {
+    const [oy, omo, od] = rec.orderDate.split('-');
+    orderDateEl.value = `${od}/${omo}/${String(parseInt(oy)+543).slice(-2)}`;
+  } else {
+    orderDateEl.value = '';
+  }
+  orderDateEl.dataset.userEdited = '1';
+  updateOrderDatePreview();
   document.getElementById('f-order-time-text').value = rec.orderTime || '';
   updateOrderTimePreview();
   document.getElementById('f-stage').value    = rec.stage || '';
@@ -2416,7 +2480,7 @@ function renderTable() {
   const sev    = document.getElementById('filter-sev').value;
   const month  = document.getElementById('filter-month').value;
 
-  let filtered = records.filter(r => {
+  let filtered = erStatsRecords().filter(r => {
     if (search && !JSON.stringify(r).toLowerCase().includes(search)) return false;
     if (stage && !(r.stage||'').includes(stage)) return false;
     if (sev && r.severity !== sev) return false;
@@ -2445,7 +2509,6 @@ function renderTable() {
           <td>${i+1}</td>
           <td>${formatDateThai(r.date)}</td>
           <td>—</td>
-          <td>—</td>
           <td colspan="7" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
@@ -2461,7 +2524,6 @@ function renderTable() {
         <td style="color:var(--text-light)">${i+1}</td>
         <td>${formatDateThai(r.date)}</td>
         <td style="white-space:nowrap">${formatTimeThai(r.time)}</td>
-        <td style="white-space:nowrap">${r.orderTime ? formatTimeThai(r.orderTime) : '—'}</td>
         <td>${escHtml(r.hn) || '—'}</td>
         <td>${escHtml(r.patient) || '—'}</td>
         <td style="text-align:center">${escHtml(r.age) || '—'}</td>
@@ -2518,7 +2580,7 @@ function renderDashboard() {
 
   // hasME backward-compat: old records (no hasME field) = treated as ME records
   populateERFilter();
-  let meRecs = records.filter(r => r.hasME !== false);
+  let meRecs = erStatsRecords().filter(r => r.hasME !== false);
   const selFY    = parseInt((document.getElementById('er-dash-fy')||{}).value||'') || 0;
   const selMonth = ((document.getElementById('er-dash-month')||{}).value||'');
   if (selFY)    meRecs = meRecs.filter(r => getFiscalYear(r.date) === selFY);
@@ -2726,7 +2788,7 @@ function renderDashboard() {
 
   // ── KPI trend vs prev month (only when no filter active) ──
   if (!selMonth && !selFY) {
-    const allMEFull = records.filter(r => r.hasME !== false);
+    const allMEFull = erStatsRecords().filter(r => r.hasME !== false);
     const prevD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevStr = prevD.getFullYear() + '-' + String(prevD.getMonth()+1).padStart(2,'0');
     setKpiTrend('kpi-month-trend', thisMonth, allMEFull.filter(r => r.date && r.date.startsWith(prevStr)).length);
@@ -2807,7 +2869,7 @@ function renderChart(id, type, labels, data, colors, horizontal=false, onClick=n
 function _buildERDetailTable(recs) {
   if (!recs.length) return '<p style="text-align:center;color:var(--text-light);padding:40px 0;font-size:16px">ไม่มีข้อมูลในหมวดนี้</p>';
   return '<table><thead><tr>' +
-    '<th>#</th><th>วันที่</th><th>เวลา</th><th>เวลาสั่งยา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
+    '<th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th><th>ชื่อผู้ป่วย</th><th>อายุ</th><th>ยา</th>' +
     '<th>ขั้นตอน</th><th>ประเภท ME</th><th>ระดับ</th>' +
     '<th>รายละเอียด</th><th>Intervention</th><th>ผู้บันทึก</th>' +
     '</tr></thead><tbody>' +
@@ -2820,7 +2882,6 @@ function _buildERDetailTable(recs) {
         '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
         '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
         '<td style="white-space:nowrap">'+formatTimeThai(r.time)+'</td>' +
-        '<td style="white-space:nowrap">'+(r.orderTime ? formatTimeThai(r.orderTime) : '—')+'</td>' +
         '<td>'+(escHtml(r.hn)||'—')+'</td>' +
         '<td>'+(escHtml(r.patient)||'—')+'</td>' +
         '<td style="text-align:center">'+(escHtml(r.age)||'—')+'</td>' +
@@ -2841,11 +2902,11 @@ function closeDetailModal() {
 
 // ======= EXPORT CSV =======
 function exportCSV() {
-  const headers = ['ลำดับ','วันที่','เวลา','เวลาสั่งยา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
-  const rows = records.map((r,i) => {
+  const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
+  const rows = erStatsRecords().map((r,i) => {
     const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
     const drugStr = list.map(d => (d.form ? '['+d.form+'] ' : '') + d.name).join(' / ');
-    return [i+1, r.date, formatTimeThai(r.time), r.orderTime ? formatTimeThai(r.orderTime) : '', r.hn, r.patient, r.age, r.stage, r.meType,
+    return [i+1, r.date, formatTimeThai(r.time), r.hn, r.patient, r.age, r.stage, r.meType,
       r.severity, drugStr, r.ward, r.rxDaily, r.detail, r.intervention, r.reporter
     ].map(v => '"' + (v||'').toString().replace(/"/g,'""') + '"').join(',');
   });
@@ -3221,6 +3282,31 @@ function handleHosXPDrop(e, dept) {
   if (file) parseHosXPFile(file, dept);
 }
 
+// แม็ปคอลัมน์ตามชื่อหัวตาราง แทนตำแหน่งตายตัว — กันพัง เมื่อ HosXP เพิ่ม/สลับคอลัมน์
+// (เช่นไฟล์รุ่นใหม่ที่เพิ่มคอลัมน์ "ชนิดความคลาดเคลื่อน" แทรกก่อนคอลัมน์ระดับความรุนแรง)
+// ไฟล์รุ่นเก่า (11 คอลัมน์ ไม่มี "ชนิดความคลาดเคลื่อน") ยังอ่านได้ถูกต้องด้วยตำแหน่งสำรอง
+function mapHosXPColumns(headerRow) {
+  const H = (headerRow || []).map(h => String(h||'').trim());
+  const find = (...names) => { for (const n of names) { const i = H.indexOf(n); if (i !== -1) return i; } return -1; };
+  const col = {
+    seq:      find('ลำดับ'),
+    datetime: find('วันที่/เวลา','วันที่'),
+    hn:       find('HN'),
+    patient:  find('ชื่อผู้ป่วย'),
+    doctor:   find('ผู้สั่งยา','แพทย์'),
+    dept:     find('แผนก'),
+    drug:     find('ชื่อยา','ยา'),
+    stage:    find('ขั้นตอนของความคลาดเคลื่อน','ขั้นตอน'),
+    meType:   find('ชนิดความคลาดเคลื่อน'),
+    severity: find('ระดับความรุนแรง','ความรุนแรง'),
+    detail:   find('หมายเหตุ','รายละเอียด'),
+    reporter: find('เจ้าหน้าที่','ผู้บันทึก'),
+  };
+  const LEGACY_POS = { seq:0, datetime:1, hn:2, patient:3, doctor:4, dept:5, drug:6, stage:7, severity:8, detail:9, reporter:10 };
+  Object.keys(LEGACY_POS).forEach(k => { if (col[k] === -1) col[k] = LEGACY_POS[k]; });
+  return col;
+}
+
 function parseHosXPFile(file, hintDept) {
   const logEl = document.getElementById((hintDept||'opd').toLowerCase() + '-upload-log');
   if (logEl) logEl.textContent = '⏳ กำลังอ่านไฟล์...';
@@ -3232,6 +3318,7 @@ function parseHosXPFile(file, hintDept) {
       const wb   = XLSX.read(data, { type: 'array', cellDates: false });
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const col  = mapHosXPColumns(rows[0]);
 
       let imported = 0, skippedDup = 0, skippedInvalid = 0;
       const deptCount = { OPD: 0, IPD: 0, OTHER: 0 };
@@ -3240,7 +3327,18 @@ function parseHosXPFile(file, hintDept) {
         const row = rows[i];
         if (!row || row.length < 6) { skippedInvalid++; continue; }
 
-        const [seq, dateRaw, hn, patient, doctor, deptRaw, drug, stageRaw, severityRaw, detail, reporter] = row;
+        const seq        = row[col.seq];
+        const dateRaw     = row[col.datetime];
+        const hn          = row[col.hn];
+        const patient     = row[col.patient];
+        const doctor      = row[col.doctor];
+        const deptRaw     = row[col.dept];
+        const drug        = row[col.drug];
+        const stageRaw    = row[col.stage];
+        const meTypeRaw   = col.meType !== -1 ? row[col.meType] : '';
+        const severityRaw = row[col.severity];
+        const detail      = row[col.detail];
+        const reporter    = row[col.reporter];
         if (!dateRaw) { skippedInvalid++; continue; }
 
         // dateRaw can be a number (Excel serial) or a JS Date (if SheetJS auto-converted)
@@ -3280,6 +3378,7 @@ function parseHosXPFile(file, hintDept) {
           drug:     String(drug || ''),
           stage:    stageS,
           stageRaw: String(stageRaw || ''),
+          meType:   String(meTypeRaw || ''),
           severity: sevLetter,
           severityRaw: String(severityRaw || ''),
           detail:   String(detail || ''),
@@ -3337,7 +3436,7 @@ function updateLandingCounts() {
   const opdMonth = opdAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
   const ipdAll   = hosxpRecords.filter(r => r.dept === 'IPD');
   const ipdMonth = ipdAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
-  const erAll    = records.filter(r => r.hasME !== false);
+  const erAll    = erStatsRecords().filter(r => r.hasME !== false);
   const erMonth  = erAll.filter(r => r.date && r.date.startsWith(mPrefix)).length;
 
   const s = (id, total, month) => {
@@ -3696,7 +3795,7 @@ let erFilterDefaultsApplied = false;
 function populateERFilter() {
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
-  const meRecs = records.filter(r => r.hasME !== false);
+  const meRecs = erStatsRecords().filter(r => r.hasME !== false);
   const months = [...new Set(meRecs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
   const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
   const curMonth = new Date().toISOString().slice(0,7);
@@ -3967,6 +4066,7 @@ function renderHosXPTable(dept) {
     <td style="font-size:15px">${escHtml(r.patient)||'—'}</td>
     <td>${escHtml(r.drug)||'—'}</td>
     <td style="font-size:14px">${escHtml(r.stage)||'—'}</td>
+    <td style="font-size:14px">${escHtml(r.meType)||'—'}</td>
     <td><span class="badge sev-${escHtml(r.severity)}">${escHtml(r.severity)||'—'}</span></td>
     <td style="font-size:14px;min-width:160px">${escHtml(r.detail)||'—'}</td>
     <td style="font-size:14px">${escHtml(r.doctor)||'—'}</td>
@@ -3978,10 +4078,10 @@ function renderHosXPTable(dept) {
 function exportHosXPCSV(dept) {
   const recs = hosxpRecords.filter(r => r.dept === dept);
   if (!recs.length) { alert('ไม่มีข้อมูล ' + dept); return; }
-  const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','แผนก','ยา','ขั้นตอน','ระดับ','หมายเหตุ','ผู้สั่งยา','เจ้าหน้าที่'];
+  const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','แผนก','ยา','ขั้นตอน','ชนิดความคลาดเคลื่อน','ระดับ','หมายเหตุ','ผู้สั่งยา','เจ้าหน้าที่'];
   const rows = recs.map((r,i) => [
     i+1, r.date, r.time, r.hn, r.patient, r.dept,
-    r.drug, r.stage, r.severity, r.detail, r.doctor, r.reporter
+    r.drug, r.stage, r.meType, r.severity, r.detail, r.doctor, r.reporter
   ].map(v => '"' + (v||'').toString().replace(/"/g,'""') + '"').join(','));
   const csv = '﻿' + [headers.join(','), ...rows].join('\n');
   const a = document.createElement('a');
@@ -3998,7 +4098,7 @@ function _buildHosXPDetailTable(recs) {
   const isSeed = recs[0].source === 'hosxp_manual';
   return (isSeed ? '<div style="background:#fef9c3;padding:8px 14px;border-radius:8px;font-size:14px;margin-bottom:10px;color:#92400e">⚠️ ข้อมูลสรุปรายเดือน — ไม่มีรายละเอียดผู้ป่วยรายบุคคล</div>' : '') +
     '<table><thead><tr><th>#</th><th>วันที่</th><th>เวลา</th><th>HN</th>' +
-    '<th>ชื่อผู้ป่วย</th><th>ยา</th><th>ขั้นตอน</th><th>ระดับ</th><th>หมายเหตุ</th><th>ผู้สั่งยา</th></tr></thead><tbody>' +
+    '<th>ชื่อผู้ป่วย</th><th>ยา</th><th>ขั้นตอน</th><th>ชนิดความคลาดเคลื่อน</th><th>ระดับ</th><th>หมายเหตุ</th><th>ผู้สั่งยา</th></tr></thead><tbody>' +
     recs.map((r,i) => '<tr>' +
       '<td style="color:var(--text-light)">'+(i+1)+'</td>' +
       '<td style="white-space:nowrap">'+formatDateThai(r.date)+'</td>' +
@@ -4007,6 +4107,7 @@ function _buildHosXPDetailTable(recs) {
       '<td>'+(escHtml(r.patient)||'—')+'</td>' +
       '<td>'+(escHtml(r.drug)||'—')+'</td>' +
       '<td style="font-size:14px">'+(escHtml(r.stage)||'—')+'</td>' +
+      '<td style="font-size:14px">'+(escHtml(r.meType)||'—')+'</td>' +
       '<td><span class="badge sev-'+escHtml(r.severity||'')+'">'+(escHtml(r.severity)||'—')+'</span></td>' +
       '<td style="font-size:14px;min-width:120px">'+(escHtml(r.detail)||'—')+'</td>' +
       '<td style="font-size:14px">'+(escHtml(r.doctor)||'—')+'</td></tr>'
@@ -4218,7 +4319,7 @@ function importData(input) {
 function populateOverviewFilter() {
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
-  const allSrc = [...records.filter(r=>r.hasME!==false), ...hosxpRecords];
+  const allSrc = [...erStatsRecords().filter(r=>r.hasME!==false), ...hosxpRecords];
   const months = [...new Set(allSrc.map(r=>r.date?r.date.substring(0,7):'').filter(Boolean))].sort().reverse();
   const fyEl = document.getElementById('ov-fy');
   if (fyEl) {
@@ -4251,7 +4352,7 @@ function renderOverview() {
     return recs;
   };
 
-  let erRecs  = applyFilter(records.filter(r => r.hasME !== false));
+  let erRecs  = applyFilter(erStatsRecords().filter(r => r.hasME !== false));
   let opdRecs = applyFilter(hosxpRecords.filter(r => r.dept === 'OPD'));
   let ipdRecs = applyFilter(hosxpRecords.filter(r => r.dept === 'IPD'));
   const allRecs = [...opdRecs, ...ipdRecs, ...erRecs];
@@ -4298,7 +4399,7 @@ function renderOverview() {
   // 12-month trend multi-line
   const thMini=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const trendLabels=[], opdT=[], ipdT=[], erT=[];
-  const erAll=records.filter(r=>r.hasME!==false);
+  const erAll=erStatsRecords().filter(r=>r.hasME!==false);
   for(let i=11;i>=0;i--){
     const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
     const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
@@ -4494,7 +4595,7 @@ function renderOverview() {
 // ── EXPORT (ME Dashboard) ────────────────────────────────
 function pageDoExport(fmt) {
   const f    = expGetFilter();
-  const recs = expFilter(records, f);
+  const recs = expFilter(erStatsRecords(), f);
   if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
   const label = expFilterLabel(f);
 
