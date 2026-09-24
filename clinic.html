@@ -330,6 +330,7 @@ tr:hover td{background:#f8faf9;}
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+    <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
     <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
   </div>
@@ -390,12 +391,12 @@ tr:hover td{background:#f8faf9;}
 
       <div class="form-group">
         <label>HN ผู้ป่วย</label>
-        <input type="text" id="f-hn" placeholder="รหัส HN" oninput="onHnLookup()">
+        <input type="text" id="f-hn" placeholder="รหัส HN หรือพิมพ์เพื่อค้น" list="pt-hn-dl" autocomplete="off" oninput="onHnLookup()">
       </div>
 
       <div class="form-group">
         <label>ชื่อ-สกุล</label>
-        <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย">
+        <input type="text" id="f-name" placeholder="ชื่อผู้ป่วย — พิมพ์ชื่อแล้ว HN จะเติมเอง" list="pt-name-dl" autocomplete="off" oninput="onNameLookup()">
       </div>
 
       <div id="hn-history-box" style="display:none;margin:-4px 0 14px;padding:10px 12px;background:var(--gold-light);border:1.5px solid var(--gold);border-radius:9px;font-size:12px;line-height:1.6;color:var(--text-mid)"></div>
@@ -613,6 +614,20 @@ tr:hover td{background:#f8faf9;}
   </div>
 </div>
 
+<!-- PATIENT ROSTER MODAL -->
+<div class="modal-overlay" id="pt-modal" onclick="if(event.target===this)closePatientModal()">
+  <div class="modal-box" style="width:min(780px,95vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="modal-title" style="margin-bottom:0">👥 ทะเบียนผู้ป่วยคลินิก</div>
+      <button onclick="closePatientModal()" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="pt-modal-body"></div>
+  </div>
+</div>
+
+<datalist id="pt-hn-dl"></datalist>
+<datalist id="pt-name-dl"></datalist>
+
 <div id="toast"></div>
 
 <!-- datalist -->
@@ -667,6 +682,7 @@ const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','�
 let visitRecords = [];
 let sessionRecords = [];
 let priceOverrides = {}; // ราคายาที่เภสัชกรเพิ่มเองผ่านหน้า "ยาที่ยังไม่มีราคา" — {ชื่อยา(ตรงกับ DRUG_PRICES key): {p, u}}
+let patientRoster = {}; // ทะเบียนผู้ป่วยนำเข้าจาก HosXP — {HN: {name, clinic}}
 let activeTab = 'HT';
 let editingId = null;
 let chartInstances = {};
@@ -960,14 +976,17 @@ function onHnLookup() {
   const box = document.getElementById('hn-history-box');
   const hn = document.getElementById('f-hn').value.trim();
   if (hn.length < 3) { box.style.display = 'none'; return; }
+
+  // เติมชื่อให้อัตโนมัติจากทะเบียนผู้ป่วย (HosXP) หรือจากรายการที่เคยบันทึกไว้
+  const nameEl = document.getElementById('f-name');
+  if (!nameEl.value.trim()) {
+    const known = patientIndex().get(hn);
+    if (known) nameEl.value = known.name;
+  }
+
   const matches = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => b.created - a.created);
   if (!matches.length) { box.style.display = 'none'; return; }
   const last = matches[0];
-
-  if (!document.getElementById('f-name').value.trim()) {
-    const names = new Set(matches.map(m => m.name).filter(Boolean));
-    if (names.size === 1) document.getElementById('f-name').value = [...names][0];
-  }
 
   const lastDrpTypes = [...new Set((last.drps||[]).map(d => d.type).filter(Boolean))];
   const typeCounts = {};
@@ -980,6 +999,323 @@ function onHnLookup() {
     (repeatDrps.length ? `<br>⚠️ DRP ที่พบซ้ำหลายครั้ง: ${repeatDrps.map(escHtml).join(', ')}` : '') +
     (last.pharmNote ? `<br>📝 บันทึกเภสัชกรครั้งก่อน: ${escHtml(last.pharmNote)}` : '');
   box.style.display = 'block';
+}
+
+// ── PATIENT INDEX + ROSTER (ทะเบียนผู้ป่วยคลินิก) ────────
+// รวมผู้ป่วยสองแหล่งเข้าเป็นดัชนีเดียว เพื่อเติม HN/ชื่อ ให้อัตโนมัติในหน้าบันทึก
+// จะได้ไม่ต้องพิมพ์ใหม่จาก HosXP ทุกครั้ง:
+//   1. patientRoster — ทะเบียนที่ import มาจาก HosXP (ถือว่าชื่อเป็นทางการ)
+//   2. visitRecords  — ผู้ป่วยที่เคยบันทึกเอง (ครอบคลุมคนที่ยังไม่ได้ import)
+let _ptIndex = null, _ptIndexSig = '';
+
+function patientIndexSig() {
+  return Object.keys(patientRoster).length + '|' + visitRecords.length;
+}
+
+function patientIndex() {
+  const sig = patientIndexSig();
+  if (_ptIndex && sig === _ptIndexSig) return _ptIndex;
+  const idx = new Map();
+  Object.keys(patientRoster).forEach(hn => {
+    const p = patientRoster[hn] || {};
+    const name = (p.name || '').trim();
+    if (hn && name) idx.set(hn, { hn: hn, name: name, clinic: p.clinic || '', src: 'roster' });
+  });
+  // เรียงเก่า→ใหม่ เพื่อให้ชื่อจากการบันทึกครั้งล่าสุดทับของเก่า (แต่ไม่ทับทะเบียน HosXP)
+  visitRecords.slice().sort((a, b) => (a.created || 0) - (b.created || 0)).forEach(r => {
+    const hn = (r.hn || '').trim(), name = (r.name || '').trim();
+    if (!hn || !name) return;
+    const cur = idx.get(hn);
+    if (cur && cur.src === 'roster') return;
+    idx.set(hn, { hn: hn, name: name, clinic: r.clinic || '', src: 'visit' });
+  });
+  _ptIndex = idx; _ptIndexSig = sig;
+  return idx;
+}
+
+function invalidatePatientIndex() { _ptIndex = null; _ptIndexSig = ''; }
+
+// datalist ให้ช่อง HN และช่องชื่อ — พิมพ์ทางไหนก็ค้นเจอ
+function renderPatientDatalists() {
+  const hnDl = document.getElementById('pt-hn-dl');
+  const nmDl = document.getElementById('pt-name-dl');
+  if (!hnDl || !nmDl) return;
+  const idx = patientIndex();
+  if (hnDl.dataset.sig === _ptIndexSig) return;
+  const byName = new Map();
+  let hnHtml = '';
+  idx.forEach(p => {
+    hnHtml += '<option value="' + escHtml(p.hn) + '" label="' + escHtml(p.name) + '">';
+    if (!byName.has(p.name)) byName.set(p.name, []);
+    byName.get(p.name).push(p.hn);
+  });
+  let nmHtml = '';
+  byName.forEach((hns, name) => {
+    nmHtml += '<option value="' + escHtml(name) + '" label="HN ' + escHtml(hns.join(', ')) + '">';
+  });
+  hnDl.innerHTML = hnHtml;
+  nmDl.innerHTML = nmHtml;
+  hnDl.dataset.sig = _ptIndexSig;
+  nmDl.dataset.sig = _ptIndexSig;
+}
+
+// พิมพ์/เลือกชื่อ แล้วเติม HN ให้ — ชื่อซ้ำกันหลายคนจะไม่เดาให้ ต้องเลือก HN เอง
+function onNameLookup() {
+  const nameEl = document.getElementById('f-name');
+  const hnEl   = document.getElementById('f-hn');
+  const name   = nameEl.value.trim();
+  if (!name || hnEl.value.trim()) return;
+  const hits = [];
+  patientIndex().forEach(p => { if (p.name === name) hits.push(p); });
+  if (hits.length === 1) { hnEl.value = hits[0].hn; onHnLookup(); return; }
+  // ชื่อซ้ำกันหลายคน — ไม่เดาให้ แต่ยื่น HN ที่เป็นไปได้ให้กดเลือก
+  if (hits.length > 1) {
+    const box = document.getElementById('hn-history-box');
+    box.innerHTML = '👥 <strong>ชื่อนี้มี ' + hits.length + ' HN</strong> — เลือก HN ที่ถูกต้อง: ' +
+      hits.map(p => '<button type="button" onclick="pickPatientHn(' + escHtml(JSON.stringify(p.hn)) + ')" ' +
+        'style="margin:3px 4px 0 0;padding:4px 11px;border:1.5px solid var(--gold);border-radius:7px;' +
+        'background:#fff;color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">' +
+        escHtml(p.hn) + '</button>').join('');
+    box.style.display = 'block';
+  }
+}
+
+function pickPatientHn(hn) {
+  document.getElementById('f-hn').value = hn;
+  onHnLookup();
+}
+
+// ── ROSTER IMPORT ────────────────────────────────────────
+// HosXP แต่ละ รพ. export หัวตารางไม่เหมือนกัน จึงเดาคอลัมน์ให้ก่อน
+// แล้วให้ผู้ใช้เลือกเองได้ทุกคอลัมน์ ก่อนยืนยันนำเข้า
+const PT_HDR = {
+  hn:     ['hn', 'เลขที่ hn', 'เลข hn', 'รหัสผู้ป่วย', 'hn_no', 'hn no', 'hncode'],
+  prefix: ['คำนำหน้า', 'คำนำหน้าชื่อ', 'prefix', 'pname', 'title'],
+  first:  ['ชื่อผู้ป่วย', 'ชื่อ-สกุล', 'ชื่อ - สกุล', 'ชื่อสกุล', 'ชื่อ-นามสกุล', 'ชื่อ นามสกุล',
+           'ผู้ป่วย', 'pt_name', 'ptname', 'patient_name', 'patient', 'fname', 'first_name', 'ชื่อ', 'name'],
+  last:   ['นามสกุล', 'สกุล', 'lname', 'last_name', 'lastname', 'surname'],
+  clinic: ['คลินิก', 'ชื่อคลินิก', 'clinic', 'clinic_name', 'ประเภทคลินิก'],
+};
+
+let _ptPending = null; // {rows, headerRow, cols, fileName}
+
+function _ptNorm(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+
+function _ptFindHeaderRow(rows) {
+  const limit = Math.min(rows.length, 15);
+  for (let i = 0; i < limit; i++) {
+    const row = rows[i] || [];
+    for (let c = 0; c < row.length; c++) {
+      if (PT_HDR.hn.indexOf(_ptNorm(row[c])) !== -1) return i;
+    }
+  }
+  return 0;
+}
+
+function _ptDetectCols(header) {
+  const cols = { hn: -1, prefix: -1, first: -1, last: -1, clinic: -1 };
+  Object.keys(cols).forEach(key => {
+    for (let c = 0; c < header.length; c++) {
+      if (PT_HDR[key].indexOf(_ptNorm(header[c])) !== -1) { cols[key] = c; break; }
+    }
+  });
+  return cols;
+}
+
+function onPatientFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+      if (!rows.length) { showToast('⚠️ ไฟล์นี้ไม่มีข้อมูล'); return; }
+      const headerRow = _ptFindHeaderRow(rows);
+      _ptPending = {
+        rows: rows,
+        headerRow: headerRow,
+        cols: _ptDetectCols(rows[headerRow] || []),
+        fileName: file.name,
+      };
+      renderPatientModal();
+    } catch (err) {
+      showToast('⚠️ อ่านไฟล์ไม่สำเร็จ: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  ev.target.value = '';
+}
+
+function onPatientColChange(key, val) {
+  if (!_ptPending) return;
+  _ptPending.cols[key] = parseInt(val, 10);
+  renderPatientModal();
+}
+
+function collectPatientRows() {
+  if (!_ptPending) return [];
+  const rows = _ptPending.rows, cols = _ptPending.cols;
+  const out = [], seen = new Set();
+  for (let i = _ptPending.headerRow + 1; i < rows.length; i++) {
+    const row = rows[i] || [];
+    const hn = String(row[cols.hn] == null ? '' : row[cols.hn]).trim();
+    if (!hn || seen.has(hn)) continue;
+    const cell = c => (c >= 0 ? String(row[c] == null ? '' : row[c]).trim() : '');
+    // คำนำหน้าติดกับชื่อ ("นายสมชาย ใจดี") ตามรูปแบบชื่อที่ระบบใช้อยู่เดิม
+    let name = (cell(cols.prefix) + cell(cols.first)).trim();
+    const ln = cell(cols.last);
+    if (ln) name = (name + ' ' + ln).trim();
+    name = name.replace(/\s+/g, ' ');
+    if (!name) continue;
+    seen.add(hn);
+    out.push({ hn: hn, name: name, clinic: cols.clinic >= 0 ? String(row[cols.clinic] || '').trim() : '' });
+  }
+  return out;
+}
+
+function openPatientModal() {
+  _ptPending = null;
+  renderPatientModal();
+  document.getElementById('pt-modal').classList.add('show');
+}
+
+function closePatientModal() {
+  document.getElementById('pt-modal').classList.remove('show');
+  _ptPending = null;
+}
+
+function renderPatientModal() {
+  const body = document.getElementById('pt-modal-body');
+  if (!body) return;
+  const nRoster = Object.keys(patientRoster).length;
+  const nTotal  = patientIndex().size;
+
+  let html =
+    '<div style="background:var(--primary-light);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.8;margin-bottom:16px">' +
+      '👥 ทะเบียนที่นำเข้าจาก HosXP: <strong>' + nRoster + '</strong> คน<br>' +
+      '📝 ผู้ป่วยที่เคยบันทึกเอง: <strong>' + (nTotal - nRoster) + '</strong> คน<br>' +
+      '<span style="color:var(--text-light)">รวม <strong>' + nTotal + '</strong> คนที่ช่อง HN และช่องชื่อในหน้าบันทึกจะค้นเจอ</span>' +
+    '</div>';
+
+  if (!_ptPending) {
+    html +=
+      '<div class="form-title">นำเข้าจากไฟล์ HosXP</div>' +
+      '<p style="font-size:13px;color:var(--text-light);line-height:1.8;margin-bottom:14px">' +
+        'Export รายชื่อผู้ป่วยคลินิก HT / DM / COPD จาก HosXP เป็น Excel (.xlsx) หรือ .csv แล้วเลือกไฟล์ที่นี่ ' +
+        'ระบบจะเดาให้ว่าคอลัมน์ไหนคือ HN และคอลัมน์ไหนคือชื่อ แล้วให้ตรวจก่อนยืนยัน — ใช้ได้กับทุกรูปแบบไฟล์' +
+        '<br><span style="color:var(--warning)">⚠️ ถ้า HN มีเลข 0 นำหน้า ให้ export คอลัมน์ HN เป็นข้อความ ไม่งั้นเลข 0 จะหาย</span>' +
+      '</p>' +
+      '<label class="tbtn" style="display:inline-block;padding:9px 16px;font-size:13px">' +
+        '<span>📂 เลือกไฟล์</span>' +
+        '<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="onPatientFile(event)">' +
+      '</label>';
+    if (nRoster) {
+      html += '<button class="btn-cancel" onclick="clearPatientRoster()" style="margin-left:10px">🗑 ล้างทะเบียนที่นำเข้า</button>';
+    }
+    body.innerHTML = html;
+    return;
+  }
+
+  const header = _ptPending.rows[_ptPending.headerRow] || [];
+  const cols   = _ptPending.cols;
+  const sel = (key, allowNone) => {
+    let o = allowNone ? '<option value="-1"' + (cols[key] < 0 ? ' selected' : '') + '>— ไม่ใช้ —</option>' : '';
+    for (let i = 0; i < header.length; i++) {
+      const label = String(header[i] || '').trim() || ('คอลัมน์ ' + (i + 1));
+      o += '<option value="' + i + '"' + (cols[key] === i ? ' selected' : '') + '>' + escHtml(label) + '</option>';
+    }
+    return '<select onchange="onPatientColChange(' + escHtml(JSON.stringify(key)) + ', this.value)" ' +
+           'style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px">' + o + '</select>';
+  };
+
+  const list  = collectPatientRows();
+  const ready = cols.hn >= 0 && cols.first >= 0;
+  let nNew = 0, nUpd = 0;
+  list.forEach(p => {
+    if (!patientRoster[p.hn]) nNew++;
+    else if (patientRoster[p.hn].name !== p.name) nUpd++;
+  });
+
+  html +=
+    '<div class="form-title">ตรวจคอลัมน์ก่อนนำเข้า</div>' +
+    '<p style="font-size:12px;color:var(--text-light);margin-bottom:12px">📄 ' + escHtml(_ptPending.fileName) +
+      ' — ใช้แถวที่ ' + (_ptPending.headerRow + 1) + ' เป็นหัวตาราง</p>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">' +
+      '<div><label style="font-size:12px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:5px">HN <span style="color:var(--danger)">*</span></label>' + sel('hn', true) + '</div>' +
+      '<div><label style="font-size:12px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:5px">คำนำหน้า</label>' + sel('prefix', true) + '</div>' +
+      '<div><label style="font-size:12px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:5px">ชื่อ <span style="color:var(--danger)">*</span></label>' + sel('first', true) + '</div>' +
+      '<div><label style="font-size:12px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:5px">นามสกุล</label>' + sel('last', true) + '</div>' +
+      '<div><label style="font-size:12px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:5px">คลินิก</label>' + sel('clinic', true) + '</div>' +
+    '</div>';
+
+  if (!ready) {
+    html += '<div style="background:#fee2e2;color:#991b1b;border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:14px">' +
+            '⚠️ ต้องเลือกคอลัมน์ HN และคอลัมน์ชื่อก่อน จึงจะนำเข้าได้</div>';
+  } else if (!list.length) {
+    html += '<div style="background:#fee2e2;color:#991b1b;border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:14px">' +
+            '⚠️ อ่านไม่พบรายการที่มีทั้ง HN และชื่อ — ลองเลือกคอลัมน์ใหม่</div>';
+  } else {
+    html +=
+      '<div style="background:var(--gold-light);border:1.5px solid var(--gold);border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:14px;line-height:1.7">' +
+        'อ่านได้ <strong>' + list.length + '</strong> คน — เพิ่มใหม่ <strong>' + nNew + '</strong> คน' +
+        (nUpd ? ', อัปเดตชื่อ <strong>' + nUpd + '</strong> คน' : '') +
+      '</div>' +
+      '<div style="overflow-x:auto;margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+      '<thead><tr style="background:var(--primary-light)">' +
+        '<th style="padding:7px 10px;text-align:left">HN</th>' +
+        '<th style="padding:7px 10px;text-align:left">ชื่อ-สกุล</th>' +
+        '<th style="padding:7px 10px;text-align:left">คลินิก</th></tr></thead><tbody>' +
+      list.slice(0, 5).map(p =>
+        '<tr style="border-bottom:1px solid var(--border)">' +
+        '<td style="padding:6px 10px">' + escHtml(p.hn) + '</td>' +
+        '<td style="padding:6px 10px">' + escHtml(p.name) + '</td>' +
+        '<td style="padding:6px 10px">' + (escHtml(p.clinic) || '—') + '</td></tr>').join('') +
+      '</tbody></table>' +
+      (list.length > 5 ? '<p style="font-size:12px;color:var(--text-light);margin-top:6px">…และอีก ' + (list.length - 5) + ' คน</p>' : '') +
+      '</div>';
+  }
+
+  html +=
+    '<div class="modal-footer">' +
+      '<button class="btn-cancel" onclick="_ptPending=null;renderPatientModal()">ยกเลิก</button>' +
+      '<button class="btn-ok" onclick="applyPatientImport()"' +
+        (ready && list.length ? '' : ' disabled style="opacity:.45;cursor:not-allowed"') +
+      '>เพิ่มเข้าทะเบียน</button>' +
+    '</div>';
+
+  body.innerHTML = html;
+}
+
+function applyPatientImport() {
+  const list = collectPatientRows();
+  if (!list.length) return;
+  let nNew = 0, nUpd = 0;
+  list.forEach(p => {
+    if (!patientRoster[p.hn]) nNew++;
+    else if (patientRoster[p.hn].name !== p.name) nUpd++;
+    patientRoster[p.hn] = { name: p.name, clinic: p.clinic };
+  });
+  _ptPending = null;
+  savePatients();
+  renderPatientModal();
+  showToast('✅ นำเข้าแล้ว — เพิ่มใหม่ ' + nNew + ' คน' + (nUpd ? ', อัปเดตชื่อ ' + nUpd + ' คน' : ''));
+}
+
+function clearPatientRoster() {
+  if (!confirm('ล้างทะเบียนผู้ป่วยที่นำเข้าทั้งหมด?\n(ผู้ป่วยที่เคยบันทึกเองจะยังค้นเจอตามเดิม)')) return;
+  patientRoster = {};
+  savePatients();
+  renderPatientModal();
+  showToast('🗑 ล้างทะเบียนแล้ว');
+}
+
+function savePatients() {
+  invalidatePatientIndex();
+  saveLocal();
+  fbSave();
+  renderPatientDatalists();
 }
 
 // ── LEFTOVER ROWS ────────────────────────────────────────
@@ -1369,6 +1705,7 @@ function saveModal() {
 
 // ── RENDER ───────────────────────────────────────────────
 function renderAll() {
+  renderPatientDatalists();
   renderRecentRecords();
   renderCurrentView();
 }
@@ -2001,11 +2338,14 @@ function saveLocal() {
   localStorage.setItem('clinic_visits', JSON.stringify(visitRecords));
   localStorage.setItem('clinic_sessions', JSON.stringify(sessionRecords));
   localStorage.setItem('clinic_price_overrides', JSON.stringify(priceOverrides));
+  localStorage.setItem('clinic_patients', JSON.stringify(patientRoster));
 }
 function loadLocal() {
   visitRecords = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
   sessionRecords = JSON.parse(localStorage.getItem('clinic_sessions')||'[]');
   priceOverrides = JSON.parse(localStorage.getItem('clinic_price_overrides')||'{}');
+  patientRoster = JSON.parse(localStorage.getItem('clinic_patients')||'{}');
+  invalidatePatientIndex();
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────
@@ -2058,6 +2398,8 @@ function initFirebase() {
         if (d.visitRecords) visitRecords = d.visitRecords;
         if (d.sessionRecords) sessionRecords = d.sessionRecords;
         if (d.priceOverrides) priceOverrides = d.priceOverrides;
+        if (d.patientRoster) patientRoster = d.patientRoster;
+        invalidatePatientIndex();
         saveLocal(); renderAll();
         lastSyncTime = nowTH();
         badge.textContent=`☁️ ซิงค์แล้ว ${lastSyncTime}`; badge.style.background='#dcfce7'; badge.style.color='#15803d';
@@ -2072,7 +2414,8 @@ function initFirebase() {
 }
 function fbSave() {
   if (!db) return;
-  db.collection('pharmacy_tph').doc('clinic_data').set({visitRecords,sessionRecords,priceOverrides,updated:Date.now()})
+  db.collection('pharmacy_tph').doc('clinic_data')
+    .set({visitRecords,sessionRecords,priceOverrides,patientRoster,updated:Date.now()}, {merge:true})
     .catch(e=>console.warn('FB save:',e));
 }
 
