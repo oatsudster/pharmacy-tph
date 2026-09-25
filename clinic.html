@@ -2047,6 +2047,16 @@ function isInhaler(...texts) {
   return texts.some(t => /MDI|inhaler|haler|spray|dose|พ่น|BUDESONIDE|SEROFLO|BERODUAL/i.test(String(t || '')));
 }
 function isTablet(unit) { return /เม็ด|แคปซูล|แค็บซูล|tab|cap/i.test(String(unit || '')); }
+// ยาบรรเทาอาการ ไม่ต้องปรับตามวันนัด — ชื่ออังกฤษเทียบแบบยอมให้ OCR ผิดได้ 2 ตัวอักษร
+// (ไม่ใช้คำว่า GLYCERYL เพราะจะไปโดน glyceryl trinitrate ซึ่งเป็นยาโรคหัวใจ)
+const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN'];
+function isSymptomatic(...texts) {
+  return texts.some(t => {
+    t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');   // OCR อ่าน O เป็นเลข 0
+    if (/มะขาม\s*ป้อม|มะแว้ง|\bGG\b/i.test(t)) return true;
+    return drugTokens(t).some(x => SYMPTOMATIC_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
+  });
+}
 
 function updateFloatNeed(tr) {
   const inp = tr.querySelector('.pd');
@@ -2085,14 +2095,16 @@ function renderFloatLeftover() {
     const inhaler = o.unit === 'ที' || isInhaler(o.name, o.text, l && l.drug, l && l.unit);
     rows.push({ key: 'o:' + o.name, name: l ? cleanDrugName(l.drug) : o.name, use: o,
       lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l,
-      kind: inhaler ? 'inhaler' : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
+      kind: inhaler ? 'inhaler' : isSymptomatic(o.name, l && l.drug) ? 'symptom'
+        : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
       unit: o.unit || (l && l.unit) || '' });
   });
   los.forEach((l, i) => {
     if (used.has(i)) return;
     rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
       loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, unit: l.unit || 'เม็ด',
-      kind: isInhaler(l.drug, l.unit) ? 'inhaler' : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
+      kind: isInhaler(l.drug, l.unit) ? 'inhaler' : isSymptomatic(l.drug) ? 'symptom'
+        : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
   });
 
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
@@ -2116,6 +2128,7 @@ function renderFloatLeftover() {
       <tbody>${rows.map(r => {
         const adjust = r.kind === 'tablet';
         const tag = r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
+          : r.kind === 'symptom' ? '<span class="tag info">💊 ยาบรรเทาอาการ — ไม่ปรับจำนวน</span>'
           : !adjust ? '<span class="tag info">ไม่ใช่ยาเม็ด — ไม่ปรับจำนวน</span>'
           : r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
           : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
@@ -2129,7 +2142,7 @@ function renderFloatLeftover() {
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล</div>`;
+    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ)</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
     if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
