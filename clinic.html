@@ -111,6 +111,19 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .15s;}
 .btn-rm:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
 
+/* ข้อความ DRP สำหรับวางในช่องวิธีใช้ของ HOSxP */
+.hx-note{margin-top:14px;padding:10px 12px;background:var(--gold-light);border:1.5px solid var(--gold);border-radius:10px;}
+.hx-note-title{font-size:13px;font-weight:700;color:var(--text);}
+.hx-note-where{font-size:11px;color:var(--text-mid);margin:2px 0 8px;}
+.hx-note textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
+  font-family:inherit;background:#fff;outline:none;resize:vertical;}
+.hx-note textarea:focus{border-color:var(--primary);}
+.hx-note-foot{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.hx-note-status{flex:1;font-size:11px;color:var(--text-light);min-width:120px;}
+.hx-note-copy{padding:8px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.hx-note-copy:hover{background:var(--primary-dark);}
+
 /* Leftover rows */
 .lo-row{display:flex;gap:4px;margin-bottom:5px;align-items:center;}
 .lo-row .lo-drug{flex:2;}
@@ -480,6 +493,18 @@ tr:hover td{background:#f8faf9;}
         <div class="lo-summary-val" id="lo-total">฿0</div>
       </div>
       </div><!-- /lo-section-wrap -->
+
+      <!-- ร่างข้อความ DRP ให้แพทย์ เอาไปวางใน HOSxP ได้เลยไม่ต้องพิมพ์ซ้ำ -->
+      <div class="hx-note">
+        <div class="hx-note-title">📋 ข้อความ DRP สำหรับ HOSxP</div>
+        <div class="hx-note-where">ใบสั่งยา → รายการ <b>COUNSELLING น้อยกว่า 30 นาที</b> → วางในช่อง <b>วิธีใช้</b></div>
+        <textarea id="hx-note" rows="3" placeholder="เลือก DRP หรือกรอกยาที่เหลือ แล้วระบบจะร่างข้อความให้" oninput="onHxNoteEdit()"></textarea>
+        <div class="hx-note-foot">
+          <span class="hx-note-status" id="hx-note-status"></span>
+          <button class="btn-add" type="button" id="hx-note-redraft" onclick="refreshHxNote(true)" style="display:none">↺ ร่างใหม่</button>
+          <button class="hx-note-copy" type="button" onclick="copyHxNote()">📋 คัดลอก</button>
+        </div>
+      </div>
 
       <button class="btn-submit" onclick="submitVisit()" style="margin-top:14px">✅ บันทึกการให้คำปรึกษา</button>
       <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
@@ -860,6 +885,7 @@ function toggleQuickDrp(forceState) {
   if (quickDrpActive && document.getElementById('lo-list').children.length === 0) {
     addLoRow();
   }
+  refreshHxNote();
 }
 
 // ── DRP ROWS ─────────────────────────────────────────────
@@ -878,12 +904,13 @@ function addDrpRow(type='', cause='', causeNote='') {
       </select>
       <input class="drp-cause-note" type="text" placeholder="ระบุสาเหตุ/เพิ่มเติม..." style="display:none" value="${escHtml(causeNote||cause||'')}">
     </div>
-    <button class="btn-rm" onclick="this.closest('.drp-row').remove()">✕</button>`;
+    <button class="btn-rm" onclick="this.closest('.drp-row').remove();refreshHxNote()">✕</button>`;
   list.appendChild(div);
   if (type) {
     const sel = div.querySelector('.drp-type');
     onDrpTypeChange(sel, cause);
   }
+  refreshHxNote();
 }
 
 function onDrpTypeChange(sel, preset='') {
@@ -924,6 +951,64 @@ function getDrpData() {
     return [{type:'มียาเหลือสะสม (Medication Nonadherence – Leftover Medication)', cause:'', causeNote:''}, ...others];
   }
   return others;
+}
+
+// ── ข้อความ DRP สำหรับ HOSxP ─────────────────────────────
+// เภสัชกรแจ้ง DRP ให้แพทย์ผ่านใบสั่งยาใน HOSxP: รายการ "COUNSELLING น้อยกว่า 30 นาที" ใส่รายละเอียดในช่องวิธีใช้
+// ร่างจาก DRP/ยาเหลือที่กรอกในฟอร์มนี้ เป็นบรรทัดเดียว (ช่องวิธีใช้รับได้บรรทัดเดียว)
+// ถ้าเภสัชกรแก้ข้อความเองแล้ว จะไม่ร่างทับจนกว่าจะกด "ร่างใหม่" หรือล้างฟอร์ม
+let hxNoteEdited = false;
+
+function drpShortName(type) { return String(type || '').replace(/\s*\([^()]*\)\s*$/, '').trim(); }
+
+function buildHxNote() {
+  const leftovers = getLoData().filter(l => l.drug && l.qty > 0);
+  const items = [];
+  // ตอนบันทึก ระบบติ๊ก "มียาเหลือสะสม" ให้เองถ้ามียาเหลือ ข้อความก็ต้องมีด้วยเหมือนกัน
+  if (quickDrpActive || leftovers.length) {
+    const drugs = leftovers.map(l => `${cleanDrugName(l.drug)} ${l.qty} ${l.unit || ''}`.trim());
+    items.push('มียาเหลือสะสม' + (drugs.length ? ': ' + drugs.join(', ') : ''));
+  }
+  getDrpData().forEach(d => {
+    if (d.type.startsWith('มียาเหลือสะสม')) return;
+    const why = d.cause && d.cause !== 'อื่นๆ' ? d.cause : d.causeNote;
+    if (d.type.startsWith('อื่นๆ')) { items.push(why || 'อื่นๆ'); return; }
+    items.push(drpShortName(d.type) + (why ? ` (${why})` : ''));
+  });
+  if (!items.length) return '';
+  return 'DRP: ' + (items.length === 1 ? items[0] : items.map((t, i) => `${i + 1}.${t}`).join(' '));
+}
+
+function refreshHxNote(force) {
+  const ta = document.getElementById('hx-note');
+  if (!ta) return;
+  if (force) hxNoteEdited = false;
+  if (!hxNoteEdited) ta.value = buildHxNote();
+  renderHxNoteStatus();
+}
+
+function onHxNoteEdit() {
+  hxNoteEdited = document.getElementById('hx-note').value !== buildHxNote();
+  renderHxNoteStatus();
+}
+
+function renderHxNoteStatus() {
+  const n = document.getElementById('hx-note').value.length;
+  document.getElementById('hx-note-status').textContent =
+    (hxNoteEdited ? '✏️ แก้ไขเองแล้ว ระบบจะไม่ร่างทับ · ' : '') + (n ? n + ' ตัวอักษร' : '');
+  document.getElementById('hx-note-redraft').style.display = hxNoteEdited ? '' : 'none';
+}
+
+async function copyHxNote() {
+  const ta = document.getElementById('hx-note');
+  const text = ta.value.replace(/\s*\n\s*/g, ' ').trim();
+  if (!text) { showToast('⚠️ ยังไม่มีข้อความ — เลือก DRP หรือกรอกยาที่เหลือก่อน'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    ta.select(); document.execCommand('copy');
+  }
+  showToast('📋 คัดลอกแล้ว — ไปวาง (Ctrl+V) ในช่องวิธีใช้ของ COUNSELLING ใน HOSxP');
 }
 
 // ── AI DRP SUGGESTION (ประเภท + สาเหตุ) ───────────────────
@@ -1376,6 +1461,7 @@ function updateLoTotal() {
     summary.style.display = total > 0 ? 'flex' : 'none';
     el.textContent = '฿'+total.toFixed(2);
   }
+  refreshHxNote();
 }
 
 function getLoData() {
@@ -1529,6 +1615,7 @@ function clearForm() {
   toggleQuickDrp(false);
   document.getElementById('lo-list').innerHTML = '';
   document.getElementById('lo-total').textContent = '';
+  refreshHxNote(true);
 }
 
 // แสดงช่องติ๊ก "นำกระติกน้ำแข็งมา" เฉพาะเมื่อติ๊กว่ามียาฉีดเบาหวานแล้วเท่านั้น
@@ -2898,6 +2985,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const dow = new Date().getDay();
   if (dow === 3) selectClinic('HT');
   else if (dow === 4) selectClinic('DM');
+  // แก้ประเภท/สาเหตุ DRP หรือหน่วยยา → ร่างข้อความ HOSxP ใหม่
+  ['drp-list', 'lo-list'].forEach(id => ['input', 'change'].forEach(ev =>
+    document.getElementById(id).addEventListener(ev, () => refreshHxNote())));
   renderAll();
 });
 
