@@ -58,29 +58,66 @@ const meta = await getDoc('clinic_data');
 const legacy = (meta && meta.visitRecords) || null;
 if (!legacy) { console.log('ลบ visitRecords เดิมไปแล้ว — ไม่ต้องเตือน'); process.exit(0); }
 
-const inMonths = new Set();
-let monthDocs = 0;
+// ขนาดโดยประมาณ (JSON) — Firestore จำกัดเอกสารละ 1 MB
+const kb = x => Math.round(Buffer.byteLength(JSON.stringify(x)) / 1024);
+const thDate = iso => { const [y, m, d] = String(iso || '').split('-').map(Number); return y ? `${d} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][m - 1]} ${String(y + 543).slice(2)}` : '-'; };
+
+const inMonths = new Set(), months = [];
 for (const ym of monthsUntil(today.slice(0, 7))) {
   const d = await getDoc('clinic_' + ym);
   if (!d) continue;
-  monthDocs++;
-  (d.list || []).forEach(r => r && r.id && inMonths.add(r.id));
+  const list = d.list || [];
+  list.forEach(r => r && r.id && inMonths.add(r.id));
+  months.push({ ym, n: list.length, kb: kb(d) });
 }
 const dead = new Set(meta.deletedVisitIds || []);
 const missing = legacy.filter(r => r && r.id && !inMonths.has(r.id) && !dead.has(r.id));
+const legacyDates = legacy.map(r => r.date).filter(Boolean).sort();
+const biggest = months.reduce((a, b) => (b.kb > a.kb ? b : a), { kb: 0 });
+const keep = ['sessionRecords', 'priceOverrides', 'patientRoster', 'deletedVisitIds'].filter(k => k in meta);
+const metaKb = kb(meta), legacyKb = kb(legacy);
 
-const text = missing.length === 0
-  ? `🗂 <b>ถึงเวลาลบข้อมูลคลินิกชุดเดิมแล้ว</b>\n\n` +
-    `ตรวจแล้ว ✅ ข้อมูลเดิม ${legacy.length} รายการ อยู่ในเอกสารรายเดือนครบทุกรายการ ` +
-    `(ตอนนี้มีทั้งหมด ${inMonths.size} รายการ ใน ${monthDocs} เดือน)\n\n` +
-    `<b>ก่อนลบ</b>: ให้ทุกเครื่องกด Ctrl+F5 ในหน้าคลินิก และกด 💾 Backup เก็บไว้\n` +
-    `<b>วิธีลบ</b>: บอก Claude Code ว่า "ลบ visitRecords เดิมใน clinic_data" ` +
-    `หรือใน Firebase Console → pharmacy_tph → clinic_data → ลบเฉพาะฟิลด์ <code>visitRecords</code> (ห้ามลบทั้งเอกสาร)\n\n` +
-    `จะเตือนทุกวันจันทร์จนกว่าจะลบ`
-  : `🗂 <b>ข้อมูลคลินิกชุดเดิม — ยังไม่ควรลบ</b>\n\n` +
-    `⚠️ มี ${missing.length} จาก ${legacy.length} รายการในข้อมูลเดิมที่ยังไม่อยู่ในเอกสารรายเดือน ` +
-    `น่าจะมีเครื่องที่เปิดหน้าคลินิกรุ่นเก่าค้างอยู่\n\n` +
-    `ให้ทุกเครื่องกด Ctrl+F5 ในหน้าคลินิก ระบบจะย้ายรายการที่ขาดให้เอง แล้วจะตรวจใหม่วันจันทร์หน้า`;
+const monthLines = months.map(m => `  • ${m.ym}: ${m.n} รายการ (${m.kb} KB)`).join('\n');
+const facts =
+  `<b>📊 ผลตรวจ (${thDate(today)})</b>\n` +
+  `• ข้อมูลเดิม <code>visitRecords</code>: ${legacy.length} รายการ (${thDate(legacyDates[0])} – ${thDate(legacyDates[legacyDates.length - 1])}) ขนาด ${legacyKb} KB\n` +
+  `• อยู่ในเอกสารรายเดือนแล้ว: ${legacy.length - missing.length}/${legacy.length} รายการ\n` +
+  `• รายการที่ถูกลบไปแล้ว (กันไม่ให้ฟื้น): ${dead.size} รายการ\n` +
+  `• เอกสารรายเดือนตอนนี้: ${inMonths.size} รายการ ใน ${months.length} เดือน ใหญ่สุด ${biggest.kb} KB (${biggest.ym || '-'}) จากเพดาน 1,024 KB\n` +
+  monthLines;
 
-console.log(`legacy ${legacy.length} | in months ${inMonths.size} (${monthDocs} docs) | missing ${missing.length}`);
+let text;
+if (missing.length === 0) {
+  text =
+    `🗂 <b>ถึงเวลาลบข้อมูลคลินิกชุดเดิมแล้ว</b>\n` +
+    `ครบ 2 เดือนหลังย้ายไปเก็บแบบรายเดือน (25 ก.ย. 69) — ตรวจแล้ว ✅ ลบได้อย่างปลอดภัย\n\n` +
+    facts + '\n\n' +
+    `<b>🗑 สิ่งที่จะลบ</b>\n` +
+    `• เฉพาะฟิลด์ <code>visitRecords</code> ในเอกสาร <code>clinic_data</code> (${legacyKb} KB) — เป็นสำเนาเก่า หน้าเว็บไม่ได้ใช้แสดงผลแล้ว\n` +
+    `• เอกสาร clinic_data จะเล็กลงจาก ${metaKb} KB เหลือราว ${Math.max(1, metaKb - legacyKb)} KB\n\n` +
+    `<b>🔒 สิ่งที่ต้องเก็บไว้ (ห้ามลบ)</b>\n` +
+    `• ${keep.map(k => `<code>${k}</code>`).join(', ')} ในเอกสาร clinic_data\n` +
+    `• เอกสาร <code>clinic_YYYY-MM</code> ทั้งหมด\n\n` +
+    `<b>✅ ก่อนลบ</b>\n` +
+    `1. ทุกเครื่องกด Ctrl+F5 ในหน้าคลินิกและหน้าแรก (รวมเครื่องห้องจ่ายยา)\n` +
+    `2. กด 💾 Backup ในหน้าคลินิก เก็บไฟล์ไว้\n\n` +
+    `<b>🛠 วิธีลบ (เลือกอย่างใดอย่างหนึ่ง)</b>\n` +
+    `• บอก Claude Code ว่า "ลบ visitRecords เดิมใน clinic_data" — จะสำรองและตรวจซ้ำก่อนลบ\n` +
+    `• หรือ Firebase Console → Firestore → pharmacy_tph → clinic_data → กด 🗑 ที่แถว <code>visitRecords</code> เท่านั้น (ห้ามลบทั้งเอกสาร)\n\n` +
+    `<b>ℹ️ ผลกระทบ</b>: ไม่มี — ข้อมูลในหน้าเว็บยังอยู่ครบ ถ้าผิดพลาดกู้คืนได้จากไฟล์ Backup ด้วยปุ่ม 📥 Import\n\n` +
+    `จะเตือนทุกวันจันทร์จนกว่าจะลบ`;
+} else {
+  const byDate = {};
+  missing.forEach(r => { const k = `${thDate(r.date)} ${r.clinic || ''}`.trim(); byDate[k] = (byDate[k] || 0) + 1; });
+  text =
+    `🗂 <b>ข้อมูลคลินิกชุดเดิม — ยังไม่ควรลบ</b>\n\n` +
+    `⚠️ มี ${missing.length} รายการในข้อมูลเดิมที่ยังไม่อยู่ในเอกสารรายเดือน ` +
+    `แปลว่ามีเครื่องที่ยังเปิดหน้าคลินิกรุ่นเก่าค้างอยู่และบันทึกลงที่เดิม\n` +
+    `รายการที่ขาด (วันที่ คลินิก): ${Object.entries(byDate).slice(0, 10).map(([k, n]) => `${k} ×${n}`).join(', ')}\n\n` +
+    facts + '\n\n' +
+    `<b>ต้องทำ</b>: ให้ทุกเครื่องกด Ctrl+F5 ในหน้าคลินิก ระบบจะย้ายรายการที่ขาดให้เองทันทีที่เปิดหน้ารุ่นใหม่ ` +
+    `แล้วจะตรวจใหม่วันจันทร์หน้า`;
+}
+
+console.log(`legacy ${legacy.length} | in months ${inMonths.size} (${months.length} docs) | missing ${missing.length}`);
 await send(text);
