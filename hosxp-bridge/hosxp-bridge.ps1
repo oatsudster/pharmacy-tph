@@ -26,6 +26,7 @@ public static class HxWin {
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
   [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   // จุดบนจอนี้คือตัว control นั้นจริงหรือไม่ — ถ้ามีหน้าต่างอื่นบัง แม้เป็นของ HOSxP เอง
   // (เช่น "เปรียบเทียบประวัติ") ก็ถือว่าถูกบัง จะได้ไม่เอาภาพหน้านั้นไปอ่าน
   public static bool IsShowing(int x, int y, IntPtr target) {
@@ -35,6 +36,8 @@ public static class HxWin {
   }
 }
 "@
+# ใช้พิกัดจอจริง เครื่องที่ตั้งขนาดหน้าจอ 125%/150% ตำแหน่งจาก UI Automation จะได้ตรงกับภาพที่จับ
+[void][HxWin]::SetProcessDPIAware()
 $null = [Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
 $null = [Windows.Graphics.Imaging.BitmapDecoder, Windows.Foundation, ContentType = WindowsRuntime]
 
