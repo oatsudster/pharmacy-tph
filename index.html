@@ -829,6 +829,7 @@ async function checkPin() {
 <script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/clinic-store.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
@@ -1016,12 +1017,10 @@ db.collection(COL).doc('wt_cart').onSnapshot(snap => {
   if (snap.exists) { localStorage.setItem('wt_cart', JSON.stringify(snap.data().records||[])); updateStats(); }
 });
 
-db.collection(COL).doc('clinic_data').onSnapshot(snap => {
-  if (snap.exists) {
-    const d = snap.data();
-    if (d.visitRecords) localStorage.setItem('clinic_visits', JSON.stringify(d.visitRecords));
-    updateStats();
-  }
+// บันทึกคลินิกแยกเก็บเอกสารรายเดือนแล้ว (lib/clinic-store.js) — หน้านี้อ่านอย่างเดียว
+ClinicStore.watch(db, ({ visits }) => {
+  localStorage.setItem('clinic_visits', JSON.stringify(visits));
+  updateStats();
 });
 </script>
 

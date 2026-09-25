@@ -18,6 +18,7 @@
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/clinic-store.js"></script>
 <style>
 :root {
   --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
@@ -1573,7 +1574,7 @@ function clearPatientRoster() {
 function savePatients() {
   invalidatePatientIndex();
   saveLocal();
-  fbSave();
+  fbSaveMeta();
   renderPatientDatalists();
 }
 
@@ -1705,7 +1706,7 @@ function saveOverridePrice(drugName, unit, inputId) {
   const p = parseFloat(input.value);
   if (!p || p <= 0) { showToast('⚠️ กรุณาระบุราคามากกว่า 0'); return; }
   priceOverrides[drugName] = { p, u: unit };
-  saveLocal(); fbSave();
+  saveLocal(); fbSaveMeta();
   refreshLeftoverPrices();
   showMissingPriceDrugs();
   showToast(`✅ บันทึกราคา ${cleanDrugName(drugName)} = ฿${p}/หน่วยแล้ว`);
@@ -1731,10 +1732,11 @@ function refreshLeftoverPrices() {
     if (recChanged) {
       r.totalSaving = Math.round(r.leftovers.reduce((s,l)=>s+(l.total||0),0)*100)/100;
       changedRecs++;
+      queueVisit(r);
     }
   });
   if (changedItems) {
-    saveLocal(); fbSave(); renderAll();
+    saveLocal(); renderAll();
     showToast(`✅ อัปเดตราคาแล้ว ${changedItems} รายการ ใน ${changedRecs} บันทึก`);
   } else {
     showToast('ℹ️ ไม่มีรายการที่ต้องอัปเดตราคา');
@@ -1772,7 +1774,7 @@ function submitVisit() {
     created: Date.now()
   };
   visitRecords.push(rec);
-  saveLocal(); fbSave();
+  saveLocal(); queueVisit(rec);
   renderAll();
   showToast('✅ บันทึกแล้ว' + (drps.length ? ' — พบ DRP '+drps.length+' รายการ' : '') + (totalSaving>0?' ประหยัด ฿'+totalSaving.toFixed(2):''));
   clearForm();
@@ -1811,7 +1813,7 @@ function submitSession() {
   if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
   const rec = {id:uid(), date, clinic, attended, pharmacist:pharm, reason, notes, created:Date.now()};
   sessionRecords.push(rec);
-  saveLocal(); fbSave();
+  saveLocal(); fbSaveMeta();
   renderAll();
   showToast('✅ บันทึก Session แล้ว');
   document.getElementById('s-notes').value = '';
@@ -1826,7 +1828,7 @@ function submitHtPm() {
   if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
   const rec = {id:uid(), date, clinic:'HT', attended:null, pharmacist:'', reason:'', htPmCount:count, notes, pmOnly:true, created:Date.now()};
   sessionRecords.push(rec);
-  saveLocal(); fbSave();
+  saveLocal(); fbSaveMeta();
   renderAll();
   showToast('✅ บันทึกจำนวนคนไข้ HT บ่ายแล้ว');
   document.getElementById('pm-count').value = '';
@@ -1837,12 +1839,12 @@ function submitHtPm() {
 function deleteVisit(id) {
   if (!confirm('ลบรายการนี้?')) return;
   visitRecords = visitRecords.filter(r=>r.id!==id);
-  saveLocal(); fbSave(); renderAll();
+  saveLocal(); queueVisit(null, id); renderAll();
 }
 function deleteSession(id) {
   if (!confirm('ลบ session นี้?')) return;
   sessionRecords = sessionRecords.filter(r=>r.id!==id);
-  saveLocal(); fbSave(); renderAll();
+  saveLocal(); fbSaveMeta(); renderAll();
 }
 
 // ── EDIT MODAL ───────────────────────────────────────────
@@ -1962,7 +1964,7 @@ function saveModal() {
   const leftovers = getMLoData();
   visitRecords[idx].leftovers = leftovers;
   visitRecords[idx].totalSaving = Math.round(leftovers.reduce((s,l)=>s+l.total,0)*100)/100;
-  saveLocal(); fbSave(); renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
+  saveLocal(); queueVisit(visitRecords[idx]); renderAll(); closeModal(); showToast('✅ อัปเดตแล้ว');
 }
 
 // ── RENDER ───────────────────────────────────────────────
@@ -3468,10 +3470,15 @@ function importJSON(e) {
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (data.visitRecords) visitRecords = data.visitRecords;
+      if (data.visitRecords) {
+        const keep = new Set(data.visitRecords.map(r => r.id));
+        visitRecords.forEach(r => { if (!keep.has(r.id)) queueVisit(null, r.id); });
+        visitRecords = data.visitRecords;
+        visitRecords.forEach(r => queueVisit(r));
+      }
       if (data.sessionRecords) sessionRecords = data.sessionRecords;
       if (data.priceOverrides) priceOverrides = data.priceOverrides;
-      saveLocal(); fbSave(); renderAll();
+      saveLocal(); fbSaveMeta(); renderAll();
       showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
     } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
   };
@@ -3489,39 +3496,57 @@ const FB_CONFIG = {
   appId:"1:617328257113:web:2863e26c5b2c6da2fe2948"
 };
 
-let db;
+// บันทึกคลินิกเก็บแยกเอกสารรายเดือน (lib/clinic-store.js) ส่วน session/ราคา/ทะเบียนผู้ป่วยยังอยู่ใน clinic_data
+let db, clinicSync = null, visitMonthOf = {}, lastSyncTime = null, migrating = false;
 function initFirebase() {
   try {
     firebase.initializeApp(FB_CONFIG);
     db = firebase.firestore();
     db.enablePersistence().catch(() => {});
-    const badge = document.getElementById('sync-badge');
-    let lastSyncTime = null;
+    clinicSync = ClinicStore.createSync(db, 'clinic_pending_sync', renderSyncBadge);
     const nowTH = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
-    db.collection('pharmacy_tph').doc('clinic_data').onSnapshot(snap => {
-      if (snap.exists) {
-        const d = snap.data();
-        if (d.visitRecords) visitRecords = d.visitRecords;
-        if (d.sessionRecords) sessionRecords = d.sessionRecords;
-        if (d.priceOverrides) priceOverrides = d.priceOverrides;
-        if (d.patientRoster) patientRoster = d.patientRoster;
-        invalidatePatientIndex();
-        saveLocal(); renderAll();
-        lastSyncTime = nowTH();
-        badge.textContent=`☁️ ซิงค์แล้ว ${lastSyncTime}`; badge.style.background='#dcfce7'; badge.style.color='#15803d';
-      } else {
-        badge.textContent='⚠️ ไม่พบข้อมูล'; badge.style.background='#fef9c3'; badge.style.color='#854d0e';
+    ClinicStore.watch(db, ({ visits, monthOf, legacy, meta }) => {
+      visitMonthOf = monthOf;
+      visitRecords = clinicSync.overlay(visits);
+      if (meta.sessionRecords) sessionRecords = meta.sessionRecords;
+      if (meta.priceOverrides) priceOverrides = meta.priceOverrides;
+      if (meta.patientRoster) patientRoster = meta.patientRoster;
+      invalidatePatientIndex();
+      saveLocal(); renderAll();
+      lastSyncTime = nowTH();
+      renderSyncBadge();
+      // บันทึกที่ยังอยู่ในเอกสารเดิม (ก่อนแยกรายเดือน หรือจากหน้าเว็บรุ่นเก่าที่ยังเปิดค้าง) ย้ายเข้าเอกสารรายเดือน
+      if (legacy.length && !migrating) {
+        migrating = true;
+        ClinicStore.migrateLegacy(db, legacy)
+          .catch(e => console.warn('ClinicStore migrate:', e))
+          .finally(() => { migrating = false; });
       }
-    }, err => {
-      badge.textContent = lastSyncTime ? `📴 ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '📴 ออฟไลน์';
-      badge.style.background='#fee2e2'; badge.style.color='#991b1b';
-    });
+    }, () => renderSyncBadge(true));
   } catch(e) { console.warn('Firebase:',e); }
 }
-function fbSave() {
+
+function renderSyncBadge(offline) {
+  const badge = document.getElementById('sync-badge');
+  const n = clinicSync ? clinicSync.count() : 0;
+  const set = (t, bg, c) => { badge.textContent = t; badge.style.background = bg; badge.style.color = c; };
+  if (n) set(`⏳ รอส่งขึ้นคลาวด์ ${n} รายการ`, '#fef9c3', '#854d0e');
+  else if (offline) set(lastSyncTime ? `📴 ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '📴 ออฟไลน์', '#fee2e2', '#991b1b');
+  else if (lastSyncTime) set(`☁️ ซิงค์แล้ว ${lastSyncTime}`, '#dcfce7', '#15803d');
+}
+
+// เพิ่ม/แก้ (rec) หรือลบ (rec = null, id) บันทึกคลินิก 1 รายการ → เข้าคิวส่งเอกสารรายเดือน
+function queueVisit(rec, id) {
+  if (!clinicSync) return;
+  const vid = rec ? rec.id : id;
+  clinicSync.queue(vid, rec, visitMonthOf[vid]);
+}
+
+// session / ราคาที่เพิ่มเอง / ทะเบียนผู้ป่วย — ไม่แตะ visitRecords เดิมใน clinic_data
+function fbSaveMeta() {
   if (!db) return;
   db.collection('pharmacy_tph').doc('clinic_data')
-    .set({visitRecords,sessionRecords,priceOverrides,patientRoster,updated:Date.now()}, {merge:true})
+    .set({sessionRecords,priceOverrides,patientRoster,updated:Date.now()}, {merge:true})
     .catch(e=>console.warn('FB save:',e));
 }
 

@@ -24,7 +24,9 @@ service cloud.firestore {
         'hosxp_records',
         'hosxp_denom',
         'expiry_tracker'
-      ];
+      ]
+      // บันทึกคลินิกแยกเอกสารรายเดือน clinic_YYYY-MM (lib/clinic-store.js)
+      || docId.matches('clinic_[0-9]{4}-[0-9]{2}');
     }
 
     // ── Deny all other collections / paths ──────────────────────────
