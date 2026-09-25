@@ -111,6 +111,14 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .15s;}
 .btn-rm:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
 
+/* วางข้อความ DRP ที่พิมพ์ใน HOSxP แล้วแยกเป็น DRP/ยาเหลือให้ */
+.hx-paste{margin-bottom:12px;padding:10px 12px;background:var(--primary-light);border:1.5px solid var(--primary);border-radius:10px;}
+.hx-paste textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
+  font-family:inherit;background:#fff;outline:none;resize:vertical;}
+.hx-paste textarea:focus{border-color:var(--primary);}
+.hx-paste-result{font-size:12px;color:var(--text-mid);margin-top:6px;line-height:1.6;}
+.hx-paste-result .warn{color:#b45309;font-weight:600;}
+
 /* ข้อความ DRP สำหรับวางในช่องวิธีใช้ของ HOSxP */
 .hx-note{margin-top:14px;padding:10px 12px;background:var(--gold-light);border:1.5px solid var(--gold);border-radius:10px;}
 .hx-note-title{font-size:13px;font-weight:700;color:var(--text);}
@@ -441,6 +449,17 @@ tr:hover td{background:#f8faf9;}
     <!-- RIGHT COL: DRP + Leftover -->
     <div class="entry-col">
       <div class="form-title">DRPs ที่พบ</div>
+
+      <!-- เภสัชพิมพ์ DRP ใน HOSxP ก่อน (COUNSELLING น้อยกว่า 30 นาที → ช่องวิธีใช้) คัดลอกมาวางที่นี่ ไม่ต้องกรอกซ้ำ -->
+      <div class="hx-paste">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:2px">📥 วางข้อความ DRP จาก HOSxP</label>
+        <div style="font-size:11px;color:var(--text-mid);margin-bottom:6px">ช่องวิธีใช้ของ COUNSELLING น้อยกว่า 30 นาที → Ctrl+A, Ctrl+C แล้วมาวาง (Ctrl+V) ที่นี่ ระบบจะแยก DRP และยาเหลือให้</div>
+        <textarea id="hx-paste" rows="2" placeholder="เช่น ลืมทานยามื้อเที่ยง / ยาเหลือ Metformin 20 เม็ด, Amlodipine 10 เม็ด"></textarea>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+          <button class="btn-add" type="button" id="hx-paste-btn" onclick="applyHosxpPaste()">🔍 แยก DRP</button>
+        </div>
+        <div class="hx-paste-result" id="hx-paste-result"></div>
+      </div>
 
       <!-- Quick DRP: มียาเหลือสะสม (Leftover Medication) — 90% of cases -->
       <div class="drp-quick" id="drp-quick-wrap">
@@ -1009,6 +1028,151 @@ async function copyHxNote() {
     ta.select(); document.execCommand('copy');
   }
   showToast('📋 คัดลอกแล้ว — ไปวาง (Ctrl+V) ในช่องวิธีใช้ของ COUNSELLING ใน HOSxP');
+}
+
+// ── แยก DRP จากข้อความที่พิมพ์ใน HOSxP ─────────────────────
+// เภสัชพิมพ์ DRP ใน HOSxP ก่อนเสมอ (ช่องวิธีใช้ของ COUNSELLING น้อยกว่า 30 นาที) ข้อความเป็นอิสระ
+// จึงแยกเป็นท่อน (ขึ้นบรรทัด / เลขข้อ / "/" / ";") แล้วจับคำหลักทีละท่อน ท่อนที่ไม่เข้ากฎไหนให้ AI จัดประเภท
+// ท่อนที่พูดถึง "เหลือ" = มียาเหลือสะสม แล้วดึงชื่อยา + จำนวนไปใส่ตารางยาที่คนไข้นำกลับมา
+const hxType = prefix => DRP_TYPES.find(t => t.startsWith(prefix));
+const HX_RULES = [
+  [/(สั่ง|จ่าย)(ยา)?ผิดขนาด/, hxType('ได้รับยาผิดขนาด')],
+  [s => /งด/.test(s) && /อาหาร|ข้าว/.test(s), hxType('ไม่ได้รับประทานอาหารเที่ยง')],
+  [/ยาหมด|หมดก่อน|ไม่พอ/, hxType('ยาหมดก่อนถึงวันนัด')],
+  [/ลืม|missed/i, hxType('ลืมรับประทานยา')],
+  [/(หยุด|ลด|เพิ่ม|ปรับ|เลื่อน)(ยา|ขนาด|เวลา|มื้อ)?เอง|(ทาน|กิน)(ยา)?(เฉพาะ)?เมื่อมีอาการ|รวบมื้อ|รวมมื้อ/, hxType('ปรับขนาด/เวลารับประทานยาเอง')],
+  [/ADR|แพ้|ผื่น|ไอแห้ง|ไม่พึงประสงค์|ข้างเคียง|ใจสั่น|น้ำตาลต่ำ|hypo/i, hxType('เกิดอาการไม่พึงประสงค์')],
+  [/interaction|ปฏิกิริยาระหว่างยา|ตีกัน/i, hxType('เกิดปฏิกิริยาระหว่างยา')],
+  [/ซ้ำซ้อน|ยาซ้ำ|ซื้อยา|ร้านยา|คลินิก|รพ\.?\s?สต|โรงพยาบาลอื่น|รพ\.?\s?อื่น/, hxType('ได้รับยาซ้ำซ้อน')],
+  [/ผิดนัด|ขาดนัด|ไม่มาตามนัด/, hxType('มาผิดนัด')],
+  [/ผิดวิธี|ฉลาก|เทคนิค|วิธีพ่น|พ่นยาไม่|วิธีฉีด|มองไม่ชัด/, hxType('รับประทานยาผิดวิธีใช้')],
+  [/(ทาน|กิน|ใช้)(ยา)?(เกิน|ผิดขนาด)|เกินขนาด|ผิดขนาด/, hxType('รับประทานยาผิดขนาด')],
+  [/เก็บยา|ตู้เย็น|แช่|โดนแดด|กระติก/, hxType('เก็บรักษายาไม่ถูกต้อง')],
+  [/ได้(รับ)?ยาไม่ครบ|ไม่ได้รับยา/, hxType('ได้รับยาไม่ครบ')],
+  [/จ่าย(ยา)?(ผิดจำนวน|ขาด|เกิน)|ได้ยา(เกิน|ขาด)/, hxType('ได้รับยาผิดจำนวน')],
+  [/แพทย์|ปรับยา|เปลี่ยนยา|หยุดยา|off\b|ขอ(ปรับ|ลด|เพิ่ม|หยุด|เปลี่ยน)|เสนอ|consult/i, hxType('มีการปรับเปลี่ยนแผนการรักษา')],
+  [/ไม่(ทาน|กิน|ใช้)ยา|ไม่ยอม(ทาน|กิน)|ขาดยา|non-?complian|non-?adheren/i, hxType('ไม่ใช้ยาตามแพทย์สั่ง')],
+];
+// คำในข้อความ → สาเหตุใน DRP_CAUSES (เฉพาะประเภทที่มีรายการสาเหตุ) ไม่เข้าข้อไหน = "อื่นๆ" + ข้อความเดิม
+const HX_CAUSE_RULES = {
+  [hxType('ลืมรับประทานยา')]: [[/เที่ยง/, 'ไม่ได้ทานอาหารเที่ยง'], [/เช้า/, 'ไม่ได้ทานอาหารเช้า'], [/ก่อนนอน/, 'ลืมทานมื้อก่อนนอน'],
+    [/ติดตัว|พกยา|ไปต่างจังหวัด|ไปทำงาน|ไปนา|ไปสวน/, 'ไม่ได้นำยาติดตัวเมื่อไปธุระ'], [/ธุระ|ยุ่ง/, 'ติดธุระจึงลืมทาน'],
+    [/จำไม่ได้/, 'ผู้ป่วยจำไม่ได้ว่าทานยาแล้วหรือยัง'], [/ไม่เห็นความสำคัญ/, 'ไม่เห็นความสำคัญในการรับประทานยา']],
+  [hxType('รับประทานยาผิดวิธีใช้')]: [[/เป็นปัจจุบัน|ฉลากเก่า/, 'ไม่อ่านฉลากเป็นปัจจุบัน'], [/ไม่อ่านฉลาก/, 'ไม่อ่านฉลาก'],
+    [/อ่านฉลากผิด/, 'อ่านฉลากผิด'], [/มองไม่ชัด|สายตา|ตามัว/, 'ตามองไม่ชัด']],
+  [hxType('ยาหมดก่อนถึงวันนัด')]: [[/(ทาน|กิน)ผิด/, 'ผู้ป่วยทานยาผิดวิธีใช้'], [/แจ้ง.*ผิด/, 'แจ้งจำนวนยาที่เหลือผิด'], [/ผิดนัด/, 'ผิดนัด'],
+    [/จ่าย.*ผิด/, 'จ่ายยาผิดจำนวน'], [/แบ่ง|หัก|แตก/, 'แบ่งยาครึ่งเม็ดจนเม็ดยาแตก'], [/คนอื่น|ผู้อื่น|ญาติ/, 'ผู้อื่นเอายาผู้ป่วยไปทาน'],
+    [/ไม่เห็นยา|หายา/, 'ไม่เห็นยาที่เหลือ'], [/ไม่ทราบ/, 'ไม่ทราบสาเหตุ']],
+  [hxType('ปรับขนาด/เวลารับประทานยาเอง')]: [[/ADR|ข้างเคียง|ไม่พึงประสงค์|แพ้|ผื่น|ไอ|ใจสั่น|หน้ามืด/i, 'เกิด ADR หลังทานยา'], [/คุมอาหาร/, 'ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา'],
+    [/เมื่อมีอาการ/, 'แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น'], [/วัดความดัน|DTX|เจาะน้ำตาล/i, 'ตรวจวัดความดัน/DTX เองที่บ้าน'],
+    [/ผลเลือด/, 'ผลเลือดปกติในนัดรอบก่อน จึงไม่ทานยา คิดว่าผลเลือดปกติ'], [/ตับ|ไต/, 'กังวลเรื่องการทานยามากเกินไป ทำให้ตับ/ไตพัง'],
+    [/รวบมื้อ|รวมมื้อ/, 'ต้องการรวบมื้อยาในมื้อเดียวกัน'], [/สะดวก/, 'ปรับวิธีใช้ยาตามความสะดวกในการรับประทาน'],
+    [/ดีขึ้น/, 'ผู้ป่วยอาการดีขึ้นแล้วหยุดใช้ยา/ทานเมื่อมีอาการ'], [/ไม่เห็นความสำคัญ/, 'ไม่เห็นความสำคัญในการใช้ยา']],
+};
+const HX_LEFTOVER = /เหลือ|leftover/i;
+const HX_UNITS = 'เม็ด|แคปซูล|แค็บซูล|แคป|ขวด|หลอด|แผง|ซอง|ปากกา|อัน|กล่อง|tab|cap';
+
+function hxRuleType(seg) {
+  const r = HX_RULES.find(([test]) => typeof test === 'function' ? test(seg) : test.test(seg));
+  return r ? r[1] : '';
+}
+
+function hxDrp(type, seg) {
+  const causes = HX_CAUSE_RULES[type];
+  if (!causes) return { type, cause: '', causeNote: seg };
+  const c = causes.find(([re]) => re.test(seg));
+  return c ? { type, cause: c[1], causeNote: '' } : { type, cause: 'อื่นๆ', causeNote: seg };
+}
+
+function hxSegments(text) {
+  return String(text || '')
+    .replace(/^\s*DRPs?\s*[:：]?\s*/i, '')
+    .split(/\r?\n|\s*[;•]\s*|\s+\/\s*|\s*\/\s+|(?:^|\s)\d{1,2}\s*[.)]\s*(?=[^\d\s])/)
+    .map(x => x.replace(/^[\s\-–:,]+|[\s\-–:,]+$/g, '')).filter(Boolean);
+}
+
+// ชื่อยาที่พิมพ์ย่อๆ ใน HOSxP → ชื่อในรายการราคายา ถ้ามีหลายความแรง เลือกตัวที่ตัวเลขตรงกับที่พิมพ์
+function hxMatchDrug(name) {
+  const keys = [...new Set([...Object.keys(DRUG_PRICES), ...Object.keys(priceOverrides)])];
+  let cands = keys.filter(k => drugMatches(name, k));
+  // ชื่อย่อ เช่น simva → SIMVASTATIN
+  if (!cands.length) { const A = drugTokens(name); cands = keys.filter(k => drugTokens(k).some(y => A.some(x => y.startsWith(x)))); }
+  if (!cands.length && name.length >= 3) cands = keys.filter(k => k.toLowerCase().includes(name.toLowerCase()));
+  if (!cands.length) return '';
+  const nums = name.match(/\d+(?:\.\d+)?/g) || [];
+  const score = k => (nums.some(n => (k.match(/\d+(?:\.\d+)?/g) || []).includes(n)) ? 2 : 0) - (k.includes('ยาเดิม') ? 1 : 0);
+  return cands.sort((a, b) => score(b) - score(a))[0];
+}
+
+function hxLeftovers(seg) {
+  const body = seg.replace(/(มี)?(ยา)?เหลือ(สะสม)?|leftover( medication)?/gi, ' ')
+    // "simva 30 ASA 15" ไม่มีจุลภาคคั่น — ตัดหลังจำนวน ถ้าคำถัดไปไม่ใช่หน่วย/ความแรง
+    .replace(new RegExp('(\\d)(\\s*(?:' + HX_UNITS + '))?\\s+(?!(?:mg|mcg|g|ml|iu|u|unit|' + HX_UNITS + ')(?![A-Za-z]))(?=[A-Za-zก-๙])', 'gi'), '$1$2,');
+  return body.split(/[,，]|\sและ\s/).map(piece => {
+    piece = piece.trim();
+    let m = piece.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*(' + HX_UNITS + ')', 'i'));
+    let qty = '', unit = '';
+    if (m) { qty = m[1]; unit = m[2]; }
+    else {
+      // ไม่มีหน่วย ใช้ตัวเลขสุดท้ายที่ไม่ใช่ความแรงยา (mg, ml ...)
+      const all = [...piece.matchAll(/(\d+(?:\.\d+)?)(?!\s*(?:\.\d|mg|mcg|g\b|ml|%|iu|u\b|unit))/gi)];
+      if (all.length) m = all[all.length - 1], qty = m[1];
+    }
+    const name = (m ? piece.slice(0, m.index) + piece.slice(m.index + m[0].length) : piece)
+      .replace(/[:=\-–]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    if (!/[A-Za-zก-๙]/.test(name)) return null;
+    const key = hxMatchDrug(name);
+    const info = key ? getDrugPrice(key) : null;
+    return { raw: name, drug: key || name, qty, unit: (info && info.u) || (/tab|cap|แคป/i.test(unit) ? 'เม็ด' : unit) || 'เม็ด', price: (info && info.p) || 0, matched: !!key };
+  }).filter(Boolean);
+}
+
+async function applyHosxpPaste() {
+  const text = document.getElementById('hx-paste').value.trim();
+  const out = document.getElementById('hx-paste-result');
+  if (!text) { out.textContent = ''; return; }
+  const btn = document.getElementById('hx-paste-btn');
+  const drps = [], aiSegs = [];
+  let leftovers = null;
+  hxSegments(text).forEach(seg => {
+    if (HX_LEFTOVER.test(seg) && !/ยาหมด|หมดก่อน/.test(seg)) { (leftovers = leftovers || []).push(...hxLeftovers(seg)); return; }
+    // ท่อนเดียวมีหลายเรื่องคั่นด้วยจุลภาค เช่น "ลืมทานมื้อเที่ยง, ปรับยาเอง" แยกเป็นหลาย DRP
+    const parts = seg.split(/\s*,\s*/);
+    const pieces = parts.length > 1 && parts.filter(hxRuleType).length > 1 ? parts : [seg];
+    pieces.forEach(p => { const t = hxRuleType(p); t ? drps.push(hxDrp(t, p)) : aiSegs.push(p); });
+  });
+
+  if (aiSegs.length) {
+    btn.disabled = true; btn.textContent = '⏳ กำลังแยก...';
+    for (const seg of aiSegs) {
+      let t = '';
+      try {
+        t = await classifyOnce(seg, DRP_TYPES.filter(x => x !== 'อื่นๆ (Others)'),
+          'คุณเป็นเภสัชกรคลินิก HT/DM/COPD จัดประเภทปัญหาจากการใช้ยา (DRP) จากข้อความที่เภสัชกรบันทึกไว้ เลือกประเภทที่ตรงที่สุด ถ้าไม่เข้าข่ายให้ตอบว่างเปล่า');
+      } catch (e) { console.error('applyHosxpPaste AI:', e); }
+      drps.push(t && DRP_TYPES.includes(t) ? { ...hxDrp(t, seg), ai: true } : { type: 'อื่นๆ (Others)', cause: '', causeNote: seg });
+    }
+    btn.disabled = false; btn.textContent = '🔍 แยก DRP';
+  }
+
+  // ข้อความจาก HOSxP คือตัวจริง แทนที่ DRP ที่กรอกไว้ในฟอร์ม ส่วนตารางยาเหลือแทนที่เฉพาะเมื่อข้อความพูดถึงยาเหลือ
+  document.getElementById('drp-list').innerHTML = '';
+  drps.forEach(d => addDrpRow(d.type, d.cause, d.causeNote));
+  if (leftovers) {
+    document.getElementById('lo-list').innerHTML = '';
+    leftovers.forEach(l => addLoRow(l.drug, l.qty, l.unit, l.price));
+    toggleQuickDrp(true);
+  }
+
+  const unmatched = (leftovers || []).filter(l => !l.matched).map(l => l.raw);
+  const noQty = (leftovers || []).filter(l => !l.qty).map(l => l.raw);
+  const aiCount = drps.filter(d => d.ai).length;
+  const others = drps.filter(d => d.type.startsWith('อื่นๆ')).length;
+  out.innerHTML = `✅ แยกได้ DRP ${drps.length + (leftovers ? 1 : 0)} รายการ` + (leftovers ? ` · ยาเหลือ ${leftovers.length} รายการ` : '') +
+    (aiCount ? `<br>🤖 AI จัดประเภทให้ ${aiCount} รายการ — ตรวจสอบอีกครั้ง` : '') +
+    (others ? `<br><span class="warn">⚠️ จัดประเภทไม่ได้ ${others} รายการ ใส่ไว้ที่ "อื่นๆ" — เลือกประเภทเองได้</span>` : '') +
+    (unmatched.length ? `<br><span class="warn">⚠️ ไม่พบในรายการยา: ${unmatched.map(escHtml).join(', ')} — เลือกชื่อยาใหม่เพื่อให้คิดราคา</span>` : '') +
+    (noQty.length ? `<br><span class="warn">⚠️ ไม่ได้ระบุจำนวน: ${noQty.map(escHtml).join(', ')}</span>` : '');
 }
 
 // ── AI DRP SUGGESTION (ประเภท + สาเหตุ) ───────────────────
@@ -1607,7 +1771,8 @@ function submitVisit() {
 
 function clearForm() {
   document.getElementById('f-date').value = todayTH();
-  ['f-hn','f-name','f-notes','f-pharmnote','drp-suggest-text'].forEach(id=>document.getElementById(id).value='');
+  ['f-hn','f-name','f-notes','f-pharmnote','drp-suggest-text','hx-paste'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('hx-paste-result').textContent = '';
   document.getElementById('hn-history-box').style.display = 'none';
   ['chk-adherence','chk-noleftover','chk-insulin','chk-icebox'].forEach(id=>{document.getElementById(id).checked=false;});
   toggleInsulinIcebox();
@@ -2985,6 +3150,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dow = new Date().getDay();
   if (dow === 3) selectClinic('HT');
   else if (dow === 4) selectClinic('DM');
+  // วางข้อความจาก HOSxP แล้วแยก DRP ให้ทันที ไม่ต้องกดปุ่ม
+  document.getElementById('hx-paste').addEventListener('paste', () => setTimeout(applyHosxpPaste, 0));
   // แก้ประเภท/สาเหตุ DRP หรือหน่วยยา → ร่างข้อความ HOSxP ใหม่
   ['drp-list', 'lo-list'].forEach(id => ['input', 'change'].forEach(ev =>
     document.getElementById(id).addEventListener(ev, () => refreshHxNote())));
