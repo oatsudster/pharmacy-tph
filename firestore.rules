@@ -6,7 +6,8 @@ service cloud.firestore {
     // ครอบคลุม documents ทั้งหมดที่แอปใช้งาน:
     // suggestions, adr_records, clinic_data,
     // wt_stat, wt_cart, wt_stat_pending, wt_cart_pending,
-    // er_records, hosxp_records, hosxp_denom, expiry_tracker
+    // er_records, hosxp_records, hosxp_denom, expiry_tracker, dm_visits, dm_patients
+    // clinic_YYYY-MM (บันทึกคลินิกแยกเอกสารรายเดือน)
     match /pharmacy_tph/{docId} {
       // อ่านได้ทุกคน (ข้อมูลภายในโรงพยาบาล ผ่าน PIN แล้ว)
       allow read: if true;
@@ -23,9 +24,11 @@ service cloud.firestore {
         'er_records',
         'hosxp_records',
         'hosxp_denom',
-        'expiry_tracker'
+        'expiry_tracker',
+        'dm_visits',
+        'dm_patients'
       ]
-      // บันทึกคลินิกแยกเอกสารรายเดือน clinic_YYYY-MM (lib/clinic-store.js)
+      // บันทึกคลินิกแยกเอกสารรายเดือน เช่น clinic_2026-09
       || docId.matches('clinic_[0-9]{4}-[0-9]{2}');
     }
 
