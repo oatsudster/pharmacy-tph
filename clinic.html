@@ -2013,7 +2013,7 @@ function renderFloatOcrStatus() {
   const b = lastBridge;
   let msg = '', cls = 'muted';
   if (b && b.hn && b.hn === hn) {
-    if (b.covered) { msg = '⚠️ หน้าต่างลอยบังตารางยา/วันนัดใน HOSxP — เลื่อนหน้าต่างลอยไปทางขวา'; cls = 'warn'; }
+    if (b.covered) { msg = '⏸ มีหน้าต่างอื่นบังตารางยา/วันนัดใน HOSxP (เช่นหน้าต่างลอย หรือหน้าเปรียบเทียบประวัติ) — หยุดอ่านไว้ก่อน แสดงผลล่าสุด'; cls = 'warn'; }
     else if (floatOcrStatus === 'running') msg = '⏳ กำลังอ่านใบสั่งยาจาก HOSxP… (ครั้งแรกต้องโหลดตัวอ่านภาษาไทย อาจช้า)';
     else if (floatOcrStatus === 'error') { msg = '⚠️ อ่านใบสั่งยาไม่สำเร็จ — กรอก "ใช้/วัน" เอง'; cls = 'warn'; }
     else if (floatOrder && floatOrder.hn === hn) msg = '📷 วิธีใช้อ่านจากหน้าจอ HOSxP (OCR) — ตรวจทานกับใบสั่งยาก่อนจ่ายทุกครั้ง';

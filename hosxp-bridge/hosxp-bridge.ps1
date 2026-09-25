@@ -10,7 +10,8 @@
 #   วันนัด        — THTMListBox ในกล่อง "ข้อมูลการนัดหมาย" แสดงเป็น "1.[119 วัน] 22 มกราคม 2570 ..."
 #                   วาดข้อความเอง อ่านผ่าน API ไม่ได้ จึงจับภาพแล้ว OCR (อังกฤษพอ) เอาตัวเลขในวงเล็บ [..]
 #   ใบสั่งยา       — TcxGridSite ใน THOSxPMedicationOrderFrame (DevExpress grid อ่านผ่าน API ไม่ได้เช่นกัน)
-# HOSxP ไม่ตอบ PrintWindow จึงต้องจับภาพจากจอจริง — ถ้ามีหน้าต่างอื่นบังอยู่ จะไม่จับส่วนที่ถูกบัง
+# HOSxP ไม่ตอบ PrintWindow จึงต้องจับภาพจากจอจริง — ถ้ามีหน้าต่างอื่นบังอยู่ (รวมถึงหน้าอื่นของ HOSxP
+# เช่น "เปรียบเทียบประวัติ") จะไม่จับส่วนที่ถูกบัง และคงผลที่อ่านได้ล่าสุดของคนไข้คนนี้ไว้
 
 $PORT = 8765
 $ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ
@@ -22,15 +23,13 @@ using System.Runtime.InteropServices;
 public static class HxWin {
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
-  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint flags);
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
-  // จุดบนจอนี้เป็นของโปรแกรม pid หรือไม่ (ไม่ถูกหน้าต่างอื่นบัง)
-  public static bool OwnedBy(int x, int y, uint pid) {
+  [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr h);
+  // จุดบนจอนี้คือตัว control นั้นจริงหรือไม่ — ถ้ามีหน้าต่างอื่นบัง แม้เป็นของ HOSxP เอง
+  // (เช่น "เปรียบเทียบประวัติ") ก็ถือว่าถูกบัง จะได้ไม่เอาภาพหน้านั้นไปอ่าน
+  public static bool IsShowing(int x, int y, IntPtr target) {
     POINT p; p.X = x; p.Y = y;
     IntPtr h = WindowFromPoint(p);
-    if (h == IntPtr.Zero) return false;
-    uint owner; GetWindowThreadProcessId(GetAncestor(h, 2), out owner);
-    return owner == pid;
+    return h == target || IsChild(target, h);
   }
 }
 "@
@@ -50,7 +49,7 @@ if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Wi
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
 $state = [ordered]@{ ok = $false; hn = ''; name = ''; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; ts = 0 }
-$cache = @{ pid = 0; hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null }
+$cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null }
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
 
@@ -67,7 +66,6 @@ function FindDispenseScreen {
   $cache.hnEdit = $null; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null
   $proc = Get-Process HOSxPXE4 -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $proc) { return }
-  $cache.pid = $proc.Id
   $main = $AE::RootElement.FindFirst($TS::Children, (New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$proc.Id)))
   if (-not $main) { return }
   $frame = $main.FindFirst($TS::Descendants, (ClassCond 'THOSxPDiepensingDispenseEntryFrame'))
@@ -79,12 +77,12 @@ function FindDispenseScreen {
   if ($order) { $cache.grid = $order.FindFirst($TS::Descendants, (ClassCond 'TcxGridSite')) }
 }
 
-# ความกว้างจากขอบซ้ายของ rect ที่มองเห็นจริง (ไม่ถูกหน้าต่างอื่น เช่นหน้าต่างลอย บัง) — สุ่มตรวจเป็นจุดๆ
-function VisibleWidth($r) {
-  $pid0 = [uint32]$cache.pid
+# ความกว้างจากขอบซ้ายของ control ที่มองเห็นจริง (ไม่ถูกหน้าต่างอื่นบัง) — สุ่มตรวจเป็นจุดๆ
+function VisibleWidth($r, $el) {
+  $hwnd = [IntPtr]$el.Current.NativeWindowHandle
   $ys = @([int]($r.Y + 4), [int]($r.Y + $r.Height / 2), [int]($r.Y + $r.Height - 4))
   for ($x = [int]$r.X + 4; $x -lt $r.X + $r.Width; $x += 30) {
-    foreach ($y in $ys) { if (-not [HxWin]::OwnedBy($x, $y, $pid0)) { return [int]($x - $r.X - 4) } }
+    foreach ($y in $ys) { if (-not [HxWin]::IsShowing($x, $y, $hwnd)) { return [int]($x - $r.X - 4) } }
   }
   return [int]$r.Width
 }
@@ -102,7 +100,7 @@ function ReadApptDays {
   $r = $list.Current.BoundingRectangle
   $w = [int]$r.Width; $h = [int][Math]::Min($r.Height, 30)   # บรรทัดแรกพอ นัดที่ใกล้สุดอยู่บนสุด
   if ($w -le 0 -or $h -le 0) { return $null }
-  $vis = VisibleWidth (New-Object System.Windows.Rect $r.X, $r.Y, $w, $h)
+  $vis = VisibleWidth (New-Object System.Windows.Rect $r.X, $r.Y, $w, $h) $list
   if ($vis -lt 250) { $state.covered = $true; return $null }   # "1.[119 วัน] 22 ..." อยู่ต้นบรรทัด เห็นแค่ช่วงแรกก็พอ
   $bmp = CaptureScreen ([int]$r.X) ([int]$r.Y) $vis $h
   # ขยาย 2 เท่า OCR อ่านตัวเลขเล็กๆ ได้แม่นขึ้น
@@ -130,7 +128,7 @@ function CaptureGrid {
   if (-not $grid) { return }
   $r = $grid.Current.BoundingRectangle
   if ($r.Width -le 0 -or $r.Height -le 0) { return }
-  $vis = VisibleWidth $r
+  $vis = VisibleWidth $r $grid
   $state.gridCut = $vis -lt $r.Width
   if ($vis -lt 300) { $state.covered = $true; return }
   $bmp = CaptureScreen ([int]$r.X) ([int]$r.Y) $vis ([int]$r.Height)
