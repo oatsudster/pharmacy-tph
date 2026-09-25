@@ -2057,6 +2057,18 @@ function isSymptomatic(...texts) {
     return drugTokens(t).some(x => SYMPTOMATIC_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
   });
 }
+// ยาฆ่าเชื้อ ให้ครบคอร์สตามที่แพทย์สั่ง ไม่ปรับตามวันนัด
+// จับทั้งชื่อที่ระบุและกลุ่มจากท้ายชื่อ (-cillin, -mycin, -floxacin, -cycline, cef-/ceph-) ให้ครอบคลุมตัวอื่นในกลุ่มเดียวกัน
+const ANTIBIOTIC_DRUGS = ['AMOXICILLIN', 'DICLOXACILLIN', 'CLINDAMYCIN', 'AUGMENTIN', 'CLAVULANATE', 'CLAVULANIC',
+  'ROXITHROMYCIN', 'CIPROFLOXACIN', 'COTRIMOXAZOLE', 'BACTRIM', 'SULFAMETHOXAZOLE', 'TRIMETHOPRIM', 'METRONIDAZOLE'];
+function isAntibiotic(...texts) {
+  return texts.some(t => {
+    t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');
+    return drugTokens(t.replace(/-/g, '')).some(x =>
+      /(CILLIN|MYCIN|FLOXACIN|CYCLINE)$|^CEF|^CEPH/.test(x)
+      || ANTIBIOTIC_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
+  });
+}
 
 function updateFloatNeed(tr) {
   const inp = tr.querySelector('.pd');
@@ -2096,6 +2108,7 @@ function renderFloatLeftover() {
     rows.push({ key: 'o:' + o.name, name: l ? cleanDrugName(l.drug) : o.name, use: o,
       lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l,
       kind: inhaler ? 'inhaler' : isSymptomatic(o.name, l && l.drug) ? 'symptom'
+        : isAntibiotic(o.name, l && l.drug) ? 'antibiotic'
         : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
       unit: o.unit || (l && l.unit) || '' });
   });
@@ -2104,6 +2117,7 @@ function renderFloatLeftover() {
     rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
       loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, unit: l.unit || 'เม็ด',
       kind: isInhaler(l.drug, l.unit) ? 'inhaler' : isSymptomatic(l.drug) ? 'symptom'
+        : isAntibiotic(l.drug) ? 'antibiotic'
         : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
   });
 
@@ -2129,6 +2143,7 @@ function renderFloatLeftover() {
         const adjust = r.kind === 'tablet';
         const tag = r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
           : r.kind === 'symptom' ? '<span class="tag info">💊 ยาบรรเทาอาการ — ไม่ปรับจำนวน</span>'
+          : r.kind === 'antibiotic' ? '<span class="tag info">🦠 ยาฆ่าเชื้อ — ไม่ปรับจำนวน</span>'
           : !adjust ? '<span class="tag info">ไม่ใช่ยาเม็ด — ไม่ปรับจำนวน</span>'
           : r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
           : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
@@ -2142,7 +2157,7 @@ function renderFloatLeftover() {
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ)</div>`;
+    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ)</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
     if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
