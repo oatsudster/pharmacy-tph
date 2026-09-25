@@ -2,7 +2,9 @@
 #
 # อ่านจากหน้าจอ HOSxP เท่านั้น (Windows UI Automation + จับภาพ) ไม่แตะฐานข้อมูล ไม่กด/แก้อะไรใน HOSxP
 # เปิดให้เฉพาะเครื่องนี้ (127.0.0.1) และรับเฉพาะหน้าเว็บของเรา (ALLOWED_ORIGINS):
-#   /current  — JSON { ok, hn, name, apptDays, gridVer, gridCut, covered, ts }
+#   /current  — JSON { ok, hn, name, active, apptDays, gridVer, gridCut, covered, ts }
+#               active = หน้าบันทึกจ่ายยาอยู่บนจอจริง (ช่อง HN และตารางยาไม่ถูกหน้าอื่น/dialog ของ HOSxP ทับ)
+#               ถ้าไม่ active จะไม่อ่านวันนัด/ตารางยา และหน้าเว็บจะไม่คำนวณ
 #   /grid.png — ภาพตารางใบสั่งยาล่าสุด หน้าเว็บเอาไป OCR ภาษาไทยเองด้วย Tesseract (Windows OCR ไม่มีภาษาไทย)
 #
 # ตำแหน่งข้อมูลในหน้าจ่ายยา (THOSxPDiepensingDispenseEntryFrame) ของ HOSxP XE 4:
@@ -48,7 +50,7 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null }
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
@@ -85,6 +87,14 @@ function VisibleWidth($r, $el) {
     foreach ($y in $ys) { if (-not [HxWin]::IsShowing($x, $y, $hwnd)) { return [int]($x - $r.X - 4) } }
   }
   return [int]$r.Width
+}
+
+# control นี้อยู่บนจอให้เห็นจริงไหม (ตรวจจุดใกล้มุมซ้ายบน ซึ่งหน้าต่างลอยที่วางทางขวาไม่บัง)
+function ElShowing($el) {
+  if (-not $el) { return $false }
+  $r = $el.Current.BoundingRectangle
+  if ($r.IsEmpty -or $r.Width -le 0 -or $el.Current.IsOffscreen) { return $false }
+  return [HxWin]::IsShowing([int]($r.X + 8), [int]($r.Y + [Math]::Min(8, $r.Height / 2)), [IntPtr]$el.Current.NativeWindowHandle)
 }
 
 function CaptureScreen($x, $y, $w, $h) {
@@ -158,7 +168,10 @@ function UpdateState {
     $script:gridPng = $null; $script:gridHash = ''; $state.gridVer++
     $script:nextAppt = [DateTime]::MinValue; $script:nextGrid = [DateTime]::MinValue
   }
-  if ($hn) {
+  $active = $false
+  if ($hn) { try { $active = (ElShowing $cache.hnEdit) -and (ElShowing $cache.grid) } catch {} }
+  $state.active = $active
+  if ($active) {
     $state.covered = $false
     # วันนัดอ่านซ้ำทุก 5 วินาที ตารางยาทุก 2 วินาที เผื่อข้อมูลโหลดขึ้นมาทีหลัง หรือเพิ่งเลื่อนหน้าต่างที่บังออก
     if ((Get-Date) -ge $script:nextAppt) {

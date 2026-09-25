@@ -1746,6 +1746,9 @@ const FLOAT_CSS = `
   .tag.info{background:#e0f2fe;color:#0e7490}
   tr.noadj td{background:#f8faf9}
   #fl-ocr{margin:-4px 0 8px}
+  #fl-result .paused-msg{display:none}
+  #fl-result.paused .paused-msg{display:block}
+  #fl-result.paused table, #fl-result.paused .calc-note{display:none}
   #fl-link{font-size:11px;color:#7A9A85;margin-bottom:6px}
   #fl-link.on{color:#1A5E38;font-weight:600}
 `;
@@ -1847,8 +1850,10 @@ async function pollHosxpBridge() {
     return;
   }
   if (!floatWin || floatWin.closed) return;
+  const wasActive = lastBridge && lastBridge.active;
   lastBridge = s;
-  if (s.hn && s.gridVer !== ocrDoneVer) runOrderOcr();
+  if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer) runOrderOcr();
+  if (s.active !== wasActive) applyFloatPaused();
   renderFloatOcrStatus();
   link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
   link.className = 'on';
@@ -2094,8 +2099,9 @@ function renderFloatLeftover() {
       ${withLo ? (() => { const isToday = withLo.date === thToISO(todayTH());
         return `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`; })()
         : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`}
-    </div><div id="fl-ocr"></div>`;
-  if (!rows.length) { out.innerHTML = head; out.dataset.hn = hn; renderFloatOcrStatus(); return; }
+    </div><div id="fl-ocr"></div>
+    <div class="empty paused-msg">⏸ ไม่ได้อยู่หน้าบันทึกจ่ายยาใน HOSxP<br>จะแสดงการคำนวณเมื่อกลับไปหน้าบันทึกจ่ายยา</div>`;
+  if (!rows.length) { out.innerHTML = head; out.dataset.hn = hn; applyFloatPaused(); renderFloatOcrStatus(); return; }
 
   // เก็บ "ใช้/วัน" ที่เภสัชกรแก้เองไว้ ไม่ให้ถูกค่าจาก OCR/การซิงค์ทับ (เฉพาะคนไข้คนเดิม)
   const userPd = {};
@@ -2123,13 +2129,24 @@ function renderFloatLeftover() {
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล</div>`;
+    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
     if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
     updateFloatNeed(tr);
   });
+  applyFloatPaused();
   renderFloatOcrStatus();
+}
+
+// คำนวณเฉพาะตอนหน้าบันทึกจ่ายยาของ HOSxP อยู่บนจอ — ไปหน้าอื่น (เช่นเปรียบเทียบประวัติ) ก็ซ่อนตารางไว้
+// แค่ซ่อนด้วย CSS ไม่ลบทิ้ง "ใช้/วัน" ที่แก้ไว้จะยังอยู่เมื่อกลับมา (พิมพ์ HN เองโดยไม่ใช้ bridge ก็ไม่ถูกซ่อน)
+function applyFloatPaused() {
+  if (!floatWin || floatWin.closed) return;
+  const d = floatWin.document, out = d.getElementById('fl-result');
+  if (!out) return;
+  const b = lastBridge, hn = d.getElementById('fl-hn').value.trim();
+  out.classList.toggle('paused', !!(b && b.hn && b.hn === hn && b.active === false));
 }
 
 // รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)
