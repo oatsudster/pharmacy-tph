@@ -1716,6 +1716,9 @@ function renderAll() {
 // เภสัชกรจึงดูยาคงเหลือไปพร้อมกับจ่ายยาใน HosXP ได้โดยไม่ต้องสลับ tab
 // ถ้าเบราว์เซอร์ไม่รองรับ จะเปิดเป็น popup เล็กแทน (ไม่ลอยเหนือโปรแกรมอื่น แต่วางข้าง HosXP ได้)
 let floatWin = null;
+// hosxp-bridge/hosxp-bridge.ps1 ที่รันในเครื่องห้องจ่ายยา บอก HN + จำนวนวันถึงนัด ของคนไข้ที่เปิดหน้าจ่ายยาใน HOSxP
+const HOSXP_BRIDGE_URL = 'http://127.0.0.1:8765/current';
+let floatPollTimer = null, bridgeKey = '';
 const FLOAT_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Noto Sans Thai','Sarabun',sans-serif;background:#F4F7F5;color:#1C2B22;padding:10px;font-size:13px}
@@ -1737,6 +1740,8 @@ const FLOAT_CSS = `
   td.need.zero{color:#7A9A85;font-size:13px}
   .pd{width:52px;text-align:center}
   .empty{text-align:center;padding:24px 8px;color:#7A9A85}
+  #fl-link{font-size:11px;color:#7A9A85;margin-bottom:6px}
+  #fl-link.on{color:#1A5E38;font-weight:600}
 `;
 
 function isoLocal(dt) {
@@ -1768,6 +1773,7 @@ async function openFloatLeftover() {
       <input id="fl-appt" type="date" value="${isoLocal(floatDateAfter(days0))}">
     </div>
     <div class="row" id="fl-chips"></div>
+    <div id="fl-link">⏳ กำลังเชื่อม HOSxP…</div>
     <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>`;
 
   const hnEl = d.getElementById('fl-hn');
@@ -1806,12 +1812,43 @@ async function openFloatLeftover() {
   d.getElementById('fl-result').addEventListener('input', e => {
     if (e.target.classList.contains('pd')) updateFloatNeed(e.target.closest('tr'));
   });
-  floatWin.addEventListener('pagehide', () => { floatWin = null; });
+  floatWin.addEventListener('pagehide', () => { floatWin = null; bridgeKey = ''; });
+  // ตั้ง timer บนหน้าต่างลอย (มองเห็นอยู่ตลอด) ไม่ใช่แท็บหลักที่ซ่อนอยู่ ซึ่ง Chrome จะชะลอ timer จนแทบไม่ทำงาน
+  bridgeKey = '';
+  floatPollTimer = floatWin.setInterval(pollHosxpBridge, 1500);
+  pollHosxpBridge();
 
   // ถ้าในฟอร์มบันทึกมี HN อยู่แล้ว ดึงมาใช้เลย
   const formHn = (document.getElementById('f-hn') || {}).value || '';
   if (formHn.trim()) hnEl.value = formHn.trim();
   hnEl.focus();
+  renderFloatLeftover();
+}
+
+// ดึงคนไข้ที่เปิดหน้าจ่ายยาอยู่ใน HOSxP มาแสดงเอง ถ้าไม่ได้เปิด bridge ไว้ ก็พิมพ์/วาง HN เองได้เหมือนเดิม
+async function pollHosxpBridge() {
+  if (!floatWin || floatWin.closed) return;
+  const d = floatWin.document, link = d.getElementById('fl-link');
+  let s;
+  try {
+    s = await (await fetch(HOSXP_BRIDGE_URL, { cache: 'no-store' })).json();
+  } catch (e) {
+    link.textContent = '⚪ ไม่ได้เชื่อม HOSxP (ยังไม่ได้เปิด HOSxP Bridge) — พิมพ์ HN เอง';
+    link.className = '';
+    return;
+  }
+  if (!floatWin || floatWin.closed) return;
+  link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
+  link.className = 'on';
+  // เปลี่ยนค่าเฉพาะตอน HOSxP เปลี่ยนคนไข้หรือได้วันนัดใหม่ ค่าที่แก้เองในหน้าต่างลอยจะไม่ถูกทับทุกรอบ
+  const key = s.hn + '|' + s.apptDays;
+  if (!s.hn || key === bridgeKey) return;
+  bridgeKey = key;
+  d.getElementById('fl-hn').value = s.hn;
+  if (s.apptDays != null) {
+    d.getElementById('fl-days').value = s.apptDays;
+    d.getElementById('fl-appt').value = isoLocal(floatDateAfter(s.apptDays));
+  }
   renderFloatLeftover();
 }
 
@@ -1872,9 +1909,10 @@ function renderFloatLeftover() {
     return;
   }
   const isToday = withLo.date === thToISO(todayTH());
-  // จำขนาดยา/วันที่กรอกไว้ ไม่ให้หายเวลามีการซิงค์ข้อมูลแล้ว render ใหม่
+  // จำขนาดยา/วันที่กรอกไว้ ไม่ให้หายเวลามีการซิงค์ข้อมูลแล้ว render ใหม่ (เฉพาะคนไข้คนเดิม)
   const prevPd = {};
-  out.querySelectorAll('tr[data-drug]').forEach(tr => { prevPd[tr.dataset.drug] = tr.querySelector('.pd').value; });
+  if (out.dataset.hn === hn) out.querySelectorAll('tr[data-drug]').forEach(tr => { prevPd[tr.dataset.drug] = tr.querySelector('.pd').value; });
+  out.dataset.hn = hn;
 
   out.innerHTML = `
     <div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
