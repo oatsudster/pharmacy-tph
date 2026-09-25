@@ -1831,9 +1831,10 @@ async function pollHosxpBridge() {
   const d = floatWin.document, link = d.getElementById('fl-link');
   let s;
   try {
-    s = await (await fetch(HOSXP_BRIDGE_URL, { cache: 'no-store' })).json();
+    // targetAddressSpace: บอก Chrome (Local Network Access) ว่าตั้งใจเรียกเครื่องตัวเอง
+    s = await (await fetch(HOSXP_BRIDGE_URL, { cache: 'no-store', targetAddressSpace: 'loopback' })).json();
   } catch (e) {
-    link.textContent = '⚪ ไม่ได้เชื่อม HOSxP (ยังไม่ได้เปิด HOSxP Bridge) — พิมพ์ HN เอง';
+    link.textContent = '⚪ ไม่ได้เชื่อม HOSxP — เปิด HOSxP Bridge แล้วหรือยัง? ถ้าเปิดแล้ว ให้อนุญาต "เครือข่ายในเครื่อง" ของเว็บนี้ในการตั้งค่า Chrome';
     link.className = '';
     return;
   }
