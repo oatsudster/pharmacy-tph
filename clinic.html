@@ -1092,9 +1092,17 @@ function hxSegments(text) {
     .map(x => x.replace(/^[\s\-–:,]+|[\s\-–:,]+$/g, '')).filter(Boolean);
 }
 
+// รายชื่อยาทั้งหมด: รายการยาในช่องเลือกยา (drug-dl) + ยาที่มีราคา + ราคาที่เภสัชเพิ่มเอง
+// drug-dl มียาบางตัวที่ยังไม่มีในตารางราคา เช่น ยาเดิม(Amlodipine) 10 mg.
+let _allDrugNames = null;
+function allDrugNames() {
+  if (!_allDrugNames) _allDrugNames = [...document.querySelectorAll('#drug-dl option')].map(o => o.value);
+  return [...new Set([..._allDrugNames, ...Object.keys(DRUG_PRICES), ...Object.keys(priceOverrides)])];
+}
+
 // ชื่อยาที่พิมพ์ย่อๆ ใน HOSxP → ชื่อในรายการราคายา ถ้ามีหลายความแรง เลือกตัวที่ตัวเลขตรงกับที่พิมพ์
 function hxMatchDrug(name) {
-  const keys = [...new Set([...Object.keys(DRUG_PRICES), ...Object.keys(priceOverrides)])];
+  const keys = allDrugNames();
   let cands = keys.filter(k => drugMatches(name, k));
   // ชื่อย่อ เช่น simva → SIMVASTATIN
   if (!cands.length) { const A = drugTokens(name); cands = keys.filter(k => drugTokens(k).some(y => A.some(x => y.startsWith(x)))); }
@@ -2152,6 +2160,13 @@ const FC_CSS = FLOAT_CSS + `
   .checks label{display:flex;gap:4px;align-items:center;font-size:12px}
   .fc-qty:placeholder-shown{border-color:#dc2626;background:#fef2f2}
   #fc-lo-drug{flex:1}
+  .sugg{background:#fff;border:1.5px solid #1A5E38;border-radius:8px;margin-top:4px;max-height:240px;overflow:auto}
+  .sugg:empty{display:none}
+  .sugg div{display:flex;gap:8px;justify-content:space-between;padding:6px 8px;cursor:pointer;font-size:12px;border-top:1px solid #EAF4EE}
+  .sugg div:first-child{border-top:none}
+  .sugg div.on,.sugg div:hover{background:#EAF4EE}
+  .sugg b{font-weight:700;color:#1A5E38}
+  .sugg .p{color:#7A9A85;white-space:nowrap}
   #fc-lo-qty{width:70px;text-align:center}
   .chip{font-size:11px;padding:3px 7px;border-radius:12px;font-weight:600}
   .box{background:#fff;border:1.5px solid #D6E4DA;border-radius:10px;padding:8px;margin-bottom:8px}
@@ -2192,11 +2207,11 @@ async function openFloatClinic() {
         <div class="row" id="fc-lo-chips"></div>
         <div id="fc-lo-table"></div>
         <div class="row" style="margin-top:6px;margin-bottom:0">
-          <input id="fc-lo-drug" list="fc-drug-dl" placeholder="พิมพ์ชื่อยา..." autocomplete="off">
+          <input id="fc-lo-drug" placeholder="พิมพ์ชื่อยา เช่น metf, amlo 10" autocomplete="off">
           <input id="fc-lo-qty" type="number" min="0" placeholder="จำนวน">
           <button id="fc-lo-add">+ เพิ่ม</button>
         </div>
-        <datalist id="fc-drug-dl">${document.getElementById('drug-dl').innerHTML}</datalist>
+        <div class="sugg" id="fc-sugg"></div>
       </div>
       <div class="box">
         <div class="sec">💬 DRP <span class="muted">(พิมพ์ใน COUNSELLING ของ HOSxP → Ctrl+A, Ctrl+C)</span></div>
@@ -2245,9 +2260,42 @@ async function openFloatClinic() {
     renderFloatClinic();
   });
   // เภสัชไม่พิมพ์ยาเหลือใน HOSxP กรอกที่นี่: ชื่อยา Enter → จำนวน Enter → เพิ่ม แล้ววนกลับมาช่องชื่อยา
-  d.getElementById('fc-lo-drug').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); d.getElementById('fc-lo-qty').focus(); }
+  // รายการแนะนำชื่อยาทำเอง — <datalist> ไม่แสดงในหน้าต่างลอย (Picture-in-Picture) ของ Chrome
+  // ยาหลายความแรงขึ้นแยกบรรทัดพร้อมหน่วย/ราคา ↑↓ เลือก Enter ยืนยันแล้วไปช่องจำนวน
+  const drugEl = d.getElementById('fc-lo-drug'), suggEl = d.getElementById('fc-sugg');
+  let sugg = [], suggIdx = -1;
+  const renderSugg = () => {
+    suggEl.innerHTML = sugg.map((k, i) => {
+      const info = getDrugPrice(k) || {};
+      return `<div data-k="${escHtml(k)}" class="${i === suggIdx ? 'on' : ''}"><span>${fcHistDrugs().has(k) ? '<b>★</b> ' : ''}${escHtml(drugLabel(k))}</span>` +
+        `<span class="p">${info.p ? '฿' + info.p + ' / ' : ''}${escHtml(info.u || '')}</span></div>`;
+    }).join('');
+    const on = suggEl.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+  };
+  const pickDrug = k => {
+    drugEl.value = drugLabel(k); drugEl.dataset.key = k;
+    sugg = []; suggIdx = -1; renderSugg();
+    d.getElementById('fc-lo-qty').focus();
+  };
+  drugEl.addEventListener('input', () => {
+    delete drugEl.dataset.key;
+    sugg = fcDrugSearch(drugEl.value); suggIdx = sugg.length ? 0 : -1; renderSugg();
   });
+  drugEl.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' && sugg.length) { e.preventDefault(); suggIdx = (suggIdx + 1) % sugg.length; renderSugg(); }
+    else if (e.key === 'ArrowUp' && sugg.length) { e.preventDefault(); suggIdx = (suggIdx - 1 + sugg.length) % sugg.length; renderSugg(); }
+    else if (e.key === 'Escape') { sugg = []; suggIdx = -1; renderSugg(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (suggIdx >= 0) pickDrug(sugg[suggIdx]); else d.getElementById('fc-lo-qty').focus();
+    }
+  });
+  // mousedown ไม่ใช่ click จะได้เลือกทันก่อนช่องชื่อยาเสีย focus แล้วรายการปิด
+  suggEl.addEventListener('mousedown', e => {
+    const row = e.target.closest('[data-k]'); if (!row) return;
+    e.preventDefault(); pickDrug(row.dataset.k);
+  });
+  drugEl.addEventListener('blur', () => setTimeout(() => { sugg = []; suggIdx = -1; renderSugg(); }, 150));
   d.getElementById('fc-lo-qty').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); fcAddFromInputs(); }
   });
@@ -2332,12 +2380,47 @@ function fcAddLeftover(text, qty) {
   if (qty === '' || qty == null) { const q = clinicWin.document.querySelectorAll('.fc-qty'); if (q.length) q[q.length - 1].focus(); }
 }
 
+// ชื่อยาสำหรับแสดงในหน้าต่างลอย: ตัดแค่รูปแบบยานำหน้า (tab.) กับจุดท้าย ไม่ตัดวงเล็บ
+// (cleanDrugName ตัด "(Amlodipine)" ทิ้ง ทำให้ "ยาเดิม(Amlodipine) 10 mg." เหลือ "ยาเดิม 10 mg")
+function drugLabel(k) {
+  return String(k || '').replace(/^\s*\((?:tab|cap|syr|inj|susp|sol|pwd|iv|amp|vial|liq|drops?|oint|cream|gel|patch|inh|mdi|lot|supp)[^)]*\)\s*/i, '')
+    .replace(/\.\s*$/, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+// ยาที่คนไข้คนนี้เคยนำกลับมา ใช้ดันขึ้นบนสุดของรายการแนะนำ (★)
+function fcHistDrugs() {
+  const hn = document.getElementById('f-hn').value.trim(), out = new Set();
+  if (hn) visitRecords.forEach(r => { if ((r.hn || '').trim() === hn) (r.leftovers || []).forEach(l => l.drug && out.add(l.drug)); });
+  return out;
+}
+
+// ค้นชื่อยาในรายการราคา: ทุกคำที่พิมพ์ต้องอยู่ในชื่อ (ไม่สนตัวพิมพ์เล็ก-ใหญ่) เช่น "amlo 10" → Amlodipine 10 mg
+// ขึ้นต้นคำตรงกันได้คะแนนมากกว่า ไม่เจอเลยค่อยลองแบบสะกดผิดได้ 2 ตัว (drugMatches)
+function fcDrugSearch(q) {
+  const toks = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!toks.length) return [];
+  const keys = allDrugNames();
+  const hist = fcHistDrugs();
+  let hits = keys.map(k => {
+    const low = k.toLowerCase();
+    if (!toks.every(t => low.includes(t))) return null;
+    const words = drugLabel(k).toLowerCase().split(/[\s()\/+,]+/);
+    let sc = words[0].startsWith(toks[0]) ? 3 : words.some(w => w.startsWith(toks[0])) ? 2 : 0;
+    if (hist.has(k)) sc += 5;
+    if (k.includes('ยาเดิม')) sc -= 1;
+    return { k, sc };
+  }).filter(Boolean);
+  if (!hits.length) hits = keys.filter(k => drugMatches(q, k)).map(k => ({ k, sc: hist.has(k) ? 5 : 0 }));
+  return hits.sort((a, b) => b.sc - a.sc || drugLabel(a.k).localeCompare(drugLabel(b.k), 'th', { numeric: true }))
+    .slice(0, 10).map(x => x.k);
+}
+
 function fcAddFromInputs() {
   const d = clinicWin.document, drugEl = d.getElementById('fc-lo-drug'), qtyEl = d.getElementById('fc-lo-qty');
   if (!drugEl.value.trim()) { drugEl.focus(); return; }
   const qty = qtyEl.value;
-  fcAddLeftover(drugEl.value, qty);
-  drugEl.value = ''; qtyEl.value = '';
+  fcAddLeftover(drugEl.dataset.key || drugEl.value, qty);
+  drugEl.value = ''; qtyEl.value = ''; delete drugEl.dataset.key;
   if (qty !== '') d.getElementById('fc-lo-drug').focus();
 }
 
@@ -2404,7 +2487,7 @@ function renderFloatClinic() {
   const loRows = [...main('lo-list').children].map((row, i) => {
     const drug = row.querySelector('.lo-drug').value.trim(), qty = row.querySelector('.lo-qty').value;
     if (!drug && !qty) return '';
-    return `<tr><td class="drug">${escHtml(cleanDrugName(drug) || '—')}</td>` +
+    return `<tr><td class="drug">${escHtml(drugLabel(drug) || '—')}</td>` +
       `<td><input class="fc-qty" data-i="${i}" type="number" min="0" placeholder="?" value="${escHtml(qty)}"></td>` +
       `<td>${escHtml(row.querySelector('.lo-unit').value)}</td>` +
       `<td class="tot">${escHtml(row.querySelector('.lo-total-display').textContent)}</td>` +
@@ -2418,7 +2501,7 @@ function renderFloatClinic() {
     : '';
   const prev = fcPrevDrugs(main('f-hn').value.trim());
   d.getElementById('fc-lo-chips').innerHTML = prev.length
-    ? `<span class="muted">ครั้งก่อน:</span>` + prev.map(x => `<button class="chip" data-drug="${escHtml(x)}">+ ${escHtml(cleanDrugName(x))}</button>`).join('')
+    ? `<span class="muted">ครั้งก่อน:</span>` + prev.map(x => `<button class="chip" data-drug="${escHtml(x)}">+ ${escHtml(drugLabel(x))}</button>`).join('')
     : '';
 
   d.body.querySelectorAll('[data-chk]').forEach(c => { c.checked = main(c.dataset.chk).checked; });
