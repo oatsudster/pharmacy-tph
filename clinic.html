@@ -1743,6 +1743,8 @@ const FLOAT_CSS = `
   .use{font-size:11px;font-weight:400;color:#3D5A47;margin-top:2px}
   .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:#fee2e2;color:#b91c1c;margin-top:3px}
   .pd.auto{background:#FBF3DC;border-color:#C49A22}
+  .tag.info{background:#e0f2fe;color:#0e7490}
+  tr.noadj td{background:#f8faf9}
   #fl-ocr{margin:-4px 0 8px}
   #fl-link{font-size:11px;color:#7A9A85;margin-bottom:6px}
   #fl-link.on{color:#1A5E38;font-weight:600}
@@ -2035,25 +2037,21 @@ function drugMatches(a, b) {
   const A = drugTokens(a), B = drugTokens(b);
   return A.some(x => B.some(y => x === y || (x.length >= 6 && y.length >= 6 && editDist(x, y) <= 2)));
 }
-// ยาพ่น: จำนวนที/ขวด จากชื่อหรือหน่วย เช่น "ขวด MDI (200 dose)" — ใช้แปลง "ที/วัน" เป็นจำนวนขวด
-function dosesPerUnit(...texts) {
-  for (const t of texts) { const m = String(t || '').match(/(\d{2,4})\s*(?:dos|puff)/i); if (m) return +m[1]; }
-  return 0;
+// ปรับจำนวนเฉพาะยาเม็ด/แคปซูล — ยาพ่น (MDI, BUDESONIDE, SEROFLO, BERODUAL ฯลฯ) และยารูปแบบอื่นไม่ปรับ
+function isInhaler(...texts) {
+  return texts.some(t => /MDI|inhaler|haler|spray|dose|พ่น|BUDESONIDE|SEROFLO|BERODUAL/i.test(String(t || '')));
 }
+function isTablet(unit) { return /เม็ด|แคปซูล|แค็บซูล|tab|cap/i.test(String(unit || '')); }
 
 function updateFloatNeed(tr) {
+  const inp = tr.querySelector('.pd');
+  if (!inp) return;   // ยาที่ไม่ปรับจำนวน (ยาพ่น/ไม่ใช่ยาเม็ด)
   const days = floatDaysToAppt();
-  const perDay = parseFloat(tr.querySelector('.pd').value);
+  const perDay = parseFloat(inp.value);
   const cell = tr.querySelector('.need');
-  const dpu = +tr.dataset.dpu || 0, lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
+  const lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
   if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
-  if (tr.dataset.puff === '1' && !dpu) {
-    // รู้แค่จำนวนที ไม่รู้ว่าขวดละกี่ที — บอกจำนวนทีทั้งหมดไว้ให้คิดต่อเอง
-    cell.innerHTML = `${Math.ceil(days * perDay)} ที<div class="muted">ไม่ทราบที/ขวด หักยาเหลือเอง</div>`;
-    cell.className = 'need zero'; return;
-  }
-  const per = dpu || 1;
-  const need = Math.max(0, Math.ceil((days * perDay - lo * per) / per));
+  const need = Math.max(0, Math.ceil(days * perDay - lo));
   cell.innerHTML = need > 0 ? `${need}<div class="muted">${escHtml(unit)}</div>` : 'ไม่ต้องจ่าย';
   cell.className = 'need' + (need > 0 ? '' : ' zero');
 }
@@ -2079,16 +2077,17 @@ function renderFloatLeftover() {
     const k = los.findIndex((l, i) => !used.has(i) && drugMatches(l.drug, o.name));
     const l = k >= 0 ? los[k] : null;
     if (l) used.add(k);
-    const puff = o.unit === 'ที';
-    const dpu = puff ? dosesPerUnit(l && l.unit, l && l.drug, o.name) : 0;
+    const inhaler = o.unit === 'ที' || isInhaler(o.name, o.text, l && l.drug, l && l.unit);
     rows.push({ key: 'o:' + o.name, name: l ? cleanDrugName(l.drug) : o.name, use: o,
-      lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l, puff, dpu,
-      unit: puff ? (dpu ? 'ขวด' : 'ที') : (o.unit || (l && l.unit) || '') });
+      lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l,
+      kind: inhaler ? 'inhaler' : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
+      unit: o.unit || (l && l.unit) || '' });
   });
   los.forEach((l, i) => {
     if (used.has(i)) return;
     rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
-      loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, puff: false, dpu: 0, unit: l.unit || 'เม็ด' });
+      loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, unit: l.unit || 'เม็ด',
+      kind: isInhaler(l.drug, l.unit) ? 'inhaler' : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
   });
 
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
@@ -2101,7 +2100,7 @@ function renderFloatLeftover() {
   // เก็บ "ใช้/วัน" ที่เภสัชกรแก้เองไว้ ไม่ให้ถูกค่าจาก OCR/การซิงค์ทับ (เฉพาะคนไข้คนเดิม)
   const userPd = {};
   if (out.dataset.hn === hn) out.querySelectorAll('tr[data-key]').forEach(tr => {
-    const inp = tr.querySelector('.pd'); if (inp.dataset.user) userPd[tr.dataset.key] = inp.value;
+    const inp = tr.querySelector('.pd'); if (inp && inp.dataset.user) userPd[tr.dataset.key] = inp.value;
   });
   out.dataset.hn = hn;
 
@@ -2109,23 +2108,25 @@ function renderFloatLeftover() {
     <table>
       <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
       <tbody>${rows.map(r => {
-        const tag = r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
+        const adjust = r.kind === 'tablet';
+        const tag = r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
+          : !adjust ? '<span class="tag info">ไม่ใช่ยาเม็ด — ไม่ปรับจำนวน</span>'
+          : r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
           : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
           : r.notInOrder ? '<span class="tag">ไม่พบในใบสั่งยา HOSxP</span>' : '';
-        const auto = r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
+        const auto = adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${r.lo}" data-dpu="${r.dpu}" data-puff="${r.puff ? 1 : 0}" data-unit="${escHtml(r.unit)}">
+        <tr data-key="${escHtml(r.key)}" data-lo="${r.lo}" data-unit="${escHtml(r.unit)}"${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
-          <td><input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">
-            ${r.puff ? '<div class="muted">ที/วัน</div>' : ''}</td>
+          <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น${rows.some(r => r.dpu) ? ' · ยาพ่นคิดเป็นขวดจากจำนวนที/ขวด (นับยาเหลือเป็นขวดเต็ม)' : ''}</div>`;
+    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
-    if (tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
+    if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
     updateFloatNeed(tr);
   });
   renderFloatOcrStatus();
