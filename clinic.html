@@ -1755,37 +1755,52 @@ async function openFloatLeftover() {
   }
   const d = floatWin.document;
   d.head.innerHTML = `<meta charset="utf-8"><title>📦 ยาคงเหลือ</title><style>${FLOAT_CSS}</style>`;
-  const in28 = new Date(); in28.setDate(in28.getDate() + 28);
+  const days0 = floatRecentDays()[0];
   d.body.innerHTML = `
     <div class="row">
       <input id="fl-hn" placeholder="HN (Enter)" autocomplete="off">
       <button id="fl-paste" title="วาง HN ที่คัดลอกมาจาก HosXP">📋 วาง</button>
     </div>
     <div class="row">
-      <span>นัดวันที่</span>
-      <input id="fl-appt" type="date" value="${isoLocal(in28)}">
-      <span id="fl-days" style="font-weight:700;color:#1A5E38"></span>
+      <span>นัดอีก</span>
+      <input id="fl-days" type="number" min="0" step="1" inputmode="numeric" value="${days0}" style="width:64px;text-align:center;font-weight:700;color:#1A5E38">
+      <span>วัน =</span>
+      <input id="fl-appt" type="date" value="${isoLocal(floatDateAfter(days0))}">
     </div>
-    <div class="row" id="fl-weeks">
-      ${[4,8,12,16].map(w => `<button data-w="${w}">${w} สัปดาห์</button>`).join('')}
-    </div>
+    <div class="row" id="fl-chips"></div>
     <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>`;
 
   const hnEl = d.getElementById('fl-hn');
   hnEl.addEventListener('input', renderFloatLeftover);
-  d.getElementById('fl-appt').addEventListener('change', renderFloatLeftover);
+  // จำนวนวันกับวันนัดผูกกันสองทาง พิมพ์ช่องไหนก็ได้ (HosXP บางทีบอกเป็นวัน บางทีเป็นวันที่)
+  const daysEl = d.getElementById('fl-days'), apptEl = d.getElementById('fl-appt');
+  daysEl.addEventListener('input', () => {
+    const n = parseInt(daysEl.value, 10);
+    apptEl.value = n >= 0 ? isoLocal(floatDateAfter(n)) : '';
+    renderFloatLeftover();
+  });
+  apptEl.addEventListener('input', () => {
+    if (!apptEl.value) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    daysEl.value = Math.max(0, Math.round((new Date(apptEl.value + 'T00:00:00') - today) / 86400000));
+    renderFloatLeftover();
+  });
+  // จำจำนวนวันที่ใช้จริงไว้เป็นปุ่มลัด เมื่อพิมพ์เสร็จ (change) ไม่ใช่ทุกตัวอักษร
+  [daysEl, apptEl].forEach(el => el.addEventListener('change', () => rememberFloatDays(floatDaysToAppt())));
+  d.getElementById('fl-chips').addEventListener('click', e => {
+    const n = +e.target.dataset.days; if (!n) return;
+    daysEl.value = n;
+    apptEl.value = isoLocal(floatDateAfter(n));
+    rememberFloatDays(n);
+    renderFloatLeftover();
+  });
+  renderFloatChips();
   d.getElementById('fl-paste').addEventListener('click', async () => {
     try {
       const txt = (await navigator.clipboard.readText()).trim();
       hnEl.value = (txt.match(/\d{3,}/) || [txt])[0];
       renderFloatLeftover();
     } catch (e) { hnEl.focus(); hnEl.select(); }
-  });
-  d.getElementById('fl-weeks').addEventListener('click', e => {
-    const w = +e.target.dataset.w; if (!w) return;
-    const t = new Date(); t.setDate(t.getDate() + w * 7);
-    d.getElementById('fl-appt').value = isoLocal(t);
-    renderFloatLeftover();
   });
   // ขนาดยา/วัน ที่กรอกในตาราง — คำนวณเฉพาะแถวนั้น ไม่ render ทั้งตาราง (จะได้ไม่เสีย focus)
   d.getElementById('fl-result').addEventListener('input', e => {
@@ -1801,10 +1816,32 @@ async function openFloatLeftover() {
 }
 
 function floatDaysToAppt() {
-  const v = floatWin.document.getElementById('fl-appt').value;
-  if (!v) return 0;
-  const today = new Date(); today.setHours(0,0,0,0);
-  return Math.max(0, Math.round((new Date(v + 'T00:00:00') - today) / 86400000));
+  return Math.max(0, parseInt(floatWin.document.getElementById('fl-days').value, 10) || 0);
+}
+
+function floatDateAfter(n) {
+  const t = new Date(); t.setDate(t.getDate() + n); return t;
+}
+
+// ปุ่มลัดจำนวนวัน = จำนวนวันนัดที่ใช้ล่าสุด (เก็บในเครื่องนี้) เริ่มต้นด้วยค่าที่นัดบ่อย
+const FLOAT_DAYS_KEY = 'clinic.floatRecentDays';
+function floatRecentDays() {
+  try {
+    const a = JSON.parse(localStorage.getItem(FLOAT_DAYS_KEY));
+    if (Array.isArray(a) && a.length) return a;
+  } catch (e) {}
+  return [28, 56, 84, 112, 119];
+}
+function rememberFloatDays(n) {
+  if (!(n > 0)) return;
+  const a = [n, ...floatRecentDays().filter(x => x !== n)].slice(0, 6);
+  try { localStorage.setItem(FLOAT_DAYS_KEY, JSON.stringify(a)); } catch (e) {}
+  renderFloatChips();
+}
+function renderFloatChips() {
+  if (!floatWin || floatWin.closed) return;
+  const el = floatWin.document.getElementById('fl-chips');
+  if (el) el.innerHTML = floatRecentDays().map(n => `<button data-days="${n}">${n} วัน</button>`).join('');
 }
 
 function updateFloatNeed(tr) {
@@ -1823,7 +1860,6 @@ function renderFloatLeftover() {
   const out = d.getElementById('fl-result');
   if (!out) return;
   const days = floatDaysToAppt();
-  d.getElementById('fl-days').textContent = days ? `(${days} วัน)` : '';
   const hn = d.getElementById('fl-hn').value.trim();
   if (hn.length < 3) { out.innerHTML = '<div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div>'; return; }
 
