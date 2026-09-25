@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; worker-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1740,6 +1740,10 @@ const FLOAT_CSS = `
   td.need.zero{color:#7A9A85;font-size:13px}
   .pd{width:52px;text-align:center}
   .empty{text-align:center;padding:24px 8px;color:#7A9A85}
+  .use{font-size:11px;font-weight:400;color:#3D5A47;margin-top:2px}
+  .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:#fee2e2;color:#b91c1c;margin-top:3px}
+  .pd.auto{background:#FBF3DC;border-color:#C49A22}
+  #fl-ocr{margin:-4px 0 8px}
   #fl-link{font-size:11px;color:#7A9A85;margin-bottom:6px}
   #fl-link.on{color:#1A5E38;font-weight:600}
 `;
@@ -1751,11 +1755,11 @@ function isoLocal(dt) {
 async function openFloatLeftover() {
   if (floatWin && !floatWin.closed) { floatWin.focus(); return; }
   if ('documentPictureInPicture' in window) {
-    try { floatWin = await documentPictureInPicture.requestWindow({ width: 380, height: 540 }); }
+    try { floatWin = await documentPictureInPicture.requestWindow({ width: 440, height: 620 }); }
     catch (e) { floatWin = null; }
   }
   if (!floatWin) {
-    floatWin = window.open('', 'float-leftover', 'width=400,height=580');
+    floatWin = window.open('', 'float-leftover', 'width=460,height=660');
     if (!floatWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
   }
   const d = floatWin.document;
@@ -1810,7 +1814,9 @@ async function openFloatLeftover() {
   });
   // ขนาดยา/วัน ที่กรอกในตาราง — คำนวณเฉพาะแถวนั้น ไม่ render ทั้งตาราง (จะได้ไม่เสีย focus)
   d.getElementById('fl-result').addEventListener('input', e => {
-    if (e.target.classList.contains('pd')) updateFloatNeed(e.target.closest('tr'));
+    if (!e.target.classList.contains('pd')) return;
+    e.target.dataset.user = '1'; e.target.classList.remove('auto');
+    updateFloatNeed(e.target.closest('tr'));
   });
   floatWin.addEventListener('pagehide', () => { floatWin = null; bridgeKey = ''; });
   // ตั้ง timer บนหน้าต่างลอย (มองเห็นอยู่ตลอด) ไม่ใช่แท็บหลักที่ซ่อนอยู่ ซึ่ง Chrome จะชะลอ timer จนแทบไม่ทำงาน
@@ -1839,6 +1845,9 @@ async function pollHosxpBridge() {
     return;
   }
   if (!floatWin || floatWin.closed) return;
+  lastBridge = s;
+  if (s.hn && s.gridVer !== ocrDoneVer) runOrderOcr();
+  renderFloatOcrStatus();
   link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
   link.className = 'on';
   // เปลี่ยนค่าเฉพาะตอน HOSxP เปลี่ยนคนไข้หรือได้วันนัดใหม่ ค่าที่แก้เองในหน้าต่างลอยจะไม่ถูกทับทุกรอบ
@@ -1882,13 +1891,170 @@ function renderFloatChips() {
   if (el) el.innerHTML = floatRecentDays().map(n => `<button data-days="${n}">${n} วัน</button>`).join('');
 }
 
+// ── อ่านใบสั่งยา (ชื่อยา + วิธีใช้) จากหน้าจอ HOSxP ─────────
+// bridge ส่งภาพตารางใบสั่งยามาให้ (/grid.png) แล้วหน้านี้ OCR ภาษาไทยเองด้วย Tesseract ที่เก็บไว้ใน lib/tesseract5
+// (Windows OCR ไม่มีภาษาไทย และ CSP ของหน้านี้ไม่ให้โหลดจาก CDN) — ผลจาก OCR เป็นค่าแนะนำ เภสัชกรต้องตรวจทาน
+const HOSXP_GRID_URL = 'http://127.0.0.1:8765/grid.png';
+const TESS_BASE = new URL('lib/tesseract5/', location.href).href;
+let tessWorkerP = null, floatOrder = null, lastBridge = null;
+let ocrBusy = false, ocrDoneVer = null, floatOcrStatus = '';
+
+function getTessWorker() {
+  if (!tessWorkerP) tessWorkerP = (async () => {
+    if (!window.Tesseract) await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = TESS_BASE + 'tesseract.min.js'; s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+    // workerBlobURL:false — ให้ worker โหลดจากไฟล์ของเราเอง (CSP ไม่อนุญาต worker จาก blob:)
+    const w = await Tesseract.createWorker('tha+eng', 1, {
+      workerPath: TESS_BASE + 'worker.min.js', corePath: TESS_BASE, langPath: TESS_BASE, workerBlobURL: false,
+    });
+    await w.setParameters({ preserve_interword_spaces: '1' });
+    return w;
+  })().catch(e => { tessWorkerP = null; throw e; });
+  return tessWorkerP;
+}
+
+// ขยาย 3 เท่าแล้วทำเป็นตัวดำบนพื้นขาวทีละแนวนอน — แถวที่ถูกเลือกใน HOSxP เป็นตัวขาวบนพื้นน้ำเงิน
+// ถ้าไม่แปลงก่อน Tesseract จะอ่านแถวนั้นเพี้ยน (สีพื้นของแนวนั้น = ค่ากลางของสีทั้งแนว)
+async function binarizeGrid(blob) {
+  const img = await createImageBitmap(blob);
+  const S = 3, W = img.width * S, H = img.height * S;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, W, H);
+  const id = g.getImageData(0, 0, W, H), p = id.data;
+  const med = a => a.sort((u, v) => u - v)[a.length >> 1];
+  for (let y = 0; y < H; y++) {
+    const rs = [], gs = [], bs = [];
+    for (let x = 0; x < W; x += 4) { const i = (y * W + x) * 4; rs.push(p[i]); gs.push(p[i+1]); bs.push(p[i+2]); }
+    const R = med(rs), G = med(gs), B = med(bs);
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const v = (Math.abs(p[i] - R) + Math.abs(p[i+1] - G) + Math.abs(p[i+2] - B)) > 150 ? 0 : 255;
+      p[i] = p[i+1] = p[i+2] = v; p[i+3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0);
+  return c;
+}
+
+// วิธีใช้ → จำนวนต่อวัน เช่น "รับประทาน 2 เม็ด วันละ 3 ครั้ง" = 6 เม็ด/วัน
+// ใช้เมื่อมีอาการ หรือระบุเป็นช่วง (2 - 4 ที) ไม่คำนวณให้ ให้เภสัชกรกรอกเอง
+function parseUsage(u) {
+  const t = u.replace(/\s+/g, ' ').trim();
+  const prn = /เวลา\s*มี\s*อาการ|เมื่อ\s*มี\s*อาการ|เมื่อ|ถ้า|prn/i.test(t)
+    || /\d\s*-\s*\d\s*(เม็ด|ที|หยด|ซอง|แคปซูล)/.test(t);
+  let amt = null, unit = '';
+  const m = t.match(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)/i);
+  if (m) { amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2]; }
+  let freq = null;
+  const f = t.match(/วันละ\s*(\d+)\s*ครั้ง/);
+  if (f) freq = +f[1];
+  else {
+    const meals = ['เช้า', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
+    if (meals) freq = meals;
+  }
+  return { text: t, unit, prn, perDay: (!prn && amt && freq) ? amt * freq : null };
+}
+
+// ข้อความ OCR ทั้งตาราง → รายการยา (1 บรรทัด = 1 รายการ) เอาเฉพาะแถวที่มีวิธีใช้
+function parseOrderLines(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    const um = line.match(/รับประทาน|รับปร|กดพ่น|พ่น|หยอด|ทาบาง|ทา |ฉีด|อมใต้ลิ้น|เหน็บ|สูด/);
+    if (!um) continue;
+    const before = line.slice(0, um.index);
+    // ชื่อยาเริ่มที่คำภาษาอังกฤษคำแรกที่ยาว 4 ตัวขึ้นไป (ข้ามชื่อจุดบันทึกอย่าง "ห้องตรวจcopd" และเศษ OCR จากไอคอน)
+    const w = [...before.matchAll(/[A-Za-z][A-Za-z\-]{3,}/g)].find(x => !/^(copd|ncd|dm|ht|asthma)$/i.test(x[0]));
+    if (!w) continue;
+    const name = before.slice(w.index).replace(/[|\[\]#>]/g, ' ').replace(/\s+/g, ' ').trim();
+    // ตัดคอลัมน์จำนวน/ราคาที่อยู่ห่างออกไปทางขวา (เว้นวรรคยาว)
+    const usage = line.slice(um.index).replace(/[|\[\]#>]/g, ' ').replace(/\s{3,}.*$/, '');
+    rows.push({ name, ...parseUsage(usage) });
+  }
+  return rows;
+}
+
+async function runOrderOcr() {
+  if (ocrBusy) return;
+  ocrBusy = true;
+  try {
+    while (lastBridge && lastBridge.hn && lastBridge.gridVer !== ocrDoneVer) {
+      const ver = lastBridge.gridVer, hn = lastBridge.hn;
+      floatOcrStatus = 'running'; renderFloatOcrStatus();
+      const res = await fetch(HOSXP_GRID_URL, { cache: 'no-store', targetAddressSpace: 'loopback' });
+      if (!res.ok) { ocrDoneVer = ver; floatOcrStatus = ''; break; }   // ยังไม่มีภาพ (เช่นถูกบังอยู่)
+      const canvas = await binarizeGrid(await res.blob());
+      const { data } = await (await getTessWorker()).recognize(canvas);
+      ocrDoneVer = ver;
+      floatOrder = { hn, rows: parseOrderLines(data.text) };
+      floatOcrStatus = 'done';
+      renderFloatLeftover();
+    }
+  } catch (e) {
+    console.error('OCR ใบสั่งยา', e);
+    ocrDoneVer = lastBridge && lastBridge.gridVer;
+    floatOcrStatus = 'error';
+    renderFloatOcrStatus();
+  }
+  ocrBusy = false;
+}
+
+function renderFloatOcrStatus() {
+  if (!floatWin || floatWin.closed) return;
+  const el = floatWin.document.getElementById('fl-ocr');
+  if (!el) return;
+  const hn = floatWin.document.getElementById('fl-hn').value.trim();
+  const b = lastBridge;
+  let msg = '', cls = 'muted';
+  if (b && b.hn && b.hn === hn) {
+    if (b.covered) { msg = '⚠️ หน้าต่างลอยบังตารางยา/วันนัดใน HOSxP — เลื่อนหน้าต่างลอยไปทางขวา'; cls = 'warn'; }
+    else if (floatOcrStatus === 'running') msg = '⏳ กำลังอ่านใบสั่งยาจาก HOSxP… (ครั้งแรกต้องโหลดตัวอ่านภาษาไทย อาจช้า)';
+    else if (floatOcrStatus === 'error') { msg = '⚠️ อ่านใบสั่งยาไม่สำเร็จ — กรอก "ใช้/วัน" เอง'; cls = 'warn'; }
+    else if (floatOrder && floatOrder.hn === hn) msg = '📷 วิธีใช้อ่านจากหน้าจอ HOSxP (OCR) — ตรวจทานกับใบสั่งยาก่อนจ่ายทุกครั้ง';
+  }
+  el.textContent = msg; el.className = cls;
+}
+
+// จับคู่ชื่อยาในบันทึกยาคงเหลือกับชื่อในใบสั่งยา HOSxP ด้วยคำภาษาอังกฤษที่ตรงกัน (ยอมให้ OCR ผิดได้ 2 ตัวอักษร)
+function drugTokens(s) {
+  return (String(s || '').toUpperCase().match(/[A-Z]{4,}/g) || [])
+    .filter(t => !['COPD', 'TABLET', 'CAPSULE', 'INHALER', 'DOSE', 'DOSES'].includes(t));
+}
+function editDist(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function drugMatches(a, b) {
+  const A = drugTokens(a), B = drugTokens(b);
+  return A.some(x => B.some(y => x === y || (x.length >= 6 && y.length >= 6 && editDist(x, y) <= 2)));
+}
+// ยาพ่น: จำนวนที/ขวด จากชื่อหรือหน่วย เช่น "ขวด MDI (200 dose)" — ใช้แปลง "ที/วัน" เป็นจำนวนขวด
+function dosesPerUnit(...texts) {
+  for (const t of texts) { const m = String(t || '').match(/(\d{2,4})\s*(?:dos|puff)/i); if (m) return +m[1]; }
+  return 0;
+}
+
 function updateFloatNeed(tr) {
   const days = floatDaysToAppt();
   const perDay = parseFloat(tr.querySelector('.pd').value);
   const cell = tr.querySelector('.need');
+  const dpu = +tr.dataset.dpu || 0, lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
   if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
-  const need = Math.max(0, Math.ceil(days * perDay - (+tr.dataset.lo || 0)));
-  cell.textContent = need > 0 ? need : 'ไม่ต้องจ่าย';
+  if (tr.dataset.puff === '1' && !dpu) {
+    // รู้แค่จำนวนที ไม่รู้ว่าขวดละกี่ที — บอกจำนวนทีทั้งหมดไว้ให้คิดต่อเอง
+    cell.innerHTML = `${Math.ceil(days * perDay)} ที<div class="muted">ไม่ทราบที/ขวด หักยาเหลือเอง</div>`;
+    cell.className = 'need zero'; return;
+  }
+  const per = dpu || 1;
+  const need = Math.max(0, Math.ceil((days * perDay - lo * per) / per));
+  cell.innerHTML = need > 0 ? `${need}<div class="muted">${escHtml(unit)}</div>` : 'ไม่ต้องจ่าย';
   cell.className = 'need' + (need > 0 ? '' : ' zero');
 }
 
@@ -1904,36 +2070,65 @@ function renderFloatLeftover() {
   const recs = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => (b.created||0) - (a.created||0));
   const name = (recs[0] && recs[0].name) || ((patientIndex().get(hn) || {}).name) || '';
   const withLo = recs.find(r => r.leftovers && r.leftovers.length);
-  if (!withLo) {
-    out.innerHTML = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}</div>
-      <div class="empty">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`;
-    return;
-  }
-  const isToday = withLo.date === thToISO(todayTH());
-  // จำขนาดยา/วันที่กรอกไว้ ไม่ให้หายเวลามีการซิงค์ข้อมูลแล้ว render ใหม่ (เฉพาะคนไข้คนเดิม)
-  const prevPd = {};
-  if (out.dataset.hn === hn) out.querySelectorAll('tr[data-drug]').forEach(tr => { prevPd[tr.dataset.drug] = tr.querySelector('.pd').value; });
+  const los = withLo ? withLo.leftovers : [];
+  const order = floatOrder && floatOrder.hn === hn ? floatOrder.rows : null;
+
+  // แถว = ยาในใบสั่งยา HOSxP (จับคู่กับยาเหลือ) + ยาเหลือที่ไม่พบในใบสั่งยา
+  const rows = [], used = new Set();
+  (order || []).forEach(o => {
+    const k = los.findIndex((l, i) => !used.has(i) && drugMatches(l.drug, o.name));
+    const l = k >= 0 ? los[k] : null;
+    if (l) used.add(k);
+    const puff = o.unit === 'ที';
+    const dpu = puff ? dosesPerUnit(l && l.unit, l && l.drug, o.name) : 0;
+    rows.push({ key: 'o:' + o.name, name: l ? cleanDrugName(l.drug) : o.name, use: o,
+      lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l, puff, dpu,
+      unit: puff ? (dpu ? 'ขวด' : 'ที') : (o.unit || (l && l.unit) || '') });
+  });
+  los.forEach((l, i) => {
+    if (used.has(i)) return;
+    rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
+      loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, puff: false, dpu: 0, unit: l.unit || 'เม็ด' });
+  });
+
+  const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
+      ${withLo ? (() => { const isToday = withLo.date === thToISO(todayTH());
+        return `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`; })()
+        : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`}
+    </div><div id="fl-ocr"></div>`;
+  if (!rows.length) { out.innerHTML = head; out.dataset.hn = hn; renderFloatOcrStatus(); return; }
+
+  // เก็บ "ใช้/วัน" ที่เภสัชกรแก้เองไว้ ไม่ให้ถูกค่าจาก OCR/การซิงค์ทับ (เฉพาะคนไข้คนเดิม)
+  const userPd = {};
+  if (out.dataset.hn === hn) out.querySelectorAll('tr[data-key]').forEach(tr => {
+    const inp = tr.querySelector('.pd'); if (inp.dataset.user) userPd[tr.dataset.key] = inp.value;
+  });
   out.dataset.hn = hn;
 
-  out.innerHTML = `
-    <div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
-      <div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>
-    </div>
+  out.innerHTML = head + `
     <table>
-      <thead><tr><th>ยา</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
-      <tbody>${withLo.leftovers.map(l => `
-        <tr data-drug="${escHtml(l.drug)}" data-lo="${+l.qty || 0}">
-          <td class="drug">${escHtml(cleanDrugName(l.drug))}</td>
-          <td class="lo">${escHtml(l.qty)}<div class="muted">${escHtml(l.unit||'เม็ด')}</div></td>
-          <td><input class="pd" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0"></td>
+      <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const tag = r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
+          : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
+          : r.notInOrder ? '<span class="tag">ไม่พบในใบสั่งยา HOSxP</span>' : '';
+        const auto = r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
+        return `
+        <tr data-key="${escHtml(r.key)}" data-lo="${r.lo}" data-dpu="${r.dpu}" data-puff="${r.puff ? 1 : 0}" data-unit="${escHtml(r.unit)}">
+          <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}</td>
+          <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
+          <td><input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">
+            ${r.puff ? '<div class="muted">ที/วัน</div>' : ''}</td>
           <td class="need zero">—</td>
-        </tr>`).join('')}</tbody>
+        </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น</div>`;
-  out.querySelectorAll('tr[data-drug]').forEach(tr => {
-    if (prevPd[tr.dataset.drug]) tr.querySelector('.pd').value = prevPd[tr.dataset.drug];
+    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น${rows.some(r => r.dpu) ? ' · ยาพ่นคิดเป็นขวดจากจำนวนที/ขวด (นับยาเหลือเป็นขวดเต็ม)' : ''}</div>`;
+  out.querySelectorAll('tr[data-key]').forEach(tr => {
+    const inp = tr.querySelector('.pd');
+    if (tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
     updateFloatNeed(tr);
   });
+  renderFloatOcrStatus();
 }
 
 // รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)
