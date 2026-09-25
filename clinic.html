@@ -330,6 +330,7 @@ tr:hover td{background:#f8faf9;}
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+    <button class="tbtn" onclick="openFloatLeftover()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — ดูยาคงเหลือและคำนวณจำนวนจ่ายจนถึงวันนัด">🪟 ยาคงเหลือ (ลอย)</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
     <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
@@ -1708,6 +1709,156 @@ function renderAll() {
   renderPatientDatalists();
   renderRecentRecords();
   renderCurrentView();
+  renderFloatLeftover();
+}
+// ── หน้าต่างลอย: ยาคงเหลือ + คำนวณจำนวนจ่ายจนถึงวันนัด ──────
+// ใช้ Document Picture-in-Picture (Chrome/Edge 116+) ซึ่งลอยอยู่เหนือทุกโปรแกรมรวมถึง HosXP
+// เภสัชกรจึงดูยาคงเหลือไปพร้อมกับจ่ายยาใน HosXP ได้โดยไม่ต้องสลับ tab
+// ถ้าเบราว์เซอร์ไม่รองรับ จะเปิดเป็น popup เล็กแทน (ไม่ลอยเหนือโปรแกรมอื่น แต่วางข้าง HosXP ได้)
+let floatWin = null;
+const FLOAT_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans Thai','Sarabun',sans-serif;background:#F4F7F5;color:#1C2B22;padding:10px;font-size:13px}
+  .row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  input{font:inherit;padding:6px 8px;border:1.5px solid #D6E4DA;border-radius:7px;background:#fff;min-width:0}
+  input:focus{outline:none;border-color:#1A5E38}
+  button{font:inherit;cursor:pointer;border:1.5px solid #D6E4DA;background:#fff;border-radius:7px;padding:5px 8px;color:#1A5E38;font-weight:600}
+  #fl-hn{flex:1;font-size:16px;font-weight:700}
+  .pt{background:#fff;border-left:4px solid #1A5E38;border-radius:9px;padding:8px 10px;margin-bottom:8px}
+  .pt b{font-size:14px}
+  .muted{color:#7A9A85;font-size:12px}
+  .warn{color:#b45309;font-size:12px;font-weight:600}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:9px;overflow:hidden}
+  th{background:#EAF4EE;color:#124228;font-size:11px;padding:5px 4px;text-align:center}
+  td{padding:5px 4px;border-top:1px solid #EAF4EE;text-align:center;vertical-align:middle}
+  td.drug{text-align:left;font-size:12px;font-weight:600;word-break:break-word}
+  td.lo{color:#dc2626;font-weight:800;font-size:15px}
+  td.need{font-size:17px;font-weight:900;color:#1A5E38}
+  td.need.zero{color:#7A9A85;font-size:13px}
+  .pd{width:52px;text-align:center}
+  .empty{text-align:center;padding:24px 8px;color:#7A9A85}
+`;
+
+function isoLocal(dt) {
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+
+async function openFloatLeftover() {
+  if (floatWin && !floatWin.closed) { floatWin.focus(); return; }
+  if ('documentPictureInPicture' in window) {
+    try { floatWin = await documentPictureInPicture.requestWindow({ width: 380, height: 540 }); }
+    catch (e) { floatWin = null; }
+  }
+  if (!floatWin) {
+    floatWin = window.open('', 'float-leftover', 'width=400,height=580');
+    if (!floatWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
+  }
+  const d = floatWin.document;
+  d.head.innerHTML = `<meta charset="utf-8"><title>📦 ยาคงเหลือ</title><style>${FLOAT_CSS}</style>`;
+  const in28 = new Date(); in28.setDate(in28.getDate() + 28);
+  d.body.innerHTML = `
+    <div class="row">
+      <input id="fl-hn" placeholder="HN (Enter)" autocomplete="off">
+      <button id="fl-paste" title="วาง HN ที่คัดลอกมาจาก HosXP">📋 วาง</button>
+    </div>
+    <div class="row">
+      <span>นัดวันที่</span>
+      <input id="fl-appt" type="date" value="${isoLocal(in28)}">
+      <span id="fl-days" style="font-weight:700;color:#1A5E38"></span>
+    </div>
+    <div class="row" id="fl-weeks">
+      ${[4,8,12,16].map(w => `<button data-w="${w}">${w} สัปดาห์</button>`).join('')}
+    </div>
+    <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>`;
+
+  const hnEl = d.getElementById('fl-hn');
+  hnEl.addEventListener('input', renderFloatLeftover);
+  d.getElementById('fl-appt').addEventListener('change', renderFloatLeftover);
+  d.getElementById('fl-paste').addEventListener('click', async () => {
+    try {
+      const txt = (await navigator.clipboard.readText()).trim();
+      hnEl.value = (txt.match(/\d{3,}/) || [txt])[0];
+      renderFloatLeftover();
+    } catch (e) { hnEl.focus(); hnEl.select(); }
+  });
+  d.getElementById('fl-weeks').addEventListener('click', e => {
+    const w = +e.target.dataset.w; if (!w) return;
+    const t = new Date(); t.setDate(t.getDate() + w * 7);
+    d.getElementById('fl-appt').value = isoLocal(t);
+    renderFloatLeftover();
+  });
+  // ขนาดยา/วัน ที่กรอกในตาราง — คำนวณเฉพาะแถวนั้น ไม่ render ทั้งตาราง (จะได้ไม่เสีย focus)
+  d.getElementById('fl-result').addEventListener('input', e => {
+    if (e.target.classList.contains('pd')) updateFloatNeed(e.target.closest('tr'));
+  });
+  floatWin.addEventListener('pagehide', () => { floatWin = null; });
+
+  // ถ้าในฟอร์มบันทึกมี HN อยู่แล้ว ดึงมาใช้เลย
+  const formHn = (document.getElementById('f-hn') || {}).value || '';
+  if (formHn.trim()) hnEl.value = formHn.trim();
+  hnEl.focus();
+  renderFloatLeftover();
+}
+
+function floatDaysToAppt() {
+  const v = floatWin.document.getElementById('fl-appt').value;
+  if (!v) return 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.max(0, Math.round((new Date(v + 'T00:00:00') - today) / 86400000));
+}
+
+function updateFloatNeed(tr) {
+  const days = floatDaysToAppt();
+  const perDay = parseFloat(tr.querySelector('.pd').value);
+  const cell = tr.querySelector('.need');
+  if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
+  const need = Math.max(0, Math.ceil(days * perDay - (+tr.dataset.lo || 0)));
+  cell.textContent = need > 0 ? need : 'ไม่ต้องจ่าย';
+  cell.className = 'need' + (need > 0 ? '' : ' zero');
+}
+
+function renderFloatLeftover() {
+  if (!floatWin || floatWin.closed) return;
+  const d = floatWin.document;
+  const out = d.getElementById('fl-result');
+  if (!out) return;
+  const days = floatDaysToAppt();
+  d.getElementById('fl-days').textContent = days ? `(${days} วัน)` : '';
+  const hn = d.getElementById('fl-hn').value.trim();
+  if (hn.length < 3) { out.innerHTML = '<div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div>'; return; }
+
+  const recs = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => (b.created||0) - (a.created||0));
+  const name = (recs[0] && recs[0].name) || ((patientIndex().get(hn) || {}).name) || '';
+  const withLo = recs.find(r => r.leftovers && r.leftovers.length);
+  if (!withLo) {
+    out.innerHTML = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}</div>
+      <div class="empty">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`;
+    return;
+  }
+  const isToday = withLo.date === thToISO(todayTH());
+  // จำขนาดยา/วันที่กรอกไว้ ไม่ให้หายเวลามีการซิงค์ข้อมูลแล้ว render ใหม่
+  const prevPd = {};
+  out.querySelectorAll('tr[data-drug]').forEach(tr => { prevPd[tr.dataset.drug] = tr.querySelector('.pd').value; });
+
+  out.innerHTML = `
+    <div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
+      <div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>
+    </div>
+    <table>
+      <thead><tr><th>ยา</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
+      <tbody>${withLo.leftovers.map(l => `
+        <tr data-drug="${escHtml(l.drug)}" data-lo="${+l.qty || 0}">
+          <td class="drug">${escHtml(cleanDrugName(l.drug))}</td>
+          <td class="lo">${escHtml(l.qty)}<div class="muted">${escHtml(l.unit||'เม็ด')}</div></td>
+          <td><input class="pd" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0"></td>
+          <td class="need zero">—</td>
+        </tr>`).join('')}</tbody>
+    </table>
+    <div class="muted" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น</div>`;
+  out.querySelectorAll('tr[data-drug]').forEach(tr => {
+    if (prevPd[tr.dataset.drug]) tr.querySelector('.pd').value = prevPd[tr.dataset.drug];
+    updateFloatNeed(tr);
+  });
 }
 
 // รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)
