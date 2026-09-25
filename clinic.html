@@ -2150,6 +2150,10 @@ const FC_CSS = FLOAT_CSS + `
   .alert:empty{display:none}
   .ok{background:#dcfce7;color:#166534}
   .checks label{display:flex;gap:4px;align-items:center;font-size:12px}
+  .fc-qty:placeholder-shown{border-color:#dc2626;background:#fef2f2}
+  #fc-lo-drug{flex:1}
+  #fc-lo-qty{width:70px;text-align:center}
+  .chip{font-size:11px;padding:3px 7px;border-radius:12px;font-weight:600}
 `;
 
 async function openFloatClinic() {
@@ -2180,7 +2184,18 @@ async function openFloatClinic() {
     <button id="fc-paste" class="big primary">📋 วางจาก HOSxP</button>
     <textarea id="fc-text" rows="2" placeholder="หรือคลิกที่นี่แล้วกด Ctrl+V"></textarea>
     <div id="fc-parse" class="info" style="margin-top:6px"></div>
-    <div id="fc-list"></div>
+    <div id="fc-body">
+      <div id="fc-list"></div>
+      <div class="sec">📦 ยาที่คนไข้นำกลับมา</div>
+      <div class="row" id="fc-lo-chips"></div>
+      <div id="fc-lo-table"></div>
+      <div class="row" style="margin-top:6px">
+        <input id="fc-lo-drug" list="fc-drug-dl" placeholder="พิมพ์ชื่อยา..." autocomplete="off">
+        <input id="fc-lo-qty" type="number" min="0" placeholder="จำนวน">
+        <button id="fc-lo-add">+ เพิ่ม</button>
+      </div>
+      <datalist id="fc-drug-dl">${document.getElementById('drug-dl').innerHTML}</datalist>
+    </div>
     <div class="row checks" style="margin-top:8px">
       <label><input type="checkbox" data-chk="chk-adherence"> กินยาถูกต้อง</label>
       <label><input type="checkbox" data-chk="chk-noleftover"> ไม่มียาเหลือ</label>
@@ -2209,20 +2224,35 @@ async function openFloatClinic() {
     fcApplyText(txt);
   });
   d.getElementById('fc-text').addEventListener('paste', e => setTimeout(() => fcApplyText(e.target.value), 0));
-  d.getElementById('fc-list').addEventListener('click', e => {
+  d.getElementById('fc-body').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.rmDrp != null) { main('drp-list').children[+b.dataset.rmDrp].remove(); refreshHxNote(); }
     else if (b.dataset.rmLo != null) { main('lo-list').children[+b.dataset.rmLo].remove(); updateLoTotal(); }
     else if (b.dataset.rmQuick != null) toggleQuickDrp(false);
+    else if (b.dataset.drug != null) { fcAddLeftover(b.dataset.drug, ''); return; }
+    else if (b.id === 'fc-lo-add') { fcAddFromInputs(); return; }
+    else return;
     renderFloatClinic();
   });
+  // เภสัชไม่พิมพ์ยาเหลือใน HOSxP กรอกที่นี่: ชื่อยา Enter → จำนวน Enter → เพิ่ม แล้ววนกลับมาช่องชื่อยา
+  d.getElementById('fc-lo-drug').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); d.getElementById('fc-lo-qty').focus(); }
+  });
+  d.getElementById('fc-lo-qty').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); fcAddFromInputs(); }
+  });
+  d.getElementById('fc-body').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.classList.contains('fc-qty')) { e.preventDefault(); d.getElementById('fc-lo-drug').focus(); }
+  });
   // แก้จำนวนยาเหลือ → เขียนกลับฟอร์มหลักแล้วอัปเดตเฉพาะยอดแถวนั้น (ไม่ render ใหม่ จะได้ไม่เสีย focus)
-  d.getElementById('fc-list').addEventListener('input', e => {
+  d.getElementById('fc-body').addEventListener('input', e => {
     if (!e.target.classList.contains('fc-qty')) return;
     const row = main('lo-list').children[+e.target.dataset.i];
     row.querySelector('.lo-qty').value = e.target.value;
     updateLoTotal();
     e.target.closest('tr').querySelector('.tot').textContent = row.querySelector('.lo-total-display').textContent;
+    const sum = d.getElementById('fc-lo-sum');
+    if (sum) sum.textContent = '💰 ประหยัดได้ ' + main('lo-total').textContent;
   });
   d.body.querySelectorAll('[data-chk]').forEach(c => c.addEventListener('change', () => {
     main(c.dataset.chk).checked = c.checked;
@@ -2262,6 +2292,43 @@ async function fcApplyText(txt) {
   // addLoRow โฟกัสช่องในหน้าหลัก ดึงโฟกัสคีย์บอร์ดกลับมาที่หน้าต่างลอย
   if (clinicWin && !clinicWin.closed) clinicWin.focus();
   renderFloatClinic();
+}
+
+// ยาเหลือที่คนไข้คนนี้เคยนำกลับมา (3 ครั้งล่าสุด) เป็นปุ่มลัด คนไข้โรคเรื้อรังได้ยาชุดเดิมเกือบทุกครั้ง
+function fcPrevDrugs(hn) {
+  if (!hn) return [];
+  const have = new Set(getLoData().map(l => l.drug)), seen = new Set(), out = [];
+  visitRecords.filter(r => (r.hn || '').trim() === hn && r.leftovers && r.leftovers.length)
+    .sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 3)
+    .forEach(r => r.leftovers.forEach(l => {
+      if (l.drug && !seen.has(l.drug) && !have.has(l.drug)) { seen.add(l.drug); out.push(l.drug); }
+    }));
+  return out.slice(0, 12);
+}
+
+// ชื่อที่พิมพ์ตรงกับรายการราคายาก็ใช้เลย ถ้าไม่ตรง ลองจับคู่แบบเดียวกับข้อความจาก HOSxP (ชื่อย่อ/ความแรง)
+function fcAddLeftover(text, qty) {
+  text = String(text || '').trim();
+  if (!text) return;
+  const key = getDrugPrice(text) ? text : (hxMatchDrug(text) || text);
+  const info = getDrugPrice(key);
+  addLoRow(key, qty, (info && info.u) || 'เม็ด', (info && info.p) || 0);
+  if (!quickDrpActive) toggleQuickDrp(true);
+  document.getElementById('chk-noleftover').checked = false;
+  if (!clinicWin || clinicWin.closed) return;
+  clinicWin.focus();
+  renderFloatClinic();
+  // ยังไม่ได้ใส่จำนวน (กดจากปุ่มลัด) → ไปช่องจำนวนของแถวนั้นเลย
+  if (qty === '' || qty == null) { const q = clinicWin.document.querySelectorAll('.fc-qty'); if (q.length) q[q.length - 1].focus(); }
+}
+
+function fcAddFromInputs() {
+  const d = clinicWin.document, drugEl = d.getElementById('fc-lo-drug'), qtyEl = d.getElementById('fc-lo-qty');
+  if (!drugEl.value.trim()) { drugEl.focus(); return; }
+  const qty = qtyEl.value;
+  fcAddLeftover(drugEl.value, qty);
+  drugEl.value = ''; qtyEl.value = '';
+  if (qty !== '') d.getElementById('fc-lo-drug').focus();
 }
 
 function fcHasData() { return getDrpData().length > 0 || getLoData().length > 0; }
@@ -2328,13 +2395,21 @@ function renderFloatClinic() {
     const drug = row.querySelector('.lo-drug').value.trim(), qty = row.querySelector('.lo-qty').value;
     if (!drug && !qty) return '';
     return `<tr><td class="drug">${escHtml(cleanDrugName(drug) || '—')}</td>` +
-      `<td><input class="fc-qty" data-i="${i}" type="number" min="0" value="${escHtml(qty)}"></td>` +
+      `<td><input class="fc-qty" data-i="${i}" type="number" min="0" placeholder="?" value="${escHtml(qty)}"></td>` +
       `<td>${escHtml(row.querySelector('.lo-unit').value)}</td>` +
       `<td class="tot">${escHtml(row.querySelector('.lo-total-display').textContent)}</td>` +
       `<td><button class="x" data-rm-lo="${i}">✕</button></td></tr>`;
   }).join('');
-  if (loRows) html += `<table><tr><th>ยาเหลือ</th><th>จำนวน</th><th>หน่วย</th><th>มูลค่า</th><th></th></tr>${loRows}</table>`;
   d.getElementById('fc-list').innerHTML = html ? `<div class="sec">DRP ที่จะบันทึก</div>${html}` : '<div class="empty">ยังไม่มี DRP — พิมพ์ใน HOSxP แล้วกด "วางจาก HOSxP"</div>';
+  const total = main('lo-total').textContent;
+  d.getElementById('fc-lo-table').innerHTML = loRows
+    ? `<table><tr><th>ยา</th><th>จำนวน</th><th>หน่วย</th><th>มูลค่า</th><th></th></tr>${loRows}</table>` +
+      `<div class="muted" id="fc-lo-sum" style="text-align:right;margin-top:3px">💰 ประหยัดได้ ${escHtml(total || '฿0.00')}</div>`
+    : '';
+  const prev = fcPrevDrugs(main('f-hn').value.trim());
+  d.getElementById('fc-lo-chips').innerHTML = prev.length
+    ? `<span class="muted">ครั้งก่อน:</span>` + prev.map(x => `<button class="chip" data-drug="${escHtml(x)}">+ ${escHtml(cleanDrugName(x))}</button>`).join('')
+    : '';
 
   d.body.querySelectorAll('[data-chk]').forEach(c => { c.checked = main(c.dataset.chk).checked; });
   d.getElementById('fc-icebox').style.display = main('chk-insulin').checked ? '' : 'none';
