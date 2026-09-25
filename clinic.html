@@ -351,6 +351,7 @@ tr:hover td{background:#f8faf9;}
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
+    <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — วาง DRP ที่พิมพ์ใน HOSxP แล้วบันทึกได้เลย ไม่ต้องสลับหน้า">🩺 บันทึกคลินิก (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — ดูยาคงเหลือและคำนวณจำนวนจ่ายจนถึงวันนัด">🪟 ยาคงเหลือ (ลอย)</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
@@ -2119,6 +2120,222 @@ async function pollHosxpBridge() {
     d.getElementById('fl-appt').value = isoLocal(floatDateAfter(s.apptDays));
   }
   renderFloatLeftover();
+}
+
+// ── หน้าต่างลอย "บันทึกคลินิก" ───────────────────────────
+// วางทับข้าง HOSxP ตอนลงคลินิก: เภสัชพิมพ์ DRP ใน HOSxP → Ctrl+A, Ctrl+C → กด "วางจาก HOSxP" → ตรวจ → บันทึก
+// หน้าต่างนี้เป็นแค่มุมมองย่อของฟอร์มบันทึกในหน้าหลัก อ่าน/เขียนฟอร์มหลักตรงๆ แล้วใช้ applyHosxpPaste / submitVisit ตัวเดิม
+// จะได้ไม่มีตรรกะแยก DRP หรือการบันทึกซ้ำสองชุด
+let clinicWin = null, clinicBridgeHn = '', clinicPendingHn = null;
+const FC_CSS = FLOAT_CSS + `
+  select,textarea{font:inherit;padding:6px 8px;border:1.5px solid #D6E4DA;border-radius:7px;background:#fff;min-width:0}
+  textarea{width:100%;resize:vertical;font-size:12px}
+  #fc-hn{width:110px;font-size:15px;font-weight:700}
+  #fc-name{flex:1}
+  #fc-pharm{flex:1}
+  .clin{flex:1}
+  .clin.on{background:#1A5E38;color:#fff;border-color:#1A5E38}
+  .big{width:100%;padding:9px;font-size:14px;margin-bottom:6px}
+  .primary{background:#1A5E38;color:#fff;border-color:#1A5E38}
+  .sec{font-size:11px;font-weight:700;color:#7A9A85;margin:10px 0 4px}
+  .it{display:flex;gap:6px;align-items:flex-start;background:#fff;border-radius:8px;padding:6px 8px;margin-bottom:4px}
+  .it span{flex:1;font-size:12px;font-weight:600}
+  .it i{font-weight:400;color:#3D5A47}
+  .x{padding:1px 6px;color:#dc2626;font-size:11px}
+  .fc-qty{width:56px;text-align:center;font-weight:700}
+  .info{font-size:11px;line-height:1.5;color:#3D5A47;background:#FBF3DC;border-radius:8px;padding:6px 8px;margin-bottom:6px}
+  .info:empty{display:none}
+  .info .warn{font-size:11px}
+  .alert{background:#fee2e2;color:#991b1b;border-radius:8px;padding:6px 8px;font-size:12px;margin-bottom:6px}
+  .alert:empty{display:none}
+  .ok{background:#dcfce7;color:#166534}
+  .checks label{display:flex;gap:4px;align-items:center;font-size:12px}
+`;
+
+async function openFloatClinic() {
+  if (clinicWin && !clinicWin.closed) { clinicWin.focus(); return; }
+  // Chrome เปิดหน้าต่างลอยได้ทีละบาน ปิดหน้าต่างยาคงเหลือก่อน
+  if (floatWin && !floatWin.closed) floatWin.close();
+  if ('documentPictureInPicture' in window) {
+    try { clinicWin = await documentPictureInPicture.requestWindow({ width: 420, height: 700 }); }
+    catch (e) { clinicWin = null; }
+  }
+  if (!clinicWin) {
+    clinicWin = window.open('', 'float-clinic', 'width=440,height=740');
+    if (!clinicWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
+  }
+  switchView('entry');
+  const d = clinicWin.document;
+  d.head.innerHTML = `<meta charset="utf-8"><title>🩺 บันทึกคลินิก</title><style>${FC_CSS}</style>`;
+  d.body.innerHTML = `
+    <div class="row">${['HT', 'DM', 'COPD'].map(c => `<button class="clin" data-c="${c}">${c}</button>`).join('')}</div>
+    <div class="row"><select id="fc-pharm">${document.getElementById('f-pharm').innerHTML}</select></div>
+    <div class="row">
+      <input id="fc-hn" placeholder="HN" autocomplete="off">
+      <input id="fc-name" placeholder="ชื่อ-สกุล" autocomplete="off">
+    </div>
+    <div id="fl-link" class="fc-link"></div>
+    <div id="fc-switch" class="alert"></div>
+    <div id="fc-hist" class="info"></div>
+    <button id="fc-paste" class="big primary">📋 วางจาก HOSxP</button>
+    <textarea id="fc-text" rows="2" placeholder="หรือคลิกที่นี่แล้วกด Ctrl+V"></textarea>
+    <div id="fc-parse" class="info" style="margin-top:6px"></div>
+    <div id="fc-list"></div>
+    <div class="row checks" style="margin-top:8px">
+      <label><input type="checkbox" data-chk="chk-adherence"> กินยาถูกต้อง</label>
+      <label><input type="checkbox" data-chk="chk-noleftover"> ไม่มียาเหลือ</label>
+      <label><input type="checkbox" data-chk="chk-insulin"> มียาฉีด</label>
+      <label id="fc-icebox"><input type="checkbox" data-chk="chk-icebox"> นำกระติกมา</label>
+    </div>
+    <div id="fc-msg" class="alert"></div>
+    <div class="row">
+      <button id="fc-save" class="primary" style="flex:1;padding:9px;font-size:14px">✅ บันทึก</button>
+      <button id="fc-full" title="แก้ไขละเอียดในฟอร์มเต็มของหน้าหลัก">ฟอร์มเต็ม ↗</button>
+    </div>`;
+
+  const main = id => document.getElementById(id);
+  d.body.querySelectorAll('.clin').forEach(b => b.addEventListener('click', () => { selectClinic(b.dataset.c); renderFloatClinic(); }));
+  d.getElementById('fc-pharm').addEventListener('change', e => { main('f-pharm').value = e.target.value; });
+  d.getElementById('fc-hn').addEventListener('input', e => {
+    main('f-hn').value = e.target.value.trim(); main('f-name').value = '';
+    onHnLookup(); renderFloatClinic();
+  });
+  d.getElementById('fc-name').addEventListener('input', e => { main('f-name').value = e.target.value; });
+  d.getElementById('fc-paste').addEventListener('click', async () => {
+    let txt = '';
+    try { txt = await navigator.clipboard.readText(); }
+    catch (e) { fcMsg('อ่านคลิปบอร์ดไม่ได้ — คลิกช่องด้านล่างแล้วกด Ctrl+V แทน'); d.getElementById('fc-text').focus(); return; }
+    d.getElementById('fc-text').value = txt;
+    fcApplyText(txt);
+  });
+  d.getElementById('fc-text').addEventListener('paste', e => setTimeout(() => fcApplyText(e.target.value), 0));
+  d.getElementById('fc-list').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.rmDrp != null) { main('drp-list').children[+b.dataset.rmDrp].remove(); refreshHxNote(); }
+    else if (b.dataset.rmLo != null) { main('lo-list').children[+b.dataset.rmLo].remove(); updateLoTotal(); }
+    else if (b.dataset.rmQuick != null) toggleQuickDrp(false);
+    renderFloatClinic();
+  });
+  // แก้จำนวนยาเหลือ → เขียนกลับฟอร์มหลักแล้วอัปเดตเฉพาะยอดแถวนั้น (ไม่ render ใหม่ จะได้ไม่เสีย focus)
+  d.getElementById('fc-list').addEventListener('input', e => {
+    if (!e.target.classList.contains('fc-qty')) return;
+    const row = main('lo-list').children[+e.target.dataset.i];
+    row.querySelector('.lo-qty').value = e.target.value;
+    updateLoTotal();
+    e.target.closest('tr').querySelector('.tot').textContent = row.querySelector('.lo-total-display').textContent;
+  });
+  d.body.querySelectorAll('[data-chk]').forEach(c => c.addEventListener('change', () => {
+    main(c.dataset.chk).checked = c.checked;
+    if (c.dataset.chk === 'chk-insulin') toggleInsulinIcebox();
+    renderFloatClinic();
+  }));
+  d.getElementById('fc-save').addEventListener('click', () => {
+    const n = visitRecords.length, hn = main('f-hn').value.trim(), name = main('f-name').value.trim();
+    submitVisit();
+    if (visitRecords.length > n) {
+      d.getElementById('fc-text').value = '';
+      clinicPendingHn = null;
+      renderFloatClinic();
+      fcMsg(`✅ บันทึก ${hn || name} แล้ว`, true);
+    } else fcMsg(main('toast').textContent);
+  });
+  d.getElementById('fc-full').addEventListener('click', () => { window.focus(); switchView('entry'); });
+  // แก้อะไรในหน้าหลักระหว่างนั้น กลับมาที่หน้าต่างลอยก็เห็นตรงกัน
+  clinicWin.addEventListener('focus', renderFloatClinic);
+  clinicWin.addEventListener('pagehide', () => { clinicWin = null; clinicBridgeHn = ''; clinicPendingHn = null; });
+  clinicBridgeHn = '';
+  clinicWin.setInterval(pollClinicBridge, 1500);
+  pollClinicBridge();
+  renderFloatClinic();
+}
+
+function fcMsg(text, ok) {
+  if (!clinicWin || clinicWin.closed) return;
+  const el = clinicWin.document.getElementById('fc-msg');
+  el.textContent = text || ''; el.classList.toggle('ok', !!ok);
+}
+
+async function fcApplyText(txt) {
+  document.getElementById('hx-paste').value = txt;
+  fcMsg('');
+  await applyHosxpPaste();
+  // addLoRow โฟกัสช่องในหน้าหลัก ดึงโฟกัสคีย์บอร์ดกลับมาที่หน้าต่างลอย
+  if (clinicWin && !clinicWin.closed) clinicWin.focus();
+  renderFloatClinic();
+}
+
+function fcHasData() { return getDrpData().length > 0 || getLoData().length > 0; }
+
+function fcSetPatient(hn, name) {
+  document.getElementById('f-hn').value = hn;
+  document.getElementById('f-name').value = '';
+  onHnLookup();
+  if (!document.getElementById('f-name').value && name) document.getElementById('f-name').value = name;
+  clinicPendingHn = null;
+  renderFloatClinic();
+}
+
+// เลือก HN ให้เองเมื่อ HOSxP เปลี่ยนคนไข้ แต่ถ้ารายเดิมกรอก DRP ไว้แล้วยังไม่บันทึก ให้ถามก่อน กัน DRP ไปติดผิดคน
+async function pollClinicBridge() {
+  if (!clinicWin || clinicWin.closed) return;
+  let s;
+  try { s = await (await fetch(HOSXP_BRIDGE_URL, { cache: 'no-store', targetAddressSpace: 'loopback' })).json(); }
+  catch (e) { s = null; }
+  if (!clinicWin || clinicWin.closed) return;
+  const link = clinicWin.document.getElementById('fl-link');
+  if (!s) { link.textContent = '⚪ ไม่ได้เชื่อม HOSxP — พิมพ์ HN เอง'; link.className = 'fc-link'; return; }
+  link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — ยังไม่เห็น HN บนหน้าจอ HOSxP';
+  link.className = 'fc-link on';
+  if (!s.hn || s.hn === clinicBridgeHn) return;
+  clinicBridgeHn = s.hn;
+  const cur = document.getElementById('f-hn').value.trim();
+  if (cur === s.hn) return;
+  if (cur && fcHasData()) { clinicPendingHn = { hn: s.hn, name: s.name }; renderFloatClinic(); return; }
+  fcSetPatient(s.hn, s.name);
+}
+
+function renderFloatClinic() {
+  if (!clinicWin || clinicWin.closed) return;
+  const d = clinicWin.document, main = id => document.getElementById(id);
+  d.body.querySelectorAll('.clin').forEach(b => b.classList.toggle('on', b.dataset.c === main('f-clinic').value));
+  d.getElementById('fc-pharm').value = main('f-pharm').value;
+  ['hn', 'name'].forEach(k => { const el = d.getElementById('fc-' + k); if (d.activeElement !== el) el.value = main('f-' + k).value; });
+  const hist = main('hn-history-box');
+  d.getElementById('fc-hist').innerHTML = hist.style.display === 'none' ? '' : hist.innerHTML;
+  d.getElementById('fc-parse').innerHTML = main('hx-paste-result').innerHTML;
+
+  const sw = d.getElementById('fc-switch');
+  sw.innerHTML = clinicPendingHn
+    ? `HOSxP เปิด HN ${escHtml(clinicPendingHn.hn)} แล้ว แต่รายเดิม (HN ${escHtml(main('f-hn').value)}) ยังไม่ได้บันทึก<br>` +
+      `<button id="fc-switch-go" style="margin-top:4px">ล้างรายเดิม แล้วใช้ HN ใหม่</button>`
+    : '';
+  if (clinicPendingHn) d.getElementById('fc-switch-go').onclick = () => { const p = clinicPendingHn; clearForm(); fcSetPatient(p.hn, p.name); };
+
+  const drpRows = [...main('drp-list').children];
+  let html = drpRows.map((row, i) => {
+    const type = row.querySelector('.drp-type').value;
+    if (!type) return '';
+    const cs = row.querySelector('.drp-cause'), cn = row.querySelector('.drp-cause-note');
+    const cause = cs.style.display !== 'none' ? cs.value : '';
+    const note = cn.style.display !== 'none' ? cn.value.trim() : '';
+    const why = cause && cause !== 'อื่นๆ' ? cause : note;
+    return `<div class="it"><span>${escHtml(type.startsWith('อื่นๆ') ? 'อื่นๆ' : drpShortName(type))}${why ? ` · <i>${escHtml(why)}</i>` : ''}</span><button class="x" data-rm-drp="${i}">✕</button></div>`;
+  }).join('');
+  if (quickDrpActive) html += `<div class="it"><span>มียาเหลือสะสม</span><button class="x" data-rm-quick>✕</button></div>`;
+  const loRows = [...main('lo-list').children].map((row, i) => {
+    const drug = row.querySelector('.lo-drug').value.trim(), qty = row.querySelector('.lo-qty').value;
+    if (!drug && !qty) return '';
+    return `<tr><td class="drug">${escHtml(cleanDrugName(drug) || '—')}</td>` +
+      `<td><input class="fc-qty" data-i="${i}" type="number" min="0" value="${escHtml(qty)}"></td>` +
+      `<td>${escHtml(row.querySelector('.lo-unit').value)}</td>` +
+      `<td class="tot">${escHtml(row.querySelector('.lo-total-display').textContent)}</td>` +
+      `<td><button class="x" data-rm-lo="${i}">✕</button></td></tr>`;
+  }).join('');
+  if (loRows) html += `<table><tr><th>ยาเหลือ</th><th>จำนวน</th><th>หน่วย</th><th>มูลค่า</th><th></th></tr>${loRows}</table>`;
+  d.getElementById('fc-list').innerHTML = html ? `<div class="sec">DRP ที่จะบันทึก</div>${html}` : '<div class="empty">ยังไม่มี DRP — พิมพ์ใน HOSxP แล้วกด "วางจาก HOSxP"</div>';
+
+  d.body.querySelectorAll('[data-chk]').forEach(c => { c.checked = main(c.dataset.chk).checked; });
+  d.getElementById('fc-icebox').style.display = main('chk-insulin').checked ? '' : 'none';
 }
 
 function floatDaysToAppt() {
