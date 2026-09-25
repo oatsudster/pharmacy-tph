@@ -2284,14 +2284,16 @@ async function pollClinicBridge() {
   if (!clinicWin || clinicWin.closed) return;
   const link = clinicWin.document.getElementById('fl-link');
   if (!s) { link.textContent = '⚪ ไม่ได้เชื่อม HOSxP — พิมพ์ HN เอง'; link.className = 'fc-link'; return; }
-  link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — ยังไม่เห็น HN บนหน้าจอ HOSxP';
+  // ลงคลินิกใช้หน้า Patient EMR เป็นหลัก ไม่มีค่อยใช้หน้าจ่ายยา (bridge รุ่นเก่าไม่มี emrHn ก็ยังใช้ได้)
+  const hn = s.emrHn || s.hn, name = s.emrHn ? s.emrName : s.name;
+  link.textContent = hn ? `🔗 HOSxP${s.emrHn ? ' (EMR)' : ''}: ${hn} ${name || ''}` : '🔗 เชื่อม HOSxP แล้ว — ยังไม่เห็น HN บนหน้าจอ HOSxP (เปิด Patient EMR)';
   link.className = 'fc-link on';
-  if (!s.hn || s.hn === clinicBridgeHn) return;
-  clinicBridgeHn = s.hn;
+  if (!hn || hn === clinicBridgeHn) return;
+  clinicBridgeHn = hn;
   const cur = document.getElementById('f-hn').value.trim();
-  if (cur === s.hn) return;
-  if (cur && fcHasData()) { clinicPendingHn = { hn: s.hn, name: s.name }; renderFloatClinic(); return; }
-  fcSetPatient(s.hn, s.name);
+  if (cur === hn) return;
+  if (cur && fcHasData()) { clinicPendingHn = { hn, name }; renderFloatClinic(); return; }
+  fcSetPatient(hn, name);
 }
 
 function renderFloatClinic() {

@@ -1,8 +1,12 @@
-﻿# HOSxP Bridge — ส่งข้อมูลผู้ป่วยที่เปิดหน้าจ่ายยาอยู่ใน HOSxP XE ให้หน้าต่างลอยยาคงเหลือ (clinic.html)
+﻿# HOSxP Bridge — ส่งข้อมูลผู้ป่วยที่เปิดอยู่ใน HOSxP XE ให้หน้าต่างลอยใน clinic.html
+#   หน้าจ่ายยา       → หน้าต่างลอยยาคงเหลือ (HN, วันนัด, ตารางยา)
+#   หน้า Patient EMR → หน้าต่างลอยบันทึกคลินิก (HN, ชื่อ) ที่เภสัชเปิดตอนลงคลินิก
 #
 # อ่านจากหน้าจอ HOSxP เท่านั้น (Windows UI Automation + จับภาพ) ไม่แตะฐานข้อมูล ไม่กด/แก้อะไรใน HOSxP
 # เปิดให้เฉพาะเครื่องนี้ (127.0.0.1) และรับเฉพาะหน้าเว็บของเรา (ALLOWED_ORIGINS):
-#   /current  — JSON { ok, hn, name, active, apptDays, gridVer, gridCut, covered, ts }
+#   /current  — JSON { ok, hn, name, active, apptDays, gridVer, gridCut, covered, emrHn, emrName, ts }
+#               emrHn/emrName = คนไข้ใน Patient EMR ที่อยู่บนจอ (มีหลายหน้า EMR เลือกหน้าที่อยู่บนสุด)
+#               ถ้าไม่มีหน้า EMR ไหนเห็นบนจอ คงคนล่าสุดไว้ ไม่มีหน้า EMR เปิดเลย = ค่าว่าง
 #               active = หน้าบันทึกจ่ายยาอยู่บนจอจริง (ช่อง HN และตารางยาไม่ถูกหน้าอื่น/dialog ของ HOSxP ทับ)
 #               ถ้าไม่ active จะไม่อ่านวันนัด/ตารางยา และหน้าเว็บจะไม่คำนวณ
 #   /grid.png — ภาพตารางใบสั่งยาล่าสุด หน้าเว็บเอาไป OCR ภาษาไทยเองด้วย Tesseract (Windows OCR ไม่มีภาษาไทย)
@@ -12,6 +16,8 @@
 #   วันนัด        — THTMListBox ในกล่อง "ข้อมูลการนัดหมาย" แสดงเป็น "1.[119 วัน] 22 มกราคม 2570 ..."
 #                   วาดข้อความเอง อ่านผ่าน API ไม่ได้ จึงจับภาพแล้ว OCR (อังกฤษพอ) เอาตัวเลขในวงเล็บ [..]
 #   ใบสั่งยา       — TcxGridSite ใน THOSxPMedicationOrderFrame (DevExpress grid อ่านผ่าน API ไม่ได้เช่นกัน)
+# Patient EMR (TPtEMRForm) — ส่วนหัวไม่มีป้ายกำกับ อ่านตามตำแหน่ง: HN = ช่อง TcxTextEdit ที่เป็นตัวเลขล้วน
+#   แถวบนสุด (7 หลัก, แถวล่างลงไปเป็นเลขบัตรประชาชน/โทรศัพท์) ชื่อ = ช่องถัดไปทางขวาในแถวเดียวกัน
 # HOSxP ไม่ตอบ PrintWindow จึงต้องจับภาพจากจอจริง — ถ้ามีหน้าต่างอื่นบังอยู่ (รวมถึงหน้าอื่นของ HOSxP
 # เช่น "เปรียบเทียบประวัติ") จะไม่จับส่วนที่ถูกบัง และคงผลที่อ่านได้ล่าสุดของคนไข้คนนี้ไว้
 
@@ -53,8 +59,9 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; ts = 0 }
-$cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
+$cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @() }
+$nextEmrScan = [DateTime]::MinValue
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
 
@@ -80,6 +87,49 @@ function FindDispenseScreen {
   $cache.apptList = $frame.FindFirst($TS::Descendants, (ClassCond 'THTMListBox'))
   $order = $frame.FindFirst($TS::Descendants, (ClassCond 'THOSxPMedicationOrderFrame'))
   if ($order) { $cache.grid = $order.FindFirst($TS::Descendants, (ClassCond 'TcxGridSite')) }
+}
+
+function HosxpMain {
+  $proc = Get-Process HOSxPXE4 -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $proc) { return $null }
+  $AE::RootElement.FindFirst($TS::Children, (New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$proc.Id)))
+}
+
+# หาหน้า Patient EMR ทุกหน้าที่เปิดอยู่ พร้อมช่อง HN/ชื่อ ของแต่ละหน้า (ค้นทั้งต้นไม้ช้า ~0.3 วินาที ทำทุก 3 วินาที)
+function ScanEmr {
+  $list = @()
+  $main = HosxpMain
+  if ($main) {
+    foreach ($emr in $main.FindAll($TS::Descendants, (ClassCond 'TPtEMRForm'))) {
+      $edits = @($emr.FindAll($TS::Descendants, (ClassCond 'TcxTextEdit')))
+      $hn = $edits | Where-Object { $_.Current.Name.Trim() -match '^\d{5,10}$' } |
+        Sort-Object { $_.Current.BoundingRectangle.Y }, { $_.Current.BoundingRectangle.X } | Select-Object -First 1
+      if (-not $hn) { continue }
+      $hr = $hn.Current.BoundingRectangle
+      $name = $edits | Where-Object { $r = $_.Current.BoundingRectangle; [Math]::Abs($r.Y - $hr.Y) -lt 6 -and $r.X -gt $hr.X } |
+        Sort-Object { $_.Current.BoundingRectangle.X } | Select-Object -First 1
+      $list += , @{ form = $emr; hn = $hn; name = $name }
+    }
+  }
+  $cache.emr = $list
+  if (-not $list.Count) { $state.emrHn = ''; $state.emrName = '' }
+}
+
+# เลือกหน้า EMR ที่อยู่บนสุด (กลางหน้านั้นไม่ถูกหน้าต่างอื่นบัง) ถ้าไม่มี ใช้หน้าที่ยังเห็นช่อง HN
+function ReadEmr {
+  $best = $null
+  foreach ($e in $cache.emr) {
+    try {
+      $fr = $e.form.Current.BoundingRectangle
+      if ([HxWin]::IsShowing([int]($fr.X + $fr.Width / 2), [int]($fr.Y + $fr.Height / 2), [IntPtr]$e.form.Current.NativeWindowHandle)) { $best = $e; break }
+      if (-not $best -and (ElShowing $e.hn)) { $best = $e }
+    } catch {}
+  }
+  if (-not $best) { return }
+  $hn = $best.hn.Current.Name.Trim()
+  if ($hn -notmatch '^\d{5,10}$') { return }
+  $state.emrHn = $hn
+  $state.emrName = if ($best.name) { $best.name.Current.Name.Trim() } else { '' }
 }
 
 # ความกว้างจากขอบซ้ายของ control ที่มองเห็นจริง (ไม่ถูกหน้าต่างอื่นบัง) — สุ่มตรวจเป็นจุดๆ
@@ -186,6 +236,11 @@ function UpdateState {
       $script:nextGrid = (Get-Date).AddSeconds(2)
     }
   }
+  if ((Get-Date) -ge $script:nextEmrScan) {
+    try { ScanEmr } catch { $cache.emr = @() }
+    $script:nextEmrScan = (Get-Date).AddSeconds(3)
+  }
+  try { ReadEmr } catch {}
   $state.ok = [bool]$cache.hnEdit
   $state.hn = $hn; $state.name = $name
   $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
