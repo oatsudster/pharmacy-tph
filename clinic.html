@@ -2154,6 +2154,10 @@ const FC_CSS = FLOAT_CSS + `
   #fc-lo-drug{flex:1}
   #fc-lo-qty{width:70px;text-align:center}
   .chip{font-size:11px;padding:3px 7px;border-radius:12px;font-weight:600}
+  .box{background:#fff;border:1.5px solid #D6E4DA;border-radius:10px;padding:8px;margin-bottom:8px}
+  .box .sec{margin-top:0}
+  #fc-hist{max-height:64px;overflow:auto}
+  .box .empty{padding:8px}
 `;
 
 async function openFloatClinic() {
@@ -2161,11 +2165,11 @@ async function openFloatClinic() {
   // Chrome เปิดหน้าต่างลอยได้ทีละบาน ปิดหน้าต่างยาคงเหลือก่อน
   if (floatWin && !floatWin.closed) floatWin.close();
   if ('documentPictureInPicture' in window) {
-    try { clinicWin = await documentPictureInPicture.requestWindow({ width: 420, height: 700 }); }
+    try { clinicWin = await documentPictureInPicture.requestWindow({ width: 420, height: 820 }); }
     catch (e) { clinicWin = null; }
   }
   if (!clinicWin) {
-    clinicWin = window.open('', 'float-clinic', 'width=440,height=740');
+    clinicWin = window.open('', 'float-clinic', 'width=440,height=860');
     if (!clinicWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
   }
   switchView('entry');
@@ -2181,20 +2185,26 @@ async function openFloatClinic() {
     <div id="fl-link" class="fc-link"></div>
     <div id="fc-switch" class="alert"></div>
     <div id="fc-hist" class="info"></div>
-    <button id="fc-paste" class="big primary">📋 วางจาก HOSxP</button>
-    <textarea id="fc-text" rows="2" placeholder="หรือคลิกที่นี่แล้วกด Ctrl+V"></textarea>
-    <div id="fc-parse" class="info" style="margin-top:6px"></div>
     <div id="fc-body">
-      <div id="fc-list"></div>
-      <div class="sec">📦 ยาที่คนไข้นำกลับมา</div>
-      <div class="row" id="fc-lo-chips"></div>
-      <div id="fc-lo-table"></div>
-      <div class="row" style="margin-top:6px">
-        <input id="fc-lo-drug" list="fc-drug-dl" placeholder="พิมพ์ชื่อยา..." autocomplete="off">
-        <input id="fc-lo-qty" type="number" min="0" placeholder="จำนวน">
-        <button id="fc-lo-add">+ เพิ่ม</button>
+      <!-- เรียงตามลำดับงานจริง: นับยาที่คนไข้นำมาก่อน แล้วค่อยพิมพ์ DRP ใน HOSxP มาวาง -->
+      <div class="box">
+        <div class="sec">📦 ยาที่คนไข้นำกลับมา <span class="muted">(กรอกที่นี่ ไม่ต้องพิมพ์ใน HOSxP)</span></div>
+        <div class="row" id="fc-lo-chips"></div>
+        <div id="fc-lo-table"></div>
+        <div class="row" style="margin-top:6px;margin-bottom:0">
+          <input id="fc-lo-drug" list="fc-drug-dl" placeholder="พิมพ์ชื่อยา..." autocomplete="off">
+          <input id="fc-lo-qty" type="number" min="0" placeholder="จำนวน">
+          <button id="fc-lo-add">+ เพิ่ม</button>
+        </div>
+        <datalist id="fc-drug-dl">${document.getElementById('drug-dl').innerHTML}</datalist>
       </div>
-      <datalist id="fc-drug-dl">${document.getElementById('drug-dl').innerHTML}</datalist>
+      <div class="box">
+        <div class="sec">💬 DRP <span class="muted">(พิมพ์ใน COUNSELLING ของ HOSxP → Ctrl+A, Ctrl+C)</span></div>
+        <button id="fc-paste" class="big primary">📋 วางจาก HOSxP</button>
+        <textarea id="fc-text" rows="2" placeholder="หรือคลิกที่นี่แล้วกด Ctrl+V"></textarea>
+        <div id="fc-parse" class="info" style="margin-top:6px"></div>
+        <div id="fc-list"></div>
+      </div>
     </div>
     <div class="row checks" style="margin-top:8px">
       <label><input type="checkbox" data-chk="chk-adherence"> กินยาถูกต้อง</label>
@@ -2400,7 +2410,7 @@ function renderFloatClinic() {
       `<td class="tot">${escHtml(row.querySelector('.lo-total-display').textContent)}</td>` +
       `<td><button class="x" data-rm-lo="${i}">✕</button></td></tr>`;
   }).join('');
-  d.getElementById('fc-list').innerHTML = html ? `<div class="sec">DRP ที่จะบันทึก</div>${html}` : '<div class="empty">ยังไม่มี DRP — พิมพ์ใน HOSxP แล้วกด "วางจาก HOSxP"</div>';
+  d.getElementById('fc-list').innerHTML = html || '<div class="empty">ยังไม่มี DRP</div>';
   const total = main('lo-total').textContent;
   d.getElementById('fc-lo-table').innerHTML = loRows
     ? `<table><tr><th>ยา</th><th>จำนวน</th><th>หน่วย</th><th>มูลค่า</th><th></th></tr>${loRows}</table>` +
