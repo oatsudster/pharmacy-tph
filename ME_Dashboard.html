@@ -1413,7 +1413,11 @@
   <div class="page" id="page-ipd-adminrpt" style="padding:24px;overflow-y:auto;background:var(--bg)">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <span>🧾 รายงาน Administration Error (IPD)</span>
-      <button class="btn btn-secondary" onclick="exportAdminErrorReport()" style="font-size:13px;padding:7px 14px">📊 Export Excel (รายเดือนเต็มปี)</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="exportAdminErrorReport()" style="font-size:13px;padding:7px 14px">📊 Export Excel (รายเดือนเต็มปี)</button>
+        <a class="btn btn-secondary" href="admin-error-ipd.html" target="_blank" rel="noopener" style="font-size:13px;padding:7px 14px;text-decoration:none">🔗 เปิดหน้าสำหรับพยาบาล</a>
+        <button class="btn btn-secondary" onclick="copyNurseAdminErrorLink()" style="font-size:13px;padding:7px 14px">📋 คัดลอกลิงก์</button>
+      </div>
     </div>
     <div style="font-size:12px;color:var(--text-light);margin:-6px 0 18px">
       นับรายการขั้นตอน = Administration ทั้งหมด — รายการที่ AI จัดหมวดไม่ได้จะรวมไว้ในหมวด "อื่นๆ" คลิกแถวในตารางเพื่อดูรายละเอียดทั้งหมดของหมวดนั้น
@@ -3690,6 +3694,17 @@ function populateAdminRptMonth() {
   monthEl.innerHTML = '<option value="ALL">รวมทั้งปีงบ</option>' +
     months.map(m => `<option value="${m}">${fmtMonthFull(m)}</option>`).join('');
   monthEl.value = (prev && (prev === 'ALL' || months.includes(prev))) ? prev : (months.includes(curMonth) ? curMonth : 'ALL');
+}
+
+// ลิงก์หน้า admin-error-ipd.html (สำหรับพยาบาล ไม่ต้องใช้ PIN) — คัดลอกไว้ส่งทาง LINE
+async function copyNurseAdminErrorLink() {
+  const url = new URL('admin-error-ipd.html', location.href).href;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('คัดลอกลิงก์หน้าสำหรับพยาบาลแล้ว');
+  } catch (e) {
+    prompt('คัดลอกลิงก์นี้:', url);
+  }
 }
 
 function renderAdminErrorReport() {
