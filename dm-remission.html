@@ -2962,6 +2962,7 @@ function parseHosXPText(text) {
         ['ldl',      /LDL/i],
         ['hba1c',    /HbA1c/i],
         ['fbs',      /^(?:FBS|Fasting)/i],
+        ['dtx',      /Glucose\s*Strip|^DTX/i],
         ['tg',       /Triglyceride|^TG\b/i],
         ['tc',       /^(?:Total\s*)?Cholesterol|^TC\b/i],
         ['egfr',     /GFR/i],
@@ -2985,15 +2986,25 @@ function parseHosXPText(text) {
   {
     const sec = text.match(/Plan\s*\/\s*Medications[^\n]*([\s\S]*?)(?=หัตถการ|Services|Laboratory Results|$)/i);
     if (sec) {
-      const rowRe = /^\s*\d+\s+(.+?)\s+(\d+(?:\.\d+)?)\s+([^\d\s]+)\s+([\d\.]+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([฀-๿].*)$/;
+      // หน่วยห้ามเป็น "mg." (ป้องกันจับ "20 mg." เป็น Qty+Unit)
+      const rowRe = /^\s*\d+\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(?!mg\b)([^\d\s]+)\s+(.+)$/;
       for (const line of sec[1].split(/\r?\n/)) {
         const dm = line.match(rowRe);
-        if (!dm) continue;
+        if (!dm || !/[฀-๿]/.test(dm[4])) continue;
         const rawName = dm[1].trim();
         const qty = Math.round(parseFloat(dm[2]));
-        const usageAmt = dm[4], freqCode = dm[6].toUpperCase(), timeCode = dm[7].toUpperCase();
         // ตัดชื่อแพทย์ท้ายบรรทัดออก
-        const thaiInstr = dm[8].replace(/\s+(?:พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|นาย|นางสาว|นาง|น\.ส\.).*$/, '').trim();
+        const usage = dm[4].replace(/\s+(?:พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|นาย|นางสาว|นาง|น\.ส\.).*$/, '').trim();
+        // แบบมีรหัส: "1 OR1 OD P1 รับประทาน ..."  /  แบบไม่มีรหัส: "22at (2เม็ด * 2 ac) รับประทานครั้งละ 2 เม็ด วันละ 2 ครั้ง ..."
+        const cm = usage.match(/^([\d\.]+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([฀-๿].*)$/);
+        let usageAmt, freqCode = null, timeCode = null, thaiInstr;
+        if (cm) {
+          usageAmt = cm[1]; freqCode = cm[3].toUpperCase(); timeCode = cm[4].toUpperCase(); thaiInstr = cm[5];
+        } else {
+          thaiInstr = usage;
+          const am = usage.match(/(?:ครั้งละ|รับประทาน|ฉีด|พ่น)\s*([\d\.]+)/);
+          usageAmt = am ? am[1] : null;
+        }
         const dosage = convertDosage(thaiInstr, usageAmt, freqCode, timeCode);
         const matched = matchDrug(rawName);
         r.drugs.push({
