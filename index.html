@@ -547,6 +547,84 @@ body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
 }
 @media print { .suite-search,.suite-search-status,.suite-no-results { display:none !important; } }
 </style>
+<style id="dashboard-design">
+.dash-context { background:#fff; border:1px solid #D6E4DA; border-left:4px solid #1A5E38; border-radius:12px; padding:14px 18px; margin:0 0 20px; font-size:14px; color:#3D5A47; line-height:1.7; }
+.dash-context[data-state="warning"] { border-left-color:#C49A22; background:#fffaf0; }
+.dash-section { margin:24px 0 14px; font-size:19px; color:#124228; font-weight:800; }
+.dash-caption { display:block; font-size:12px; font-weight:400; color:#587363; line-height:1.7; margin-top:6px; }
+.dash-action { cursor:pointer; text-align:left; }
+.dash-action::after { content:'ดูรายการ →'; display:block; color:#1A5E38; font-size:12px; font-weight:700; margin-top:12px; }
+.dash-action:hover { box-shadow:0 4px 18px #12422814; }
+.dash-primary { border-top:4px solid #1A5E38 !important; background:#f0f7f2; }
+.dash-danger { border-top:4px solid #b91c1c !important; }
+.dash-secondary { background:#f4f7f5; box-shadow:none; }
+.dash-details { border:1px solid #D6E4DA; border-radius:12px; background:white; margin:16px 0; padding:14px 18px; }
+.dash-details summary { cursor:pointer; color:#124228; font-weight:700; min-height:30px; }
+.dash-details[open] summary { margin-bottom:12px; }
+.dash-toggle { font:inherit; font-size:13px; min-height:44px; padding:8px 14px; background:white; border:1px solid #D6E4DA; border-radius:9px; color:#124228; cursor:pointer; }
+.dash-section-nav { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.dash-section-nav a { padding:9px 15px; border:1px solid #D6E4DA; border-radius:24px; background:#fff; color:#124228; text-decoration:none; font-size:13px; }
+.dash-compact-table:not(.dash-expanded) :is(th,td):is(:nth-child(1),:nth-child(3),:nth-child(7),:nth-child(8),:nth-child(10),:nth-child(11),:nth-child(12)) { display:none; }
+.dash-chart-main { grid-column:1/-1; min-height:300px; order:-1; }
+.dash-chart-main canvas { max-height:280px; }
+.dash-ranking { display:grid; gap:10px; margin:12px 0 20px; }
+.dash-rank { display:flex; align-items:center; gap:12px; text-align:left; padding:12px 14px; background:#F4F7F5; border:1px solid #D6E4DA; border-radius:10px; font:inherit; color:#124228; cursor:pointer; }
+.dash-rank span { flex:1; font-size:14px; }
+.dash-rank strong { font-size:20px; white-space:nowrap; }
+body[data-suite-page='adr'] .chart-grid { grid-template-columns:1fr 1fr; }
+body[data-suite-page='adr'] .chart-grid > :first-child { grid-column:1/-1; }
+body[data-suite-page='adr'] .chart-grid .chart-wrap { height:280px; }
+body[data-suite-page='me'] .chart-box { border-radius:16px; padding:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown > :last-child { grid-column:1/-1; }
+body[data-suite-page='me'] #section-overview .kpi-grid { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important; }
+.dash-sync { margin:10px 0 18px; font-size:13px; color:#587363; }
+.dash-date { display:block; font-size:11px; color:#587363; font-weight:400; }
+@media(max-width:700px) {
+  .dash-context { padding:12px 14px; font-size:13px; }
+  .dash-section { font-size:17px; }
+  body[data-suite-page='adr'] .chart-grid,body[data-suite-page='me'] #section-overview .dash-breakdown { grid-template-columns:1fr; }
+  body[data-suite-page='me'] .chart-grid { grid-template-columns:1fr; }
+  .dash-compact-table { min-width:550px; }
+  body[data-suite-page='expiry'] .tbl-wrap { overflow:visible; }
+  body[data-suite-page='expiry'] .tbl-wrap table,body[data-suite-page='expiry'] #tbody { display:block; min-width:0; width:100%; }
+  body[data-suite-page='expiry'] .tbl-wrap thead { display:none; }
+  body[data-suite-page='expiry'] #tbody tr { display:grid; grid-template-columns:1fr 1fr; border:1px solid #D6E4DA; border-radius:14px; margin-bottom:14px; padding:14px; background:white; gap:8px 12px; }
+  body[data-suite-page='expiry'] #tbody td { display:block; padding:4px 0; border:0; min-width:0; white-space:normal; }
+  body[data-suite-page='expiry'] #tbody td::before { content:attr(data-label); display:block; color:#587363; font-size:12px; margin-bottom:4px; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(1),body[data-suite-page='expiry'] #tbody td:nth-child(2),body[data-suite-page='expiry'] #tbody td[colspan] { grid-column:1/-1; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(2) { font-weight:700; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .edit-input { max-width:100%; width:100%; min-height:44px; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .row-btn { min-width:44px; min-height:44px; }
+}
+</style>
+<script>
+const DashUX = {
+  period(fy, month) {
+    let text = month && /^\d{4}-\d{2}$/.test(month) ? new Date(month+'-01T12:00:00+07:00').toLocaleDateString('th-TH',{month:'long',year:'numeric',timeZone:'Asia/Bangkok'}) : month && month!=='all' && month!=='ALL' ? month : fy ? 'ปีงบประมาณ '+fy : 'ทุกช่วงเวลาที่มีข้อมูล';
+    const now = new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
+    if(month===now) text += ' · เดือนนี้ยังไม่สิ้นสุด';
+    return text;
+  },
+  note(id, anchor, text, warning=false) {
+    const target=typeof anchor==='string'?document.querySelector(anchor):anchor;
+    if(!target) return;
+    let el=document.getElementById(id);
+    if(!el){el=document.createElement('div');el.id=id;el.className='dash-context';el.setAttribute('role','status');target.before(el);}
+    el.textContent=text;el.dataset.state=warning?'warning':'ready';
+  },
+  action(el, callback) {
+    if(!el) return;el.classList.add('dash-action');el.tabIndex=0;el.setAttribute('role','button');
+    el.onclick=callback;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();callback();}};
+  },
+  emptyChart(id, charts) {
+    if(charts[id]) {charts[id].destroy();delete charts[id];}
+    const canvas=document.getElementById(id);if(!canvas)return;
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();ctx.fillStyle='#587363';ctx.font='14px Noto Sans Thai, sans-serif';ctx.textAlign='center';ctx.fillText('ไม่มีรายการในช่วงที่เลือก',canvas.width/2,canvas.height/2);ctx.restore();
+  }
+};
+</script>
 </head>
 <body data-suite-page="index">
 <!-- ── LOGIN OVERLAY ─────────────────────────────────── -->
@@ -657,6 +735,7 @@ async function checkPin() {
 <div class="cards-wrap">
   <div class="section-label" style="margin-top:0">เครื่องมือที่ใช้งานได้</div>
   <div class="suite-search"><label for="suite-search">ค้นหาระบบที่ต้องการ</label><input id="suite-search" type="search" placeholder="ชื่อระบบหรืองาน เช่น ME, คลินิก, หมดอายุ" autocomplete="off" aria-controls="suite-apps"><button type="button" id="suite-clear">ล้างคำค้น</button></div>
+<div class="dash-context">ตัวเลขด้านล่างเป็นข้อมูลสรุปจากข้อมูลที่โหลดไว้ในเครื่องนี้ · เปิดแต่ละระบบเพื่อดูรายละเอียดและสถานะการอัปเดต<span class="dash-caption">เดือนปัจจุบันยังไม่สิ้นสุด จึงไม่ควรเทียบจำนวนตรง ๆ กับเดือนเต็ม</span></div>
 <p class="suite-search-status" id="suite-search-status" role="status">ระบบงานทั้งหมด 6 ระบบ</p>
 <div class="suite-no-results" id="suite-no-results" hidden>ไม่พบระบบที่ตรงกับคำค้น ลองใช้คำสั้นลงหรือกดล้างคำค้น</div>
 <div class="cards-grid" id="suite-apps">
@@ -679,7 +758,7 @@ async function checkPin() {
           <span class="tag tag-green">Dashboard</span>
         </div>
       </div>
-      <div class="card-stat-bar">
+      <div class="dash-caption" style="padding:0 22px 10px">ME จากหน้าบันทึก ER · เดือนปัจจุบัน</div><div class="card-stat-bar">
         <div class="stat-item">
           <div class="stat-val" id="me-total">—</div>
           <div class="stat-lbl">ME เดือนนี้</div>
@@ -719,7 +798,7 @@ async function checkPin() {
           <span class="tag tag-green">รายงานรายเดือน</span>
         </div>
       </div>
-      <div class="card-stat-bar gold-bar">
+      <div class="dash-caption" style="padding:0 22px 10px">เดือนปัจจุบัน · Stat Dose และ Cart</div><div class="card-stat-bar gold-bar">
         <div class="stat-item">
           <div class="stat-val gold-val" id="wt-stat-count">—</div>
           <div class="stat-lbl">บันทึก Stat Dose</div>
@@ -759,7 +838,7 @@ async function checkPin() {
           <span class="tag tag-blue">ติดตามรายปี</span>
         </div>
       </div>
-      <div class="card-stat-bar">
+      <div class="dash-caption" style="padding:0 22px 10px">ผู้ป่วยสะสม · การติดตามเดือนปัจจุบัน</div><div class="card-stat-bar">
         <div class="stat-item">
           <div class="stat-val" id="dm-patients">—</div>
           <div class="stat-lbl">ผู้ป่วยทั้งหมด</div>
@@ -772,7 +851,7 @@ async function checkPin() {
         <div class="stat-divider"></div>
         <div class="stat-item">
           <div class="stat-val" id="dm-visits">—</div>
-          <div class="stat-lbl">ครั้งที่ติดตาม</div>
+          <div class="stat-lbl">ติดตามเดือนนี้</div>
         </div>
       </div>
       <div class="card-footer">
@@ -799,7 +878,7 @@ async function checkPin() {
           <span class="tag tag-blue">Cost Saving</span>
         </div>
       </div>
-      <div class="card-stat-bar" style="background:#f5f3ff">
+      <div class="dash-caption" style="padding:0 22px 10px">งานคลินิก · เดือนปัจจุบัน</div><div class="card-stat-bar" style="background:#f5f3ff">
         <div class="stat-item">
           <div class="stat-val" style="color:#5b21b6" id="clinic-visits">—</div>
           <div class="stat-lbl">ครั้งที่ให้บริการ</div>
@@ -839,7 +918,7 @@ async function checkPin() {
           <span class="tag tag-gray">สะสมรายปี</span>
         </div>
       </div>
-      <div class="card-stat-bar" style="background:#fff1f2">
+      <div class="dash-caption" style="padding:0 22px 10px">ADR · เดือนปัจจุบัน</div><div class="card-stat-bar" style="background:#fff1f2">
         <div class="stat-item">
           <div class="stat-val" style="color:#b91c1c" id="adr-total">—</div>
           <div class="stat-lbl">ADR เดือนนี้</div>

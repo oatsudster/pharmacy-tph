@@ -289,6 +289,84 @@ body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
 }
 @media print { .suite-search,.suite-search-status,.suite-no-results { display:none !important; } }
 </style>
+<style id="dashboard-design">
+.dash-context { background:#fff; border:1px solid #D6E4DA; border-left:4px solid #1A5E38; border-radius:12px; padding:14px 18px; margin:0 0 20px; font-size:14px; color:#3D5A47; line-height:1.7; }
+.dash-context[data-state="warning"] { border-left-color:#C49A22; background:#fffaf0; }
+.dash-section { margin:24px 0 14px; font-size:19px; color:#124228; font-weight:800; }
+.dash-caption { display:block; font-size:12px; font-weight:400; color:#587363; line-height:1.7; margin-top:6px; }
+.dash-action { cursor:pointer; text-align:left; }
+.dash-action::after { content:'ดูรายการ →'; display:block; color:#1A5E38; font-size:12px; font-weight:700; margin-top:12px; }
+.dash-action:hover { box-shadow:0 4px 18px #12422814; }
+.dash-primary { border-top:4px solid #1A5E38 !important; background:#f0f7f2; }
+.dash-danger { border-top:4px solid #b91c1c !important; }
+.dash-secondary { background:#f4f7f5; box-shadow:none; }
+.dash-details { border:1px solid #D6E4DA; border-radius:12px; background:white; margin:16px 0; padding:14px 18px; }
+.dash-details summary { cursor:pointer; color:#124228; font-weight:700; min-height:30px; }
+.dash-details[open] summary { margin-bottom:12px; }
+.dash-toggle { font:inherit; font-size:13px; min-height:44px; padding:8px 14px; background:white; border:1px solid #D6E4DA; border-radius:9px; color:#124228; cursor:pointer; }
+.dash-section-nav { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.dash-section-nav a { padding:9px 15px; border:1px solid #D6E4DA; border-radius:24px; background:#fff; color:#124228; text-decoration:none; font-size:13px; }
+.dash-compact-table:not(.dash-expanded) :is(th,td):is(:nth-child(1),:nth-child(3),:nth-child(7),:nth-child(8),:nth-child(10),:nth-child(11),:nth-child(12)) { display:none; }
+.dash-chart-main { grid-column:1/-1; min-height:300px; order:-1; }
+.dash-chart-main canvas { max-height:280px; }
+.dash-ranking { display:grid; gap:10px; margin:12px 0 20px; }
+.dash-rank { display:flex; align-items:center; gap:12px; text-align:left; padding:12px 14px; background:#F4F7F5; border:1px solid #D6E4DA; border-radius:10px; font:inherit; color:#124228; cursor:pointer; }
+.dash-rank span { flex:1; font-size:14px; }
+.dash-rank strong { font-size:20px; white-space:nowrap; }
+body[data-suite-page='adr'] .chart-grid { grid-template-columns:1fr 1fr; }
+body[data-suite-page='adr'] .chart-grid > :first-child { grid-column:1/-1; }
+body[data-suite-page='adr'] .chart-grid .chart-wrap { height:280px; }
+body[data-suite-page='me'] .chart-box { border-radius:16px; padding:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown > :last-child { grid-column:1/-1; }
+body[data-suite-page='me'] #section-overview .kpi-grid { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important; }
+.dash-sync { margin:10px 0 18px; font-size:13px; color:#587363; }
+.dash-date { display:block; font-size:11px; color:#587363; font-weight:400; }
+@media(max-width:700px) {
+  .dash-context { padding:12px 14px; font-size:13px; }
+  .dash-section { font-size:17px; }
+  body[data-suite-page='adr'] .chart-grid,body[data-suite-page='me'] #section-overview .dash-breakdown { grid-template-columns:1fr; }
+  body[data-suite-page='me'] .chart-grid { grid-template-columns:1fr; }
+  .dash-compact-table { min-width:550px; }
+  body[data-suite-page='expiry'] .tbl-wrap { overflow:visible; }
+  body[data-suite-page='expiry'] .tbl-wrap table,body[data-suite-page='expiry'] #tbody { display:block; min-width:0; width:100%; }
+  body[data-suite-page='expiry'] .tbl-wrap thead { display:none; }
+  body[data-suite-page='expiry'] #tbody tr { display:grid; grid-template-columns:1fr 1fr; border:1px solid #D6E4DA; border-radius:14px; margin-bottom:14px; padding:14px; background:white; gap:8px 12px; }
+  body[data-suite-page='expiry'] #tbody td { display:block; padding:4px 0; border:0; min-width:0; white-space:normal; }
+  body[data-suite-page='expiry'] #tbody td::before { content:attr(data-label); display:block; color:#587363; font-size:12px; margin-bottom:4px; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(1),body[data-suite-page='expiry'] #tbody td:nth-child(2),body[data-suite-page='expiry'] #tbody td[colspan] { grid-column:1/-1; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(2) { font-weight:700; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .edit-input { max-width:100%; width:100%; min-height:44px; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .row-btn { min-width:44px; min-height:44px; }
+}
+</style>
+<script>
+const DashUX = {
+  period(fy, month) {
+    let text = month && /^\d{4}-\d{2}$/.test(month) ? new Date(month+'-01T12:00:00+07:00').toLocaleDateString('th-TH',{month:'long',year:'numeric',timeZone:'Asia/Bangkok'}) : month && month!=='all' && month!=='ALL' ? month : fy ? 'ปีงบประมาณ '+fy : 'ทุกช่วงเวลาที่มีข้อมูล';
+    const now = new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
+    if(month===now) text += ' · เดือนนี้ยังไม่สิ้นสุด';
+    return text;
+  },
+  note(id, anchor, text, warning=false) {
+    const target=typeof anchor==='string'?document.querySelector(anchor):anchor;
+    if(!target) return;
+    let el=document.getElementById(id);
+    if(!el){el=document.createElement('div');el.id=id;el.className='dash-context';el.setAttribute('role','status');target.before(el);}
+    el.textContent=text;el.dataset.state=warning?'warning':'ready';
+  },
+  action(el, callback) {
+    if(!el) return;el.classList.add('dash-action');el.tabIndex=0;el.setAttribute('role','button');
+    el.onclick=callback;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();callback();}};
+  },
+  emptyChart(id, charts) {
+    if(charts[id]) {charts[id].destroy();delete charts[id];}
+    const canvas=document.getElementById(id);if(!canvas)return;
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();ctx.fillStyle='#587363';ctx.font='14px Noto Sans Thai, sans-serif';ctx.textAlign='center';ctx.fillText('ไม่มีรายการในช่วงที่เลือก',canvas.width/2,canvas.height/2);ctx.restore();
+  }
+};
+</script>
 </head>
 <body data-suite-page="nurse">
 
@@ -362,6 +440,7 @@ body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
       <span>อุบัติการณ์แยกตามประเภท</span>
       <small>คลิกแถวเพื่อดูรายละเอียดทั้งหมด</small>
     </div>
+    <p class="dash-caption">เรียงตามจำนวนในช่วงที่เลือก · กดประเภทเพื่อดูรายการ</p><div class="dash-ranking" id="nurse-top-categories"></div>
     <div class="table-wrap">
       <table id="cat-table"></table>
     </div>
@@ -372,14 +451,14 @@ body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
       <span>ระดับความรุนแรง (NCC MERP) A–I</span>
       <small>คลิกแท่งหรือระดับเพื่อดูรายละเอียด</small>
     </div>
-    <div class="chart-wrap" style="height:180px"><canvas id="sev-chart"></canvas></div>
+    <details class="dash-details" ontoggle="if(this.open && sevChart) sevChart.resize()"><summary>ดูกราฟความรุนแรง A–I</summary><div class="chart-wrap" style="height:180px"><canvas id="sev-chart"></canvas></div></details>
     <div class="chips" id="sev-chips" style="margin-top:14px"></div>
   </div>
 
   <div class="card" id="detail-panel">
     <div class="card-title">
       <span id="detail-title"></span>
-      <button class="close-btn" aria-label="ปิดรายละเอียด" onclick="document.getElementById('detail-panel').style.display='none'">✕</button>
+      <button class="close-btn" aria-label="ปิดรายละเอียด" onclick="closeNurseDetail()">✕</button>
     </div>
     <div class="table-wrap" id="detail-body"></div>
   </div>
@@ -453,42 +532,54 @@ const db = firebase.firestore();
 db.enablePersistence().catch(() => {});
 const COL = 'pharmacy_tph';
 
-function setSyncStatus(ok) {
+const nurseSources = { records: 'loading', denom: 'loading', categories: 'loading' };
+function setNurseSource(source, snap) {
+  nurseSources[source] = snap ? (snap.metadata?.fromCache ? 'cached' : 'ready') : 'error';
+  setSyncStatus();
+}
+function setSyncStatus() {
   const el = document.getElementById('sync-badge');
-  if (ok) {
-    el.textContent = '☁️ เชื่อมต่อแล้ว';
-    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+  const states = Object.values(nurseSources);
+  if (states.includes('error')) {
+    el.textContent = '⚠️ โหลดข้อมูลบางส่วนไม่ได้ — แสดงข้อมูลที่มี';
+  } else if (states.includes('loading')) {
+    el.textContent = '⏳ กำลังโหลดข้อมูลรายงาน';
+  } else if (states.includes('cached')) {
+    el.textContent = '◷ ข้อมูลที่บันทึกไว้ — รอการยืนยันจากเซิร์ฟเวอร์';
   } else {
-    el.textContent = '⚠️ ออฟไลน์ — แสดงข้อมูลล่าสุดที่มี';
+    el.textContent = '☁️ ข้อมูลรายงานอัปเดตแล้ว';
+    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
   }
 }
 
 let fyPopulated = false;
-db.collection(COL).doc('hosxp_records').onSnapshot(snap => {
+db.collection(COL).doc('hosxp_records').onSnapshot({includeMetadataChanges:true}, snap => {
   if (snap.exists) {
     hosxpRecords = snap.data().records || [];
     localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
   }
-  setSyncStatus(true);
+  setNurseSource('records', snap);
   if (!fyPopulated) { populateFYSelect(); populateMonthSelect(); fyPopulated = true; }
   render();
-}, () => setSyncStatus(false));
+}, () => { setNurseSource('records', null); if (!fyPopulated) { populateFYSelect(); populateMonthSelect(); fyPopulated = true; } render(); });
 
-db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
+db.collection(COL).doc('hosxp_denom').onSnapshot({includeMetadataChanges:true}, snap => {
   if (snap.exists) {
     hosxpDenom = snap.data().data || {};
     localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
   }
+  setNurseSource('denom', snap);
   render();
-});
+}, () => { setNurseSource('denom', null); render(); });
 
-db.collection(COL).doc('hosxp_ai_cat').onSnapshot(snap => {
+db.collection(COL).doc('hosxp_ai_cat').onSnapshot({includeMetadataChanges:true}, snap => {
   if (snap.exists) {
     hosxpAiCat = snap.data().data || {};
     localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat));
   }
+  setNurseSource('categories', snap);
   render();
-});
+}, () => { setNurseSource('categories', null); render(); });
 
 // ══ Report computation (เทียบเท่า computeAdminErrorReportData ใน ME_Dashboard.html) ══
 function computeReport(fy) {
@@ -567,7 +658,14 @@ function render() {
   // category table
   const catTable = document.getElementById('cat-table');
   let html = '<thead><tr><th>ประเภท</th><th>ครั้ง</th><th>/1,000 วันนอน</th></tr></thead><tbody>';
-  d.catRows.forEach(r => {
+  const rankedCategories=[...d.catRows].sort((a,b)=>(idx===-1?b.total:b.counts[idx])-(idx===-1?a.total:a.counts[idx]));
+  const leaders=rankedCategories.filter(r=>(idx===-1?r.total:r.counts[idx])>0).slice(0,3);
+  const ranking=document.getElementById('nurse-top-categories');ranking.replaceChildren();
+  leaders.forEach((r,i)=>{const button=document.createElement('button');button.className='dash-rank';button.type='button';const label=document.createElement('span');label.textContent=(i+1)+'. '+r.cat;const value=document.createElement('strong');value.textContent=(idx===-1?r.total:r.counts[idx])+' ครั้ง';button.append(label,value);button.onclick=()=>showDetail(r.cat);ranking.append(button);});
+  const sourceStates=Object.values(nurseSources);
+  const dataCaveat=sourceStates.includes('loading')?'กำลังโหลด · ':sourceStates.includes('error')?'ข้อมูลบางส่วนโหลดไม่ได้ · ':sourceStates.includes('cached')?'ข้อมูลที่บันทึกไว้ · ':'';
+  DashUX.note('nurse-data-note',document.querySelector('.kpi-grid'),dataCaveat+(total?'สรุป '+total+' รายการ · '+(denom?'ฐานคำนวณ '+Number(denom).toLocaleString('th-TH')+' วันนอน':'ยังไม่มีจำนวนวันนอน จึงไม่แสดงอัตรา'):'ยังไม่พบรายการที่จัดหมวดแล้วในข้อมูลที่โหลดไว้สำหรับช่วงนี้'),!denom||sourceStates.includes('error'));
+  rankedCategories.forEach(r => {
     const c = idx === -1 ? r.total : r.counts[idx];
     html += `<tr class="clickable" onclick="showDetail(${escHtml(JSON.stringify(r.cat))})"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
   });
@@ -668,6 +766,7 @@ function getScopedAdminRecs() {
   ).sort((a,b) => (a.date||'').localeCompare(b.date||''));
 }
 
+function closeNurseDetail(){document.getElementById('detail-panel').style.display='none';const section=document.getElementById('category-section');section.tabIndex=-1;section.focus({preventScroll:true});section.scrollIntoView({block:'start',behavior:'smooth'});}
 function renderDetailList(title, recs) {
   document.getElementById('detail-title').textContent = title + ' — ' + recs.length + ' รายการ';
   const body = document.getElementById('detail-body');
@@ -688,7 +787,8 @@ function renderDetailList(title, recs) {
   ) : '<div class="empty-state"><div class="icon">📭</div>ไม่มีรายการในช่วงที่เลือก</div>';
   const panel = document.getElementById('detail-panel');
   panel.style.display = 'block';
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  panel.tabIndex=-1;panel.focus({preventScroll:true});
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showDetail(cat) {

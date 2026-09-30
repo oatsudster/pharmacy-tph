@@ -433,6 +433,84 @@ body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
 }
 @media print { .suite-search,.suite-search-status,.suite-no-results { display:none !important; } }
 </style>
+<style id="dashboard-design">
+.dash-context { background:#fff; border:1px solid #D6E4DA; border-left:4px solid #1A5E38; border-radius:12px; padding:14px 18px; margin:0 0 20px; font-size:14px; color:#3D5A47; line-height:1.7; }
+.dash-context[data-state="warning"] { border-left-color:#C49A22; background:#fffaf0; }
+.dash-section { margin:24px 0 14px; font-size:19px; color:#124228; font-weight:800; }
+.dash-caption { display:block; font-size:12px; font-weight:400; color:#587363; line-height:1.7; margin-top:6px; }
+.dash-action { cursor:pointer; text-align:left; }
+.dash-action::after { content:'ดูรายการ →'; display:block; color:#1A5E38; font-size:12px; font-weight:700; margin-top:12px; }
+.dash-action:hover { box-shadow:0 4px 18px #12422814; }
+.dash-primary { border-top:4px solid #1A5E38 !important; background:#f0f7f2; }
+.dash-danger { border-top:4px solid #b91c1c !important; }
+.dash-secondary { background:#f4f7f5; box-shadow:none; }
+.dash-details { border:1px solid #D6E4DA; border-radius:12px; background:white; margin:16px 0; padding:14px 18px; }
+.dash-details summary { cursor:pointer; color:#124228; font-weight:700; min-height:30px; }
+.dash-details[open] summary { margin-bottom:12px; }
+.dash-toggle { font:inherit; font-size:13px; min-height:44px; padding:8px 14px; background:white; border:1px solid #D6E4DA; border-radius:9px; color:#124228; cursor:pointer; }
+.dash-section-nav { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.dash-section-nav a { padding:9px 15px; border:1px solid #D6E4DA; border-radius:24px; background:#fff; color:#124228; text-decoration:none; font-size:13px; }
+.dash-compact-table:not(.dash-expanded) :is(th,td):is(:nth-child(1),:nth-child(3),:nth-child(7),:nth-child(8),:nth-child(10),:nth-child(11),:nth-child(12)) { display:none; }
+.dash-chart-main { grid-column:1/-1; min-height:300px; order:-1; }
+.dash-chart-main canvas { max-height:280px; }
+.dash-ranking { display:grid; gap:10px; margin:12px 0 20px; }
+.dash-rank { display:flex; align-items:center; gap:12px; text-align:left; padding:12px 14px; background:#F4F7F5; border:1px solid #D6E4DA; border-radius:10px; font:inherit; color:#124228; cursor:pointer; }
+.dash-rank span { flex:1; font-size:14px; }
+.dash-rank strong { font-size:20px; white-space:nowrap; }
+body[data-suite-page='adr'] .chart-grid { grid-template-columns:1fr 1fr; }
+body[data-suite-page='adr'] .chart-grid > :first-child { grid-column:1/-1; }
+body[data-suite-page='adr'] .chart-grid .chart-wrap { height:280px; }
+body[data-suite-page='me'] .chart-box { border-radius:16px; padding:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+body[data-suite-page='me'] #section-overview .dash-breakdown > :last-child { grid-column:1/-1; }
+body[data-suite-page='me'] #section-overview .kpi-grid { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important; }
+.dash-sync { margin:10px 0 18px; font-size:13px; color:#587363; }
+.dash-date { display:block; font-size:11px; color:#587363; font-weight:400; }
+@media(max-width:700px) {
+  .dash-context { padding:12px 14px; font-size:13px; }
+  .dash-section { font-size:17px; }
+  body[data-suite-page='adr'] .chart-grid,body[data-suite-page='me'] #section-overview .dash-breakdown { grid-template-columns:1fr; }
+  body[data-suite-page='me'] .chart-grid { grid-template-columns:1fr; }
+  .dash-compact-table { min-width:550px; }
+  body[data-suite-page='expiry'] .tbl-wrap { overflow:visible; }
+  body[data-suite-page='expiry'] .tbl-wrap table,body[data-suite-page='expiry'] #tbody { display:block; min-width:0; width:100%; }
+  body[data-suite-page='expiry'] .tbl-wrap thead { display:none; }
+  body[data-suite-page='expiry'] #tbody tr { display:grid; grid-template-columns:1fr 1fr; border:1px solid #D6E4DA; border-radius:14px; margin-bottom:14px; padding:14px; background:white; gap:8px 12px; }
+  body[data-suite-page='expiry'] #tbody td { display:block; padding:4px 0; border:0; min-width:0; white-space:normal; }
+  body[data-suite-page='expiry'] #tbody td::before { content:attr(data-label); display:block; color:#587363; font-size:12px; margin-bottom:4px; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(1),body[data-suite-page='expiry'] #tbody td:nth-child(2),body[data-suite-page='expiry'] #tbody td[colspan] { grid-column:1/-1; }
+  body[data-suite-page='expiry'] #tbody td:nth-child(2) { font-weight:700; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .edit-input { max-width:100%; width:100%; min-height:44px; font-size:16px; }
+  body[data-suite-page='expiry'] #tbody .row-btn { min-width:44px; min-height:44px; }
+}
+</style>
+<script>
+const DashUX = {
+  period(fy, month) {
+    let text = month && /^\d{4}-\d{2}$/.test(month) ? new Date(month+'-01T12:00:00+07:00').toLocaleDateString('th-TH',{month:'long',year:'numeric',timeZone:'Asia/Bangkok'}) : month && month!=='all' && month!=='ALL' ? month : fy ? 'ปีงบประมาณ '+fy : 'ทุกช่วงเวลาที่มีข้อมูล';
+    const now = new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
+    if(month===now) text += ' · เดือนนี้ยังไม่สิ้นสุด';
+    return text;
+  },
+  note(id, anchor, text, warning=false) {
+    const target=typeof anchor==='string'?document.querySelector(anchor):anchor;
+    if(!target) return;
+    let el=document.getElementById(id);
+    if(!el){el=document.createElement('div');el.id=id;el.className='dash-context';el.setAttribute('role','status');target.before(el);}
+    el.textContent=text;el.dataset.state=warning?'warning':'ready';
+  },
+  action(el, callback) {
+    if(!el) return;el.classList.add('dash-action');el.tabIndex=0;el.setAttribute('role','button');
+    el.onclick=callback;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();callback();}};
+  },
+  emptyChart(id, charts) {
+    if(charts[id]) {charts[id].destroy();delete charts[id];}
+    const canvas=document.getElementById(id);if(!canvas)return;
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();ctx.fillStyle='#587363';ctx.font='14px Noto Sans Thai, sans-serif';ctx.textAlign='center';ctx.fillText('ไม่มีรายการในช่วงที่เลือก',canvas.width/2,canvas.height/2);ctx.restore();
+  }
+};
+</script>
 </head>
 <body data-suite-page="clinic">
 
@@ -3146,12 +3224,14 @@ function renderMain() {
   main.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     ${periodBarHtml()}
+    <div class="dash-context">สรุปคลินิก ${escHtml(clinic)} · ${escHtml(window.reportFY?"ปีงบประมาณ "+window.reportFY:"ทุกปี")} · ${escHtml(window.reportMonth||"ทุกเดือน")}<span class="dash-caption">จำนวนบริการนับเป็นครั้งที่ให้คำปรึกษา ผู้ป่วยหนึ่งคนอาจมีหลายครั้ง</span></div>
     ${anomalyBannerHtml(clinic)}
+    <h2 class="dash-section">ปริมาณงานและผลลัพธ์</h2>
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">ผู้ป่วยที่ให้คำปรึกษา</div>
+        <div class="kpi-label">ครั้งที่ให้คำปรึกษา</div>
         <div class="kpi-val ${color}">${kpi.visits.toLocaleString()}</div>
-        <div class="kpi-sub">ราย (ทุก session)</div>
+        <div class="kpi-sub">ครั้ง · ตามช่วงที่เลือก</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">พบ DRP</div>
@@ -3164,7 +3244,7 @@ function renderMain() {
         <div class="kpi-sub">ลง ${kpi.attended} / ขาด ${kpi.missed} ครั้ง${kpi.missed>0?`<br><span style="color:var(--danger)">${Object.entries(kpi.missedReasonCounts).map(([k,v])=>escHtml(k)+' '+v).join(', ')}</span>`:''}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">เงินประหยัดสะสม</div>
+        <div class="kpi-label">เงินประหยัด · ช่วงที่เลือก</div>
         <div class="kpi-val gold">฿${Math.round(kpi.totalSaving).toLocaleString()}</div>
         <div class="kpi-sub">จากยาคงเหลือที่คืน</div>
       </div>
@@ -3175,25 +3255,13 @@ function renderMain() {
       </div>
     </div>
     ${clinic==='HT'?`<div style="margin:-6px 0 14px;font-size:12px;color:var(--text-mid)">📌 HT บ่าย (ไม่ได้พบเภสัชกร): <strong>${kpi.htPmTotal}</strong> ราย</div>`:''}
-    <div class="table-card">
-      <div class="table-head"><span class="table-title">🤖 สรุป/ถามตอบด้วย AI</span></div>
-      <div style="padding:4px 2px 8px">
-        <button class="btn-add" id="ai-summary-btn" onclick="generateAiSummary()">🤖 สรุปภาพรวมด้วย AI</button>
-        <div id="ai-summary-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
-        <div style="display:flex;gap:8px;margin-top:14px">
-          <input type="text" id="ai-ask-input" placeholder="ถามคำถามเกี่ยวกับข้อมูลนี้ เช่น DRP ประเภทไหนเพิ่มขึ้นเทียบเดือนก่อน" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-          <button class="btn-add" id="ai-ask-btn" onclick="askAiAboutReport()">❓ ถาม AI</button>
-        </div>
-        <div id="ai-ask-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
-      </div>
-    </div>
     <div class="chart-grid">
-      <div class="chart-card"><div class="chart-title">📅 ผู้ป่วยรายเดือน <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">🔍 DRP ที่พบบ่อย <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">💰 เงินประหยัดรายเดือน (฿) <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">ปริมาณงาน · ครั้งที่ให้คำปรึกษารายเดือน <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-monthly"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">ปัญหาการใช้ยา · DRP ที่พบบ่อย <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-drp"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">ผลลัพธ์ · เงินประหยัดรายเดือน (฿) <span style="font-weight:400;color:var(--text-light)">(คลิกแท่งเพื่อดูรายละเอียด)</span></div><div class="chart-wrap"><canvas id="c-saving"></canvas></div></div>
     </div>
     <div class="table-card">
-      <div class="table-head"><span class="table-title">📋 สรุปการลงคลินิก${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 ครั้งล่าสุด)'}</span></div>
+      <div class="table-head"><span class="table-title">สรุปการลงคลินิก${(window.reportFY||window.reportMonth)?' (ช่วงที่เลือก)':' (14 ครั้งล่าสุด)'}</span></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>วันที่</th><th>คลินิก</th><th>สถานะ</th><th>เภสัชกร</th><th>หมายเหตุ</th></tr></thead>
         <tbody id="attend-summary-body"></tbody>
@@ -3217,7 +3285,20 @@ function renderMain() {
         <thead><tr><th>วันที่</th><th>เวลา</th><th>HN / ชื่อ</th><th>คลินิก</th><th>DRPs</th><th>ยาคงเหลือ</th><th>ประหยัด</th><th>เภสัชกร</th><th></th></tr></thead>
         <tbody id="tbl-body"></tbody>
       </table></div>
-    </div>`;
+    </div>
+<details class="dash-details"><summary>เครื่องมือช่วยสรุป / ถามตอบด้วย AI</summary>    <div class="table-card">
+      <div class="table-head"><span class="table-title">🤖 สรุป/ถามตอบด้วย AI</span></div>
+      <div style="padding:4px 2px 8px">
+        <button class="btn-add" id="ai-summary-btn" onclick="generateAiSummary()">🤖 สรุปภาพรวมด้วย AI</button>
+        <div id="ai-summary-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <input type="text" id="ai-ask-input" placeholder="ถามคำถามเกี่ยวกับข้อมูลนี้ เช่น DRP ประเภทไหนเพิ่มขึ้นเทียบเดือนก่อน" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+          <button class="btn-add" id="ai-ask-btn" onclick="askAiAboutReport()">❓ ถาม AI</button>
+        </div>
+        <div id="ai-ask-box" style="margin-top:10px;font-size:13px;color:var(--text-mid);white-space:pre-wrap"></div>
+      </div>
+    </div>
+</details>`;
 
   renderCharts(clinic);
   renderAttendanceSummaryTable(clinic);
