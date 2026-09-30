@@ -2923,14 +2923,15 @@ function parseHosXPText(text) {
 
   // ── Vitals ──
   // BW = 82 Kgs.  /  น้ำหนัก 65
-  m = text.match(/BW\s*=\s*([\d\.]+)/i) || text.match(/น้ำหนัก[:\s]*([\d\.]+)/);
+  // รองรับทั้ง "BW = 82 Kgs." (เดิม) และ "BW 80 kg" (Clinical Document)
+  m = text.match(/\bBW\s*[=:]?\s*([\d\.]+)/i) || text.match(/น้ำหนัก[:\s]*([\d\.]+)/);
   if (m) r.weight = parseFloat(m[1]);
 
-  m = text.match(/Height\s*=\s*([\d\.]+)/i) || text.match(/ส่วนสูง[:\s]*([\d\.]+)/);
+  m = text.match(/\bHeight\s*[=:]?\s*([\d\.]+)/i) || text.match(/ส่วนสูง[:\s]*([\d\.]+)/);
   if (m) r.height = parseFloat(m[1]);
 
-  // BP = 117/51  or  130/80
-  m = text.match(/BP\s*=\s*(\d{2,3})\s*\/\s*(\d{2,3})/i) || text.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+  // BP = 117/51  or  BP 134/72 mmHg
+  m = text.match(/\bBP\s*[=:]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i) || text.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
   if (m) r.bp = `${m[1]}/${m[2]}`;
 
   m = text.match(/DTX\s*[=:]\s*([\d\.]+)/i);
@@ -2952,9 +2953,61 @@ function parseHosXPText(text) {
     if (m) r[field] = parseFloat(m[1]);
   }
 
+  // Clinical Document (HOSxP XE): ตาราง "Laboratory Results" → "# Test Result Unit Normal Range"
+  // ต้องอ่านเฉพาะช่วงนี้ เพราะ "FBS"/"HBA1C" ยังโผล่ในตาราง Services (คอลัมน์ Qty) ด้วย
+  {
+    const sec = text.match(/Laboratory Results([\s\S]*?)(?=Financial Summary|Vital Sign Trend|Recent Visits|Doctor Sign-off|$)/i);
+    if (sec) {
+      const labRows = [
+        ['ldl',      /LDL/i],
+        ['hba1c',    /HbA1c/i],
+        ['fbs',      /^(?:FBS|Fasting)/i],
+        ['tg',       /Triglyceride|^TG\b/i],
+        ['tc',       /^(?:Total\s*)?Cholesterol|^TC\b/i],
+        ['egfr',     /GFR/i],
+        ['cr',       /^(?:Cr\b|Creatinine)/i],
+        ['urineAlb', /Albumin|ACR/i],
+      ];
+      const done = new Set();
+      for (const line of sec[1].split(/\r?\n/)) {
+        const lm = line.match(/^\s*\d+\s+(.+?)\s+(-?\d+(?:\.\d+)?)(?=\s|$)/);
+        if (!lm) continue;
+        const hit = labRows.find(([f, re]) => !done.has(f) && re.test(lm[1].trim()));
+        if (hit) { r[hit[0]] = parseFloat(lm[2]); done.add(hit[0]); }
+      }
+    }
+  }
+
   // ── Drugs ──
   // Format: N.   [doctor] DRUGNAME mg. Usage ... รับประทาน ... x QTY เม็ด
-  const lines = text.split(/\r?\n/);
+  // Clinical Document (HOSxP XE): "# Drug name | ATC | Qty | Unit | Usage | Doctor"
+  // e.g. "1  ATENOLOL 50 mg.   62 เม็ด 1 OR1 OD P1 รับประทาน ครั้งละ 1 เม็ด ... พญ.xxx"
+  {
+    const sec = text.match(/Plan\s*\/\s*Medications[^\n]*([\s\S]*?)(?=หัตถการ|Services|Laboratory Results|$)/i);
+    if (sec) {
+      const rowRe = /^\s*\d+\s+(.+?)\s+(\d+(?:\.\d+)?)\s+([^\d\s]+)\s+([\d\.]+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([฀-๿].*)$/;
+      for (const line of sec[1].split(/\r?\n/)) {
+        const dm = line.match(rowRe);
+        if (!dm) continue;
+        const rawName = dm[1].trim();
+        const qty = Math.round(parseFloat(dm[2]));
+        const usageAmt = dm[4], freqCode = dm[6].toUpperCase(), timeCode = dm[7].toUpperCase();
+        // ตัดชื่อแพทย์ท้ายบรรทัดออก
+        const thaiInstr = dm[8].replace(/\s+(?:พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|นาย|นางสาว|นาง|น\.ส\.).*$/, '').trim();
+        const dosage = convertDosage(thaiInstr, usageAmt, freqCode, timeCode);
+        const matched = matchDrug(rawName);
+        r.drugs.push({
+          name:   matched ? matched.name : rawName.replace(/\s+[\d\.]+\s*mg\.?$/i, '').trim(),
+          qty,
+          price:  matched ? matched.price : 0,
+          unit:   matched ? matched.unit  : dm[3],
+          dosage,
+        });
+      }
+    }
+  }
+
+  const lines = r.drugs.length ? [] : text.split(/\r?\n/);
   for (const line of lines) {
     const dm = line.match(/^\s*\d+\.\s+\[.*?\]\s+(.+?)\s+Usage\b/i);
     if (!dm) continue;
