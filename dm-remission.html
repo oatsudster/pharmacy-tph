@@ -2777,21 +2777,25 @@ const ALT_CODES = new Set(['AD','E2D']);
 // แปลง HosXP codes (freqCode, timeCode) → dosage shorthand
 // เช่น amount="1", freqCode="OD", timeCode="P1" → "1x1 pc"
 function convertDosage(thaiText, usageAmt, freqCode, timeCode) {
-  // ─── Amount ───
-  let amount = usageAmt || '1';
-  // เม็ดครึ่ง จาก Thai text
-  if (/เม็ดครึ่ง/.test(thaiText)) {
-    let m = thaiText.match(/ครั้งละ\s*([\d\.]+)/);
-    if (!m) m = thaiText.match(/รับประทาน\s*([\d\.]+)/);
-    const base = m ? parseFloat(m[1]) : parseFloat(usageAmt||'1');
-    amount = (base + 0.5).toString();
-  }
+  // หลักการ: ยึดข้อความภาษาไทยเป็นหลัก (แพทย์/เภสัชแก้ข้อความได้โดยรหัสไม่เปลี่ยน)
+  // รหัส HosXP ใช้เป็นตัวสำรองเมื่อข้อความไม่ได้ระบุ
+  thaiText = thaiText || '';
 
-  // ─── Frequency (ใช้ HosXP code เป็นหลัก) ───
+  // ─── Amount ───
+  let amount = null;
+  const am = thaiText.match(/(?:ครั้งละ|รับประทาน|ฉีด|พ่น)\s*([\d\.]+)/) || thaiText.match(/^\s*([\d\.]+)\s*(?:เม็ด|แคป|ซีซี|ช้อน)/);
+  if (am) {
+    amount = am[1];
+    // "1 เม็ดครึ่ง" = 1.5
+    if (thaiText.includes(am[1] + ' เม็ดครึ่ง') || thaiText.includes(am[1] + 'เม็ดครึ่ง')) amount = String(parseFloat(am[1]) + 0.5);
+  } else if (/ครึ่งเม็ด/.test(thaiText)) {
+    amount = '0.5';
+  }
+  if (!amount) amount = usageAmt || '1';
+
+  // ─── Frequency ───
   let freq = '1';
   const fUpper = (freqCode||'').toUpperCase();
-  // ข้อความไทย "วันละ N ครั้ง" มาก่อนรหัส เพราะแพทย์/เภสัชแก้ข้อความได้โดยรหัสยังเป็นค่าเดิม
-  // (เช่น รหัส BID แต่ข้อความ "วันละ 3 ครั้ง")
   const tf = thaiText.match(/วันละ\s*(\d+)\s*ครั้ง/);
   if (tf) {
     freq = tf[1];
@@ -2800,25 +2804,23 @@ function convertDosage(thaiText, usageAmt, freqCode, timeCode) {
   }
 
   // ─── Alt day ───
-  const isAlt = ALT_CODES.has(fUpper) || /วันเว้นวัน/.test(thaiText);
+  const isAlt = /วันเว้นวัน/.test(thaiText) || (!/วันละ/.test(thaiText) && ALT_CODES.has(fUpper));
 
-  // ─── Timing (ใช้ HosXP time code เป็นหลัก) ───
+  // ─── Timing ───
   const tUpper = (timeCode||'').toUpperCase();
-  let timing = HOSXP_TIME[tUpper]; // อาจเป็น undefined
-  if (timing === undefined) {
-    // fallback: parse Thai text
-    if (/ก่อนนอน/.test(thaiText))           timing = 'hs';
-    else if (/ก่อนอาหาร/.test(thaiText)) {
-      const eve = /เย็น/.test(thaiText), noon = /กลางวัน/.test(thaiText), morn = /เช้า/.test(thaiText);
-      timing = (morn && noon && eve) ? 'ac' : (morn && eve) ? 'ac' : eve ? 'ac eve' : noon ? 'ac noon' : 'ac';
-    }
-    else if (/หลังอาหาร/.test(thaiText)) {
-      // ตรวจว่ามีกี่มื้อ เพื่อหลีกเลี่ยงการแปล "เช้า+เย็น" หรือ "เช้า+กลางวัน+เย็น" เป็น dpc
-      const eve = /เย็น/.test(thaiText), noon = /กลางวัน/.test(thaiText), morn = /เช้า/.test(thaiText);
-      timing = (morn || noon) ? 'pc' : eve ? 'dpc' : 'pc';
-    }
-    else timing = 'pc';
+  let timing;
+  if (/ก่อนนอน/.test(thaiText))           timing = 'hs';
+  else if (/ก่อนอาหาร/.test(thaiText)) {
+    const eve = /เย็น/.test(thaiText), noon = /กลางวัน|เที่ยง/.test(thaiText), morn = /เช้า/.test(thaiText);
+    timing = (morn && noon && eve) ? 'ac' : (morn && eve) ? 'ac' : eve ? 'ac eve' : noon ? 'ac noon' : 'ac';
   }
+  else if (/หลังอาหาร/.test(thaiText)) {
+    // ตรวจว่ามีกี่มื้อ เพื่อหลีกเลี่ยงการแปล "เช้า+เย็น" หรือ "เช้า+กลางวัน+เย็น" เป็น dpc
+    const eve = /เย็น/.test(thaiText), noon = /กลางวัน|เที่ยง/.test(thaiText), morn = /เช้า/.test(thaiText);
+    timing = (morn || noon) ? 'pc' : eve ? 'dpc' : 'pc';
+  }
+  else if (HOSXP_TIME[tUpper] !== undefined) timing = HOSXP_TIME[tUpper];
+  else timing = 'pc';
 
   return `${amount}x${freq}${timing ? ' '+timing : ''}${isAlt ? ' alt' : ''}`;
 }
