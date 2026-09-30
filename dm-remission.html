@@ -2790,12 +2790,13 @@ function convertDosage(thaiText, usageAmt, freqCode, timeCode) {
   // ─── Frequency (ใช้ HosXP code เป็นหลัก) ───
   let freq = '1';
   const fUpper = (freqCode||'').toUpperCase();
-  if (HOSXP_FREQ[fUpper] !== undefined) {
+  // ข้อความไทย "วันละ N ครั้ง" มาก่อนรหัส เพราะแพทย์/เภสัชแก้ข้อความได้โดยรหัสยังเป็นค่าเดิม
+  // (เช่น รหัส BID แต่ข้อความ "วันละ 3 ครั้ง")
+  const tf = thaiText.match(/วันละ\s*(\d+)\s*ครั้ง/);
+  if (tf) {
+    freq = tf[1];
+  } else if (HOSXP_FREQ[fUpper] !== undefined) {
     freq = String(HOSXP_FREQ[fUpper]);
-  } else {
-    // fallback: parse Thai text
-    const m = thaiText.match(/วันละ\s*(\d+)\s*ครั้ง/);
-    if (m) freq = m[1];
   }
 
   // ─── Alt day ───
