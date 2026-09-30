@@ -135,9 +135,162 @@
     .kpi-value { font-size: 24px; }
     table { font-size: 13px; }
   }
+  /* Nurse dashboard: readable hierarchy and touch-friendly controls. */
+  :root { --text-light:#587363; --radius:18px; }
+  main { max-width:1160px; padding:28px 24px 0; }
+  nav { padding:16px max(24px, calc((100vw - 1112px) / 2)); box-shadow:none; }
+  .page-intro { margin-bottom:24px; }
+  .page-intro .eyebrow { color:var(--primary); font-size:12px; font-weight:800; letter-spacing:.08em; }
+  .page-intro h2 { font-size:clamp(23px,4vw,32px); letter-spacing:-.025em; margin:6px 0; }
+  .page-intro p { color:var(--text-mid); font-size:14px; }
+  .section-links { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  .section-links a { padding:8px 14px; border:1px solid var(--border); border-radius:24px; text-decoration:none; color:var(--primary-dark); background:white; font-size:13px; }
+  .filter-bar { padding:20px; gap:16px; box-shadow:none; }
+  .filter-bar label { font-size:13px; }
+  .filter-bar select, .tbtn { min-height:44px; }
+  .filter-bar select { min-width:180px; }
+  .period-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:24px 0 12px; }
+  .period-heading h2 { font-size:18px; color:var(--primary-dark); }
+  .period-heading span { font-size:13px; color:var(--text-mid); }
+  .kpi-grid { gap:16px; grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:24px; }
+  .kpi-card { padding:22px; position:relative; }
+  .kpi-card:first-child { background:var(--primary-dark); border-color:var(--primary-dark); }
+  .kpi-card:first-child .kpi-label,.kpi-card:first-child .kpi-value,.kpi-card:first-child .kpi-sub { color:white; }
+  .kpi-card.clickable::after { content:'ดูรายละเอียด →'; display:block; margin-top:18px; font-size:12px; font-weight:700; color:var(--primary); }
+  .kpi-card:first-child::after { color:#d5ecdf; }
+  .kpi-label { font-size:14px; }
+  .kpi-value { font-size:40px; line-height:1.3; margin:12px 0 6px; font-variant-numeric:tabular-nums; }
+  .kpi-sub { font-size:13px; }
+  .card { padding:24px; margin-bottom:24px; box-shadow:0 4px 20px rgba(26,94,56,.04); scroll-margin-top:110px; }
+  .card-title { font-size:18px; margin-bottom:20px; }
+  .card-title small { font-size:13px; }
+  .chart-wrap { height:260px; }
+  th { background:var(--bg); padding:13px 14px; font-size:13px; }
+  td { padding:14px; }
+  #cat-table td:first-child { width:65%; }
+  #cat-table td:nth-child(n+2),#cat-table th:nth-child(n+2) { text-align:right; font-variant-numeric:tabular-nums; }
+  #cat-table td:nth-child(2) { font-weight:800; color:var(--primary-dark); }
+  .badge.clickable { min-height:44px; display:inline-flex; align-items:center; padding:9px 16px; }
+  .close-btn { width:44px; height:44px; }
+  #detail-panel { border-top:4px solid var(--gold); }
+  #detail-body table { min-width:1000px; }
+  :is(a,button,select,[tabindex]):focus-visible { outline:3px solid var(--gold); outline-offset:4px; }
+  @media (max-width:640px) {
+    nav { padding:12px 16px; position:static; }
+    nav .sub { font-size:11px; }
+    main { padding:20px 14px 0; }
+    .filter-bar { padding:16px; gap:12px; }
+    .filter-bar > div:nth-child(-n+2) { flex:1 1 140px; }
+    .filter-bar select { width:100%; min-width:0; }
+    .filter-bar > div:last-child { width:100%; margin-left:0 !important; }
+    .filter-bar .tbtn { flex:1; }
+    .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .kpi-card:first-child { grid-column:1/-1; }
+    .kpi-card { padding:18px; }
+    .kpi-value { font-size:32px; }
+    .kpi-label { font-size:13px; }
+    .card { padding:18px 14px; scroll-margin-top:16px; }
+    .card-title { font-size:16px; }
+    #cat-table { min-width:440px; }
+    .chart-wrap { height:230px; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
+</style>
+<style id="suite-design">
+/* Shared visual language, kept inline so each page remains self-contained. */
+:root {
+  --primary:#1A5E38; --primary-dark:#124228; --gold:#C49A22;
+  --bg:#F4F7F5; --surface:#fff; --text-light:#587363; --text-muted:#587363;
+  --radius:16px; --shadow:0 2px 8px rgba(18,66,40,.04);
+  --shadow-md:0 6px 22px rgba(18,66,40,.07);
+}
+body { font-family:'Noto Sans Thai','Sarabun',sans-serif; }
+button,input,select,textarea { font-family:inherit; }
+button,a,input,select,textarea { -webkit-tap-highlight-color:rgba(26,94,56,.12); }
+:where(button,a,input,select,textarea,[tabindex]):focus-visible { outline:3px solid #C49A22 !important; outline-offset:3px; }
+:where(button):disabled { cursor:not-allowed; opacity:.55; }
+.card,.chart-card,.table-card,.kpi-card { border-radius:16px; box-shadow:var(--shadow); }
+.card-title,.chart-title,.table-title,.form-title { line-height:1.6; }
+.chart-title,.table-title { font-size:15px; }
+.kpi-label,.kpi-lbl { font-size:13px; line-height:1.6; }
+.kpi-sub { font-size:12px; line-height:1.6; }
+.kpi-val,.kpi-value,.stat-val { font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
+.kpi-card { padding:18px; }
+.topbar { box-shadow:0 2px 12px rgba(18,66,40,.04); }
+.topbar-home { min-height:38px; background:var(--primary-light,#EAF4EE); color:var(--primary-dark); border:1px solid #D6E4DA; }
+.topbar-home:hover { background:#D6E4DA; color:var(--primary-dark); }
+.topbar-title { letter-spacing:-.02em; }
+.topbar-badge { background:#FBF3DC; color:#715509; border:1px solid #ead99f; }
+.tbtn,.btn-clear,.btn-stamp,.btn-export,.btn-add,.btn-submit,.open-btn { min-height:40px; border-radius:10px; }
+.tab-btn,.view-btn,.nav-tab,.chip,.box-tab { min-height:44px; }
+.tab-btn.active,.view-btn.active { background:#EAF4EE; }
+.form-group label,.field label { font-size:13px; line-height:1.6; }
+.form-group :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select),
+.field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select),
+.filter-row :is(input,select) { min-height:42px; border-radius:9px; }
+.form-group textarea,.field textarea { min-height:80px; line-height:1.65; }
+.filter-row { flex-wrap:wrap; }
+.table-wrap,.tbl-wrap,.drug-table-wrap { overscroll-behavior-x:contain; }
+th { line-height:1.6; }
+td { line-height:1.65; }
+.suite-heading { margin:0 0 22px; }
+.suite-heading .suite-kicker { color:var(--primary-dark); font-size:12px; font-weight:700; margin-bottom:5px; }
+.suite-heading h2 { color:var(--primary-dark); font-size:clamp(22px,2.5vw,28px); line-height:1.5; margin:0 0 6px; }
+.suite-heading p { font-size:14px; line-height:1.7; color:#587363; }
+.suite-search { background:white; border:1px solid #D6E4DA; border-radius:16px; padding:18px 20px; display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:22px; box-shadow:var(--shadow); }
+.suite-search label { color:#124228; font-size:15px; font-weight:700; }
+.suite-search input { flex:1 1 240px; width:100%; min-width:0; min-height:46px; padding:10px 14px; border:1px solid #bacfc1; border-radius:10px; font-size:16px; background:#F4F7F5; }
+.suite-search button { padding:10px 16px; background:white; color:#1A5E38; border:1px solid #D6E4DA; border-radius:10px; min-height:44px; cursor:pointer; }
+.suite-search-status { font-size:13px; color:#587363; margin:0 0 16px; }
+.suite-no-results { padding:32px 20px; text-align:center; background:white; border:1px dashed #bacfc1; border-radius:16px; color:#3D5A47; }
+body[data-suite-page='index'] .hero { text-align:left; padding:36px max(24px,calc((100vw - 1072px)/2)) 44px; background:#124228; }
+body[data-suite-page='index'] .hero::before,body[data-suite-page='index'] .hero::after { display:none; }
+body[data-suite-page='index'] .hero h1 { font-size:clamp(25px,3vw,36px); max-width:850px; }
+body[data-suite-page='index'] .hero p { margin:0; max-width:650px; }
+body[data-suite-page='index'] .hero-badge { margin-bottom:14px; }
+body[data-suite-page='index'] .cards-wrap { margin:28px auto 0; }
+body[data-suite-page='index'] .app-card { box-shadow:var(--shadow); border-radius:18px; }
+body[data-suite-page='index'] .app-card:hover { box-shadow:var(--shadow-md); border-color:#82aa91; transform:translateY(-2px); }
+body[data-suite-page='index'] .card-stripe { height:3px; }
+body[data-suite-page='index'] .card-title-wrap .en { font-size:12px; letter-spacing:0; }
+body[data-suite-page='index'] .stat-lbl { font-size:12px; }
+body[data-suite-page='index'] .header { box-shadow:none; border-bottom:1px solid rgba(255,255,255,.15); }
+body[data-suite-page='index'] .header-sub,body[data-suite-page='index'] .header-date { color:#d4e6da; }
+body[data-suite-page='me'] .sidebar { background:#124228; }
+body[data-suite-page='me'] .sidebar-item { border-radius:10px; margin-bottom:4px; min-height:44px; }
+body[data-suite-page='me'] .sidebar-item.active { box-shadow:inset 3px 0 #C49A22; }
+body[data-suite-page='me'] .main-topbar { box-shadow:0 2px 12px rgba(18,66,40,.04); }
+body[data-suite-page='me'] .main-topbar-badge { background:#FBF3DC; color:#715509; }
+body[data-suite-page='clinic'] .entry-grid { gap:0 28px; }
+body[data-suite-page='clinic'] .entry-col { background:white; padding:22px; border:1px solid #D6E4DA; border-radius:16px; margin-bottom:20px; min-width:0; }
+body[data-suite-page='dm'] .card-header { background:white; padding:18px 20px; }
+body[data-suite-page='expiry'] .filter-bar { padding:16px; gap:12px; }
+@media (max-width:760px) {
+  .tbtn,.btn-clear,.btn-stamp,.btn-export,.btn-add,.btn-submit,.open-btn,.topbar-home { min-height:44px; }
+  .form-group :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select,textarea),
+  .field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select,textarea),
+  .filter-row :is(input,select) { font-size:16px; }
+  .topbar { height:auto; min-height:56px; flex-wrap:wrap; padding-top:8px; padding-bottom:8px; }
+  .tab-bar,.view-bar { overflow-x:auto; }
+  .tab-bar > button,.view-bar > button { flex-shrink:0; }
+  .kpi-card { padding:15px; }
+  .suite-search { padding:16px; gap:10px; }
+  .suite-search label { width:100%; }
+  .suite-search input { flex-basis:180px; }
+  body[data-suite-page='index'] .header { height:auto; min-height:64px; padding:12px 16px; gap:10px; flex-wrap:wrap; }
+  body[data-suite-page='index'] .header-name { font-size:14px; }
+  body[data-suite-page='index'] .hero { padding:28px 20px; }
+  body[data-suite-page='index'] .cards-wrap { padding:0 16px 36px; margin-top:20px; }
+  body[data-suite-page='clinic'] .entry-col { padding:16px; }
+  .suite-heading { margin-bottom:18px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; }
+}
+@media print { .suite-search,.suite-search-status,.suite-no-results { display:none !important; } }
 </style>
 </head>
-<body>
+<body data-suite-page="nurse">
 
 <nav>
   <div class="nav-icon">🧾</div>
@@ -145,17 +298,27 @@
     <h1>Admin Error IPD</h1>
     <div class="sub">กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค รพ.ถ้ำพรรณรา</div>
   </div>
-  <span id="sync-badge">🔄 กำลังเชื่อมต่อ...</span>
+  <span id="sync-badge" role="status">🔄 กำลังเชื่อมต่อ...</span>
 </nav>
 
 <main>
+  <section class="page-intro" aria-labelledby="page-heading">
+    <div class="eyebrow">ข้อมูลสำหรับพยาบาล · IPD</div>
+    <h2 id="page-heading">ภาพรวมความคลาดเคลื่อนในการบริหารยา</h2>
+    <p>เลือกช่วงเวลาเพื่อดูสถิติ และกดตัวเลขหรือประเภทอุบัติการณ์เพื่อดูรายละเอียด</p>
+    <div class="section-links" aria-label="ไปยังส่วนของรายงาน">
+      <a href="#trend-section">แนวโน้มรายเดือน</a>
+      <a href="#category-section">ประเภทอุบัติการณ์</a>
+      <a href="#severity-section">ระดับความรุนแรง</a>
+    </div>
+  </section>
   <div class="filter-bar">
     <div>
-      <label>ปีงบประมาณ</label>
+      <label for="fy-select">ปีงบประมาณ</label>
       <select id="fy-select" onchange="populateMonthSelect();render()"></select>
     </div>
     <div>
-      <label>เดือน</label>
+      <label for="month-select">เดือน</label>
       <select id="month-select" onchange="render()"></select>
     </div>
     <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">
@@ -167,6 +330,7 @@
     </div>
   </div>
 
+  <div class="period-heading"><h2 id="scope-label">สรุปช่วงเวลาที่เลือก</h2><span>กดการ์ดเพื่อดูรายการ</span></div>
   <div class="kpi-grid">
     <div class="kpi-card clickable" onclick="showAllDetail()" title="คลิกดูรายการทั้งหมด">
       <div class="kpi-label">อุบัติการณ์ทั้งหมด</div>
@@ -185,7 +349,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="trend-section">
     <div class="card-title">
       <span>แนวโน้มรายเดือน (ปีงบที่เลือก)</span>
       <small>คลิกแท่งกราฟเพื่อดูเฉพาะเดือนนั้น</small>
@@ -193,7 +357,7 @@
     <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="category-section">
     <div class="card-title">
       <span>อุบัติการณ์แยกตามประเภท</span>
       <small>คลิกแถวเพื่อดูรายละเอียดทั้งหมด</small>
@@ -203,7 +367,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="severity-section">
     <div class="card-title">
       <span>ระดับความรุนแรง (NCC MERP) A–I</span>
       <small>คลิกแท่งหรือระดับเพื่อดูรายละเอียด</small>
@@ -215,7 +379,7 @@
   <div class="card" id="detail-panel">
     <div class="card-title">
       <span id="detail-title"></span>
-      <button class="close-btn" onclick="document.getElementById('detail-panel').style.display='none'">✕</button>
+      <button class="close-btn" aria-label="ปิดรายละเอียด" onclick="document.getElementById('detail-panel').style.display='none'">✕</button>
     </div>
     <div class="table-wrap" id="detail-body"></div>
   </div>
@@ -387,6 +551,7 @@ function render() {
   const d = computeReport(fy);
   const sel = monthEl.value || 'ALL';
   const idx = sel === 'ALL' ? -1 : d.months.indexOf(sel);
+  document.getElementById('scope-label').textContent = sel === 'ALL' ? 'สรุปปีงบประมาณ ' + fy : 'สรุป' + fmtMonthFull(sel);
   const rateTxt = v => v === null ? '—' : v.toFixed(2);
 
   const total = idx === -1 ? d.grandTotal : d.monthTotals[idx];
@@ -599,6 +764,26 @@ function onMonthPick(ym) {
     document.getElementById('cat-table').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 0);
 }
+</script>
+<script>
+// Give existing drill-down controls equivalent keyboard operation.
+function enhanceReportControls() {
+  document.querySelectorAll('.clickable').forEach(el => {
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+  });
+}
+document.addEventListener('keydown', event => {
+  const control = event.target.closest('.clickable');
+  if (control && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    control.click();
+  }
+});
+const reportControlsObserver = new MutationObserver(enhanceReportControls);
+reportControlsObserver.observe(document.getElementById('cat-table'), {childList:true});
+reportControlsObserver.observe(document.getElementById('sev-chips'), {childList:true});
+enhanceReportControls();
 </script>
 </body>
 </html>
