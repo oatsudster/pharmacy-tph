@@ -2799,7 +2799,7 @@ function parseOrderLines(text) {
     const name = before.slice(w.index).replace(/[|\[\]#>]/g, ' ').replace(/\s+/g, ' ').trim();
     // ตัดคอลัมน์จำนวน/ราคาที่อยู่ห่างออกไปทางขวา (เว้นวรรคยาว)
     const usage = line.slice(um.index).replace(/[|\[\]#>]/g, ' ').replace(/\s{3,}.*$/, '');
-    rows.push({ name, ...parseUsage(usage) });
+    rows.push({ name, ...parseUsage(usage), insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null });
   }
   return rows;
 }
@@ -2866,6 +2866,35 @@ function isInhaler(...texts) {
   return texts.some(t => /MDI|inhaler|haler|spray|dose|พ่น|BUDESONIDE|SEROFLO|BERODUAL/i.test(String(t || '')));
 }
 function isTablet(unit) { return /เม็ด|แคปซูล|แค็บซูล|tab|cap/i.test(String(unit || '')); }
+
+// ── อินซูลิน: คิดเป็น vial (1 vial = 1,000 ยูนิต) ─────────────
+const INSULIN_VIAL_UNITS = 1000;
+const INSULIN_OPEN_DAYS = 28;   // ขวดที่เปิดใช้แล้วเก็บได้ไม่เกิน ~28 วัน
+const INSULIN_DRUGS = ['INSULIN', 'MIXTARD', 'LANTUS', 'LEVEMIR', 'TOUJEO', 'TRESIBA', 'NOVORAPID', 'NOVOMIX', 'HUMULIN',
+  'HUMALOG', 'GLARGINE', 'DETEMIR', 'DEGLUDEC', 'ASPART', 'LISPRO', 'BASAGLAR', 'APIDRA', 'ACTRAPID', 'INSULATARD',
+  'ISOPHANE', 'RYZODEG', 'GENSULIN', 'MIXTARD'];
+function isInsulin(...texts) {
+  return texts.some(t => {
+    t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');
+    return /อินซูลิน/.test(t) || drugTokens(t).some(x => INSULIN_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
+  });
+}
+// วิธีใช้อินซูลิน → ยูนิต/วัน เช่น "เช้า 20 ยูนิต เย็น 10 ยูนิต" = 30, "วันละ 2 ครั้ง ครั้งละ 20 ยูนิต" = 40
+// ใช้เมื่อมีอาการ/ปรับตามน้ำตาล (sliding scale) หรือเป็นช่วง ไม่คำนวณให้ ให้เภสัชกรกรอกเอง
+function parseInsulinPerDay(u) {
+  const t = String(u || '').replace(/\s+/g, ' ');
+  if (/เมื่อ|ถ้า|ตามระดับ|ตามน้ำตาล|sliding|prn/i.test(t) || /\d\s*-\s*\d+\s*(ยูนิต|unit|u\b|iu)/i.test(t)) return null;
+  const amts = [...t.matchAll(/(\d+(?:\.\d+)?)\s*(?:ยูนิต|units?|iu|u\b)/gi)].map(m => parseFloat(m[1]));
+  if (!amts.length) return null;
+  const f = t.match(/วันละ\s*(\d+)\s*ครั้ง/);
+  if (f && amts.length === 1) return amts[0] * (+f[1]);
+  return amts.reduce((a, b) => a + b, 0);
+}
+// ยาเหลือที่บันทึกเป็น vial/ขวด → ยูนิต, เป็นยูนิตอยู่แล้วใช้ตามนั้น, หน่วยอื่น (ปากกา ฯลฯ) ถือเป็น vial
+function insulinLoUnits(qty, unit) {
+  qty = +qty || 0;
+  return /ยูนิต|unit|\biu\b/i.test(String(unit || '')) ? qty : qty * INSULIN_VIAL_UNITS;
+}
 // ยาบรรเทาอาการ ไม่ต้องปรับตามวันนัด — ชื่ออังกฤษเทียบแบบยอมให้ OCR ผิดได้ 2 ตัวอักษร
 // (ไม่ใช้คำว่า GLYCERYL เพราะจะไปโดน glyceryl trinitrate ซึ่งเป็นยาโรคหัวใจ)
 const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN'];
@@ -2897,6 +2926,20 @@ function updateFloatNeed(tr) {
   const cell = tr.querySelector('.need');
   const lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
   if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
+  if (tr.dataset.kind === 'insulin') {
+    // lo = ยูนิตที่เหลือ, perDay = ยูนิต/วัน → vial = (วัน × ยูนิต/วัน − ยูนิตที่เหลือ) ÷ 1,000 ปัดขึ้น
+    const units = Math.max(0, days * perDay - lo);
+    const vials = Math.ceil(units / INSULIN_VIAL_UNITS);
+    // ขวดที่เปิดแล้วใช้ได้ไม่เกิน 28 วัน: ถ้าใช้ไม่หมดใน 28 วัน แต่ละขวดครอบคลุมได้แค่ 28 วัน
+    const perVialDays = Math.min(INSULIN_OPEN_DAYS, INSULIN_VIAL_UNITS / perDay);
+    const vials28 = Math.ceil(Math.max(0, days - lo / perDay) / perVialDays);
+    cell.innerHTML = vials > 0
+      ? `${vials}<div class="muted">vial (${Math.round(units).toLocaleString()} ยูนิต)</div>`
+        + (vials28 > vials ? `<div class="warn" style="font-size:11px">ถ้าทิ้งขวดที่เปิดแล้วเกิน ${INSULIN_OPEN_DAYS} วัน → ${vials28} vial</div>` : '')
+      : 'ไม่ต้องจ่าย';
+    cell.className = 'need' + (vials > 0 ? '' : ' zero');
+    return;
+  }
   const need = Math.max(0, Math.ceil(days * perDay - lo));
   cell.innerHTML = need > 0 ? `${need}<div class="muted">${escHtml(unit)}</div>` : 'ไม่ต้องจ่าย';
   cell.className = 'need' + (need > 0 ? '' : ' zero');
@@ -2937,7 +2980,7 @@ function renderFloatLeftover() {
     const inhaler = o.unit === 'ที' || isInhaler(o.name, o.text, l && l.drug, l && l.unit);
     rows.push({ key: 'o:' + o.name, name: l ? cleanDrugName(l.drug) : o.name, use: o,
       lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l,
-      kind: inhaler ? 'inhaler' : isSymptomatic(o.name, l && l.drug) ? 'symptom'
+      kind: isInsulin(o.name, l && l.drug) ? 'insulin' : inhaler ? 'inhaler' : isSymptomatic(o.name, l && l.drug) ? 'symptom'
         : isAntibiotic(o.name, l && l.drug) ? 'antibiotic'
         : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
       unit: o.unit || (l && l.unit) || '' });
@@ -2946,7 +2989,7 @@ function renderFloatLeftover() {
     if (used.has(i)) return;
     rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
       loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, unit: l.unit || 'เม็ด',
-      kind: isInhaler(l.drug, l.unit) ? 'inhaler' : isSymptomatic(l.drug) ? 'symptom'
+      kind: isInsulin(l.drug) ? 'insulin' : isInhaler(l.drug, l.unit) ? 'inhaler' : isSymptomatic(l.drug) ? 'symptom'
         : isAntibiotic(l.drug) ? 'antibiotic'
         : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
   });
@@ -2970,24 +3013,27 @@ function renderFloatLeftover() {
     <table>
       <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
       <tbody>${rows.map(r => {
-        const adjust = r.kind === 'tablet';
-        const tag = r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
+        const insulin = r.kind === 'insulin';
+        const adjust = r.kind === 'tablet' || insulin;
+        const tag = insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
+          : r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
           : r.kind === 'symptom' ? '<span class="tag info">💊 ยาบรรเทาอาการ — ไม่ปรับจำนวน</span>'
           : r.kind === 'antibiotic' ? '<span class="tag info">🦠 ยาฆ่าเชื้อ — ไม่ปรับจำนวน</span>'
           : !adjust ? '<span class="tag info">ไม่ใช่ยาเม็ด — ไม่ปรับจำนวน</span>'
           : r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
           : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
           : r.notInOrder ? '<span class="tag">ไม่พบในใบสั่งยา HOSxP</span>' : '';
-        const auto = adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
+        const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
+          : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${r.lo}" data-unit="${escHtml(r.unit)}"${adjust ? '' : ' class="noadj"'}>
+        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : r.lo}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ)</div>`;
+    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ) · อินซูลิน: ใช้ = ยูนิต/วัน คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต)</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
     if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
