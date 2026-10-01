@@ -2773,11 +2773,17 @@ function parseUsage(u) {
   let amt = null, unit = '';
   const m = t.match(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)/i);
   if (m) { amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2]; }
+  else {
+    // OCR อ่านหน่วยผิด (เช่น "เม็ด" → "Ulm") ใช้ตัวเลขหลัง "ครั้งละ" แทน ส่วนหน่วยให้ผู้เรียกเดาจากชื่อยา
+    const k = t.match(/ครั้งละ\s*(\d+(?:\.\d+)?|ครึ่ง|½)/);
+    if (k) amt = (k[1] === 'ครึ่ง' || k[1] === '½') ? 0.5 : parseFloat(k[1]);
+  }
   let freq = null;
-  const f = t.match(/วันละ\s*(\d+)\s*(?:ครั้ง|เวลา)/);   // HOSxP เขียนทั้ง "วันละ 2 ครั้ง" และ "วันละ 2 เวลา"
+  // เอาเลขหลัง "วันละ" ตรงๆ ไม่ต้องรอคำว่า "ครั้ง"/"เวลา" เพราะ OCR อ่านผิดบ่อย (เช่น "วันละ 3 50") ยกเว้นเป็นช่วง "วันละ 1-2"
+  const f = t.match(/วันละ\s*(\d+)(?!\s*[-–]\s*\d)/);   // HOSxP เขียนทั้ง "วันละ 2 ครั้ง" และ "วันละ 2 เวลา"
   if (f) freq = +f[1];
   else {
-    const meals = ['เช้า', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
+    const meals = ['เช้า|เข้า(?!ใต้|กล้าม|หลอด|ผิว)', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
     if (meals) freq = meals;
   }
   // ระบุขนาดแยกมื้อ เช่น "เช้า 2 เม็ด - เที่ยง 1 เม็ด - เย็น 2 เม็ด" = 5 เม็ด/วัน (ไม่ใช่ 2 × 3) ใช้ผลรวมของแต่ละมื้อ
@@ -2801,7 +2807,10 @@ function parseOrderLines(text) {
     const name = before.slice(w.index).replace(/[|\[\]#>]/g, ' ').replace(/\s+/g, ' ').trim();
     // ตัดคอลัมน์จำนวน/ราคาที่อยู่ห่างออกไปทางขวา (เว้นวรรคยาว)
     const usage = line.slice(um.index).replace(/[|\[\]#>]/g, ' ').replace(/\s{3,}.*$/, '');
-    rows.push({ name, ...parseUsage(usage), insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null });
+    const u = parseUsage(usage);
+    // อ่านหน่วยไม่ออก แต่เป็นยากิน (ไม่ใช่ยาน้ำ/ยาพ่น/ยาฉีด) ถือเป็นเม็ด เพื่อให้คำนวณจำนวนได้
+    if (!u.unit && u.perDay != null && /รับประทาน|รับปร/.test(usage) && !/syr|susp|mixt|solution|\bsol\b|inh|spray|drop|inj|น้ำ|ml\b/i.test(name)) u.unit = 'เม็ด';
+    rows.push({ name, ...u, insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null });
   }
   return rows;
 }
