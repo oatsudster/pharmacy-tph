@@ -187,7 +187,8 @@ function ReadApptDays {
   $list = $cache.apptList
   if (-not $list -or -not $ocr) { return $null }
   $r = $list.Current.BoundingRectangle
-  $w = [int]$r.Width; $h = [int][Math]::Min($r.Height, 30)   # บรรทัดแรกพอ นัดที่ใกล้สุดอยู่บนสุด
+  # คนไข้บางคนมีหลายนัด (เช่น นัด LAB 7 วัน + นัดพบแพทย์ 126 วัน) อ่านทุกบรรทัดในกล่อง แล้วใช้วันนัดที่ไกลที่สุด
+  $w = [int]$r.Width; $h = [int][Math]::Min($r.Height, 150)
   if ($w -le 0 -or $h -le 0) { return $null }
   $vis = VisibleWidth (New-Object System.Windows.Rect $r.X, $r.Y, $w, $h) $list
   if ($vis -lt 250) { $state.covered = $true; return $null }   # "1.[119 วัน] 22 ..." อยู่ต้นบรรทัด เห็นแค่ช่วงแรกก็พอ
@@ -220,6 +221,12 @@ function OcrDays($x, $y, $vis, $h, [bool]$loose = $false) {
   $sb = Await ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
   $res = Await ($ocr.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult])
   $ms.Dispose()
+  if (-not $loose) {
+    # กล่อง "ข้อมูลการนัดหมาย": ทุกบรรทัดขึ้นต้น "N.[X วัน]" เอา X ที่มากที่สุด (นัดไกลสุด)
+    $days = @($res.Lines | ForEach-Object { if ($_.Text -match '\[\s*(\d{1,4})') { [int]$Matches[1] } })
+    if ($days.Count) { return ($days | Measure-Object -Maximum).Maximum }
+    return $null
+  }
   foreach ($line in $res.Lines) {
     if ($line.Text -match '\[\s*(\d{1,4})') { return [int]$Matches[1] }
   }
