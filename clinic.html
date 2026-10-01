@@ -2908,7 +2908,8 @@ function insulinLoUnits(qty, unit) {
 }
 // ยาบรรเทาอาการ ไม่ต้องปรับตามวันนัด — ชื่ออังกฤษเทียบแบบยอมให้ OCR ผิดได้ 2 ตัวอักษร
 // (ไม่ใช้คำว่า GLYCERYL เพราะจะไปโดน glyceryl trinitrate ซึ่งเป็นยาโรคหัวใจ)
-const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN'];
+const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN',
+  'DICLOFENAC', 'VOLTAREN', 'FENAC'];   // diclofenac ชื่อการค้า voltaren/fenac — ยาแก้ปวด ใช้ตามอาการ ไม่ปรับตามวันนัด
 function isSymptomatic(...texts) {
   return texts.some(t => {
     t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');   // OCR อ่าน O เป็นเลข 0
