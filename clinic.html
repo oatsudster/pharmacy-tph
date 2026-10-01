@@ -2688,6 +2688,12 @@ function floatDaysToAppt() {
   const el = floatWin.document.getElementById('fl-days');
   return el ? Math.max(0, parseInt(el.value, 10) || 0) : 0;
 }
+// จพ. จ่ายยาเผื่ออีก 1 วันเสมอ (ไม่จ่ายพอดีวันนัด) จำนวนวันที่ใช้คำนวณ = วันถึงนัด + 1 (ถ้ายังไม่ได้ใส่วันนัด = 0 ไม่คำนวณ)
+const FLOAT_EXTRA_DAYS = 1;
+function floatCalcDays() {
+  const d = floatDaysToAppt();
+  return d > 0 ? d + FLOAT_EXTRA_DAYS : 0;
+}
 
 function floatDateAfter(n) {
   const t = new Date(); t.setDate(t.getDate() + n); return t;
@@ -2945,7 +2951,7 @@ function isAntibiotic(...texts) {
 function updateFloatNeed(tr) {
   const inp = tr.querySelector('.pd');
   if (!inp) return;   // ยาที่ไม่ปรับจำนวน (ยาพ่น/ไม่ใช่ยาเม็ด)
-  const days = floatDaysToAppt();
+  const days = floatCalcDays();
   const perDay = parseFloat(inp.value);
   const cell = tr.querySelector('.need');
   const lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
@@ -2983,7 +2989,7 @@ function renderFloatLeftover() {
   const d = floatWin.document;
   const out = d.getElementById('fl-result');
   if (!out) return;
-  const days = floatDaysToAppt();
+  const days = floatDaysToAppt();   // วันถึงนัดตามที่กรอก (ตัวคำนวณจริงใช้ floatCalcDays = +1 วัน)
   const hn = d.getElementById('fl-hn').value.trim();
   if (hn.length < 3) { out.innerHTML = '<div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div>'; return; }
 
@@ -3058,7 +3064,7 @@ function renderFloatLeftover() {
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
-    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = (${days} วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ) · อินซูลิน: ใช้ = ยูนิต/วัน คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต)</div>`;
+    <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = ((${days} + ${FLOAT_EXTRA_DAYS}) วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น (เผื่อเพิ่ม ${FLOAT_EXTRA_DAYS} วัน) · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ) · อินซูลิน: ใช้ = ยูนิต/วัน คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต)</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
     if (inp && tr.dataset.key in userPd) { inp.value = userPd[tr.dataset.key]; inp.dataset.user = '1'; inp.classList.remove('auto'); }
