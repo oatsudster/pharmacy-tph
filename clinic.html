@@ -2909,7 +2909,7 @@ function insulinLoUnits(qty, unit) {
 // ยาบรรเทาอาการ ไม่ต้องปรับตามวันนัด — ชื่ออังกฤษเทียบแบบยอมให้ OCR ผิดได้ 2 ตัวอักษร
 // (ไม่ใช้คำว่า GLYCERYL เพราะจะไปโดน glyceryl trinitrate ซึ่งเป็นยาโรคหัวใจ)
 const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN',
-  'DICLOFENAC', 'VOLTAREN'];   // diclofenac (voltaren/fenac) — ยาแก้ปวด ใช้ตามอาการ ไม่ปรับตามวันนัด (ไม่ใส่ FENAC เพราะสั้นเกินไป จะไปจับ mefenamic ฯลฯ ตอน fuzzy match)
+  'DICLOFENAC', 'VOLTAREN', 'HYOSCINE', 'BUSCOPAN', 'DOMPERIDONE', 'MOTILIUM'];   // diclofenac (voltaren/fenac) — ยาแก้ปวด ใช้ตามอาการ ไม่ปรับตามวันนัด (ไม่ใส่ FENAC เพราะสั้นเกินไป จะไปจับ mefenamic ฯลฯ ตอน fuzzy match)
 function isSymptomatic(...texts) {
   return texts.some(t => {
     t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');   // OCR อ่าน O เป็นเลข 0
