@@ -59,7 +59,7 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
@@ -257,7 +257,8 @@ function CaptureGrid {
   $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
   $bytes = $ms.ToArray(); $ms.Dispose()
   $hash = [BitConverter]::ToString($md5.ComputeHash($bytes))
-  if ($hash -ne $script:gridHash) { $script:gridHash = $hash; $script:gridPng = $bytes; $state.gridVer++ }
+  # gridHash ให้หน้าเว็บจำผล OCR ตามภาพ (HN เดิม+ภาพเดิม = ไม่ต้อง OCR ซ้ำ ตอนสลับหน้าไปมา)
+  if ($hash -ne $script:gridHash) { $script:gridHash = $hash; $script:gridPng = $bytes; $state.gridVer++; $state.gridHash = ($hash -replace '-', '').Substring(0, 16) }
 }
 
 function UpdateState {
@@ -280,7 +281,7 @@ function UpdateState {
   if ($hn -ne $script:lastHn) {
     # จำวันนัดที่เคยอ่านได้ของ HN นี้ไว้ (จพ. ดูวันนัดที่หน้าหนึ่งแล้วสลับไปหน้าสั่งยา ซึ่งอ่านวันนัดไม่ได้)
     $script:lastHn = $hn; $state.apptDays = if ($hn -and $script:apptByHn.ContainsKey($hn)) { $script:apptByHn[$hn] } else { $null }
-    $script:gridPng = $null; $script:gridHash = ''; $state.gridVer++
+    $script:gridPng = $null; $script:gridHash = ''; $state.gridHash = ''; $state.gridVer++
     $script:nextAppt = [DateTime]::MinValue; $script:nextGrid = [DateTime]::MinValue
   }
   $active = $false
@@ -323,14 +324,15 @@ function Respond($client) {
   $method = ($first -split ' ')[0]; $path = ($first -split ' ')[1]
   $cors = ''
   if ($ALLOWED_ORIGINS -contains $origin) {
-    $cors = "Access-Control-Allow-Origin: $origin`r`nAccess-Control-Allow-Private-Network: true`r`nAccess-Control-Allow-Methods: GET`r`nVary: Origin`r`n"
+    $cors = "Access-Control-Allow-Origin: $origin`r`nAccess-Control-Allow-Private-Network: true`r`nAccess-Control-Allow-Methods: GET`r`nAccess-Control-Expose-Headers: X-Grid-Hash`r`nVary: Origin`r`n"
   }
   $type = 'application/json; charset=utf-8'; $bytes = [byte[]]@()
   if ($method -eq 'OPTIONS') { $status = '204 No Content' }
   elseif ($path -like '/current*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(($state | ConvertTo-Json -Compress)) }
   elseif ($path -like '/grid.png*' -and $script:gridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:gridPng }
   else { $status = '404 Not Found' }
-  $head = "HTTP/1.1 $status`r`nContent-Type: $type`r`nCache-Control: no-store`r`n$cors" + "Content-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
+  $extra = if ($path -like '/grid.png*' -and $state.gridHash) { "X-Grid-Hash: $($state.gridHash)`r`n" } else { '' }
+  $head = "HTTP/1.1 $status`r`nContent-Type: $type`r`nCache-Control: no-store`r`n$cors$extra" + "Content-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
   $hb = [System.Text.Encoding]::ASCII.GetBytes($head)
   $stream.Write($hb, 0, $hb.Length)
   if ($bytes.Length) { $stream.Write($bytes, 0, $bytes.Length) }

@@ -2727,6 +2727,7 @@ const HOSXP_GRID_URL = 'http://127.0.0.1:8765/grid.png';
 const TESS_BASE = new URL('lib/tesseract5/', location.href).href;
 let tessWorkerP = null, floatOrder = null, lastBridge = null;
 let ocrBusy = false, ocrDoneVer = null, floatOcrStatus = '';
+const ocrCache = new Map();   // "HN|แฮชภาพตาราง" → รายการยาที่ OCR ได้ (จำไว้ใช้ซ้ำ สูงสุด 40 ภาพ)
 
 function getTessWorker() {
   if (!tessWorkerP) tessWorkerP = (async () => {
@@ -2826,14 +2827,25 @@ async function runOrderOcr() {
   ocrBusy = true;
   try {
     while (lastBridge && lastBridge.hn && lastBridge.gridVer !== ocrDoneVer) {
-      const ver = lastBridge.gridVer, hn = lastBridge.hn;
+      const ver = lastBridge.gridVer, hn = lastBridge.hn, hash = lastBridge.gridHash || '';
+      // HN เดิม + ภาพตารางเดิม (เช่น สลับหน้า ข้อมูลทั่วไป ↔ สั่งยา แล้วกลับมา) ใช้ผล OCR ที่จำไว้ ไม่ต้องรอใหม่
+      if (hash && ocrCache.has(hn + '|' + hash)) {
+        ocrDoneVer = ver;
+        floatOrder = { hn, rows: ocrCache.get(hn + '|' + hash) };
+        floatOcrStatus = 'done';
+        renderFloatLeftover();
+        continue;
+      }
       floatOcrStatus = 'running'; renderFloatOcrStatus();
       const res = await fetch(HOSXP_GRID_URL, { cache: 'no-store', targetAddressSpace: 'loopback' });
       if (!res.ok) { ocrDoneVer = ver; floatOcrStatus = ''; break; }   // ยังไม่มีภาพ (เช่นถูกบังอยู่)
+      const gh = res.headers.get('X-Grid-Hash') || hash;   // แฮชของภาพที่ได้จริง (อาจใหม่กว่าตอน poll)
       const canvas = await binarizeGrid(await res.blob());
       const { data } = await (await getTessWorker()).recognize(canvas);
       ocrDoneVer = ver;
-      floatOrder = { hn, rows: parseOrderLines(data.text) };
+      const rows = parseOrderLines(data.text);
+      if (gh) { ocrCache.set(hn + '|' + gh, rows); if (ocrCache.size > 40) ocrCache.delete(ocrCache.keys().next().value); }
+      floatOrder = { hn, rows };
       floatOcrStatus = 'done';
       renderFloatLeftover();
     }
