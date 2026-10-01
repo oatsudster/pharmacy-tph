@@ -2997,7 +2997,7 @@ function renderFloatLeftover() {
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
       ${withLo ? (() => { const isToday = withLo.date === thToISO(todayTH());
         return `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`; })()
-        : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`}
+        : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'} — คิดเต็มจำนวน (ถือว่าไม่มียาเหลือ)</div>`}
     </div><div id="fl-ocr"></div>
     <div class="empty paused-msg">⏸ ไม่ได้อยู่หน้าบันทึกจ่ายยาใน HOSxP<br>จะแสดงการคำนวณเมื่อกลับไปหน้าบันทึกจ่ายยา</div>`;
   if (!rows.length) { out.innerHTML = head; out.dataset.hn = hn; applyFloatPaused(); renderFloatOcrStatus(); return; }
