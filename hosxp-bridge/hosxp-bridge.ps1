@@ -62,6 +62,7 @@ $md5 = [System.Security.Cryptography.MD5]::Create()
 $state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
+$apptByHn = @{}   # HN → จำนวนวันถึงนัดที่อ่านได้ล่าสุด (ล้างเมื่อปิด bridge)
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
 
@@ -243,7 +244,8 @@ function UpdateState {
   }
 
   if ($hn -ne $script:lastHn) {
-    $script:lastHn = $hn; $state.apptDays = $null
+    # จำวันนัดที่เคยอ่านได้ของ HN นี้ไว้ (จพ. ดูวันนัดที่หน้าหนึ่งแล้วสลับไปหน้าสั่งยา ซึ่งอ่านวันนัดไม่ได้)
+    $script:lastHn = $hn; $state.apptDays = if ($hn -and $script:apptByHn.ContainsKey($hn)) { $script:apptByHn[$hn] } else { $null }
     $script:gridPng = $null; $script:gridHash = ''; $state.gridVer++
     $script:nextAppt = [DateTime]::MinValue; $script:nextGrid = [DateTime]::MinValue
   }
@@ -255,7 +257,7 @@ function UpdateState {
     $state.covered = $false
     # วันนัดอ่านซ้ำทุก 5 วินาที ตารางยาทุก 2 วินาที เผื่อข้อมูลโหลดขึ้นมาทีหลัง หรือเพิ่งเลื่อนหน้าต่างที่บังออก
     if ((Get-Date) -ge $script:nextAppt) {
-      try { $d = ReadApptDays; if ($d -ne $null) { $state.apptDays = $d } } catch {}
+      try { $d = ReadApptDays; if ($d -ne $null) { $state.apptDays = $d; $script:apptByHn[$hn] = $d } } catch {}
       $script:nextAppt = (Get-Date).AddSeconds(5)
     }
     if ((Get-Date) -ge $script:nextGrid) {
