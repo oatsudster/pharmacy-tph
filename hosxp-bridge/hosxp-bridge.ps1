@@ -60,8 +60,8 @@ if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Wi
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
 $state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
-$cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @() }
-$nextEmrScan = [DateTime]::MinValue
+$cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
+$nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
 
@@ -74,14 +74,37 @@ function FieldRightOf($frame, $labelText) {
     Sort-Object { $_.Current.BoundingRectangle.X } | Select-Object -First 1
 }
 
+# หน้าจอ จพ.เภสัช (DoctorWorkBenchQueueForm → บันทึกใบสั่งยา) ไม่ใช่หน้าจ่ายยาของเภสัช: ไม่มีป้าย HN/ชื่อ
+#   HN   = TcxDBTextEdit ใน TPatientInformationType2Frame (ซ่อนอยู่นอกจอ แต่ UI Automation อ่านค่าได้)
+#   ชื่อ = ชื่อของ TcxTabSheet ที่ครอบหน้านั้น เช่น "นายสายันต์ ทิพย์สว่าง [9]" (ตัด [คิว] ออก)
+# เปิดได้หลายแท็บคนไข้ จึงเลือกหน้าที่ตารางใบสั่งยาอยู่บนจอจริง และค้นใหม่ทุก ~1.5 วินาที
+function FindDispenseScreen2($main) {
+  $best = $null
+  foreach ($f in $main.FindAll($TS::Descendants, (ClassCond 'THOSxPDispensingEntryFrame'))) {
+    $order = $f.FindFirst($TS::Descendants, (ClassCond 'THOSxPMedicationOrderFrame'))
+    $grid = if ($order) { $order.FindFirst($TS::Descendants, (ClassCond 'TcxGridSite')) } else { $null }
+    $info = $f.FindFirst($TS::Descendants, (ClassCond 'TPatientInformationType2Frame'))
+    $hn = if ($info) { FieldRightOf $info 'HN' } else { $null }   # ใกล้ป้าย HN ที่สุด (ในกรอบมีเบอร์โทร/เลขบัตรด้วย จะหยิบผิดถ้าดูแค่ตัวเลข)
+    if (-not $hn -or $hn.Current.Name.Trim() -notmatch '^\d{5,10}$') { continue }
+    $cand = @{ hn = $hn; grid = $grid; frame = $f }
+    if (-not $best) { $best = $cand }
+    if ($grid -and (ElShowing $grid)) { $best = $cand; break }
+  }
+  if (-not $best) { return $false }
+  $cache.hnEdit = $best.hn; $cache.grid = $best.grid; $cache.layout2 = $true
+  $sheet = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($best.frame)
+  $cache.nameEdit = if ($sheet -and $sheet.Current.ClassName -eq 'TcxTabSheet') { $sheet } else { $null }
+  return $true
+}
+
 function FindDispenseScreen {
-  $cache.hnEdit = $null; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null
+  $cache.hnEdit = $null; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null; $cache.layout2 = $false
   $proc = Get-Process HOSxPXE4 -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $proc) { return }
   $main = $AE::RootElement.FindFirst($TS::Children, (New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$proc.Id)))
   if (-not $main) { return }
   $frame = $main.FindFirst($TS::Descendants, (ClassCond 'THOSxPDiepensingDispenseEntryFrame'))
-  if (-not $frame) { return }
+  if (-not $frame) { [void](FindDispenseScreen2 $main); return }
   $cache.hnEdit = FieldRightOf $frame 'HN'
   $cache.nameEdit = FieldRightOf $frame 'ชื่อ'
   $cache.apptList = $frame.FindFirst($TS::Descendants, (ClassCond 'THTMListBox'))
@@ -205,10 +228,13 @@ function CaptureGrid {
 function UpdateState {
   $hn = ''; $name = ''
   try {
-    if (-not $cache.hnEdit) { FindDispenseScreen }
+    # หน้าจอ จพ. เปิดหลายแท็บได้ ค้นใหม่บ่อยเพื่อตามแท็บที่อยู่บนจอ
+    if (-not $cache.hnEdit -or ($cache.layout2 -and (Get-Date) -ge $script:nextFind)) {
+      FindDispenseScreen; $script:nextFind = (Get-Date).AddMilliseconds(1500)
+    }
     if ($cache.hnEdit) {
       $hn = $cache.hnEdit.Current.Name.Trim()
-      if ($cache.nameEdit) { $name = $cache.nameEdit.Current.Name.Trim() }
+      if ($cache.nameEdit) { $name = ($cache.nameEdit.Current.Name.Trim() -replace '\s*\[\d+\]\s*$', '') }
     }
   } catch {
     # หน้าจ่ายยาถูกปิด/สร้างใหม่ — element เดิมใช้ไม่ได้แล้ว ค้นหาใหม่
@@ -222,7 +248,8 @@ function UpdateState {
     $script:nextAppt = [DateTime]::MinValue; $script:nextGrid = [DateTime]::MinValue
   }
   $active = $false
-  if ($hn) { try { $active = (ElShowing $cache.hnEdit) -and (ElShowing $cache.grid) } catch {} }
+  # หน้าจอ จพ. ช่อง HN ซ่อนนอกจอเสมอ ใช้ตารางใบสั่งยาที่เห็นบนจอเป็นตัวบอกว่าอยู่หน้าบันทึกใบสั่งยา
+  if ($hn) { try { $active = if ($cache.layout2) { ElShowing $cache.grid } else { (ElShowing $cache.hnEdit) -and (ElShowing $cache.grid) } } catch {} }
   $state.active = $active
   if ($active) {
     $state.covered = $false
