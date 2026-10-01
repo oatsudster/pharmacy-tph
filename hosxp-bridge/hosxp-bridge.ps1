@@ -62,6 +62,7 @@ $md5 = [System.Security.Cryptography.MD5]::Create()
 $state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
+$nextCard = [DateTime]::MinValue
 $apptByHn = @{}   # HN → จำนวนวันถึงนัดที่อ่านได้ล่าสุด (ล้างเมื่อปิด bridge)
 $gridPng = $null; $gridHash = ''
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
@@ -93,13 +94,14 @@ function FindDispenseScreen2($main) {
   }
   if (-not $best) { return $false }
   $cache.hnEdit = $best.hn; $cache.grid = $best.grid; $cache.layout2 = $true
+  $cache.apptLabel = $best.frame.FindAll($TS::Descendants, (ClassCond 'TcxLabel')) | Where-Object { $_.Current.Name -eq 'นัดครั้งหน้า' } | Select-Object -First 1
   $sheet = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($best.frame)
   $cache.nameEdit = if ($sheet -and $sheet.Current.ClassName -eq 'TcxTabSheet') { $sheet } else { $null }
   return $true
 }
 
 function FindDispenseScreen {
-  $cache.hnEdit = $null; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null; $cache.layout2 = $false
+  $cache.hnEdit = $null; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null; $cache.layout2 = $false; $cache.apptLabel = $null
   $proc = Get-Process HOSxPXE4 -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $proc) { return }
   $main = $AE::RootElement.FindFirst($TS::Children, (New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$proc.Id)))
@@ -189,7 +191,22 @@ function ReadApptDays {
   if ($w -le 0 -or $h -le 0) { return $null }
   $vis = VisibleWidth (New-Object System.Windows.Rect $r.X, $r.Y, $w, $h) $list
   if ($vis -lt 250) { $state.covered = $true; return $null }   # "1.[119 วัน] 22 ..." อยู่ต้นบรรทัด เห็นแค่ช่วงแรกก็พอ
-  $bmp = CaptureScreen ([int]$r.X) ([int]$r.Y) $vis $h
+  return OcrDays ([int]$r.X) ([int]$r.Y) $vis $h
+}
+
+# หน้า "ข้อมูลทั่วไป" ของ จพ.: วันนัดเป็นข้อความที่วาดเอง "นัดครั้งหน้า[126 วัน] 4 กุมภาพันธ์ ..." อยู่ถัดจากป้าย "นัดครั้งหน้า"
+# อ่านผ่าน API ไม่ได้ จึง OCR แถบทางขวาของป้ายเฉพาะตอนป้ายนั้นอยู่บนจอ (ถ้าถูกบัง OCR จะไม่เจอเลข ก็คงค่าเดิมไว้)
+function ReadApptCard {
+  $lb = $cache.apptLabel
+  if (-not $lb -or -not (ElShowing $lb)) { return $null }
+  $r = $lb.Current.BoundingRectangle
+  $x = [int]($r.X + $r.Width + 2); $y = [int]($r.Y - 2); $h = [int]($r.Height + 4)
+  return OcrDays $x $y 380 $h $true
+}
+
+# OCR ภาษาอังกฤษของ Windows อ่านแถบข้อความ เอาตัวเลขในวงเล็บ [N วัน]
+function OcrDays($x, $y, $vis, $h, [bool]$loose = $false) {
+  $bmp = CaptureScreen $x $y $vis $h
   # ขยาย 2 เท่า OCR อ่านตัวเลขเล็กๆ ได้แม่นขึ้น
   $big = New-Object System.Drawing.Bitmap ($vis * 2), ($h * 2)
   $g2 = [System.Drawing.Graphics]::FromImage($big)
@@ -205,6 +222,16 @@ function ReadApptDays {
   $ms.Dispose()
   foreach ($line in $res.Lines) {
     if ($line.Text -match '\[\s*(\d{1,4})') { return [int]$Matches[1] }
+  }
+  # OCR บางครั้งทิ้ง "[" หรืออ่านเป็น "1"/"I" เช่น "126 วัน" → "126" หรือ "1126" — ใช้เลขชุดแรกต้นบรรทัด
+  # วันนัดเกิน 999 วันไม่มีจริง ถ้าได้ 4 หลักแปลว่าวงเล็บถูกอ่านเป็นเลข 1 ตัดหลักหน้าออก
+  if (-not $loose) { return $null }   # กล่อง "ข้อมูลการนัดหมาย" ขึ้นต้นด้วยลำดับ "1." เลขชุดแรกจึงไม่ใช่วัน ใช้เฉพาะแถบนัดครั้งหน้า
+  foreach ($line in $res.Lines) {
+    if ($line.Text -match '^\W*(\d{1,4})\b') {
+      $n = [int]$Matches[1]
+      if ($n -ge 1000) { $n = $n % 1000 }
+      if ($n -gt 0) { return $n }
+    }
   }
   return $null
 }
@@ -253,6 +280,11 @@ function UpdateState {
   # หน้าจอ จพ. ช่อง HN ซ่อนนอกจอเสมอ ใช้ตารางใบสั่งยาที่เห็นบนจอเป็นตัวบอกว่าอยู่หน้าบันทึกใบสั่งยา
   if ($hn) { try { $active = if ($cache.layout2) { ElShowing $cache.grid } else { (ElShowing $cache.hnEdit) -and (ElShowing $cache.grid) } } catch {} }
   $state.active = $active
+  # หน้า "ข้อมูลทั่วไป" ของ จพ. (กรอบข้อมูลผู้ป่วยอยู่บนจอ ตารางยาอาจไม่เต็ม) อ่านวันนัดแล้วจำตาม HN ไว้ใช้ตอนสลับไปหน้าสั่งยา
+  if ($hn -and $cache.layout2 -and (Get-Date) -ge $script:nextCard) {
+    $script:nextCard = (Get-Date).AddSeconds(2)
+    try { $d = ReadApptCard; if ($d -ne $null) { $state.apptDays = $d; $script:apptByHn[$hn] = $d } } catch {}
+  }
   if ($active) {
     $state.covered = $false
     # วันนัดอ่านซ้ำทุก 5 วินาที ตารางยาทุก 2 วินาที เผื่อข้อมูลโหลดขึ้นมาทีหลัง หรือเพิ่งเลื่อนหน้าต่างที่บังออก
