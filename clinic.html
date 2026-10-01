@@ -2777,7 +2777,7 @@ function parseUsage(u) {
   const m = t.match(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)/i);
   if (m) { amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2]; }
   let freq = null;
-  const f = t.match(/วันละ\s*(\d+)\s*ครั้ง/);
+  const f = t.match(/วันละ\s*(\d+)\s*(?:ครั้ง|เวลา)/);   // HOSxP เขียนทั้ง "วันละ 2 ครั้ง" และ "วันละ 2 เวลา"
   if (f) freq = +f[1];
   else {
     const meals = ['เช้า', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
