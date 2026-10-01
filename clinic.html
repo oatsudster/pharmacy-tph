@@ -525,7 +525,6 @@ const DashUX = {
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
     <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — วาง DRP ที่พิมพ์ใน HOSxP แล้วบันทึกได้เลย ไม่ต้องสลับหน้า">🩺 บันทึกคลินิก (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — ดูยาคงเหลือและคำนวณจำนวนจ่ายจนถึงวันนัด">🪟 ยาคงเหลือ (ลอย)</button>
-    <button class="tbtn" onclick="openFloatLeftover(true)" title="สำหรับเครื่องเจ้าพนักงานคีย์ยา — แสดงเฉพาะยาคงเหลือของคนไข้ ไม่มีการคำนวณ/วันนัด/OCR">🪟 ยาคงเหลือ (เฉพาะรายการ)</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
     <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
@@ -2193,18 +2192,14 @@ function isoLocal(dt) {
   return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
-// simple = มุมมองสำหรับเจ้าพนักงานคีย์ยา: แสดงเฉพาะยาคงเหลือ ไม่มีวันนัด/คำนวณจำนวนจ่าย/OCR ใบสั่งยา
-let floatSimple = false;
-
-async function openFloatLeftover(simple) {
+async function openFloatLeftover() {
   if (floatWin && !floatWin.closed) { floatWin.focus(); return; }
-  floatSimple = !!simple;
   if ('documentPictureInPicture' in window) {
-    try { floatWin = await documentPictureInPicture.requestWindow(floatSimple ? { width: 360, height: 420 } : { width: 440, height: 620 }); }
+    try { floatWin = await documentPictureInPicture.requestWindow({ width: 440, height: 620 }); }
     catch (e) { floatWin = null; }
   }
   if (!floatWin) {
-    floatWin = window.open('', 'float-leftover', floatSimple ? 'width=380,height=460' : 'width=460,height=660');
+    floatWin = window.open('', 'float-leftover', 'width=460,height=660');
     if (!floatWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
   }
   const d = floatWin.document;
@@ -2215,20 +2210,20 @@ async function openFloatLeftover(simple) {
       <input id="fl-hn" placeholder="HN (Enter)" autocomplete="off">
       <button id="fl-paste" title="วาง HN ที่คัดลอกมาจาก HosXP">📋 วาง</button>
     </div>
-    ${floatSimple ? '' : `<div class="row">
+    <div class="row">
       <span>นัดอีก</span>
       <input id="fl-days" type="number" min="0" step="1" inputmode="numeric" value="${days0}" style="width:64px;text-align:center;font-weight:700;color:#1A5E38">
       <span>วัน =</span>
       <input id="fl-appt" type="date" value="${isoLocal(floatDateAfter(days0))}">
     </div>
-    <div class="row" id="fl-chips"></div>`}
+    <div class="row" id="fl-chips"></div>
     <div id="fl-link">⏳ กำลังเชื่อม HOSxP…</div>
     <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>`;
 
   const hnEl = d.getElementById('fl-hn');
   hnEl.addEventListener('input', renderFloatLeftover);
   // จำนวนวันกับวันนัดผูกกันสองทาง พิมพ์ช่องไหนก็ได้ (HosXP บางทีบอกเป็นวัน บางทีเป็นวันที่)
-  const daysEl = d.getElementById('fl-days') || d.createElement('input'), apptEl = d.getElementById('fl-appt') || d.createElement('input');   // โหมดเฉพาะรายการไม่มีสองช่องนี้ — ใช้ element เปล่ากันพัง
+  const daysEl = d.getElementById('fl-days'), apptEl = d.getElementById('fl-appt');
   daysEl.addEventListener('input', () => {
     const n = parseInt(daysEl.value, 10);
     apptEl.value = n >= 0 ? isoLocal(floatDateAfter(n)) : '';
@@ -2242,7 +2237,7 @@ async function openFloatLeftover(simple) {
   });
   // จำจำนวนวันที่ใช้จริงไว้เป็นปุ่มลัด เมื่อพิมพ์เสร็จ (change) ไม่ใช่ทุกตัวอักษร
   [daysEl, apptEl].forEach(el => el.addEventListener('change', () => rememberFloatDays(floatDaysToAppt())));
-  (d.getElementById('fl-chips') || d.createElement('div')).addEventListener('click', e => {
+  d.getElementById('fl-chips').addEventListener('click', e => {
     const n = +e.target.dataset.days; if (!n) return;
     daysEl.value = n;
     apptEl.value = isoLocal(floatDateAfter(n));
@@ -2292,17 +2287,19 @@ async function pollHosxpBridge() {
   if (!floatWin || floatWin.closed) return;
   const wasActive = lastBridge && lastBridge.active;
   lastBridge = s;
-  if (!floatSimple && s.hn && s.active !== false && s.gridVer !== ocrDoneVer) runOrderOcr();
+  if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer) runOrderOcr();
   if (s.active !== wasActive) applyFloatPaused();
   renderFloatOcrStatus();
   link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
   link.className = 'on';
+  // ยังไม่ได้วันนัดของคนไข้คนนี้ (จพ. ยังไม่ได้เปิดหน้า "ข้อมูลทั่วไป") ตัวเลขในช่อง "นัดอีก" เป็นค่าที่ใช้ล่าสุด ไม่ใช่ของคนไข้คนนี้
+  if (s.hn && s.apptDays == null) { link.textContent += ' · ⚠️ ยังไม่ทราบวันนัด — เปิดหน้า "ข้อมูลทั่วไป" หรือกรอกวันนัดเอง'; link.className = 'warn'; }
   // เปลี่ยนค่าเฉพาะตอน HOSxP เปลี่ยนคนไข้หรือได้วันนัดใหม่ ค่าที่แก้เองในหน้าต่างลอยจะไม่ถูกทับทุกรอบ
   const key = s.hn + '|' + s.apptDays;
   if (!s.hn || key === bridgeKey) return;
   bridgeKey = key;
   d.getElementById('fl-hn').value = s.hn;
-  if (!floatSimple && s.apptDays != null) {
+  if (s.apptDays != null) {
     d.getElementById('fl-days').value = s.apptDays;
     d.getElementById('fl-appt').value = isoLocal(floatDateAfter(s.apptDays));
   }
@@ -2958,18 +2955,7 @@ function renderFloatLeftover() {
   const name = (recs[0] && recs[0].name) || ((patientIndex().get(hn) || {}).name) || '';
   const withLo = recs.find(r => r.leftovers && r.leftovers.length);
   const los = withLo ? withLo.leftovers : [];
-  if (floatSimple) {
-    // เฉพาะรายการยาคงเหลือที่เภสัชกรบันทึกไว้ — ไม่คำนวณ ไม่เทียบใบสั่งยา
-    const isToday = withLo && withLo.date === thToISO(todayTH());
-    out.dataset.hn = hn;
-    out.innerHTML = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
-      ${withLo ? `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))}${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`
-        : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'}</div>`}</div>` +
-      (los.length ? `<table><thead><tr><th>ยา</th><th>เหลือ</th></tr></thead><tbody>${los.map(l =>
-        `<tr><td class="drug">${escHtml(cleanDrugName(l.drug))}</td><td class="lo">${escHtml(+l.qty || 0)}<div class="muted">${escHtml(l.unit || '')}</div></td></tr>`).join('')}</tbody></table>` : '');
-    return;
-  }
-  const order = floatOrder && floatOrder.hn === hn ? floatOrder.rows : null;
+  const order =floatOrder && floatOrder.hn === hn ? floatOrder.rows : null;
 
   // แถว = ยาในใบสั่งยา HOSxP (จับคู่กับยาเหลือ) + ยาเหลือที่ไม่พบในใบสั่งยา
   const rows = [], used = new Set();
