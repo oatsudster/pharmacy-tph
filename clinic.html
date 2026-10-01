@@ -2878,6 +2878,18 @@ function isInhaler(...texts) {
 }
 function isTablet(unit) { return /เม็ด|แคปซูล|แค็บซูล|tab|cap/i.test(String(unit || '')); }
 
+// ── ยา prepack: จ่ายเป็นซอง (เม็ดต่อซอง) แสดงผลเป็น "N ซอง + M เม็ด" ──
+// key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches) ค่า = จำนวนเม็ดต่อซอง — เพิ่มยาอื่นที่นี่
+const PREPACK_DRUGS = { FERROUS: 30 };
+function prepackSize(...texts) {
+  for (const t of texts) {
+    const toks = drugTokens(String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O'));
+    for (const [k, size] of Object.entries(PREPACK_DRUGS))
+      if (toks.some(x => x === k || (x.length >= 6 && k.length >= 6 && editDist(x, k) <= 2))) return size;
+  }
+  return 0;
+}
+
 // ── อินซูลิน: คิดเป็น vial (1 vial = 1,000 ยูนิต) ─────────────
 const INSULIN_VIAL_UNITS = 1000;
 const INSULIN_OPEN_DAYS = 28;   // ขวดที่เปิดใช้แล้วเก็บได้ไม่เกิน ~28 วัน
@@ -2953,6 +2965,15 @@ function updateFloatNeed(tr) {
     return;
   }
   const need = Math.max(0, Math.ceil(days * perDay - lo));
+  const pack = +tr.dataset.pack || 0;
+  if (pack && need > 0) {
+    // ยา prepack: แยกเป็นซองเต็ม + เม็ดที่เหลือ
+    const packs = Math.floor(need / pack), rem = need % pack;
+    cell.innerHTML = `${packs ? packs + ' ซอง' : ''}${packs && rem ? ' + ' : ''}${rem ? rem + ' ' + escHtml(unit || 'เม็ด') : ''}`
+      + `<div class="muted">รวม ${need} ${escHtml(unit || 'เม็ด')} (${pack} เม็ด/ซอง)</div>`;
+    cell.className = 'need';
+    return;
+  }
   cell.innerHTML = need > 0 ? `${need}<div class="muted">${escHtml(unit)}</div>` : 'ไม่ต้องจ่าย';
   cell.className = 'need' + (need > 0 ? '' : ' zero');
 }
@@ -3016,6 +3037,9 @@ function renderFloatLeftover() {
       <tbody>${rows.map(r => {
         const insulin = r.kind === 'insulin';
         const adjust = r.kind === 'tablet' || insulin;
+        const pack = r.kind === 'tablet' ? prepackSize(r.name, r.use && r.use.name) : 0;
+        // ยาเหลือที่บันทึกเป็นซอง → เม็ด
+        const loTabs = pack && /ซอง/.test(r.loUnit || '') ? r.lo * pack : r.lo;
         const tag = insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
           : r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
           : r.kind === 'symptom' ? '<span class="tag info">💊 ยาบรรเทาอาการ — ไม่ปรับจำนวน</span>'
@@ -3027,7 +3051,7 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : r.lo}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
