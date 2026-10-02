@@ -2797,6 +2797,11 @@ function parseUsage(u) {
     // OCR อ่านหน่วยผิด (เช่น "เม็ด" → "Ulm") ใช้ตัวเลขหลัง "ครั้งละ" แทน ส่วนหน่วยให้ผู้เรียกเดาจากชื่อยา
     const k = t.match(/ครั้งละ\s*(\d+(?:\.\d+)?|ครึ่ง|½)/);
     if (k) amt = (k[1] === 'ครึ่ง' || k[1] === '½') ? 0.5 : parseFloat(k[1]);
+    else {
+      // "รับประทาน 1 via วันละ 2 ครั้ง" (OCR อ่านหน่วยเป็นอย่างอื่น) ใช้เลขที่ตามหลัง "รับประทาน" ทันที
+      const r = t.match(/(?:รับประทาน|รับปร\S*)\s*(\d+(?:\.\d+)?|ครึ่ง|½)(?=\s|$)/);
+      if (r) amt = (r[1] === 'ครึ่ง' || r[1] === '½') ? 0.5 : parseFloat(r[1]);
+    }
   }
   let freq = null;
   // เอาเลขหลัง "วันละ" ตรงๆ ไม่ต้องรอคำว่า "ครั้ง"/"เวลา" เพราะ OCR อ่านผิดบ่อย (เช่น "วันละ 3 50") ยกเว้นเป็นช่วง "วันละ 1-2"
@@ -2907,7 +2912,10 @@ function drugMatches(a, b) {
 function isInhaler(...texts) {
   return texts.some(t => /MDI|inhaler|haler|spray|dose|พ่น|BUDESONIDE|SEROFLO|BERODUAL/i.test(String(t || '')));
 }
-function isTablet(unit) { return /เม็ด|แคปซูล|แค็บซูล|tab|cap/i.test(String(unit || '')); }
+// รับหน่วยที่ OCR อ่านเพี้ยนด้วย เช่น "แค็บร" (แค็บซูล) — จึงจับแค่ "แค็บ/แคป/แคบ" ไม่ต้องครบคำ
+function isTablet(unit) { return /เม็ด|แค[ป็บ]|tab|cap/i.test(String(unit || '')); }
+// ชื่อยาใน HOSxP ลงท้ายด้วยรูปแบบยา เช่น "GEMFIBROZIL(Lopid) 300 mg. แค็บซูล" — ใช้ตัดสินเมื่อหน่วยอ่านไม่ได้
+function nameIsTablet(name) { return /เม็ด|แค[ป็บ]/.test(String(name || '')); }
 
 // ── ยา prepack: จ่ายเป็นซอง (เม็ดต่อซอง) แสดงผลเป็น "N ซอง + M เม็ด" ──
 // key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches) ค่า = จำนวนเม็ดต่อซอง — เพิ่มยาอื่นที่นี่
@@ -3067,7 +3075,7 @@ function renderFloatLeftover() {
       lo: l ? (+l.qty || 0) : 0, loUnit: l ? (l.unit || '') : '', hasLo: !!l,
       kind: isInsulin(o.name, l && l.drug) ? 'insulin' : inhaler ? 'inhaler' : isSymptomatic(o.name, l && l.drug) ? 'symptom'
         : isAntibiotic(o.name, l && l.drug) ? 'antibiotic'
-        : isTablet(o.unit || (l && l.unit)) ? 'tablet' : 'other',
+        : isTablet(o.unit || (l && l.unit)) || nameIsTablet(o.name) ? 'tablet' : 'other',
       unit: o.unit || (l && l.unit) || '' });
   });
   los.forEach((l, i) => {
