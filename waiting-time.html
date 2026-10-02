@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://ai-assistant.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2088,6 +2088,25 @@ function pageDoExport(fmt) {
   }
   expModalClose();
 }
+</script>
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — ระยะเวลารอคอยยา',
+  context: 'หน้านี้วัดระยะเวลารอคอยยา 2 งาน: stat = ยา Stat/ด่วน (เกณฑ์ผ่านไม่เกิน ' + STAT_LIMIT + ' นาที) และ cart = รถส่งยาหอผู้ป่วย (เกณฑ์ไม่เกิน ' + CART_LIMIT + ' นาที; noCart=true คือวันนั้นไม่มีการส่งรถยา). mins = ระยะเวลา (นาที), pass = ผ่านเกณฑ์หรือไม่.',
+  suggestions: ['เดือนนี้ผ่านเกณฑ์รอคอยยา Stat กี่เปอร์เซ็นต์', 'เวลารอเฉลี่ยของรถส่งยาแต่ละเดือน', 'สร้างรายงานเวลารอคอยปีงบนี้เป็น Excel'],
+  datasets: {
+    wt_stat: {
+      label: 'ยา Stat',
+      rows: () => statRecords.map(r => ({ date: r.date, timeIn: r.timeIn, timeOut: r.timeOut, drug: r.drug, mins: r.mins, pass: r.mins != null && r.mins <= STAT_LIMIT, an: r.an })),
+      private: ['an'],
+    },
+    wt_cart: {
+      label: 'รถส่งยา',
+      rows: () => cartRecords.map(r => ({ date: r.date, noCart: !!r.noCart, timeSent: r.timeSent, timeCalled: r.timeCalled, mins: r.mins, pass: !r.noCart && r.mins != null && r.mins <= CART_LIMIT })),
+    },
+  },
+});
 </script>
 </body>
 </html>

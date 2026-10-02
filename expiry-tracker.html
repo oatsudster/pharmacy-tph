@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://ai-assistant.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -842,6 +842,20 @@ function doExport() {
 
 render();
 initFirebase();
+</script>
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — ยาใกล้หมดอายุ',
+  context: 'หน้านี้ติดตามวันหมดอายุของยาในกล่อง/ตู้ต่างๆ (Emergency box, ตู้เย็น, ยาเสพติด ฯลฯ). days = จำนวนวันที่เหลือก่อนหมดอายุ (ติดลบ = หมดอายุแล้ว). status: หมดอายุแล้ว / ใกล้หมดอายุ (≤3 เดือน) / เฝ้าระวัง (≤6 เดือน) / ปกติ.',
+  suggestions: ['มียาอะไรหมดอายุแล้วหรือใกล้หมดอายุใน 3 เดือน', 'สรุปจำนวนรายการยาแยกตามกล่อง', 'สร้างรายงานยาใกล้หมดอายุเป็น PDF'],
+  datasets: {
+    expiry_items: {
+      label: 'รายการยาและวันหมดอายุ',
+      rows: () => rows.map(r => ({ category: r.catLabel, box: r.box, name: r.name, qty: r.qty, exp: r.exp, days: r.days, status: (STATUS_DEF[r.status] || {}).label || r.status, edited: !!r.edited })),
+    },
+  },
+});
 </script>
 </body>
 </html>

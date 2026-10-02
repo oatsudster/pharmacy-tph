@@ -1,0 +1,11 @@
+name = "ai-assistant"
+main = "worker.js"
+compatibility_date = "2026-07-20"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# secrets (ตั้งด้วย `wrangler secret put <ชื่อ>` — ห้ามใส่ค่าจริงในไฟล์นี้):
+#   ANTHROPIC_API_KEY — จาก https://console.anthropic.com/settings/keys
+#   APP_TOKEN         — สตริงลับ ต้องตรงกับ AI_TOKEN ใน lib/ai-assistant.js

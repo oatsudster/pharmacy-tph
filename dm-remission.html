@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://ai-assistant.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3420,6 +3420,30 @@ function updateBaseline(pid, val) {
   saveBaseline(bl);
   renderSummary();
 }
+</script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — DM Remission Clinic',
+  context: 'หน้านี้ติดตามผู้ป่วยเบาหวานในโครงการ DM Remission: น้ำหนัก BMI ความดัน น้ำตาล (dtx/fbs/hba1c) ไขมัน (ldl/tc/tg) ไต (cr/egfr/urineAlb) และยาที่ใช้/หยุด. ค่า lab เป็นตัวเลข (ว่างถ้าไม่ได้ตรวจ). ชื่อผู้ป่วยถูกซ่อนจาก AI ให้อ้างเป็นรหัสผู้ป่วย (patientId).',
+  suggestions: ['HbA1c เฉลี่ยของผู้ป่วยทั้งหมดแต่ละเดือน', 'ผู้ป่วยกี่คนที่หยุดยาเบาหวานได้', 'สร้างรายงานผลตรวจล่าสุดเป็น Excel'],
+  datasets: {
+    dm_visits: {
+      label: 'การติดตามรายครั้ง',
+      rows: () => getVisits().map(v => { const n = x => { const f = parseFloat(x); return isNaN(f) ? null : f; };
+        return { date: v.date, patientId: v.patientId, patientName: v.patientName, weight: n(v.weight), bmi: n(v.bmi), bp: v.bp, dtx: n(v.dtx), fbs: n(v.fbs), hba1c: n(v.hba1c),
+          ldl: n(v.ldl), tc: n(v.tc), tg: n(v.tg), cr: n(v.cr), egfr: n(v.egfr), urineAlb: n(v.urineAlb), drugs: (v.drugs || []).map(d => d.name).join(', '), drug_count: (v.drugs || []).length,
+          drugChange: v.drugChange, drugProblem: v.drugProblem, grandTotal: v.grandTotal, note: v.note }; }),
+      private: ['patientName', 'note'],
+    },
+    dm_patients: {
+      label: 'ผู้ป่วยในโครงการ',
+      rows: () => PATIENTS.map(p => ({ patientId: p.id, dx: p.dx, name: p.name, hn: p.hn })),
+      private: ['name', 'hn'],
+    },
+  },
+});
 </script>
 </body>
 </html>

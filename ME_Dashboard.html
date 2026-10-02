@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev https://ai-assistant.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -4923,4 +4923,32 @@ function pageDoExport(fmt) {
     <div class="modal-footer"><button class="btn-cancel" onclick="expModalClose()">ปิด</button></div>
   </div>
 </div>
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — ระบบบันทึก ME',
+  context: 'หน้านี้คือระบบบันทึก Medication Error (ME) ของ รพ.ถ้ำพรรณรา ประกอบด้วย ER (ห้องฉุกเฉิน มี rxDaily = จำนวนใบสั่งยาต่อวัน เป็นตัวหารคำนวณอัตรา) และ OPD/IPD (จากรายงาน HosXP, ตัวหารรายเดือนอยู่ในชุด denominator) ความรุนแรงใช้ Category A–I ตาม NCC MERP. อัตรา ME ต่อ 1,000 ใบสั่ง = จำนวน ME / ตัวหาร × 1000.',
+  suggestions: ['เดือนนี้มี ME กี่ราย แยกตามความรุนแรง', 'ยาอะไรเกิด ME บ่อยที่สุดในปีงบนี้', 'สร้างรายงาน ME IPD ปีงบนี้เป็น Excel'],
+  datasets: {
+    er_me: {
+      label: 'บันทึก ME ห้องฉุกเฉิน (ER)',
+      description: '1 แถว = 1 บันทึก; hasME=false คือไม่พบความคลาดเคลื่อน (บันทึกเฉพาะ rxDaily)',
+      rows: () => records.map(r => ({ date: r.date, time: r.time, hasME: r.hasME !== false, rxDaily: r.rxDaily, age: r.age, stage: r.stage, meType: r.meType, severity: r.severity,
+        drug: (r.drugs && r.drugs.length ? r.drugs.map(d => d.name) : (r.drug ? [r.drug] : [])).join(', '), ward: r.ward, reporter: r.reporter, detail: r.detail, intervention: r.intervention, hn: r.hn, patient: r.patient })),
+      private: ['hn', 'patient', 'detail'],
+    },
+    opd_ipd_me: {
+      label: 'ME จาก HosXP (OPD/IPD)',
+      description: 'dept = OPD หรือ IPD; stage = ขั้นตอนที่เกิด (Prescribing/Pre-dispensing/Dispensing/Administration ฯลฯ)',
+      rows: () => hosxpRecords.map(r => ({ date: r.date, time: r.time, dept: r.dept, stage: r.stageRaw || r.stage, meType: r.meType, meCategory: r.meCategory, severity: r.severity,
+        drug: r.drug, intervention: r.intervention, reporter: r.reporter, detail: r.detail, source: r.source, hn: r.hn, patient: r.patient, doctor: r.doctor })),
+      private: ['hn', 'patient', 'doctor', 'detail'],
+    },
+    denominator: {
+      label: 'ตัวหารรายเดือน (จำนวนใบสั่ง OPD/IPD)',
+      rows: () => Object.entries(hosxpDenom).map(([k, v]) => { const p = k.split('_'); return { month: p[0], dept: p[1], count: Number(v) || 0 }; }),
+    },
+  },
+});
+</script>
 </body>

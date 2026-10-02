@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; worker-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765 https://ai-assistant.oatsudster.workers.dev; worker-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3954,5 +3954,33 @@ function pageDoExport(fmt) {
   </div>
 </div>
 
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — งานเภสัชกรรมคลินิก',
+  context: 'หน้านี้บันทึกการให้บริการเภสัชกรรมคลินิกโรคเรื้อรัง (clinic = HT/DM/COPD ฯลฯ) DRP = Drug-Related Problem, leftover = ยาเหลือสะสมที่เภสัชกรนำกลับมาใช้ (มูลค่า = ประหยัดเงิน บาท). ชุด visits = 1 แถวต่อการเยี่ยม, drps = 1 แถวต่อ DRP, leftovers = 1 แถวต่อรายการยาเหลือ. ข้อความหมายเหตุอิสระถูกซ่อนจาก AI.',
+  suggestions: ['เดือนนี้พบ DRP กี่ราย แยกตามประเภท', 'มูลค่ายาเหลือที่ประหยัดได้ปีงบนี้เท่าไร แยกตามคลินิก', 'สร้างรายงานสรุป DRP รายเดือนเป็น Excel'],
+  datasets: {
+    visits: {
+      label: 'การเยี่ยม/ให้บริการ',
+      rows: () => visitRecords.map(v => ({ date: v.date, clinic: v.clinic, pharmacist: v.pharmacist, drp_count: (v.drps || []).length,
+        drp_types: (v.drps || []).map(d => d.type).join(' | '), leftover_baht: v.totalSaving || 0, leftover_items: (v.leftovers || []).length,
+        adherence_checked: !!(v.checks && v.checks.adherence), no_leftover: !!(v.checks && v.checks.noLeftover), has_insulin: !!(v.checks && v.checks.hasInsulin), icebox: !!(v.checks && v.checks.icebox),
+        pharmNote: v.pharmNote, notes: v.notes, hn: v.hn, name: v.name })),
+      private: ['hn', 'name', 'pharmNote', 'notes'],
+    },
+    drps: {
+      label: 'DRP รายตัว',
+      rows: () => visitRecords.flatMap(v => (v.drps || []).map(d => ({ date: v.date, clinic: v.clinic, pharmacist: v.pharmacist, type: d.type, cause: d.cause, causeNote: d.causeNote, hn: v.hn, name: v.name }))),
+      private: ['hn', 'name', 'causeNote'],
+    },
+    leftovers: {
+      label: 'ยาเหลือสะสมรายรายการ',
+      rows: () => visitRecords.flatMap(v => (v.leftovers || []).map(l => ({ date: v.date, clinic: v.clinic, pharmacist: v.pharmacist, drug: l.drug, qty: l.qty, unit: l.unit, price_per_unit: l.priceUnit, total_baht: l.total, hn: v.hn, name: v.name }))),
+      private: ['hn', 'name'],
+    },
+  },
+});
+</script>
 </body>
 </html>

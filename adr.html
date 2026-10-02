@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev https://ai-assistant.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1414,5 +1414,20 @@ function pageDoExport(fmt) {
   </div>
 </div>
 
+<script src="lib/ai-assistant.js"></script>
+<script>
+AiAssistant.init({
+  title: 'ผู้ช่วย AI — รายงาน ADR',
+  context: 'หน้านี้บันทึกอาการไม่พึงประสงค์จากยา (ADR) ของผู้ป่วยใน รพ.ถ้ำพรรณรา type = ประเภทรายงาน (A/B/G6PD ฯลฯ) severity = ระดับความรุนแรง',
+  suggestions: ['ยาที่ก่อ ADR มากที่สุดในปีงบนี้', 'สรุป ADR แยกตามประเภทและความรุนแรง', 'สร้างรายงาน ADR เดือนนี้เป็น Excel'],
+  datasets: {
+    adr: {
+      label: 'รายงาน ADR',
+      rows: () => records.map(r => ({ date: r.date, type: r.type, dept: r.dept, symptom: r.symptom, drug: r.drug, productType: r.productType, severity: r.severity, diagnosis: r.diagnosis, source: r.source, hn: r.hn, name: r.name, an: r.an })),
+      private: ['hn', 'name', 'an'],
+    },
+  },
+});
+</script>
 </body>
 </html>
