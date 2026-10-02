@@ -209,11 +209,20 @@ async function handleChat(env, body) {
   const payload = { model, messages, temperature: 0.2, max_tokens: 4096 };
   if (tools.length) { payload.tools = tools; payload.tool_choice = 'auto'; }
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const call = m => fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.GROQ_API_KEY}` },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, model: m }),
     });
+    let res = await call(model);
+    // โควตาฟรีจำกัดโทเคน/นาทีแยกตามรุ่น — ชนเพดานรุ่นแม่น ให้ลองรุ่นเร็วทันที
+    if (res.status === 429 && model !== CHAT_MODELS.fast) res = await call(CHAT_MODELS.fast);
+    if (res.status === 429) {
+      const t = await res.text();
+      const m = t.match(/try again in\s*([\d.]+)\s*(ms|s)/i);
+      const wait = m ? Math.ceil(m[2].toLowerCase() === 'ms' ? m[1] / 1000 : +m[1]) : 15;
+      return json({ error: 'โควตา AI รายนาทีเต็มชั่วคราว', retry_after: Math.min(wait + 1, 30) }, 429);
+    }
     if (!res.ok) throw new Error('groq http ' + res.status + ': ' + (await res.text()).slice(0, 500));
     const data = await res.json();
     const msg = data.choices?.[0]?.message || {};
