@@ -7,7 +7,7 @@
 
 ```
 cd ai-assistant
-wrangler kv namespace create RATE_LIMIT      # เอา id ไปใส่ใน wrangler.toml
+wrangler kv namespace create AI_ASSISTANT_LIMIT  # เอา id ไปใส่ใน wrangler.toml (binding ยังชื่อ RATE_LIMIT)
 wrangler secret put ANTHROPIC_API_KEY        # จาก console.anthropic.com (ต้องมีเครดิต)
 wrangler secret put APP_TOKEN                # ค่าเดียวกับ AI_TOKEN ใน lib/ai-assistant.js
 wrangler deploy
