@@ -6,3 +6,4 @@ admin-error-classify/.wrangler/
 admin-error-classify/node_modules/
 .expiry-notify-sent
 backups/
+.wrangler/
