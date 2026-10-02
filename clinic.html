@@ -901,6 +901,8 @@ const FISCAL_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','�
 let visitRecords = [];
 let sessionRecords = [];
 let priceOverrides = {}; // ราคายาที่เภสัชกรเพิ่มเองผ่านหน้า "ยาที่ยังไม่มีราคา" — {ชื่อยา(ตรงกับ DRUG_PRICES key): {p, u}}
+let noAdjustDrugs = []; // ยาที่เภสัชกรตั้งว่า "ไม่ต้องปรับตามวันนัด" (หน้าต่างลอยยาคงเหลือ) — ชื่อยาที่ cleanDrugName แล้ว ซิงค์ผ่าน clinic_data
+let noAdjPending = {};  // การแก้ที่ยังไม่กดบันทึก {ชื่อยา: true=เพิ่ม/false=เอาออก}
 let patientRoster = {}; // ทะเบียนผู้ป่วยนำเข้าจาก HosXP — {HN: {name, clinic}}
 let activeTab = 'HT';
 let editingId = null;
@@ -2180,6 +2182,10 @@ const FLOAT_CSS = `
   .pd.auto{background:#FBF3DC;border-color:#C49A22}
   .tag.info{background:#e0f2fe;color:#0e7490}
   tr.noadj td{background:#f8faf9}
+  button.na{font-size:10px;padding:1px 6px;margin-top:3px;border-radius:5px;color:#b45309;border-color:#E9D8A6;background:#FFFBEB}
+  tr.noadj button.na{color:#0e7490;border-color:#bae6fd;background:#f0f9ff}
+  .savebar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;padding:7px 9px;border-radius:9px;background:#FBF3DC;border:1.5px solid #C49A22;font-size:12px;font-weight:600;color:#7c5a00}
+  .savebar button.save{background:#1A5E38;color:#fff;border-color:#1A5E38;font-weight:700}
   #fl-ocr{margin:-4px 0 8px}
   #fl-result .paused-msg{display:none}
   #fl-result.paused .paused-msg{display:block}
@@ -2251,6 +2257,13 @@ async function openFloatLeftover() {
       hnEl.value = (txt.match(/\d{3,}/) || [txt])[0];
       renderFloatLeftover();
     } catch (e) { hnEl.focus(); hnEl.select(); }
+  });
+  // ปุ่ม "ไม่ต้องปรับ" ต่อยา + บันทึก/ยกเลิกการเปลี่ยนแปลง
+  d.getElementById('fl-result').addEventListener('click', e => {
+    const na = e.target.closest('button[data-na]');
+    if (na) { toggleNoAdjust(na.dataset.na); return; }
+    if (e.target.closest('button[data-na-save]')) { saveNoAdjust(); return; }
+    if (e.target.closest('button[data-na-cancel]')) cancelNoAdjust();
   });
   // ขนาดยา/วัน ที่กรอกในตาราง — คำนวณเฉพาะแถวนั้น ไม่ render ทั้งตาราง (จะได้ไม่เสีย focus)
   d.getElementById('fl-result').addEventListener('input', e => {
@@ -2996,6 +3009,38 @@ function updateFloatNeed(tr) {
   cell.className = 'need' + (need > 0 ? '' : ' zero');
 }
 
+// ── ยาที่ตั้งว่า "ไม่ต้องปรับตามวันนัด" ────────────────────────
+// ใช้การเทียบชื่อแบบเดียวกับยาเหลือ (drugMatches ยอม OCR ผิดเล็กน้อย) — ตั้งระดับชื่อยา ใช้กับทุกคนไข้
+function noAdjEntryFor(name) { return noAdjustDrugs.find(n => drugMatches(n, name)); }
+function isNoAdjust(...names) {
+  const nm = names.filter(Boolean);
+  const pend = Object.entries(noAdjPending);
+  if (pend.some(([k, v]) => v && nm.some(x => drugMatches(k, x)))) return true;
+  if (pend.some(([k, v]) => !v && nm.some(x => drugMatches(k, x)))) return false;
+  return nm.some(x => !!noAdjEntryFor(x));
+}
+function toggleNoAdjust(name) {
+  const cur = isNoAdjust(name);
+  const saved = !!noAdjEntryFor(name);
+  const want = !cur;
+  // ตรงกับที่บันทึกไว้แล้ว = ไม่มีอะไรค้าง
+  if (want === saved) { Object.keys(noAdjPending).forEach(k => { if (drugMatches(k, name)) delete noAdjPending[k]; }); }
+  else noAdjPending[name] = want;
+  renderFloatLeftover();
+}
+function saveNoAdjust() {
+  Object.entries(noAdjPending).forEach(([k, v]) => {
+    if (v) { if (!noAdjEntryFor(k)) noAdjustDrugs.push(k); }
+    else noAdjustDrugs = noAdjustDrugs.filter(n => !drugMatches(n, k));
+  });
+  const n = Object.keys(noAdjPending).length;
+  noAdjPending = {};
+  saveLocal(); fbSaveMeta();
+  renderFloatLeftover();
+  showToast('✅ บันทึกยาที่ไม่ต้องปรับตามนัดแล้ว (' + n + ' รายการ) — รอบหน้าจะไม่ปรับให้');
+}
+function cancelNoAdjust() { noAdjPending = {}; renderFloatLeftover(); }
+
 function renderFloatLeftover() {
   if (!floatWin || floatWin.closed) return;
   const d = floatWin.document;
@@ -3034,6 +3079,13 @@ function renderFloatLeftover() {
         : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
   });
 
+  // ยาที่เภสัชกรตั้งว่าไม่ต้องปรับตามนัด (ยาเม็ด/อินซูลินเท่านั้นที่เคยถูกปรับ จึงมีปุ่ม)
+  rows.forEach(r => {
+    r.canToggle = r.kind === 'tablet' || r.kind === 'insulin';
+    r.cname = cleanDrugName(r.name);
+    r.userNoAdj = r.canToggle && isNoAdjust(r.cname, r.use && cleanDrugName(r.use.name));
+  });
+
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
       ${withLo ? (() => { const isToday = withLo.date === thToISO(todayTH());
         return `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`; })()
@@ -3054,11 +3106,13 @@ function renderFloatLeftover() {
       <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
       <tbody>${rows.map(r => {
         const insulin = r.kind === 'insulin';
-        const adjust = r.kind === 'tablet' || insulin;
+        const adjust = (r.kind === 'tablet' || insulin) && !r.userNoAdj;
         const pack = r.kind === 'tablet' ? prepackSize(r.name, r.use && r.use.name) : 0;
         // ยาเหลือที่บันทึกเป็นซอง → เม็ด
         const loTabs = pack && /ซอง/.test(r.loUnit || '') ? r.lo * pack : r.lo;
-        const tag = insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
+        const pendingMark = r.userNoAdj && Object.keys(noAdjPending).some(k => noAdjPending[k] && drugMatches(k, r.cname)) ? ' — ยังไม่บันทึก' : '';
+        const tag = r.userNoAdj ? `<span class="tag info">🚫 ไม่ต้องปรับตามนัด${pendingMark}</span>`
+          : insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
           : r.kind === 'inhaler' ? '<span class="tag info">💨 ยาพ่น — ไม่ปรับจำนวน</span>'
           : r.kind === 'symptom' ? '<span class="tag info">💊 ยาบรรเทาอาการ — ไม่ปรับจำนวน</span>'
           : r.kind === 'antibiotic' ? '<span class="tag info">🦠 ยาฆ่าเชื้อ — ไม่ปรับจำนวน</span>'
@@ -3069,13 +3123,15 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}"` : ''}${adjust ? '' : ' class="noadj"'}>
-          <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}</td>
+        <tr${r.userNoAdj ? ' class="noadj"' : ''} data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}"` : ''}${adjust ? '' : ' class="noadj"'}>
+          <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
+    ${Object.keys(noAdjPending).length ? `<div class="savebar">มีการเปลี่ยนแปลงที่ยังไม่บันทึก ${Object.keys(noAdjPending).length} รายการ
+      <button type="button" class="save" data-na-save="1">💾 บันทึก</button><button type="button" data-na-cancel="1">ยกเลิก</button></div>` : ''}
     <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = ((${days} + ${FLOAT_EXTRA_DAYS}) วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น (เผื่อเพิ่ม ${FLOAT_EXTRA_DAYS} วัน) · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ) · อินซูลิน: ใช้ = ยูนิต/วัน คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต)</div>`;
   out.querySelectorAll('tr[data-key]').forEach(tr => {
     const inp = tr.querySelector('.pd');
@@ -3728,19 +3784,21 @@ function saveLocal() {
   localStorage.setItem('clinic_sessions', JSON.stringify(sessionRecords));
   localStorage.setItem('clinic_price_overrides', JSON.stringify(priceOverrides));
   localStorage.setItem('clinic_patients', JSON.stringify(patientRoster));
+  localStorage.setItem('clinic_no_adjust', JSON.stringify(noAdjustDrugs));
 }
 function loadLocal() {
   visitRecords = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
   sessionRecords = JSON.parse(localStorage.getItem('clinic_sessions')||'[]');
   priceOverrides = JSON.parse(localStorage.getItem('clinic_price_overrides')||'{}');
   patientRoster = JSON.parse(localStorage.getItem('clinic_patients')||'{}');
+  try { noAdjustDrugs = JSON.parse(localStorage.getItem('clinic_no_adjust')||'[]'); } catch (e) { noAdjustDrugs = []; }
   invalidatePatientIndex();
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────
 function exportJSON() {
   const d = new Date(); const ts = d.toISOString().slice(0,10);
-  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords,priceOverrides};
+  const data = {version:1,exported:d.toISOString(),visitRecords,sessionRecords,priceOverrides,noAdjustDrugs};
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   const a = Object.assign(document.createElement('a'),{href:url,download:'clinic_backup_'+ts+'.json'});
   a.click(); URL.revokeObjectURL(url);
@@ -3759,6 +3817,7 @@ function importJSON(e) {
       }
       if (data.sessionRecords) sessionRecords = data.sessionRecords;
       if (data.priceOverrides) priceOverrides = data.priceOverrides;
+      if (Array.isArray(data.noAdjustDrugs)) noAdjustDrugs = data.noAdjustDrugs;
       saveLocal(); fbSaveMeta(); renderAll();
       showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
     } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
@@ -3792,6 +3851,7 @@ function initFirebase() {
       if (meta.sessionRecords) sessionRecords = meta.sessionRecords;
       if (meta.priceOverrides) priceOverrides = meta.priceOverrides;
       if (meta.patientRoster) patientRoster = meta.patientRoster;
+      if (Array.isArray(meta.noAdjustDrugs)) noAdjustDrugs = meta.noAdjustDrugs;
       invalidatePatientIndex();
       saveLocal(); renderAll();
       lastSyncTime = nowTH();
@@ -3827,7 +3887,7 @@ function queueVisit(rec, id) {
 function fbSaveMeta() {
   if (!db) return;
   db.collection('pharmacy_tph').doc('clinic_data')
-    .set({sessionRecords,priceOverrides,patientRoster,updated:Date.now()}, {merge:true})
+    .set({sessionRecords,priceOverrides,patientRoster,noAdjustDrugs,updated:Date.now()}, {merge:true})
     .catch(e=>console.warn('FB save:',e));
 }
 
