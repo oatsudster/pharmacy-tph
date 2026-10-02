@@ -431,6 +431,7 @@ const DashUX = {
     <button class="nav-tab" onclick="showPage('dashboard')">📊 สรุปภาพรวม</button>
     <button class="nav-tab" onclick="showPage('patients')">👥 คนไข้</button>
     <button class="nav-tab" onclick="showPage('summary')">📋 สรุปผล</button>
+    <button class="nav-tab" onclick="showPage('research')">🎓 รายงานวิชาการ</button>
     <button class="nav-tab" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
   </div>
 </div>
@@ -678,6 +679,18 @@ const DashUX = {
   <!-- =========== PAGE: SUMMARY =========== -->
   <div id="page-summary" class="page">
     <h2 class="dash-section">สรุปผลลัพธ์และค่ายา</h2><div class="dash-context">ข้อมูลสะสมทุกช่วงเวลา · เปรียบเทียบค่ายาตั้งต้นกับการติดตามล่าสุดของแต่ละคน</div><div id="sum-content"></div>
+  </div>
+
+  <!-- =========== PAGE: RESEARCH =========== -->
+  <div id="page-research" class="page">
+    <h2 class="dash-section">รายงานงานวิชาการ</h2><div class="dash-context">เปรียบเทียบก่อน–หลังเข้าโครงการ พร้อมสถิติและข้อความสรุป · ส่งออก Excel/PDF แบบไม่ระบุตัวตนได้</div>
+    <div class="card"><div class="card-body" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field"><label>ปีงบประมาณ</label><select id="res-fy" onchange="resFyChanged()"><option value="">ทั้งหมด</option></select></div>
+      <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="res-from" onchange="document.getElementById('res-fy').value='';renderResearch()"></div>
+      <div class="field"><label>ถึงวันที่</label><input type="date" id="res-to" onchange="document.getElementById('res-fy').value='';renderResearch()"></div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding-bottom:8px;"><input type="checkbox" id="res-deid" checked> ไม่ระบุตัวตน (ส่งออกโดยไม่มีชื่อ/HN/วันที่จริง)</label>
+    </div></div>
+    <div id="res-content"></div>
   </div>
 
   <!-- =========== PAGE: PATIENTS =========== -->
@@ -2627,6 +2640,7 @@ function showPage(name, tabEl) {
   if (name === 'history' && currentHistPatient) renderHistory(currentHistPatient);
   if (name === 'patients') renderPatientsPage();
   if (name === 'summary') renderSummary();
+  if (name === 'research') renderResearch();
   if (name === 'entry') {
     // Highlight correct nav tab
     document.querySelectorAll('.nav-tab').forEach(t => {
@@ -3419,6 +3433,283 @@ function updateBaseline(pid, val) {
   bl[pid] = parseFloat(val) || 0;
   saveBaseline(bl);
   renderSummary();
+}
+</script>
+<script>
+// ===== รายงานงานวิชาการ (ก่อน–หลังเข้าโครงการ, paired t-test, ส่งออกแบบไม่ระบุตัวตน) =====
+let _resChart = null, _resData = null;
+
+const RES_NUM = x => { const f = parseFloat(x); return isNaN(f) ? null : f; };
+const RES_BP = v => { const m = String(v.bp || '').match(/(\d{2,3})\s*[\/\\]\s*(\d{2,3})/); return m ? { sys: +m[1], dia: +m[2] } : null; };
+const RES_DMN = v => (v.drugs || []).filter(d => isDiabetesDrug(d.name)).length;
+// ตัวชี้วัดที่เทียบ "ครั้งแรก vs ครั้งล่าสุด" ในช่วงที่เลือก (เฉพาะที่มีค่าทั้งสองครั้ง)
+const RES_METRICS = [
+  { key: 'weight', label: 'น้ำหนัก (กก.)', dec: 1, get: v => RES_NUM(v.weight) },
+  { key: 'bmi', label: 'BMI (กก./ม.²)', dec: 1, get: v => RES_NUM(v.bmi) },
+  { key: 'sbp', label: 'ความดันซิสโตลิก (mmHg)', dec: 0, get: v => (RES_BP(v) || {}).sys ?? null },
+  { key: 'dbp', label: 'ความดันไดแอสโตลิก (mmHg)', dec: 0, get: v => (RES_BP(v) || {}).dia ?? null },
+  { key: 'fbs', label: 'FBS (mg/dL)', dec: 0, get: v => RES_NUM(v.fbs) },
+  { key: 'hba1c', label: 'HbA1c (%)', dec: 2, get: v => RES_NUM(v.hba1c) },
+  { key: 'ldl', label: 'LDL (mg/dL)', dec: 0, get: v => RES_NUM(v.ldl) },
+  { key: 'tc', label: 'Total cholesterol (mg/dL)', dec: 0, get: v => RES_NUM(v.tc) },
+  { key: 'tg', label: 'Triglyceride (mg/dL)', dec: 0, get: v => RES_NUM(v.tg) },
+  { key: 'cr', label: 'Creatinine (mg/dL)', dec: 2, get: v => RES_NUM(v.cr) },
+  { key: 'egfr', label: 'eGFR (mL/min/1.73m²)', dec: 0, get: v => RES_NUM(v.egfr) },
+  { key: 'urineAlb', label: 'Urine albumin', dec: 1, get: v => RES_NUM(v.urineAlb) },
+  { key: 'dmDrugs', label: 'จำนวนยาลดน้ำตาล (ตัว)', dec: 2, get: v => RES_DMN(v) },
+  { key: 'allDrugs', label: 'จำนวนยาทั้งหมด (ตัว)', dec: 1, get: v => (v.drugs || []).length },
+  { key: 'cost', label: 'ค่ายาต่อครั้ง (บาท)', dec: 0, get: v => RES_NUM(v.grandTotal) },
+];
+
+function resMean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
+function resSD(a) { if (a.length < 2) return null; const m = resMean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); }
+function resMedian(a) { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; }
+function resLogGamma(z) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = z, tmp = z + 5.5; tmp -= (z + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015; for (let j = 0; j < 6; j++) ser += c[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / z);
+}
+function resBetaCF(a, b, x) {
+  const FP = 1e-30; const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap; if (Math.abs(d) < FP) d = FP; d = 1 / d; let h = d;
+  for (let m = 1; m <= 200; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < 3e-12) break;
+  }
+  return h;
+}
+function resIncBeta(x, a, b) {
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(resLogGamma(a + b) - resLogGamma(a) - resLogGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * resBetaCF(a, b, x) / a : 1 - bt * resBetaCF(b, a, 1 - x) / b;
+}
+// paired t-test สองข้าง (ต้องมีอย่างน้อย 3 คู่)
+function resPairedP(diffs) {
+  const n = diffs.length; if (n < 3) return null;
+  const sd = resSD(diffs), md = resMean(diffs);
+  if (!sd) return md === 0 ? 1 : 0;
+  const t = md / (sd / Math.sqrt(n)), df = n - 1;
+  return resIncBeta(df / (df + t * t), df / 2, 0.5);
+}
+const resFmt = (x, d) => x == null || isNaN(x) ? '-' : Number(x).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const resFmtP = p => p == null ? '-' : p < 0.001 ? '<0.001' : p.toFixed(3);
+const resDays = (a, b) => (new Date(b) - new Date(a)) / 86400000;
+
+function resCompute() {
+  const from = document.getElementById('res-from').value || '';
+  const to = document.getElementById('res-to').value || '';
+  const all = getVisits().filter(v => v.date);
+  const inPeriod = v => (!from || v.date >= from) && (!to || v.date <= to);
+  const pts = [];
+  PATIENTS.forEach((p, i) => {
+    const mine = all.filter(v => v.patientId === p.id).sort((a, b) => a.date.localeCompare(b.date));
+    const pvs = mine.filter(inPeriod);
+    if (!pvs.length) return;
+    const upTo = mine.filter(v => !to || v.date <= to);   // สถานะ remission นับสะสมจนถึงปลายช่วง
+    const rem = computeRemissionStatus(upTo), rel = computeRelapseStatus(upTo);
+    pts.push({ p, code: 'P' + String(i + 1).padStart(2, '0'), pvs, first: pvs[0], last: pvs[pvs.length - 1], rem, rel,
+      followMonths: pvs.length > 1 ? resDays(pvs[0].date, pvs[pvs.length - 1].date) / 30.44 : 0,
+      firstEver: mine[0] });
+  });
+  const multi = pts.filter(t => t.pvs.length >= 2);
+
+  const metrics = RES_METRICS.map(m => {
+    const pairs = [];
+    multi.forEach(t => {
+      const vals = t.pvs.map(v => m.get(v)).filter(x => x != null);
+      // ต้องมีค่าอย่างน้อย 2 ครั้ง (ครั้งแรกที่มีค่า vs ครั้งล่าสุดที่มีค่า)
+      const idx = t.pvs.map((v, k) => m.get(v) != null ? k : -1).filter(k => k >= 0);
+      if (idx.length >= 2) pairs.push({ b: m.get(t.pvs[idx[0]]), a: m.get(t.pvs[idx[idx.length - 1]]) });
+    });
+    const bs = pairs.map(x => x.b), as = pairs.map(x => x.a), ds = pairs.map(x => x.a - x.b);
+    return { ...m, n: pairs.length, bMean: pairs.length ? resMean(bs) : null, bSD: resSD(bs), aMean: pairs.length ? resMean(as) : null, aSD: resSD(as),
+      dMean: pairs.length ? resMean(ds) : null, p: resPairedP(ds) };
+  });
+
+  const hadDm = multi.filter(t => RES_DMN(t.first) > 0);
+  const stoppedAll = hadDm.filter(t => RES_DMN(t.last) === 0);
+  const inRem = pts.filter(t => t.rem.inRemission);
+  const relapsed = pts.filter(t => t.rel.relapsed);
+  const toRemDays = inRem.map(t => resDays(t.firstEver.date, t.rem.sinceDate)).filter(x => x >= 0);
+  const out = {
+    n: pts.length, nMulti: multi.length,
+    followMean: multi.length ? resMean(multi.map(t => t.followMonths)) : null,
+    inRem: inRem.length, relapsed: relapsed.length, hadDm: hadDm.length, stoppedAll: stoppedAll.length,
+    toRemMedianMonths: toRemDays.length ? resMedian(toRemDays) / 30.44 : null,
+  };
+  const mt = k => metrics.find(m => m.key === k);
+  const periodTxt = (from || to) ? `${from ? isoToThaiDate(from) : 'เริ่มต้น'} – ${to ? isoToThaiDate(to) : 'ปัจจุบัน'}` : 'ทุกช่วงเวลาที่มีข้อมูล';
+  const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '-';
+  const part = (k, unit, sign) => { const m = mt(k); return m && m.n ? `${m.label.replace(/ \(.*\)/, '')} เฉลี่ยเปลี่ยนจาก ${resFmt(m.bMean, m.dec)} เป็น ${resFmt(m.aMean, m.dec)}${unit} (ผลต่าง ${resFmt(m.dMean, m.dec)}, n=${m.n}${m.p != null ? ', p=' + resFmtP(m.p) : ''})` : null; };
+  const sentences = [
+    `ช่วง ${periodTxt} มีผู้ป่วยเข้าร่วมโครงการ ${out.n} ราย (ติดตามตั้งแต่ 2 ครั้งขึ้นไป ${out.nMulti} ราย${out.followMean != null ? ' ระยะเวลาติดตามเฉลี่ย ' + out.followMean.toFixed(1) + ' เดือน' : ''})`,
+    [part('hba1c', '%'), part('weight', ' กก.'), part('bmi', ''), part('dmDrugs', ' ตัว'), part('cost', ' บาท')].filter(Boolean).join('; ') || null,
+    out.hadDm ? `ผู้ป่วยที่เริ่มต้นใช้ยาลดน้ำตาล ${out.hadDm} ราย หยุดยาลดน้ำตาลได้ครบ ${out.stoppedAll} ราย (${pct(out.stoppedAll, out.hadDm)})` : null,
+    `เข้าเกณฑ์ remission (HbA1c ≤ 6.5% โดยไม่ใช้ยาลดน้ำตาล อย่างน้อย 3 ครั้งติดต่อกันหรือนาน ≥ 90 วัน) ${out.inRem} ราย (${pct(out.inRem, out.n)})${out.toRemMedianMonths != null ? ' ใช้เวลามัธยฐาน ' + out.toRemMedianMonths.toFixed(1) + ' เดือน' : ''} และกลับเป็นซ้ำ ${out.relapsed} ราย`,
+  ].filter(Boolean);
+  return { from, to, periodTxt, pts, multi, metrics, out, narrative: sentences.join(' · ').replace(/ · /g, '. ') + '.' };
+}
+
+function resRemLabel(t) { return t.rem.inRemission ? 'เข้าเกณฑ์ remission' : t.rel.relapsed ? 'เคยเข้าเกณฑ์ แล้วกลับเป็นซ้ำ' : 'ยังไม่เข้าเกณฑ์'; }
+
+function renderResearch() {
+  const el = document.getElementById('res-content');
+  if (!el) return;
+  // ตัวเลือกปีงบจากข้อมูลที่มี
+  const sel = document.getElementById('res-fy');
+  if (!sel.dataset.ready || sel.dataset.n !== String(getVisits().length)) {
+    const fys = [...new Set(getVisits().filter(v => v.date).map(v => { const y = +v.date.slice(0, 4), m = +v.date.slice(5, 7); return (m >= 10 ? y + 1 : y) + 543; }))].sort();
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">ทั้งหมด</option>' + fys.map(y => `<option value="${y}">ปีงบ ${y}</option>`).join('');
+    sel.value = cur; sel.dataset.ready = '1'; sel.dataset.n = String(getVisits().length);
+  }
+  const d = _resData = resCompute();
+  const o = d.out;
+  const remPct = o.n ? (o.inRem / o.n * 100).toFixed(1) + '%' : '-';
+  const stopPct = o.hadDm ? (o.stoppedAll / o.hadDm * 100).toFixed(1) + '%' : '-';
+  if (!o.n) { el.innerHTML = '<div class="card"><div class="card-body" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลการติดตามในช่วงที่เลือก</div></div>'; return; }
+  el.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-val">${o.n}</div><div class="kpi-label">ผู้ป่วยในช่วงนี้ (ติดตาม ≥2 ครั้ง ${o.nMulti})</div></div>
+      <div class="kpi-card"><div class="kpi-val">${o.followMean != null ? o.followMean.toFixed(1) : '-'}</div><div class="kpi-label">ระยะติดตามเฉลี่ย (เดือน)</div></div>
+      <div class="kpi-card ${o.inRem ? 'kpi-green' : ''}"><div class="kpi-val">${o.inRem}/${o.n}</div><div class="kpi-label">เข้าเกณฑ์ remission (${remPct})</div></div>
+      <div class="kpi-card ${o.stoppedAll ? 'kpi-green' : ''}"><div class="kpi-val">${o.stoppedAll}/${o.hadDm}</div><div class="kpi-label">หยุดยาลดน้ำตาลครบ (${stopPct})</div></div>
+    </div>
+    <div class="card"><div class="card-header" style="justify-content:space-between;"><span>📝 ข้อความสรุปผล (คัดลอกไปใช้ในรายงาน/บทคัดย่อ)</span>
+      <button class="btn btn-outline btn-sm" onclick="resCopyNarrative()">📋 คัดลอก</button></div>
+      <div class="card-body"><p id="res-narr" style="line-height:1.8;font-size:14px;">${escHtml(d.narrative)}</p></div></div>
+    <div class="card"><div class="card-header" style="justify-content:space-between;flex-wrap:wrap;"><span>📊 ก่อน–หลังเข้าโครงการ (ครั้งแรก vs ครั้งล่าสุดในช่วงที่เลือก)</span>
+      <span><button class="btn btn-outline btn-sm" onclick="resExportExcel()">📥 Excel</button> <button class="btn btn-outline btn-sm" onclick="resExportPDF()">🖨️ PDF</button></span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="drug-tbl" style="width:100%;"><thead><tr><th>ตัวชี้วัด</th><th style="text-align:center;">n (คู่)</th><th style="text-align:right;">ก่อน (ค่าเฉลี่ย ± SD)</th><th style="text-align:right;">หลัง (ค่าเฉลี่ย ± SD)</th><th style="text-align:right;">ผลต่างเฉลี่ย</th><th style="text-align:center;">p (paired t)</th></tr></thead><tbody>
+        ${d.metrics.filter(m => m.n).map(m => `<tr><td>${escHtml(m.label)}</td><td style="text-align:center;">${m.n}</td>
+          <td style="text-align:right;">${resFmt(m.bMean, m.dec)} ± ${resFmt(m.bSD, m.dec)}</td><td style="text-align:right;">${resFmt(m.aMean, m.dec)} ± ${resFmt(m.aSD, m.dec)}</td>
+          <td style="text-align:right;font-weight:700;">${m.dMean > 0 ? '+' : ''}${resFmt(m.dMean, m.dec)}</td><td style="text-align:center;${m.p != null && m.p < 0.05 ? 'font-weight:800;color:var(--green);' : ''}">${resFmtP(m.p)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">ยังไม่มีผู้ป่วยที่มีค่าตรวจอย่างน้อย 2 ครั้ง</td></tr>'}
+        </tbody></table>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">p จาก paired t-test สองข้าง ใช้เมื่อมี ≥3 คู่ — จำนวนผู้ป่วยน้อยควรตีความด้วยความระมัดระวัง และไม่ได้ปรับตัวแปรกวน</p>
+      </div></div>
+    <div class="card"><div class="card-header">📈 เส้นทาง HbA1c รายผู้ป่วย (เส้นหนา = ค่าเฉลี่ยทุก 3 เดือน, เส้นประ = 6.5%)</div>
+      <div class="card-body"><div style="position:relative;height:300px;"><canvas id="res-chart"></canvas></div></div></div>
+    <div class="card"><div class="card-header">👥 รายผู้ป่วย (รหัสแทนชื่อ — ตารางส่งออกไม่ใส่ชื่อ/HN เมื่อติ๊ก "ไม่ระบุตัวตน")</div>
+      <div class="card-body" style="overflow-x:auto;"><table class="drug-tbl" style="width:100%;"><thead><tr><th>รหัส</th><th style="text-align:center;">ครั้ง</th><th style="text-align:right;">ติดตาม (เดือน)</th><th style="text-align:right;">HbA1c แรก→ล่าสุด</th><th style="text-align:right;">น้ำหนัก แรก→ล่าสุด</th><th style="text-align:center;">ยาลดน้ำตาล</th><th>Remission</th></tr></thead><tbody>
+      ${d.pts.map(t => `<tr><td>${t.code}</td><td style="text-align:center;">${t.pvs.length}</td><td style="text-align:right;">${t.pvs.length > 1 ? t.followMonths.toFixed(1) : '-'}</td>
+        <td style="text-align:right;">${resFmt(RES_NUM(t.first.hba1c), 1)} → ${resFmt(RES_NUM(t.last.hba1c), 1)}</td><td style="text-align:right;">${resFmt(RES_NUM(t.first.weight), 1)} → ${resFmt(RES_NUM(t.last.weight), 1)}</td>
+        <td style="text-align:center;">${RES_DMN(t.first)} → ${RES_DMN(t.last)}</td><td>${resRemLabel(t)}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  resDrawChart(d);
+}
+
+function resDrawChart(d) {
+  const cv = document.getElementById('res-chart');
+  if (!cv || typeof Chart === 'undefined') return;
+  if (_resChart) { _resChart.destroy(); _resChart = null; }
+  const sets = [], bins = {};
+  d.pts.forEach(t => {
+    const data = t.pvs.map(v => ({ x: +(resDays(t.pvs[0].date, v.date) / 30.44).toFixed(2), y: RES_NUM(v.hba1c) })).filter(p => p.y != null);
+    if (!data.length) return;
+    data.forEach(p => { const b = Math.round(p.x / 3) * 3; (bins[b] = bins[b] || []).push(p.y); });
+    sets.push({ label: t.code, data, showLine: true, borderColor: 'rgba(122,154,133,.45)', backgroundColor: 'rgba(122,154,133,.45)', borderWidth: 1.5, pointRadius: 2.5, tension: 0 });
+  });
+  const mean = Object.keys(bins).map(Number).sort((a, b) => a - b).map(b => ({ x: b, y: +resMean(bins[b]).toFixed(2) }));
+  const maxX = Math.max(3, ...sets.flatMap(s => s.data.map(p => p.x)));
+  sets.push({ label: 'ค่าเฉลี่ย', data: mean, showLine: true, borderColor: '#1A5E38', backgroundColor: '#1A5E38', borderWidth: 3.5, pointRadius: 4, tension: 0 });
+  sets.push({ label: 'HbA1c 6.5%', data: [{ x: 0, y: 6.5 }, { x: maxX, y: 6.5 }], showLine: true, borderColor: '#dc2626', borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0 });
+  _resChart = new Chart(cv, { type: 'scatter', data: { datasets: sets }, options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { title: { display: true, text: 'เดือนนับจากการตรวจครั้งแรก' }, min: 0 }, y: { title: { display: true, text: 'HbA1c (%)' } } } } });
+}
+
+function resFyChanged() {
+  const fy = +document.getElementById('res-fy').value;
+  document.getElementById('res-from').value = fy ? (fy - 544) + '-10-01' : '';
+  document.getElementById('res-to').value = fy ? (fy - 543) + '-09-30' : '';
+  renderResearch();
+}
+function resCopyNarrative() {
+  if (!_resData) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(_resData.narrative) : Promise.reject()).then(() => showToast('✅ คัดลอกข้อความแล้ว'), () => showToast('⚠️ คัดลอกไม่ได้ — ลากคลุมข้อความแล้วกด Ctrl+C'));
+}
+
+// ── ส่งออก ──────────────────────────────────────────────
+function resTable1Rows(d) {
+  return d.metrics.filter(m => m.n).map(m => ({ 'ตัวชี้วัด': m.label, 'n (คู่)': m.n,
+    'ก่อน ค่าเฉลี่ย': +resFmt(m.bMean, m.dec).replace(/,/g, ''), 'ก่อน SD': m.bSD == null ? '' : +resFmt(m.bSD, m.dec).replace(/,/g, ''),
+    'หลัง ค่าเฉลี่ย': +resFmt(m.aMean, m.dec).replace(/,/g, ''), 'หลัง SD': m.aSD == null ? '' : +resFmt(m.aSD, m.dec).replace(/,/g, ''),
+    'ผลต่างเฉลี่ย': +resFmt(m.dMean, m.dec).replace(/,/g, ''), 'p (paired t)': resFmtP(m.p) }));
+}
+function resOutcomeRows(d) {
+  const o = d.out, pc = (a, b) => b ? +(a / b * 100).toFixed(1) : '';
+  return [
+    ['ช่วงเวลา', d.periodTxt], ['จำนวนผู้ป่วยในช่วง', o.n], ['ติดตามตั้งแต่ 2 ครั้งขึ้นไป', o.nMulti],
+    ['ระยะติดตามเฉลี่ย (เดือน)', o.followMean == null ? '' : +o.followMean.toFixed(1)],
+    ['เข้าเกณฑ์ remission (ราย)', o.inRem], ['เข้าเกณฑ์ remission (%)', pc(o.inRem, o.n)],
+    ['กลับเป็นซ้ำ (ราย)', o.relapsed],
+    ['มัธยฐานเวลาถึง remission (เดือน)', o.toRemMedianMonths == null ? '' : +o.toRemMedianMonths.toFixed(1)],
+    ['เริ่มต้นใช้ยาลดน้ำตาล (ราย)', o.hadDm], ['หยุดยาลดน้ำตาลครบ (ราย)', o.stoppedAll], ['หยุดยาลดน้ำตาลครบ (%)', pc(o.stoppedAll, o.hadDm)],
+  ];
+}
+function resPatientRows(d, deid) {
+  return d.pts.map(t => {
+    const r = { 'รหัส': t.code };
+    if (!deid) { r['ชื่อ'] = t.p.name; r['HN'] = t.p.hn || ''; }
+    Object.assign(r, { 'จำนวนครั้ง': t.pvs.length, 'ติดตาม (เดือน)': t.pvs.length > 1 ? +t.followMonths.toFixed(1) : '',
+      'HbA1c แรก': RES_NUM(t.first.hba1c) ?? '', 'HbA1c ล่าสุด': RES_NUM(t.last.hba1c) ?? '',
+      'น้ำหนักแรก': RES_NUM(t.first.weight) ?? '', 'น้ำหนักล่าสุด': RES_NUM(t.last.weight) ?? '',
+      'BMI แรก': RES_NUM(t.first.bmi) ?? '', 'BMI ล่าสุด': RES_NUM(t.last.bmi) ?? '',
+      'ยาลดน้ำตาลแรก (ตัว)': RES_DMN(t.first), 'ยาลดน้ำตาลล่าสุด (ตัว)': RES_DMN(t.last),
+      'ค่ายาแรก (บาท)': RES_NUM(t.first.grandTotal) ?? '', 'ค่ายาล่าสุด (บาท)': RES_NUM(t.last.grandTotal) ?? '',
+      'สถานะ remission': resRemLabel(t) });
+    return r;
+  });
+}
+function resVisitRows(d, deid) {
+  const rows = [];
+  d.pts.forEach(t => t.pvs.forEach((v, i) => {
+    const bp = RES_BP(v) || {};
+    const r = { 'รหัส': t.code, 'ครั้งที่': i + 1 };
+    if (deid) r['วันที่นับจากครั้งแรก'] = Math.round(resDays(t.pvs[0].date, v.date));
+    else { r['วันที่'] = v.date; r['ชื่อ'] = t.p.name; r['HN'] = t.p.hn || ''; }
+    RES_METRICS.filter(m => m.key !== 'sbp' && m.key !== 'dbp').forEach(m => { r[m.label] = m.get(v) ?? ''; });
+    r['SBP'] = bp.sys ?? ''; r['DBP'] = bp.dia ?? '';
+    r['ยาลดน้ำตาล'] = (v.drugs || []).filter(x => isDiabetesDrug(x.name)).map(x => x.name).join(', ');
+    rows.push(r);
+  }));
+  return rows;
+}
+
+function resExportExcel() {
+  if (!_resData || !_resData.out.n) { showToast('ไม่มีข้อมูลให้ส่งออก'); return; }
+  if (typeof expExcel !== 'function' || typeof XLSX === 'undefined') { showToast('⚠️ ไม่พบโมดูล export Excel'); return; }
+  const d = _resData, deid = document.getElementById('res-deid').checked;
+  expExcel([
+    { name: 'ก่อน-หลัง', data: resTable1Rows(d) },
+    { name: 'ผลลัพธ์โครงการ', data: resOutcomeRows(d).map(([k, v]) => ({ 'รายการ': k, 'ค่า': v })).concat([{ 'รายการ': 'ข้อความสรุป', 'ค่า': d.narrative }]) },
+    { name: 'รายผู้ป่วย', data: resPatientRows(d, deid) },
+    { name: 'รายครั้ง', data: resVisitRows(d, deid) },
+  ], 'DM_Remission_รายงานวิชาการ_' + new Date().toISOString().slice(0, 10) + (deid ? '_deid' : ''));
+}
+function resExportPDF() {
+  if (!_resData || !_resData.out.n) { showToast('ไม่มีข้อมูลให้ส่งออก'); return; }
+  if (typeof expPDF !== 'function') { showToast('⚠️ ไม่พบโมดูล export PDF'); return; }
+  const d = _resData, deid = document.getElementById('res-deid').checked;
+  const t1 = resTable1Rows(d), pr = resPatientRows(d, deid);
+  expPDF({
+    title: 'รายงานผลลัพธ์ DM Remission Clinic',
+    subtitle: `รพ.ถ้ำพรรณรา · ช่วง ${d.periodTxt} · เกณฑ์ remission: HbA1c ≤ 6.5% และไม่ใช้ยาลดน้ำตาล`,
+    landscape: true,
+    sections: [
+      { title: 'สรุปผล', headers: ['ข้อความ'], rows: [[d.narrative]] },
+      { title: 'ก่อน–หลังเข้าโครงการ (paired)', headers: ['ตัวชี้วัด', 'n', 'ก่อน (เฉลี่ย ± SD)', 'หลัง (เฉลี่ย ± SD)', 'ผลต่างเฉลี่ย', 'p'],
+        rows: d.metrics.filter(m => m.n).map(m => [m.label, m.n, `${resFmt(m.bMean, m.dec)} ± ${resFmt(m.bSD, m.dec)}`, `${resFmt(m.aMean, m.dec)} ± ${resFmt(m.aSD, m.dec)}`, resFmt(m.dMean, m.dec), resFmtP(m.p)]) },
+      { title: 'ผลลัพธ์โครงการ', headers: ['รายการ', 'ค่า'], rows: resOutcomeRows(d) },
+      { title: 'รายผู้ป่วย', headers: Object.keys(pr[0] || {}), rows: pr.map(r => Object.values(r)) },
+    ],
+  });
 }
 </script>
 <script src="lib/xlsx.full.min.js"></script>
