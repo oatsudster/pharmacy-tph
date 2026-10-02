@@ -80,3 +80,10 @@ POST { mode: "ask", question: "สรุปภาพรวม...", data: {...ต
 ถ้าตั้งค่า secret ผ่าน PowerShell ด้วย `'ค่า' | wrangler secret put ...` ค่าที่ได้อาจมี
 BOM (U+FEFF) แอบติดหน้าข้อความ ทำให้ token ใช้งานไม่ได้แบบเงียบๆ วิธีที่ปลอดภัยกว่าคือใช้ Bash/Git Bash:
 `printf '%s' 'ค่า' | wrangler secret put ...`
+
+## โหมด chat (ผู้ช่วย AI ทุกหน้า)
+
+Worker นี้รับ `POST { mode: 'chat', model: 'fast'|'smart', system, messages, tools }` จากวิดเจ็ต `lib/ai-assistant.js`
+(ปุ่ม 🤖 มุมขวาล่าง) — รูปแบบข้อความเป็นแบบ Anthropic (tool_use/tool_result) แล้วแปลงเป็น OpenAI format เรียก Groq
+`fast` = `openai/gpt-oss-20b`, `smart` = `openai/gpt-oss-120b` · จำกัด 400 ครั้ง/วัน (`CHAT_DAILY_LIMIT`, ตัวนับแยกจากโหมดอื่น)
+ไม่ต้องตั้ง secret เพิ่ม ใช้ `GROQ_API_KEY` / `APP_TOKEN` เดิม

@@ -7,6 +7,10 @@
 //
 // หรือ POST { mode: 'ask', question: string, data: object, context: string } — ถามคำถามอิสระเกี่ยวกับข้อมูลสรุป (ไม่มี PII)
 // ตอบ         { answer: string }
+//
+// หรือ POST { mode: 'chat', model: 'fast'|'smart', system, messages, tools } — ผู้ช่วย AI (lib/ai-assistant.js)
+// รับ/ตอบรูปแบบ Anthropic Messages (tool_use / tool_result) แล้วแปลงเป็น OpenAI format เรียก Groq
+// ตอบ         { content: [...], stop_reason: 'tool_use' | 'end_turn' }
 
 const MAX_ITEMS = 60;
 const MAX_QUESTION_LEN = 300;
@@ -37,6 +41,7 @@ export default {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400); }
 
+    if (body.mode === 'chat') return handleChat(env, body);
     if (body.mode === 'ask') return handleAsk(env, body);
 
     const items = Array.isArray(body.items) ? body.items.slice(0, MAX_ITEMS) : [];
@@ -158,4 +163,70 @@ async function classifyBatch(env, items, categories, context) {
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } });
+}
+
+// ── ผู้ช่วย AI (chat + tool use) ─────────────────────────────────
+const CHAT_MODELS = { fast: 'openai/gpt-oss-20b', smart: 'openai/gpt-oss-120b' };
+const CHAT_DAILY_LIMIT = 400;
+const CHAT_BASE_SYSTEM =
+  'คุณเป็นผู้ช่วยของกลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค โรงพยาบาลถ้ำพรรณรา ตอบเป็นภาษาไทย กระชับ ตรงประเด็น ' +
+  'ใช้เครื่องมือที่มีเพื่อค้นข้อมูลจริงเสมอ ห้ามเดาหรือสมมติตัวเลข ถ้าไม่มีข้อมูลให้บอกตรงๆ ' +
+  'ข้อมูลระบุตัวผู้ป่วย (ชื่อ/HN/AN) ถูกซ่อนจากคุณโดยตั้งใจ ไม่ต้องพยายามขอ';
+
+async function handleChat(env, body) {
+  const model = CHAT_MODELS[body.model] || CHAT_MODELS.smart;
+  const src = Array.isArray(body.messages) ? body.messages.slice(-40) : [];
+  if (!src.length) return json({ error: 'missing messages' }, 400);
+  const system = CHAT_BASE_SYSTEM + '\n\n' + (typeof body.system === 'string' ? body.system.slice(0, 6000) : '');
+
+  const messages = [{ role: 'system', content: system }];
+  for (const m of src) {
+    if (m.role === 'user') {
+      if (typeof m.content === 'string') { messages.push({ role: 'user', content: m.content.slice(0, 2000) }); continue; }
+      for (const b of m.content || []) {
+        if (b.type === 'tool_result') messages.push({ role: 'tool', tool_call_id: b.tool_use_id, content: String(b.content).slice(0, 9000) });
+      }
+    } else if (m.role === 'assistant') {
+      const blocks = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content) }];
+      const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const calls = blocks.filter(b => b.type === 'tool_use').map(b => ({
+        id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input || {}) },
+      }));
+      const msg = { role: 'assistant', content: text || null };
+      if (calls.length) msg.tool_calls = calls;
+      messages.push(msg);
+    }
+  }
+  const tools = (Array.isArray(body.tools) ? body.tools.slice(0, 20) : []).map(t => ({
+    type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema },
+  }));
+
+  const dayKey = 'chatquota_' + new Date().toISOString().slice(0, 10);
+  const used = Number((await env.RATE_LIMIT.get(dayKey)) || 0);
+  if (used >= CHAT_DAILY_LIMIT) return json({ error: 'ใช้ครบโควตารายวันแล้ว ลองใหม่พรุ่งนี้' }, 429);
+  await env.RATE_LIMIT.put(dayKey, String(used + 1), { expirationTtl: 172800 });
+
+  const payload = { model, messages, temperature: 0.2, max_tokens: 4096 };
+  if (tools.length) { payload.tools = tools; payload.tool_choice = 'auto'; }
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.GROQ_API_KEY}` },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('groq http ' + res.status + ': ' + (await res.text()).slice(0, 500));
+    const data = await res.json();
+    const msg = data.choices?.[0]?.message || {};
+    const content = [];
+    if (msg.content) content.push({ type: 'text', text: msg.content });
+    for (const c of msg.tool_calls || []) {
+      let input = {};
+      try { input = JSON.parse(c.function.arguments || '{}'); } catch { /* ใช้ {} */ }
+      content.push({ type: 'tool_use', id: c.id, name: c.function.name, input });
+    }
+    return json({ content, stop_reason: (msg.tool_calls || []).length ? 'tool_use' : 'end_turn' });
+  } catch (e) {
+    console.error('chat failed', e);
+    return json({ error: 'chat failed: ' + e.message }, 502);
+  }
 }
