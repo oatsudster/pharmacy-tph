@@ -614,7 +614,7 @@ const DashUX = {
             <tbody id="drug-tbody"></tbody>
             <tfoot>
               <tr class="total-row">
-                <td colspan="6" style="text-align:right; padding-right:14px; font-size:12px;">ค่ายารวมทั้งหมด</td>
+                <td colspan="6" style="text-align:right; padding-right:14px; font-size:12px;">ค่ายาเบาหวานรวม (นับเฉพาะยา DM)</td>
                 <td class="total-cell"><input type="text" id="grand-total" readonly style="font-weight:800; font-size:13px; color:var(--blue); text-align:right;"></td>
                 <td></td>
               </tr>
@@ -1608,7 +1608,7 @@ function addDrugRow() {
     <td>
       <div class="drug-search-wrap">
         <input class="drug-search-input" id="drug-name-${id}" placeholder="พิมพ์ค้นหายา..." autocomplete="off"
-          oninput="filterDrugs(${id})" onkeydown="handleDrugKey(event,${id})" onfocus="filterDrugs(${id})" onblur="closeDrugDD(${id})">
+          oninput="filterDrugs(${id});calcGrandTotal()" onkeydown="handleDrugKey(event,${id})" onfocus="filterDrugs(${id})" onblur="closeDrugDD(${id})">
         <div class="drug-dropdown" id="drug-dd-${id}"></div>
       </div>
     </td>
@@ -1694,7 +1694,9 @@ function calcRowTotal(id) {
 function calcGrandTotal() {
   let total = 0;
   document.querySelectorAll('[id^="drug-total-"]').forEach(el => {
-    total += parseFloat(el.value) || 0;
+    const id = el.id.replace('drug-total-', '');
+    const name = document.getElementById(`drug-name-${id}`)?.value || '';
+    if (isDiabetesDrug(name)) total += parseFloat(el.value) || 0;
   });
   document.getElementById('grand-total').value = total > 0 ? total.toFixed(2) : '';
 }
@@ -1912,7 +1914,7 @@ function renderHistory(p) {
       <thead><tr>
         <th>วันที่</th><th>น้ำหนัก</th><th>BMI</th><th>ความดัน</th>
         <th>FBS</th><th>HbA1c</th><th>eGFR</th>
-        <th>รายการยา</th><th>ค่ายา (บาท)</th><th>บันทึก</th>
+        <th>รายการยา</th><th>ค่ายา DM (บาท)</th><th>บันทึก</th>
         <th style="width:80px;">จัดการ</th>
       </tr></thead>
       <tbody>
@@ -1926,7 +1928,7 @@ function renderHistory(p) {
             <td ${flagHbA1cClass(v.hba1c)}>${escHtml(v.hba1c||'-')}${v.hba1c?'%':''}</td>
             <td ${flagNumClass(v.egfr,60,'low')}>${escHtml(v.egfr||'-')}</td>
             <td><div class="drug-pills">${(v.drugs||[]).map(d=>`<span class="drug-pill">${escHtml(d.name.substring(0,18))}</span>`).join('')}</div></td>
-            <td><strong>${v.grandTotal > 0 ? v.grandTotal.toFixed(2) : '-'}</strong></td>
+            <td><strong>${dmCost(v) > 0 ? dmCost(v).toFixed(2) : '-'}</strong></td>
             <td style="font-size:11px;">${escHtml(v.drugChange||v.note||'')}</td>
             <td>
               <div style="display:flex;gap:3px;">
@@ -1948,7 +1950,7 @@ function openEditVisit(globalIdx) {
   if (!v) return;
   pendingEditIdx = globalIdx;
   document.getElementById('visit-modal-info').innerHTML =
-    `<strong>${escHtml(v.patientName)}</strong> · ${formatDate(v.date)}<br>ยา ${(v.drugs||[]).length} รายการ · ค่ายา ${v.grandTotal||0} บาท`;
+    `<strong>${escHtml(v.patientName)}</strong> · ${formatDate(v.date)}<br>ยา ${(v.drugs||[]).length} รายการ · ค่ายา DM ${dmCost(v)} บาท`;
   document.getElementById('visit-modal').classList.add('open');
 }
 
@@ -2608,16 +2610,16 @@ function daysUntil(dateStr) {
 function exportCSV() {
   const visits = getVisits();
   if (!visits.length) { showToast('ไม่มีข้อมูลให้ export'); return; }
-  const header = ['ชื่อ','วันที่','น้ำหนัก','ส่วนสูง','BMI','ความดัน','FBS','HbA1c','LDL','Total Cholesterol','TG','Cr','eGFR','Urine Albumin','รายการยา','วิธีใช้','ค่ายา(บาท)','การเปลี่ยนแปลง','ปัญหา','หมายเหตุ'];
+  const header = ['ชื่อ','วันที่','น้ำหนัก','ส่วนสูง','BMI','ความดัน','FBS','HbA1c','LDL','Total Cholesterol','TG','Cr','eGFR','Urine Albumin','รายการยา','วิธีใช้','ค่ายา DM(บาท)','การเปลี่ยนแปลง','ปัญหา','หมายเหตุ'];
   const rows = [];
   visits.forEach(v => {
     const baseCols = [v.patientName,v.date,v.weight,v.height,v.bmi,v.bp,v.fbs,v.hba1c,v.ldl,v.tc,v.tg,v.cr,v.egfr,v.urineAlb];
     if (v.drugs && v.drugs.length) {
       v.drugs.forEach((d,i) => {
-        rows.push([...baseCols, d.name, d.dose, d.total, i===0?v.drugChange:'', i===0?v.drugProblem:'', i===0?v.note:'']);
+        rows.push([...baseCols, d.name, d.dose, isDiabetesDrug(d.name) ? d.total : '', i===0?v.drugChange:'', i===0?v.drugProblem:'', i===0?v.note:'']);
       });
     } else {
-      rows.push([...baseCols, '', '', v.grandTotal, v.drugChange, v.drugProblem, v.note]);
+      rows.push([...baseCols, '', '', 0, v.drugChange, v.drugProblem, v.note]);
     }
   });
   const csv = [header, ...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -3299,7 +3301,7 @@ function renderSummary() {
               <th style="text-align:right;">ค่ายาเบาหวานล่าสุด (บาท)</th>
               <th style="text-align:right;">ประหยัดได้ (บาท)</th>
               <th style="text-align:center;">% เปลี่ยน</th>
-              <th style="text-align:center;">ค่ายา</th>
+              <th style="text-align:center;">ค่ายา DM</th>
               <th style="text-align:center;">Remission</th>
             </tr>
           </thead>
@@ -3683,7 +3685,7 @@ AiAssistant.init({
       rows: () => getVisits().map(v => { const n = x => { const f = parseFloat(x); return isNaN(f) ? null : f; };
         return { date: v.date, patientId: v.patientId, patientName: v.patientName, weight: n(v.weight), bmi: n(v.bmi), bp: v.bp, dtx: n(v.dtx), fbs: n(v.fbs), hba1c: n(v.hba1c),
           ldl: n(v.ldl), tc: n(v.tc), tg: n(v.tg), cr: n(v.cr), egfr: n(v.egfr), urineAlb: n(v.urineAlb), drugs: (v.drugs || []).map(d => d.name).join(', '), drug_count: (v.drugs || []).length,
-          drugChange: v.drugChange, drugProblem: v.drugProblem, grandTotal: v.grandTotal, note: v.note }; }),
+          drugChange: v.drugChange, drugProblem: v.drugProblem, dmDrugCost: dmCost(v), note: v.note }; }),
       private: ['patientName', 'note'],
     },
     dm_patients: {
