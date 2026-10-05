@@ -3153,9 +3153,14 @@ function applyParsedData() {
     }
   }
 
-  if (d.drugs.length) {
-    document.getElementById('drug-tbody').innerHTML = '';
-    drugRowCounter = 0;
+  // ล้างรายการยาเสมอ แม้ visit นี้ไม่มียา ไม่งั้นยาจากครั้งก่อน/ค่าที่พิมพ์ค้างในฟอร์มจะติดมาด้วย
+  document.getElementById('drug-tbody').innerHTML = '';
+  drugRowCounter = 0;
+  if (!d.drugs.length) {
+    addDrugRow(); addDrugRow(); addDrugRow();
+    calcGrandTotal();
+    renderPolypharmacyWarnings();
+  } else {
     for (const dr of d.drugs) {
       addDrugRow();
       const id = drugRowCounter;
@@ -3176,6 +3181,7 @@ function applyParsedData() {
   const labFilled = Object.keys(labMap).filter(k => d[k] != null).length;
   if (labFilled) counts.push(`${labFilled} lab`);
   if (d.drugs.length) counts.push(`${d.drugs.length} รายการยา`);
+  else counts.push('ไม่มียาใน visit นี้');
   showToast(`✅ กรอกข้อมูลเรียบร้อย (${counts.join(', ')})`);
 }
 
