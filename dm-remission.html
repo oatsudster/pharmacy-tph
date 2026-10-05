@@ -2922,7 +2922,7 @@ function matchDrug(rawName) {
 function parseHosXPText(text) {
   const r = { visitDate:null, weight:null, height:null, bp:null, dtx:null,
                fbs:null, hba1c:null, ldl:null, tc:null, tg:null, cr:null, egfr:null, urineAlb:null,
-               drugs:[] };
+               drugs:[], isClinicVisit:false };
   let m;
 
   // ── Visit Date ──
@@ -2979,6 +2979,11 @@ function parseHosXPText(text) {
       r.visitDate = `${yyyy}-${mm}-${dd}`;
     }
   }
+
+  // หมอเขียน Chief complaint ว่า "มาตามนัด เข้าคลินิก DM remission" = visit นี้คือวันเข้าคลินิก DM remission
+  // ใช้กับคนไข้ทุกคนที่เจอโน้ตนี้ (ดูเฉพาะข้อความที่ระบุคลินิก ไม่ใช่ "NCDs remission" ในรายการโรคประจำตัว)
+  m = text.match(/Chief\s*complaint\s*:?([^\n]*)/i);
+  r.isClinicVisit = !!((m && /DM\s*remission/i.test(m[1])) || /เข้าคลินิก\s*DM\s*remission/i.test(text));
 
   // ── Vitals ──
   // BW = 82 Kgs.  /  น้ำหนัก 65
@@ -3182,7 +3187,9 @@ function applyParsedData() {
   if (labFilled) counts.push(`${labFilled} lab`);
   if (d.drugs.length) counts.push(`${d.drugs.length} รายการยา`);
   else counts.push('ไม่มียาใน visit นี้');
-  showToast(`✅ กรอกข้อมูลเรียบร้อย (${counts.join(', ')})`);
+  if (d.isClinicVisit) counts.push('วันเข้าคลินิก DM remission');
+  if (d.isClinicVisit) showToast(`✅ กรอกข้อมูลเรียบร้อย (${counts.join(', ')})`);
+  else showToast(`⚠️ กรอกแล้ว แต่ไม่พบโน้ตแพทย์ "เข้าคลินิก DM remission" — ตรวจว่าวันที่ ${d.visitDate ? isoToThaiDate(d.visitDate) : '-'} เป็นวันเข้าคลินิกจริงก่อนบันทึก`);
 }
 
 
