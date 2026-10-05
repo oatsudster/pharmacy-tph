@@ -3560,8 +3560,8 @@ function renderResearch() {
     <div class="card"><div class="card-header">📈 เส้นทาง HbA1c รายผู้ป่วย (เส้นหนา = ค่าเฉลี่ยทุก 3 เดือน, เส้นประ = 6.5%)</div>
       <div class="card-body"><div style="position:relative;height:300px;"><canvas id="res-chart"></canvas></div></div></div>
     <div class="card"><div class="card-header">👥 รายผู้ป่วย (แสดงชื่อบนหน้าจอ — ไฟล์ส่งออกไม่ใส่ชื่อ/HN เมื่อติ๊ก "ไม่ระบุตัวตน")</div>
-      <div class="card-body" style="overflow-x:auto;"><table class="drug-tbl" style="width:100%;"><thead><tr><th>รหัส</th><th>ชื่อ</th><th style="text-align:center;">ครั้ง</th><th style="text-align:right;">ติดตาม (เดือน)</th><th style="text-align:right;">HbA1c แรก→ล่าสุด</th><th style="text-align:right;">น้ำหนัก แรก→ล่าสุด</th><th style="text-align:center;">ยาลดน้ำตาล</th><th>Remission</th></tr></thead><tbody>
-      ${d.pts.map(t => `<tr><td>${t.code}</td><td>${escHtml(t.p.name)}</td><td style="text-align:center;">${t.pvs.length}</td><td style="text-align:right;">${t.pvs.length > 1 ? t.followMonths.toFixed(1) : '-'}</td>
+      <div class="card-body" style="overflow-x:auto;"><table class="drug-tbl" style="width:100%;"><thead><tr><th>ชื่อ-สกุล</th><th style="text-align:center;">ครั้ง</th><th style="text-align:right;">ติดตาม (เดือน)</th><th style="text-align:right;">HbA1c แรก→ล่าสุด</th><th style="text-align:right;">น้ำหนัก แรก→ล่าสุด</th><th style="text-align:center;">ยาลดน้ำตาล</th><th>Remission</th></tr></thead><tbody>
+      ${d.pts.map(t => `<tr><td>${escHtml(t.p.name)}</td><td style="text-align:center;">${t.pvs.length}</td><td style="text-align:right;">${t.pvs.length > 1 ? t.followMonths.toFixed(1) : '-'}</td>
         <td style="text-align:right;">${resFmt(RES_NUM(t.first.hba1c), 1)} → ${resFmt(RES_NUM(t.last.hba1c), 1)}</td><td style="text-align:right;">${resFmt(RES_NUM(t.first.weight), 1)} → ${resFmt(RES_NUM(t.last.weight), 1)}</td>
         <td style="text-align:center;">${RES_DMN(t.first)} → ${RES_DMN(t.last)}</td><td>${resRemLabel(t)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
@@ -3577,7 +3577,7 @@ function resDrawChart(d) {
     const data = t.pvs.map(v => ({ x: +(resDays(t.pvs[0].date, v.date) / 30.44).toFixed(2), y: RES_NUM(v.hba1c) })).filter(p => p.y != null);
     if (!data.length) return;
     data.forEach(p => { const b = Math.round(p.x / 3) * 3; (bins[b] = bins[b] || []).push(p.y); });
-    sets.push({ label: t.code, data, showLine: true, borderColor: 'rgba(122,154,133,.45)', backgroundColor: 'rgba(122,154,133,.45)', borderWidth: 1.5, pointRadius: 2.5, tension: 0 });
+    sets.push({ label: t.p.name, data, showLine: true, borderColor: 'rgba(122,154,133,.45)', backgroundColor: 'rgba(122,154,133,.45)', borderWidth: 1.5, pointRadius: 2.5, tension: 0 });
   });
   const mean = Object.keys(bins).map(Number).sort((a, b) => a - b).map(b => ({ x: b, y: +resMean(bins[b]).toFixed(2) }));
   const maxX = Math.max(3, ...sets.flatMap(s => s.data.map(p => p.x)));
