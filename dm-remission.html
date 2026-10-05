@@ -2165,24 +2165,6 @@ function renderDashboard() {
         </div>
       </div>
       <div class="card">
-        <div class="card-header">💰 ค่ายาสะสมรายคน (บาท)</div>
-        <div class="card-body">
-          ${(() => {
-            const maxVal = Math.max(...Object.values(patientTotals), 1);
-            return PATIENTS.map(p => {
-              const val = patientTotals[p.id];
-              const pct = (val/maxVal)*100;
-              return `<div class="bar-row">
-                <span class="bar-label">${escHtml(p.shortName)}</span>
-                <div class="bar-bg">
-                  ${val > 0 ? `<div class="bar-fill" style="width:${pct}%">${val.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>` : '<div style="padding:0 6px;font-size:10px;color:#aaa">-</div>'}
-                </div>
-              </div>`;
-            }).join('');
-          })()}
-        </div>
-      </div>
-      <div class="card">
         <div class="card-header">🗓️ คลินิกครั้งถัดไป</div>
         <div class="card-body">
           <div class="alert alert-info">
