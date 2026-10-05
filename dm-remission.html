@@ -1051,14 +1051,29 @@ function _patientsDoc() {
 function _fbSavePatients() {
   const doc = _patientsDoc();
   if (!doc) return;
-  doc.set({ list: PATIENTS, updated: Date.now() })
+  doc.set({ list: PATIENTS, updated: Date.now() }, { merge: true })
     .catch(e => console.warn('fbSavePatients:', e));
+}
+
+// ค่ายาก่อนเข้าคลินิกเก็บเป็นฟิลด์ baseline ในเอกสาร dm_patients (merge) ให้ซิงค์ทุกเครื่อง
+function _fbSaveBaseline(obj) {
+  const doc = _patientsDoc();
+  if (!doc) return;
+  doc.set({ baseline: obj }, { merge: true }).catch(e => console.warn('fbSaveBaseline:', e));
 }
 
 function _fbLoadPatients(callback) {
   const doc = _patientsDoc();
   if (!doc) { if(callback) callback(); return; }
   doc.get().then(snap => {
+    const fbBase = snap.exists ? snap.data().baseline : null;
+    if (fbBase && Object.keys(fbBase).length) {
+      localStorage.setItem('dm_baseline', JSON.stringify(fbBase));
+      if (typeof renderSummary === 'function') renderSummary();
+    } else {
+      const localBase = loadBaseline();
+      if (Object.keys(localBase).length) _fbSaveBaseline(localBase); // ย้ายค่าที่กรอกไว้เครื่องนี้ขึ้นระบบ
+    }
     if (snap.exists) {
       const fbPt = snap.data().list || [];
       if (fbPt.length > 0) {
@@ -3173,9 +3188,8 @@ function showToast(msg) {
 function loadBaseline() {
   try { return JSON.parse(localStorage.getItem('dm_baseline') || '{}'); } catch(e) { return {}; }
 }
-function saveBaseline(obj) { localStorage.setItem('dm_baseline', JSON.stringify(obj)); }
+function saveBaseline(obj) { localStorage.setItem('dm_baseline', JSON.stringify(obj)); _fbSaveBaseline(obj); }
 
-let _sumChart = null;
 let _lastSummaryStats = [];
 
 function renderSummary() {
@@ -3183,6 +3197,7 @@ function renderSummary() {
   const baseline = loadBaseline();
   const el = document.getElementById('sum-content');
   if (!el) return;
+  const baseOpen = !!document.querySelector('#baseline-details[open]'); // คงสถานะกางไว้ตอนกรอกแล้ว re-render
 
   // Group & sort visits by patient
   const byPatient = {};
@@ -3211,11 +3226,6 @@ function renderSummary() {
   const totalVisits = visits.length;
   const inRemission = stats.filter(s => s.remission.inRemission).length;
   _lastSummaryStats = stats;
-
-  // All visits sorted newest first
-  const allVisits = [...visits]
-    .sort((a,b) => b.date.localeCompare(a.date))
-    .map(v => ({ ...v, _pname: PATIENTS.find(p => p.id === v.patientId)?.name || v.ptName || '-' }));
 
   const kpiColor = pctReduced === null ? '' : parseFloat(pctReduced) >= 10 ? 'kpi-green' : 'kpi-red';
   const kpiTarget = pctReduced === null ? '-' : pctReduced + '%';
@@ -3246,8 +3256,8 @@ function renderSummary() {
     </div>
 
     <!-- Baseline input -->
-    <div class="card">
-      <div class="card-header">⚙️ ตั้งค่าฐาน — ค่าใช้จ่ายยาก่อนเข้าคลินิก (บาท/ครั้ง)</div>
+    <details id="baseline-details" class="card pt-manage" style="margin-top:12px;"${baseOpen ? ' open' : ''}>
+      <summary style="padding:12px 16px;">⚙️ กรอกค่ายาก่อนเข้าคลินิก (บาท/ครั้ง) — กรอกครั้งเดียว ซิงค์ทุกเครื่อง</summary>
       <div class="card-body">
         <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่าใช้จ่ายยาเฉลี่ยต่อครั้งของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
@@ -3262,17 +3272,7 @@ function renderSummary() {
           `).join('')}
         </div>
       </div>
-    </div>
-
-    <!-- Bar chart -->
-    <div class="card">
-      <div class="card-header">📊 เปรียบเทียบค่าใช้จ่ายยา — ก่อนเข้าคลินิก vs ล่าสุด</div>
-      <div class="card-body">
-        <div style="position:relative;height:260px;">
-          <canvas id="sum-bar-chart"></canvas>
-        </div>
-      </div>
-    </div>
+    </details>
 
     <!-- Per-patient table -->
     <div class="card">
@@ -3331,65 +3331,7 @@ function renderSummary() {
       </div>
     </div>
 
-    <!-- All visits drug count -->
-    <div class="card">
-      <div class="card-header">💊 รายการยาต่อ Visit ทั้งหมด</div>
-      <div class="card-body" style="overflow-x:auto;">
-        <table class="drug-tbl" style="width:100%;">
-          <thead>
-            <tr>
-              <th>วันที่</th>
-              <th>ชื่อผู้ป่วย</th>
-              <th style="text-align:center;">จำนวนรายการยา</th>
-              <th style="text-align:right;">ค่ายารวม (บาท)</th>
-              <th>รายการยา</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${allVisits.length ? allVisits.map(v => {
-              const [y,mo,d] = (v.date||'').split('-');
-              const dateStr = y ? `${d}/${mo}/${parseInt(y)+543}` : '-';
-              const drugCount = (v.drugs || []).length;
-              const drugNames = (v.drugs || []).map(d => d.name).filter(Boolean).join(', ');
-              return `<tr>
-                <td>${dateStr}</td>
-                <td>${v._pname}</td>
-                <td style="text-align:center;">
-                  <span style="background:var(--blue-light);color:var(--blue);padding:2px 10px;border-radius:10px;font-weight:700;">${drugCount} รายการ</span>
-                </td>
-                <td style="text-align:right;font-weight:700;color:var(--blue);">${(v.grandTotal||0).toLocaleString('th-TH',{maximumFractionDigits:2})}</td>
-                <td style="font-size:11px;color:var(--text-muted);">${drugNames || '-'}</td>
-              </tr>`;
-            }).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:#aaa;">ยังไม่มีข้อมูล Visit</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </div>
   `;
-
-  setTimeout(() => drawSumChart(stats), 0);
-}
-
-function drawSumChart(stats) {
-  if (_sumChart) { try { _sumChart.destroy(); } catch(e) {} _sumChart = null; }
-  const ctx = document.getElementById('sum-bar-chart');
-  if (!ctx) return;
-  const labels = stats.map(s => s.p.shortName);
-  _sumChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'ก่อนเข้าคลินิก', data: stats.map(s => s.baseCost || 0), backgroundColor: 'rgba(220,38,38,0.7)', borderRadius: 5 },
-        { label: 'ค่ายาล่าสุด', data: stats.map(s => s.lastCost || 0), backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 5 },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: 'บาท/ครั้ง' } } }
-    }
-  });
 }
 
 function exportSummaryPDF() {
