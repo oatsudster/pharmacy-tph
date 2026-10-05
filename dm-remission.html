@@ -511,19 +511,11 @@ const DashUX = {
           <textarea id="paste-input" rows="8" placeholder="วางข้อมูลจาก HosXP ได้เลย (Vital Signs + Lab + Medication)" style="font-size:12px; font-family:monospace;"></textarea>
         </div>
         <div class="btn-row" style="margin-top:8px;">
-          <button class="btn btn-primary btn-sm" onclick="parseAndPreview()">🔍 แยกข้อมูล</button>
+          <button class="btn btn-primary btn-sm" onclick="parseAndFill()">📥 แยกและกรอกลงฟอร์ม</button>
           <button class="btn btn-outline btn-sm" onclick="document.getElementById('paste-input').value=''; document.getElementById('parse-preview').style.display='none'">ล้าง</button>
         </div>
-        <!-- Preview -->
-        <div id="parse-preview" style="display:none; margin-top:12px;">
-          <div class="divider"></div>
-          <div class="section-title">✅ ข้อมูลที่แยกได้</div>
-          <div id="parse-preview-body"></div>
-          <div class="btn-row" style="margin-top:10px;">
-            <button class="btn btn-green btn-sm" onclick="applyParsedData()">📥 กรอกลงฟอร์ม</button>
-            <span style="font-size:11px;color:var(--text-muted);">ตรวจสอบข้อมูลก่อนกด</span>
-          </div>
-        </div>
+        <!-- ข้อความเตือนเมื่อแยกข้อมูลไม่ได้ -->
+        <div id="parse-preview" style="display:none; margin-top:12px;"><div id="parse-preview-body"></div></div>
       </div>
     </div>
 
@@ -2778,7 +2770,7 @@ async function runAllOCR() {
   barEl.style.width = '100%';
   statusEl.textContent = `✅ อ่านครบ ${total} รูป — กำลังแยกข้อมูล...`;
   document.getElementById('paste-input').value = allText.trim();
-  setTimeout(() => { prog.style.display = 'none'; parseAndPreview(); }, 600);
+  setTimeout(() => { prog.style.display = 'none'; parseAndFill(); }, 600);
 }
 
 function handleOcrDrop(e) {
@@ -3119,57 +3111,19 @@ function parseHosXPText(text) {
   return r;
 }
 
-function parseAndPreview() {
+// กดครั้งเดียว: แยกข้อมูลจากข้อความ HosXP แล้วกรอกลงฟอร์มทันที (ตรวจทานในฟอร์มก่อนกดบันทึกอีกที)
+function parseAndFill() {
   const text = document.getElementById('paste-input').value.trim();
   if (!text) { showToast('กรุณาวางข้อมูลก่อน'); return; }
-
   _parsedData = parseHosXPText(text);
   const d = _parsedData;
-
-  const vitals = [
-    d.visitDate        ? `📅 วันที่ <b>${escHtml(isoToThaiDate(d.visitDate))}</b>` : null,
-    d.weight   != null ? `น้ำหนัก <b>${escHtml(d.weight)}</b> kg` : null,
-    d.height   != null ? `ส่วนสูง <b>${escHtml(d.height)}</b> cm` : null,
-    d.bp               ? `ความดัน <b>${escHtml(d.bp)}</b>` : null,
-    d.dtx      != null ? `DTX <b>${escHtml(d.dtx)}</b>` : null,
-    d.fbs      != null ? `FBS <b>${escHtml(d.fbs)}</b>` : null,
-    d.hba1c    != null ? `HbA1c <b>${escHtml(d.hba1c)}</b>` : null,
-    d.ldl      != null ? `LDL <b>${escHtml(d.ldl)}</b>` : null,
-    d.tc       != null ? `Total Chol <b>${escHtml(d.tc)}</b>` : null,
-    d.tg       != null ? `TG <b>${escHtml(d.tg)}</b>` : null,
-    d.cr       != null ? `Cr <b>${escHtml(d.cr)}</b>` : null,
-    d.egfr     != null ? `eGFR <b>${escHtml(d.egfr)}</b>` : null,
-    d.urineAlb != null ? `Urine Albumin <b>${escHtml(d.urineAlb)}</b>` : null,
-  ].filter(Boolean);
-
-  let html = '';
-  if (vitals.length) {
-    html += `<div style="margin-bottom:8px;font-size:12px;">${vitals.join(' &nbsp;|&nbsp; ')}</div>`;
+  const hasVitals = ['visitDate','weight','height','bp','dtx','fbs','hba1c','ldl','tc','tg','cr','egfr','urineAlb'].some(k => d[k] != null && d[k] !== '');
+  if (!hasVitals && !d.drugs.length) {
+    document.getElementById('parse-preview-body').innerHTML = '<div class="alert alert-warning"><span>⚠️</span><div>ไม่พบข้อมูลที่แยกได้ — ลองวางข้อมูลในรูปแบบอื่น หรือตรวจว่า copy มาครบ</div></div>';
+    document.getElementById('parse-preview').style.display = 'block';
+    return;
   }
-  if (d.drugs.length) {
-    html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <tr style="background:var(--gray-light);">
-        <th style="padding:5px 8px;border:1px solid var(--gray-border);text-align:left;">ชื่อยา</th>
-        <th style="padding:5px 8px;border:1px solid var(--gray-border);">วิธีใช้</th>
-        <th style="padding:5px 8px;border:1px solid var(--gray-border);">จำนวน</th>
-        <th style="padding:5px 8px;border:1px solid var(--gray-border);">ราคา/หน่วย</th>
-      </tr>`;
-    for (const dr of d.drugs) {
-      html += `<tr>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);">${escHtml(dr.name)}</td>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${escHtml(dr.dosage||'-')}</td>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:center;">${escHtml(dr.qty||'-')}</td>
-        <td style="padding:4px 8px;border:1px solid var(--gray-border);text-align:right;">${dr.price > 0 ? dr.price.toFixed(2)+' ฿' : '-'}</td>
-      </tr>`;
-    }
-    html += '</table>';
-  }
-  if (!vitals.length && !d.drugs.length) {
-    html = '<div class="alert alert-warning"><span>⚠️</span><div>ไม่พบข้อมูลที่แยกได้ — ลองวางข้อมูลในรูปแบบอื่น หรือตรวจสอบว่า copy มาครบ</div></div>';
-  }
-
-  document.getElementById('parse-preview-body').innerHTML = html;
-  document.getElementById('parse-preview').style.display = 'block';
+  applyParsedData();
 }
 
 function applyParsedData() {
