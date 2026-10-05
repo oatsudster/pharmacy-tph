@@ -3559,9 +3559,9 @@ function renderResearch() {
       </div></div>
     <div class="card"><div class="card-header">📈 เส้นทาง HbA1c รายผู้ป่วย (เส้นหนา = ค่าเฉลี่ยทุก 3 เดือน, เส้นประ = 6.5%)</div>
       <div class="card-body"><div style="position:relative;height:300px;"><canvas id="res-chart"></canvas></div></div></div>
-    <div class="card"><div class="card-header">👥 รายผู้ป่วย (รหัสแทนชื่อ — ตารางส่งออกไม่ใส่ชื่อ/HN เมื่อติ๊ก "ไม่ระบุตัวตน")</div>
-      <div class="card-body" style="overflow-x:auto;"><table class="drug-tbl" style="width:100%;"><thead><tr><th>รหัส</th><th style="text-align:center;">ครั้ง</th><th style="text-align:right;">ติดตาม (เดือน)</th><th style="text-align:right;">HbA1c แรก→ล่าสุด</th><th style="text-align:right;">น้ำหนัก แรก→ล่าสุด</th><th style="text-align:center;">ยาลดน้ำตาล</th><th>Remission</th></tr></thead><tbody>
-      ${d.pts.map(t => `<tr><td>${t.code}</td><td style="text-align:center;">${t.pvs.length}</td><td style="text-align:right;">${t.pvs.length > 1 ? t.followMonths.toFixed(1) : '-'}</td>
+    <div class="card"><div class="card-header">👥 รายผู้ป่วย (แสดงชื่อบนหน้าจอ — ไฟล์ส่งออกไม่ใส่ชื่อ/HN เมื่อติ๊ก "ไม่ระบุตัวตน")</div>
+      <div class="card-body" style="overflow-x:auto;"><table class="drug-tbl" style="width:100%;"><thead><tr><th>รหัส</th><th>ชื่อ</th><th style="text-align:center;">ครั้ง</th><th style="text-align:right;">ติดตาม (เดือน)</th><th style="text-align:right;">HbA1c แรก→ล่าสุด</th><th style="text-align:right;">น้ำหนัก แรก→ล่าสุด</th><th style="text-align:center;">ยาลดน้ำตาล</th><th>Remission</th></tr></thead><tbody>
+      ${d.pts.map(t => `<tr><td>${t.code}</td><td>${escHtml(t.p.name)}</td><td style="text-align:center;">${t.pvs.length}</td><td style="text-align:right;">${t.pvs.length > 1 ? t.followMonths.toFixed(1) : '-'}</td>
         <td style="text-align:right;">${resFmt(RES_NUM(t.first.hba1c), 1)} → ${resFmt(RES_NUM(t.last.hba1c), 1)}</td><td style="text-align:right;">${resFmt(RES_NUM(t.first.weight), 1)} → ${resFmt(RES_NUM(t.last.weight), 1)}</td>
         <td style="text-align:center;">${RES_DMN(t.first)} → ${RES_DMN(t.last)}</td><td>${resRemLabel(t)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
