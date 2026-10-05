@@ -3215,12 +3215,16 @@ function renderSummary() {
   const stats = PATIENTS.map(p => {
     const pvs = byPatient[p.id];
     const last = pvs[pvs.length - 1];
-    const baseCost = parseFloat(baseline[p.id] || 0);
+    const manualBase = parseFloat(baseline[p.id] || 0);
+    // ค่าฐาน: ถ้ากรอกมือไว้ใช้ค่านั้น ไม่เช่นนั้นใช้ค่ายาเบาหวานของ visit แรก (จำนวน × ราคา)
+    const baseFromFirst = pvs.length ? dmCost(pvs[0]) : 0;
+    const baseCost = manualBase > 0 ? manualBase : baseFromFirst;
+    const baseSource = manualBase > 0 ? 'manual' : (baseFromFirst > 0 ? 'first' : '');
     const lastCost = last ? dmCost(last) : 0;
     const diff = baseCost - lastCost; // positive = cost reduced
     const pctChange = baseCost > 0 ? ((lastCost - baseCost) / baseCost * 100) : null;
     const remission = computeRemissionStatus(pvs);
-    return { p, pvs, last, baseCost, lastCost, diff, pctChange, remission };
+    return { p, pvs, last, baseCost, baseSource, lastCost, diff, pctChange, remission };
   });
 
   // KPIs
@@ -3263,7 +3267,7 @@ function renderSummary() {
 
     <!-- Baseline input -->
     <details id="baseline-details" class="card pt-manage" style="margin-top:12px;"${baseOpen ? ' open' : ''}>
-      <summary style="padding:12px 16px;">⚙️ กรอกค่ายาเบาหวานก่อนเข้าคลินิก (บาท/ครั้ง) — กรอกครั้งเดียว ซิงค์ทุกเครื่อง</summary>
+      <summary style="padding:12px 16px;">⚙️ ปรับค่ายาเบาหวานก่อนเข้าคลินิก (ไม่บังคับ — ถ้าไม่กรอก ใช้ค่ายา DM ของ visit แรก)</summary>
       <div class="card-body">
         <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่าใช้จ่ายยาเฉลี่ยต่อครั้งของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
@@ -3271,7 +3275,7 @@ function renderSummary() {
             <div class="field">
               <label>${escHtml(p.shortName)}</label>
               <input type="number" min="0" step="0.01" value="${escHtml(baseline[p.id] || '')}"
-                placeholder="บาท/ครั้ง"
+                placeholder="${(() => { const s0 = stats.find(x => x.p.id === p.id); return s0 && s0.baseSource === 'first' ? s0.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) + ' (visit แรก)' : 'บาท/ครั้ง'; })()}"
                 onchange="updateBaseline(${escHtml(JSON.stringify(p.id))}, this.value)"
                 style="text-align:right;">
             </div>
@@ -3322,7 +3326,7 @@ function renderSummary() {
               return `<tr>
                 <td>${escHtml(s.p.name)}</td>
                 <td style="text-align:center;">${s.pvs.length}</td>
-                <td style="text-align:right;">${s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
+                <td style="text-align:right;">${s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) + (s.baseSource === 'first' ? '<small style="color:var(--text-muted)"> (visit แรก)</small>' : '') : '-'}</td>
                 <td style="text-align:right;">${s.pvs.length ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
                 <td style="text-align:right;color:${savedCol};font-weight:700;">${saved}</td>
                 <td style="text-align:center;color:${pctCol};font-weight:700;">${pct}</td>
