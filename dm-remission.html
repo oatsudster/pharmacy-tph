@@ -801,6 +801,35 @@ function isDiabetesDrug(name) {
 function dmCost(v) {
   return (v.drugs || []).reduce((sum, d) => sum + (isDiabetesDrug(d.name) ? (parseFloat(d.total) || 0) : 0), 0);
 }
+// ค่ายาเบาหวาน "ต่อวัน" ของ visit (บาท/วัน) — ใช้เปรียบเทียบข้าม visit เพราะระยะนัดต่างกันมาก (7 วัน vs 4 เดือน)
+// ยาเม็ด/แคปซูล: จากวิธีใช้ "AxF" → หน่วยต่อวัน = A×F (alt = ÷2), จำนวนวันที่จ่าย = qty ÷ หน่วยต่อวัน, ค่ายา/วัน = ราคารวม ÷ วัน
+// ยาที่คำนวณวันเองไม่ได้ (เช่น อินซูลิน) ใช้จำนวนวันที่จ่ายของยาเม็ดใน visit เดียวกัน (มัธยฐาน) หารแทน
+const DM_TABLET_UNIT = /เม็ด|แค็บ|แคป|ซอง|tab|cap/i;
+function _drugDaily(d) {
+  if (!DM_TABLET_UNIT.test(d.unit || 'เม็ด')) return null;
+  const m = String(d.dose || '').match(/^\s*([\d.]+)\s*x\s*(\d+)/i);
+  if (!m) return null;
+  let perDay = parseFloat(m[1]) * parseFloat(m[2]);
+  if (/\balt\b/i.test(d.dose)) perDay /= 2;
+  const qty = parseFloat(d.qty);
+  if (!(perDay > 0) || !(qty > 0)) return null;
+  return { perDay, days: qty / perDay };
+}
+function dmDailyInfo(v) {
+  const drugs = v.drugs || [];
+  const dayList = drugs.map(d => { const x = _drugDaily(d); return x ? x.days : null; }).filter(x => x != null).sort((a, b) => a - b);
+  const medDays = dayList.length ? dayList[Math.floor(dayList.length / 2)] : null;
+  let perDay = 0, unparsed = 0;
+  drugs.forEach(d => {
+    if (!isDiabetesDrug(d.name)) return;
+    const total = parseFloat(d.total) || ((parseFloat(d.price) || 0) * (parseFloat(d.qty) || 0));
+    const x = _drugDaily(d);
+    const days = x ? x.days : medDays;
+    if (days > 0) perDay += total / days; else if (total > 0) unparsed++;
+  });
+  return { perDay, unparsed };
+}
+function dmDaily(v) { return dmDailyInfo(v).perDay; }
 // visit หนึ่งๆ เข้าเกณฑ์ remission หรือไม่ (HbA1c≤6.5% และไม่มีรายการยาลดน้ำตาลในยาที่สั่ง)
 function visitMeetsRemission(v) {
   const h = parseFloat(v.hba1c);
@@ -1062,16 +1091,16 @@ function _fbSavePatients() {
 function _fbSaveBaseline(obj) {
   const doc = _patientsDoc();
   if (!doc) return;
-  doc.set({ baseline: obj }, { merge: true }).catch(e => console.warn('fbSaveBaseline:', e));
+  doc.set({ baselineDay: obj }, { merge: true }).catch(e => console.warn('fbSaveBaseline:', e));
 }
 
 function _fbLoadPatients(callback) {
   const doc = _patientsDoc();
   if (!doc) { if(callback) callback(); return; }
   doc.get().then(snap => {
-    const fbBase = snap.exists ? snap.data().baseline : null;
+    const fbBase = snap.exists ? snap.data().baselineDay : null;
     if (fbBase && Object.keys(fbBase).length) {
-      localStorage.setItem('dm_baseline', JSON.stringify(fbBase));
+      localStorage.setItem('dm_baseline_day', JSON.stringify(fbBase));
       if (typeof renderSummary === 'function') renderSummary();
     } else {
       const localBase = loadBaseline();
@@ -3203,9 +3232,9 @@ function showToast(msg) {
 
 // ===== SUMMARY PAGE =====
 function loadBaseline() {
-  try { return JSON.parse(localStorage.getItem('dm_baseline') || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(localStorage.getItem('dm_baseline_day') || '{}'); } catch(e) { return {}; }
 }
-function saveBaseline(obj) { localStorage.setItem('dm_baseline', JSON.stringify(obj)); _fbSaveBaseline(obj); }
+function saveBaseline(obj) { localStorage.setItem('dm_baseline_day', JSON.stringify(obj)); _fbSaveBaseline(obj); }
 
 let _lastSummaryStats = [];
 
@@ -3228,10 +3257,10 @@ function renderSummary() {
     const last = pvs[pvs.length - 1];
     const manualBase = parseFloat(baseline[p.id] || 0);
     // ค่าฐาน: ถ้ากรอกมือไว้ใช้ค่านั้น ไม่เช่นนั้นใช้ค่ายาเบาหวานของ visit แรก (จำนวน × ราคา)
-    const baseFromFirst = pvs.length ? dmCost(pvs[0]) : 0;
+    const baseFromFirst = pvs.length ? dmDaily(pvs[0]) : 0;
     const baseCost = manualBase > 0 ? manualBase : baseFromFirst;
     const baseSource = manualBase > 0 ? 'manual' : (baseFromFirst > 0 ? 'first' : '');
-    const lastCost = last ? dmCost(last) : 0;
+    const lastCost = last ? dmDaily(last) : 0;
     const diff = baseCost - lastCost; // positive = cost reduced
     const pctChange = baseCost > 0 ? ((lastCost - baseCost) / baseCost * 100) : null;
     const remission = computeRemissionStatus(pvs);
@@ -3268,7 +3297,7 @@ function renderSummary() {
       </div>
       <div class="kpi-card ${totalSaved > 0 ? 'kpi-green' : ''}">
         <div class="kpi-val">${totalSaved.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>
-        <div class="kpi-label">ค่ายาเบาหวานที่ประหยัดได้รวม (บาท)</div>
+        <div class="kpi-label">ค่ายาเบาหวานที่ประหยัดได้รวม (บาท/วัน)</div>
       </div>
       <div class="kpi-card ${inRemission > 0 ? 'kpi-green' : ''}">
         <div class="kpi-val">${inRemission}/${enrolled}</div>
@@ -3278,15 +3307,15 @@ function renderSummary() {
 
     <!-- Baseline input -->
     <details id="baseline-details" class="card pt-manage" style="margin-top:12px;"${baseOpen ? ' open' : ''}>
-      <summary style="padding:12px 16px;">⚙️ ปรับค่ายาเบาหวานก่อนเข้าคลินิก (ไม่บังคับ — ถ้าไม่กรอก ใช้ค่ายา DM ของ visit แรก)</summary>
+      <summary style="padding:12px 16px;">⚙️ ปรับค่ายาเบาหวานก่อนเข้าคลินิก (บาท/วัน) (ไม่บังคับ — ถ้าไม่กรอก ใช้ค่ายา DM ต่อวันของ visit แรก)</summary>
       <div class="card-body">
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่าใช้จ่ายยาเฉลี่ยต่อครั้งของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่ายาเบาหวานเฉลี่ย <b>ต่อวัน (บาท/วัน)</b> ของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง (คิดต่อวันเพื่อไม่ให้ระยะนัดที่ต่างกันทำให้เทียบกันไม่ได้)</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
           ${PATIENTS.map(p => `
             <div class="field">
               <label>${escHtml(p.shortName)}</label>
               <input type="number" min="0" step="0.01" value="${escHtml(baseline[p.id] || '')}"
-                placeholder="${(() => { const s0 = stats.find(x => x.p.id === p.id); return s0 && s0.baseSource === 'first' ? s0.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) + ' (visit แรก)' : 'บาท/ครั้ง'; })()}"
+                placeholder="${(() => { const s0 = stats.find(x => x.p.id === p.id); return s0 && s0.baseSource === 'first' ? s0.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) + ' (visit แรก)' : 'บาท/วัน'; })()}"
                 onchange="updateBaseline(${escHtml(JSON.stringify(p.id))}, this.value)"
                 style="text-align:right;">
             </div>
@@ -3296,9 +3325,11 @@ function renderSummary() {
     </details>
 
     <div class="card">
-      <div class="card-header">📈 แนวโน้มค่ายาเบาหวานต่อครั้ง (บาท)</div>
+      <div class="card-header">📈 แนวโน้มค่ายาเบาหวานต่อวัน (บาท/วัน)</div>
       <div class="card-body"><div style="position:relative;height:260px;"><canvas id="sum-trend-chart"></canvas></div></div>
     </div>
+
+    ${(() => { const n = visits.reduce((a, v) => a + dmDailyInfo(v).unparsed, 0); return n ? `<div class="alert alert-warning" style="margin-top:10px;"><span>⚠️</span><div>มียา DM ${n} รายการที่คำนวณค่าต่อวันไม่ได้ (ไม่มีวิธีใช้/จำนวนที่อ่านได้ และไม่มียาเม็ดใน visit เดียวกันให้อ้างอิงวัน) จึงไม่ถูกนับ</div></div>` : ''; })()}
 
     <!-- Per-patient table -->
     <div class="card">
@@ -3312,9 +3343,9 @@ function renderSummary() {
             <tr>
               <th>ชื่อ-สกุล</th>
               <th style="text-align:center;">visits</th>
-              <th style="text-align:right;">ค่ายาเบาหวานก่อน (บาท)</th>
-              <th style="text-align:right;">ค่ายาเบาหวานล่าสุด (บาท)</th>
-              <th style="text-align:right;">ประหยัดได้ (บาท)</th>
+              <th style="text-align:right;">ค่ายาเบาหวานก่อน (บาท/วัน)</th>
+              <th style="text-align:right;">ค่ายาเบาหวานล่าสุด (บาท/วัน)</th>
+              <th style="text-align:right;">ประหยัดได้ (บาท/วัน)</th>
               <th style="text-align:center;">% เปลี่ยน</th>
               <th style="text-align:center;">ค่ายา DM</th>
               <th style="text-align:center;">Remission</th>
@@ -3369,7 +3400,7 @@ function drawSumTrend(byPatient) {
   const dates = [...new Set(PATIENTS.flatMap(p => byPatient[p.id].map(v => v.date)))].sort();
   const colors = ['#1A5E38','#b91c1c','#2563eb','#C49A22','#7c3aed','#0891b2','#ea580c','#4b5563'];
   const datasets = PATIENTS.filter(p => byPatient[p.id].length).map((p, i) => {
-    const byDate = {}; byPatient[p.id].forEach(v => { byDate[v.date] = dmCost(v); });
+    const byDate = {}; byPatient[p.id].forEach(v => { byDate[v.date] = +dmDaily(v).toFixed(2); });
     return { label: p.shortName, data: dates.map(d => byDate[d] ?? null), borderColor: colors[i % colors.length],
              backgroundColor: colors[i % colors.length], borderWidth: 2, pointRadius: 3, spanGaps: true, tension: 0.2 };
   });
@@ -3378,7 +3409,7 @@ function drawSumTrend(byPatient) {
     data: { labels: dates.map(formatDate), datasets },
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: 'ค่ายาเบาหวาน บาท/ครั้ง' } } } }
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'ค่ายาเบาหวาน บาท/วัน' } } } }
   });
 }
 
@@ -3397,7 +3428,7 @@ function exportSummaryPDF() {
   expPDF({
     title: 'สรุปผล DM Remission Clinic',
     subtitle: `รพ.ถ้ำพรรณา · พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH')} · เกณฑ์ remission: HbA1c≤6.5% และหยุดยาลดน้ำตาลต่อเนื่อง ≥3 เดือน`,
-    headers: ['ชื่อ-สกุล','HN','จำนวน visit','ค่ายาเบาหวานก่อน (บาท)','ค่ายาเบาหวานล่าสุด (บาท)','ประหยัดได้ (บาท)','% เปลี่ยน','สถานะ Remission'],
+    headers: ['ชื่อ-สกุล','HN','จำนวน visit','ค่ายาเบาหวานก่อน (บาท/วัน)','ค่ายาเบาหวานล่าสุด (บาท/วัน)','ประหยัดได้ (บาท/วัน)','% เปลี่ยน','สถานะ Remission'],
     rows,
     landscape: true,
   });
@@ -3433,7 +3464,7 @@ const RES_METRICS = [
   { key: 'urineAlb', label: 'Urine albumin', dec: 1, get: v => RES_NUM(v.urineAlb) },
   { key: 'dmDrugs', label: 'จำนวนยาลดน้ำตาล (ตัว)', dec: 2, get: v => RES_DMN(v) },
   { key: 'allDrugs', label: 'จำนวนยาทั้งหมด (ตัว)', dec: 1, get: v => (v.drugs || []).length },
-  { key: 'cost', label: 'ค่ายาเบาหวานต่อครั้ง (บาท)', dec: 0, get: v => dmCost(v) },
+  { key: 'cost', label: 'ค่ายาเบาหวานต่อวัน (บาท/วัน)', dec: 2, get: v => dmDaily(v) },
 ];
 
 function resMean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
@@ -3637,7 +3668,7 @@ function resPatientRows(d, deid) {
       'น้ำหนักแรก': RES_NUM(t.first.weight) ?? '', 'น้ำหนักล่าสุด': RES_NUM(t.last.weight) ?? '',
       'BMI แรก': RES_NUM(t.first.bmi) ?? '', 'BMI ล่าสุด': RES_NUM(t.last.bmi) ?? '',
       'ยาลดน้ำตาลแรก (ตัว)': RES_DMN(t.first), 'ยาลดน้ำตาลล่าสุด (ตัว)': RES_DMN(t.last),
-      'ค่ายาเบาหวานแรก (บาท)': dmCost(t.first), 'ค่ายาเบาหวานล่าสุด (บาท)': dmCost(t.last),
+      'ค่ายาเบาหวานแรก (บาท/วัน)': +dmDaily(t.first).toFixed(2), 'ค่ายาเบาหวานล่าสุด (บาท/วัน)': +dmDaily(t.last).toFixed(2),
       'สถานะ remission': resRemLabel(t) });
     return r;
   });
