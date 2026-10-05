@@ -798,6 +798,10 @@ function isDiabetesDrug(name) {
   const n = (name || '').toLowerCase();
   return DM_DRUG_KEYWORDS.some(k => n.includes(k));
 }
+// ค่ายาเบาหวานของ visit (บาท) = ผลรวมราคารายการยาที่เป็นยาลดน้ำตาล — ใช้แทนค่ายารวม เพราะเป้าหมายคลินิกคือลด/หยุดยาเบาหวาน
+function dmCost(v) {
+  return (v.drugs || []).reduce((sum, d) => sum + (isDiabetesDrug(d.name) ? (parseFloat(d.total) || 0) : 0), 0);
+}
 // visit หนึ่งๆ เข้าเกณฑ์ remission หรือไม่ (HbA1c≤6.5% และไม่มีรายการยาลดน้ำตาลในยาที่สั่ง)
 function visitMeetsRemission(v) {
   const h = parseFloat(v.hba1c);
@@ -2127,7 +2131,7 @@ function renderDashboard() {
   const patientLastHbA1c = {};
   PATIENTS.forEach(p => { patientTotals[p.id] = 0; patientLastHbA1c[p.id] = null; });
   visits.forEach(v => {
-    if (patientTotals[v.patientId] !== undefined) patientTotals[v.patientId] += v.grandTotal || 0;
+    if (patientTotals[v.patientId] !== undefined) patientTotals[v.patientId] += dmCost(v);
     // track latest HbA1c
     const hba = parseFloat(v.hba1c);
     if (!isNaN(hba)) {
@@ -2158,7 +2162,7 @@ function renderDashboard() {
       <div class="kpi-card"><div class="kpi-val">${totalVisits}</div><div class="kpi-label">การตรวจทั้งหมด</div></div>
       <div class="kpi-card"><div class="kpi-val">${goodHbA1c}/${PATIENTS.length}</div><div class="kpi-label">HbA1c &le;6.5% (ควบคุมได้)</div></div>
       <div class="kpi-card ${inRemissionCount > 0 ? 'kpi-green' : ''}"><div class="kpi-val">${inRemissionCount}/${PATIENTS.length}</div><div class="kpi-label">เข้าเกณฑ์ Remission</div><div class="kpi-sub">ตามเกณฑ์ที่ระบบใช้อยู่</div></div>
-      <div class="kpi-card"><div class="kpi-val">${totalAll.toLocaleString('th-TH',{maximumFractionDigits:0})}</div><div class="kpi-label">ค่ายารวมทั้งหมด (บาท)</div></div>
+      <div class="kpi-card"><div class="kpi-val">${totalAll.toLocaleString('th-TH',{maximumFractionDigits:0})}</div><div class="kpi-label">ค่ายาเบาหวานรวมทั้งหมด (บาท)</div></div>
     </div>
     <details class="dash-details"><summary>ดูเกณฑ์และวิธีอ่านข้อมูลสรุป</summary><p>การ์ด Remission ใช้การคำนวณเดิมของระบบ: HbA1c ≤6.5% และหยุดยาลดน้ำตาลอย่างน้อย 3 เดือน ส่วน HbA1c รายคนแสดงค่าล่าสุดพร้อมวันที่ตรวจ ไม่ใช่ผลตรวจในวันเดียวกันทุกคน</p></details>
     <div class="dash-grid">
@@ -3210,7 +3214,7 @@ function renderSummary() {
     const pvs = byPatient[p.id];
     const last = pvs[pvs.length - 1];
     const baseCost = parseFloat(baseline[p.id] || 0);
-    const lastCost = last?.grandTotal || 0;
+    const lastCost = last ? dmCost(last) : 0;
     const diff = baseCost - lastCost; // positive = cost reduced
     const pctChange = baseCost > 0 ? ((lastCost - baseCost) / baseCost * 100) : null;
     const remission = computeRemissionStatus(pvs);
@@ -3243,11 +3247,11 @@ function renderSummary() {
       </div>
       <div class="kpi-card ${kpiColor}">
         <div class="kpi-val">${kpiTarget}</div>
-        <div class="kpi-label">% ปรับลดค่ายา (เกณฑ์ ≥10%)</div>
+        <div class="kpi-label">% ปรับลดค่ายาเบาหวาน (เกณฑ์ ≥10%)</div>
       </div>
       <div class="kpi-card ${totalSaved > 0 ? 'kpi-green' : ''}">
         <div class="kpi-val">${totalSaved.toLocaleString('th-TH',{maximumFractionDigits:0})}</div>
-        <div class="kpi-label">ค่ายาที่ประหยัดได้รวม (บาท)</div>
+        <div class="kpi-label">ค่ายาเบาหวานที่ประหยัดได้รวม (บาท)</div>
       </div>
       <div class="kpi-card ${inRemission > 0 ? 'kpi-green' : ''}">
         <div class="kpi-val">${inRemission}/${enrolled}</div>
@@ -3257,7 +3261,7 @@ function renderSummary() {
 
     <!-- Baseline input -->
     <details id="baseline-details" class="card pt-manage" style="margin-top:12px;"${baseOpen ? ' open' : ''}>
-      <summary style="padding:12px 16px;">⚙️ กรอกค่ายาก่อนเข้าคลินิก (บาท/ครั้ง) — กรอกครั้งเดียว ซิงค์ทุกเครื่อง</summary>
+      <summary style="padding:12px 16px;">⚙️ กรอกค่ายาเบาหวานก่อนเข้าคลินิก (บาท/ครั้ง) — กรอกครั้งเดียว ซิงค์ทุกเครื่อง</summary>
       <div class="card-body">
         <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">ใส่ค่าใช้จ่ายยาเฉลี่ยต่อครั้งของแต่ละคนก่อนเข้าร่วม remission clinic เพื่อคำนวณ % ที่ลดลง</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
@@ -3274,6 +3278,11 @@ function renderSummary() {
       </div>
     </details>
 
+    <div class="card">
+      <div class="card-header">📈 แนวโน้มค่ายาเบาหวานต่อครั้ง (บาท)</div>
+      <div class="card-body"><div style="position:relative;height:260px;"><canvas id="sum-trend-chart"></canvas></div></div>
+    </div>
+
     <!-- Per-patient table -->
     <div class="card">
       <div class="card-header" style="justify-content:space-between;">
@@ -3286,8 +3295,8 @@ function renderSummary() {
             <tr>
               <th>ชื่อ-สกุล</th>
               <th style="text-align:center;">visits</th>
-              <th style="text-align:right;">ค่ายาก่อน (บาท)</th>
-              <th style="text-align:right;">ค่ายาล่าสุด (บาท)</th>
+              <th style="text-align:right;">ค่ายาเบาหวานก่อน (บาท)</th>
+              <th style="text-align:right;">ค่ายาเบาหวานล่าสุด (บาท)</th>
               <th style="text-align:right;">ประหยัดได้ (บาท)</th>
               <th style="text-align:center;">% เปลี่ยน</th>
               <th style="text-align:center;">ค่ายา</th>
@@ -3312,7 +3321,7 @@ function renderSummary() {
                 <td>${escHtml(s.p.name)}</td>
                 <td style="text-align:center;">${s.pvs.length}</td>
                 <td style="text-align:right;">${s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
-                <td style="text-align:right;">${s.lastCost > 0 ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
+                <td style="text-align:right;">${s.pvs.length ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-'}</td>
                 <td style="text-align:right;color:${savedCol};font-weight:700;">${saved}</td>
                 <td style="text-align:center;color:${pctCol};font-weight:700;">${pct}</td>
                 <td style="text-align:center;">${badge}</td>
@@ -3332,6 +3341,28 @@ function renderSummary() {
     </div>
 
   `;
+  setTimeout(() => drawSumTrend(byPatient), 0);
+}
+
+let _sumTrend = null;
+function drawSumTrend(byPatient) {
+  if (_sumTrend) { try { _sumTrend.destroy(); } catch(e) {} _sumTrend = null; }
+  const ctx = document.getElementById('sum-trend-chart');
+  if (!ctx || typeof Chart === 'undefined') return;
+  const dates = [...new Set(PATIENTS.flatMap(p => byPatient[p.id].map(v => v.date)))].sort();
+  const colors = ['#1A5E38','#b91c1c','#2563eb','#C49A22','#7c3aed','#0891b2','#ea580c','#4b5563'];
+  const datasets = PATIENTS.filter(p => byPatient[p.id].length).map((p, i) => {
+    const byDate = {}; byPatient[p.id].forEach(v => { byDate[v.date] = dmCost(v); });
+    return { label: p.shortName, data: dates.map(d => byDate[d] ?? null), borderColor: colors[i % colors.length],
+             backgroundColor: colors[i % colors.length], borderWidth: 2, pointRadius: 3, spanGaps: true, tension: 0.2 };
+  });
+  _sumTrend = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates.map(formatDate), datasets },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'ค่ายาเบาหวาน บาท/ครั้ง' } } } }
+  });
 }
 
 function exportSummaryPDF() {
@@ -3341,7 +3372,7 @@ function exportSummaryPDF() {
     s.p.hn || '-',
     s.pvs.length,
     s.baseCost > 0 ? s.baseCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-',
-    s.lastCost > 0 ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-',
+    s.pvs.length ? s.lastCost.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-',
     s.diff !== 0 ? s.diff.toLocaleString('th-TH',{maximumFractionDigits:2}) : '-',
     s.pctChange !== null ? s.pctChange.toFixed(1) + '%' : '-',
     s.remission.inRemission ? `เข้าเกณฑ์ (ตั้งแต่ ${isoToThaiDate(s.remission.sinceDate)})` : (s.pvs.length ? 'ยังไม่เข้าเกณฑ์' : '-'),
@@ -3349,7 +3380,7 @@ function exportSummaryPDF() {
   expPDF({
     title: 'สรุปผล DM Remission Clinic',
     subtitle: `รพ.ถ้ำพรรณา · พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH')} · เกณฑ์ remission: HbA1c≤6.5% และหยุดยาลดน้ำตาลต่อเนื่อง ≥3 เดือน`,
-    headers: ['ชื่อ-สกุล','HN','จำนวน visit','ค่ายาก่อน (บาท)','ค่ายาล่าสุด (บาท)','ประหยัดได้ (บาท)','% เปลี่ยน','สถานะ Remission'],
+    headers: ['ชื่อ-สกุล','HN','จำนวน visit','ค่ายาเบาหวานก่อน (บาท)','ค่ายาเบาหวานล่าสุด (บาท)','ประหยัดได้ (บาท)','% เปลี่ยน','สถานะ Remission'],
     rows,
     landscape: true,
   });
@@ -3385,7 +3416,7 @@ const RES_METRICS = [
   { key: 'urineAlb', label: 'Urine albumin', dec: 1, get: v => RES_NUM(v.urineAlb) },
   { key: 'dmDrugs', label: 'จำนวนยาลดน้ำตาล (ตัว)', dec: 2, get: v => RES_DMN(v) },
   { key: 'allDrugs', label: 'จำนวนยาทั้งหมด (ตัว)', dec: 1, get: v => (v.drugs || []).length },
-  { key: 'cost', label: 'ค่ายาต่อครั้ง (บาท)', dec: 0, get: v => RES_NUM(v.grandTotal) },
+  { key: 'cost', label: 'ค่ายาเบาหวานต่อครั้ง (บาท)', dec: 0, get: v => dmCost(v) },
 ];
 
 function resMean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
@@ -3589,7 +3620,7 @@ function resPatientRows(d, deid) {
       'น้ำหนักแรก': RES_NUM(t.first.weight) ?? '', 'น้ำหนักล่าสุด': RES_NUM(t.last.weight) ?? '',
       'BMI แรก': RES_NUM(t.first.bmi) ?? '', 'BMI ล่าสุด': RES_NUM(t.last.bmi) ?? '',
       'ยาลดน้ำตาลแรก (ตัว)': RES_DMN(t.first), 'ยาลดน้ำตาลล่าสุด (ตัว)': RES_DMN(t.last),
-      'ค่ายาแรก (บาท)': RES_NUM(t.first.grandTotal) ?? '', 'ค่ายาล่าสุด (บาท)': RES_NUM(t.last.grandTotal) ?? '',
+      'ค่ายาเบาหวานแรก (บาท)': dmCost(t.first), 'ค่ายาเบาหวานล่าสุด (บาท)': dmCost(t.last),
       'สถานะ remission': resRemLabel(t) });
     return r;
   });
