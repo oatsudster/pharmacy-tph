@@ -700,6 +700,13 @@ const DashUX = {
       </div>
     </div>
 
+    <details class="pt-manage" id="dup-scan-box">
+      <summary>🔍 ตรวจ Visit ซ้ำในข้อมูลเดิม</summary>
+      <div class="card"><div class="card-body">
+        <button class="btn btn-outline btn-sm" onclick="scanDupVisits()">สแกนหา Visit ซ้ำ</button>
+        <div id="dup-scan-result" style="margin-top:10px;"></div>
+      </div></div>
+    </details>
     <details class="pt-manage">
       <summary>⚙️ จัดการรายชื่อคนไข้ (เพิ่ม/แก้ไข/ลบ)</summary>
       <div class="card">
@@ -1148,15 +1155,23 @@ async function _fbMutateVisits(mutateFn) {
   return newList;
 }
 
+// กัน visit ซ้ำ (คนไข้เดียวกัน วันเดียวกัน คนละ id) ณ จุดที่เขียนจริง — ครอบคลุมกรณีหลายเครื่องบันทึกพร้อมกัน/แก้วันที่ชนกัน
+function _assertNoDupVisit(list, visit) {
+  const clash = list.find(v => v.patientId === visit.patientId && v.date === visit.date && v.id !== visit.id);
+  if (clash) throw new Error('มี Visit ของคนไข้นี้ในวันที่ ' + formatDate(visit.date) + ' อยู่แล้ว (อาจบันทึกจากอีกเครื่อง) — โหลดหน้าใหม่แล้วแก้ไข Visit เดิมแทน');
+}
+
 async function saveVisitDoc(visit) {
   if (_db) {
     await _fbMutateVisits(list => {
+      _assertNoDupVisit(list, visit);
       const idx = list.findIndex(v => v.id === visit.id);
       if (idx >= 0) list[idx] = visit; else list.push(visit);
       return list;
     });
     // onSnapshot จะอัปเดต cache/UI ให้ทุกเครื่องอีกที
   } else {
+    _assertNoDupVisit(_visitsCache, visit);
     const idx = _visitsCache.findIndex(v => v.id === visit.id);
     if (idx >= 0) _visitsCache[idx] = visit; else _visitsCache.push(visit);
     _localSave();
@@ -1780,6 +1795,10 @@ function saveVisit() {
   };
 
   const isEdit = editingVisitIdx !== null;
+  if (isEdit) {
+    const clash = getVisits().find(v => v.patientId === visit.patientId && v.date === date && v.id !== visit.id);
+    if (clash) { showToast('⚠️ คนไข้นี้มี Visit วันที่ ' + dateRaw + ' อยู่แล้ว — เปลี่ยนวันที่หรือลบรายการเดิมก่อน'); return; }
+  }
   if (!isEdit) {
     const dup = getVisits().find(v => v.patientId === visit.patientId && v.date === date);
     if (dup) {
@@ -2043,6 +2062,31 @@ function deleteVisit(globalIdx) {
     renderDashboard();
     showToast('🗑️ ลบ Visit เรียบร้อย');
   }).catch(e => showToast('⚠️ ลบไม่สำเร็จ: ' + e.message));
+}
+
+// สแกนหา visit ที่คนไข้+วันที่ซ้ำกัน แสดงให้เลือกลบเอง (ไม่ลบอัตโนมัติ)
+function scanDupVisits() {
+  const groups = {};
+  getVisits().forEach(v => { (groups[v.patientId + '|' + v.date] = groups[v.patientId + '|' + v.date] || []).push(v); });
+  const dups = Object.values(groups).filter(g => g.length > 1);
+  const el = document.getElementById('dup-scan-result');
+  if (!dups.length) { el.innerHTML = '<div class="alert alert-info">✅ ไม่พบ Visit ซ้ำ</div>'; return; }
+  el.innerHTML = dups.map(g => `
+    <div class="card" style="margin-bottom:8px;"><div class="card-body">
+      <strong>${escHtml(g[0].patientName || '-')}</strong> · ${formatDate(g[0].date)} · พบ ${g.length} รายการ
+      ${g.map(v => `<div style="display:flex;gap:10px;align-items:center;margin-top:6px;font-size:13px;">
+        <span style="flex:1;">ยา ${(v.drugs||[]).length} รายการ · HbA1c ${escHtml(v.hba1c||'-')} · น้ำหนัก ${escHtml(v.weight||'-')} · บันทึกเมื่อ ${v.savedAt ? new Date(v.savedAt).toLocaleString('th-TH') : '-'}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteDupVisit(${escHtml(JSON.stringify(v.id))})">ลบรายการนี้</button>
+      </div>`).join('')}
+    </div></div>`).join('');
+}
+function deleteDupVisit(id) {
+  const v = getVisits().find(x => x.id === id);
+  if (!v) return;
+  if (!confirm(`ลบ Visit วันที่ ${formatDate(v.date)} ของ ${v.patientName} (รายการนี้)?
+ไม่สามารถกู้คืนได้`)) return;
+  deleteVisitDoc(id).then(() => { showToast('🗑️ ลบ Visit ซ้ำเรียบร้อย'); scanDupVisits(); renderDashboard(); })
+    .catch(e => showToast('⚠️ ลบไม่สำเร็จ: ' + e.message));
 }
 
 function flagBPClass(bp) {
