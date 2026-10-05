@@ -40,6 +40,11 @@
 
   /* ===== LAYOUT ===== */
   .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .sync-dot { flex-shrink:0; border:1px solid rgba(255,255,255,.3); background:rgba(0,0,0,.15); color:#fff; border-radius:16px; padding:4px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .rep-sec { scroll-margin-top:12px; margin-top:8px; }
+  .rep-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; }
+  .rep-bar a { padding:8px 15px; border:1px solid #D6E4DA; border-radius:24px; background:#fff; color:#124228; text-decoration:none; font-size:13px; }
+  details.pt-manage { margin-top:14px; } details.pt-manage > summary { cursor:pointer; font-weight:700; padding:10px 4px; }
   .page { display: none; }
   .page.active { display: block; }
 
@@ -426,14 +431,11 @@ const DashUX = {
     <div class="sub">รพ.ถ้ำพรรณา · คลินิกทุกวันศุกร์สุดท้ายของเดือน</div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('entry')">📝 บันทึกข้อมูล</button>
-    <button class="nav-tab" onclick="showPage('history')">📋 ประวัติ</button>
-    <button class="nav-tab" onclick="showPage('dashboard')">📊 สรุปภาพรวม</button>
+    <button class="nav-tab active" onclick="showPage('entry')">📝 บันทึก</button>
     <button class="nav-tab" onclick="showPage('patients')">👥 คนไข้</button>
-    <button class="nav-tab" onclick="showPage('summary')">📋 สรุปผล</button>
-    <button class="nav-tab" onclick="showPage('research')">🎓 รายงานวิชาการ</button>
-    <button class="nav-tab" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
+    <button class="nav-tab" onclick="showPage('report')">📊 รายงาน</button>
   </div>
+  <button class="sync-dot" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
 </div>
 
 <!-- ── Firebase Sync Modal ── -->
@@ -657,32 +659,21 @@ const DashUX = {
 
   </div><!-- end page-entry -->
 
-  <!-- =========== PAGE: HISTORY =========== -->
-  <div id="page-history" class="page">
-    <div class="card">
-      <div class="card-header">📋 ประวัติการตรวจ</div>
-      <div class="card-body">
-        <div class="patient-strip" id="hist-patient-strip"></div>
-        <div id="hist-trend-wrap" style="display:none;margin-bottom:16px;">
-          <canvas id="hist-trend-chart" height="90"></canvas>
-        </div>
-        <div id="hist-content"></div>
-      </div>
-    </div>
-  </div>
-
+  <!-- =========== PAGE: REPORT (ภาพรวม + สรุปผล + วิชาการ) =========== -->
+  <div id="page-report" class="page">
+    <div class="rep-bar"><a href="#page-dashboard">ภาพรวมคลินิก</a><a href="#dash-lab-container">แนวโน้มรายบุคคล</a><a href="#page-summary">ผลลัพธ์และค่ายา</a><a href="#page-research">รายงานวิชาการ</a></div>
   <!-- =========== PAGE: DASHBOARD =========== -->
-  <div id="page-dashboard" class="page">
-    <h2 class="dash-section">ภาพรวมคลินิก</h2><div class="dash-context">ข้อมูลสะสมทุกช่วงเวลา · ผลตรวจรายคนใช้ค่าล่าสุดที่บันทึกไว้</div><nav class="dash-section-nav" aria-label="ส่วนรายงาน"><a href="#dash-content">ภาพรวมคลินิก</a><a href="#dash-lab-container">แนวโน้มรายบุคคล</a></nav><div id="dash-content"></div>
+  <div id="page-dashboard" class="rep-sec">
+    <h2 class="dash-section">ภาพรวมคลินิก</h2><div class="dash-context">ข้อมูลสะสมทุกช่วงเวลา · ผลตรวจรายคนใช้ค่าล่าสุดที่บันทึกไว้</div><div id="dash-content"></div>
   </div>
 
   <!-- =========== PAGE: SUMMARY =========== -->
-  <div id="page-summary" class="page">
+  <div id="page-summary" class="rep-sec">
     <h2 class="dash-section">สรุปผลลัพธ์และค่ายา</h2><div class="dash-context">ข้อมูลสะสมทุกช่วงเวลา · เปรียบเทียบค่ายาตั้งต้นกับการติดตามล่าสุดของแต่ละคน</div><div id="sum-content"></div>
   </div>
 
   <!-- =========== PAGE: RESEARCH =========== -->
-  <div id="page-research" class="page">
+  <div id="page-research" class="rep-sec">
     <h2 class="dash-section">รายงานงานวิชาการ</h2><div class="dash-context">เปรียบเทียบก่อน–หลังเข้าโครงการ พร้อมสถิติและข้อความสรุป · ส่งออก Excel/PDF แบบไม่ระบุตัวตนได้</div>
     <div class="card"><div class="card-body" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
       <div class="field"><label>ปีงบประมาณ</label><select id="res-fy" onchange="resFyChanged()"><option value="">ทั้งหมด</option></select></div>
@@ -693,17 +684,32 @@ const DashUX = {
     <div id="res-content"></div>
   </div>
 
+  </div>
+
   <!-- =========== PAGE: PATIENTS =========== -->
   <div id="page-patients" class="page">
+    <div class="card" style="margin-bottom:0;"><div class="card-body"><div class="patient-strip" id="hist-patient-strip"></div></div></div>
     <div class="card">
-      <div class="card-header" style="justify-content:space-between;">
-        <span>👥 รายชื่อคนไข้ทั้งหมด</span>
-        <button class="btn btn-primary btn-sm" onclick="openPatientModal()">+ เพิ่มคนไข้</button>
-      </div>
+      <div class="card-header">📋 ประวัติการตรวจ <span style="font-weight:400;font-size:13px;opacity:.8">· เลือกคนไข้ด้านล่าง</span></div>
       <div class="card-body">
-        <div class="pt-cards" id="pt-cards"></div>
+        
+        <div id="hist-trend-wrap" style="display:none;margin-bottom:16px;">
+          <canvas id="hist-trend-chart" height="90"></canvas>
+        </div>
+        <div id="hist-content"></div>
       </div>
     </div>
+
+    <details class="pt-manage">
+      <summary>⚙️ จัดการรายชื่อคนไข้ (เพิ่ม/แก้ไข/ลบ)</summary>
+      <div class="card">
+        <div class="card-header" style="justify-content:space-between;">
+          <span>👥 รายชื่อคนไข้ทั้งหมด</span>
+          <button class="btn btn-primary btn-sm" onclick="openPatientModal()">+ เพิ่มคนไข้</button>
+        </div>
+        <div class="card-body"><div class="pt-cards" id="pt-cards"></div></div>
+      </div>
+    </details>
   </div>
 
 </div><!-- end container -->
@@ -2636,11 +2642,8 @@ function showPage(name, tabEl) {
   document.getElementById(`page-${name}`).classList.add('active');
   const tab = tabEl || (event && event.target);
   if (tab) tab.classList.add('active');
-  if (name === 'dashboard') renderDashboard();
-  if (name === 'history' && currentHistPatient) renderHistory(currentHistPatient);
-  if (name === 'patients') renderPatientsPage();
-  if (name === 'summary') renderSummary();
-  if (name === 'research') renderResearch();
+  if (name === 'report') { renderDashboard(); renderSummary(); renderResearch(); }
+  if (name === 'patients') { renderPatientsPage(); if (currentHistPatient) renderHistory(currentHistPatient); }
   if (name === 'entry') {
     // Highlight correct nav tab
     document.querySelectorAll('.nav-tab').forEach(t => {
