@@ -143,7 +143,7 @@
       <h1>💉 วิธีฉีดอินซูลินด้วยกระบอกฉีดยา</h1>
       <div class="sub">กลุ่มงานเภสัชกรรมฯ โรงพยาบาลถ้ำพรรณรา</div>
     </div>
-    <button class="speak-btn" id="speakBtn" hidden>🔊 อ่านให้ฟัง</button>
+    <button class="speak-btn" id="speakBtn" hidden>🔊 เปิดเสียงบรรยาย</button>
   </div>
 </header>
 
@@ -165,6 +165,36 @@
   <p class="foot">สื่อประกอบการให้คำแนะนำโดยเภสัชกร — หากมีข้อสงสัย สอบถามเภสัชกรหรือแพทย์ผู้รักษา</p>
 </main>
 
+<!-- บทพูดสำหรับเสียงบรรยาย: แก้ที่นี่แล้วรัน python tts/generate-insulin-audio.py เพื่อสร้าง MP3 ใหม่ -->
+<script type="application/json" id="narration">
+{
+  "s00": "สวัสดีค่ะ บทเรียนนี้จะสอนวิธีฉีดอินซูลินด้วยกระบอกฉีดยา ทีละขั้นตอน เริ่มจากเลือกชนิดอินซูลิน และใส่ขนาดยาที่แพทย์สั่ง แล้วกดปุ่ม ถัดไป",
+  "s01": "ขั้นที่หนึ่ง เตรียมอุปกรณ์ ล้างมือด้วยสบู่และน้ำสะอาด แล้วเช็ดให้แห้ง เตรียมขวดยาอินซูลิน ตรวจชื่อยาและวันหมดอายุ เตรียมกระบอกฉีดยาอินซูลิน ขนาดหนึ่งมิลลิลิตร สำลีชุบแอลกอฮอล์ และขวดพลาสติกแข็งสำหรับทิ้งเข็ม แตะที่แต่ละรายการ เพื่อทำเครื่องหมาย",
+  "s02-mix": "ขั้นที่สอง คลึงขวดยา ยามิกซ์ตาร์ด เจ็ดสิบ สามสิบ เป็นยาชนิดขุ่น ตะกอนจะนอนอยู่ก้นขวด ให้วางขวดระหว่างฝ่ามือทั้งสองข้าง แล้วคลึงไปมา จนยาขุ่นขาวเท่ากันทั้งขวด ห้ามเขย่าขวดแรงๆ เพราะจะทำให้เกิดฟองอากาศ ลองลากนิ้วไปมาบนภาพ เพื่อคลึงขวด",
+  "s02-nph": "ขั้นที่สอง คลึงขวดยา ยาอินซูลิน เอ็นพีเอช เป็นยาชนิดขุ่น ตะกอนจะนอนอยู่ก้นขวด ให้วางขวดระหว่างฝ่ามือทั้งสองข้าง แล้วคลึงไปมา จนยาขุ่นขาวเท่ากันทั้งขวด ห้ามเขย่าขวดแรงๆ เพราะจะทำให้เกิดฟองอากาศ ลองลากนิ้วไปมาบนภาพ เพื่อคลึงขวด",
+  "s03": "ขั้นที่สาม เช็ดจุกยาง ถ้าเป็นขวดใหม่ ให้เปิดฝาพลาสติกออกก่อน แล้วใช้สำลีชุบแอลกอฮอล์ เช็ดจุกยาง รอให้แห้ง แตะที่จุกยางบนภาพ เพื่อเช็ด",
+  "s04": "ขั้นที่สี่ ดึงอากาศเข้ากระบอกฉีดยา ถอดปลอกเข็มออก แล้วดึงก้านสูบ ให้อากาศเข้ามา เท่ากับขนาดยาที่แพทย์สั่ง ดูตัวเลขบนหน้าจอ วิธีอ่านขีด กระบอกนี้ หนึ่งขีดเล็ก เท่ากับสองยูนิต ขีดยาวที่มีตัวเลข คือทุกสิบยูนิต ให้อ่านตรงขอบบนของยางสีดำ ด้านที่อยู่ใกล้เข็ม",
+  "s05": "ขั้นที่ห้า ฉีดอากาศเข้าขวด ตั้งขวดยาไว้บนโต๊ะ แทงเข็มผ่านตรงกลางจุกยาง แล้วดันก้านสูบ ให้อากาศเข้าไปในขวด จะช่วยให้ดูดยาออกได้ง่ายขึ้น",
+  "s06": "ขั้นที่หก ดูดยา คว่ำขวดลง โดยที่เข็มยังคาอยู่ ให้ปลายเข็มจุ่มอยู่ในน้ำยา แล้วค่อยๆ ดึงก้านสูบช้าๆ ให้ได้ขนาดยาตามที่แพทย์สั่ง",
+  "d1": "มีฟองอากาศอยู่ในกระบอก ใช้นิ้วดีดกระบอกเบาๆ ให้ฟองลอยขึ้นไปรวมกันที่ปลายเข็ม ลองแตะที่กระบอกยา สามครั้ง",
+  "d2": "ฟองอากาศรวมกันแล้ว กดปุ่มด้านล่าง เพื่อดันฟองอากาศออก",
+  "d3": "ฟองอากาศหมดแล้ว แต่ยาจะลดลงเล็กน้อย ให้ปรับก้านสูบ ให้ได้ขนาดยาพอดีอีกครั้ง",
+  "d4": "ได้ขนาดยาพอดีแล้ว ถอนเข็มออกจากขวดได้เลย",
+  "s07": "ขั้นที่เจ็ด เลือกตำแหน่งฉีดยา ตำแหน่งที่แนะนำคือหน้าท้อง โดยฉีดห่างจากสะดือ อย่างน้อยสองนิ้ว นอกจากนี้ ยังฉีดที่ต้นขาด้านหน้า หรือต้นแขนด้านนอกได้ ฉีดแต่ละครั้ง ให้ห่างจากจุดเดิมอย่างน้อยหนึ่งนิ้วมือ เช็ดผิวด้วยสำลีแอลกอฮอล์ และรอให้แห้งก่อนฉีด",
+  "s08": "ขั้นที่แปด ฉีดยา กดปุ่มด้านล่าง ทีละขั้นตอน",
+  "i1": "จับผิวหนังยกขึ้นเบาๆ ด้วยนิ้วโป้งและนิ้วชี้",
+  "i2": "แทงเข็มเร็วๆ ให้ตั้งฉากกับผิวหนัง จนสุดเข็ม",
+  "i3": "ค่อยๆ ดันก้านสูบช้าๆ จนสุด",
+  "i4": "ค้างเข็มไว้ แล้วนับหนึ่งถึงสิบ",
+  "i5": "ถอนเข็มออกตรงๆ",
+  "i6": "ปล่อยมือที่จับผิวหนัง ห้ามคลึง หรือนวดบริเวณที่ฉีด",
+  "c01": "หนึ่ง", "c02": "สอง", "c03": "สาม", "c04": "สี่", "c05": "ห้า",
+  "c06": "หก", "c07": "เจ็ด", "c08": "แปด", "c09": "เก้า", "c10": "สิบ",
+  "s09-mix": "ขั้นที่เก้า หลังฉีดยา ทิ้งกระบอกฉีดยาลงในขวดพลาสติกแข็งที่มีฝาปิด ไม่ต้องสวมปลอกเข็มกลับ เมื่อขวดใกล้เต็ม ให้นำมาคืนที่โรงพยาบาล ขวดยาที่ยังไม่เปิด เก็บในตู้เย็นช่องธรรมดา ห้ามแช่ช่องแข็ง ขวดที่เปิดใช้แล้ว ใช้ได้ไม่เกินหกสัปดาห์ ยามิกซ์ตาร์ด ให้ฉีดก่อนอาหารสามสิบนาที และต้องกินอาหารตามเวลา ถ้ามีอาการใจสั่น เหงื่อออก มือสั่น หรือหิวมาก อาจเป็นน้ำตาลในเลือดต่ำ ให้กินน้ำตาล หรือน้ำหวานทันที ถ้าไม่ดีขึ้น ให้รีบมาพบแพทย์",
+  "s09-nph": "ขั้นที่เก้า หลังฉีดยา ทิ้งกระบอกฉีดยาลงในขวดพลาสติกแข็งที่มีฝาปิด ไม่ต้องสวมปลอกเข็มกลับ เมื่อขวดใกล้เต็ม ให้นำมาคืนที่โรงพยาบาล ขวดยาที่ยังไม่เปิด เก็บในตู้เย็นช่องธรรมดา ห้ามแช่ช่องแข็ง ขวดที่เปิดใช้แล้ว ใช้ได้ไม่เกินหกสัปดาห์ ยาเอ็นพีเอช ให้ฉีดตามเวลาที่แพทย์สั่ง ตรงเวลาเดิมทุกวัน ถ้ามีอาการใจสั่น เหงื่อออก มือสั่น หรือหิวมาก อาจเป็นน้ำตาลในเลือดต่ำ ให้กินน้ำตาล หรือน้ำหวานทันที ถ้าไม่ดีขึ้น ให้รีบมาพบแพทย์",
+  "s10": "ขั้นสุดท้าย แบบทดสอบ ลองดึงยา และอ่านขีดกระบอกฉีดยา ห้าข้อ ครั้งนี้จะไม่มีตัวเลขช่วย"
+}
+</script>
 <script>
 'use strict';
 /* ===== state ===== */
@@ -554,9 +584,10 @@ function sceneDrawDrug(st, ctx) {
     if (phase === 'draw') {
       if (u < S.dose) { ctx.say('warn', `ตอนนี้ ${u} ยูนิต — ดึงก้านสูบช้าๆ ให้ถึง ${S.dose} ยูนิต`); return; }
       phase = 'bubbles'; syr.enable(false); addBubbles();
+      ctx.clip('d1');
       ctx.say('warn', '🫧 มีฟองอากาศในกระบอก! <b>ใช้นิ้วดีดกระบอกเบาๆ</b> ให้ฟองลอยไปรวมกันที่ปลายเข็ม — แตะที่กระบอกยา 3 ครั้ง');
     } else if (phase === 'adjust') {
-      if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ ไม่มีฟองอากาศ — ถอนเข็มออกจากขวด`); ctx.done(); }
+      if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.clip('d4'); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ ไม่มีฟองอากาศ — ถอนเข็มออกจากขวด`); ctx.done(); }
       else if (u < S.dose) ctx.say('warn', `ตอนนี้ ${u} ยูนิต — ดึงเพิ่มอีก ${S.dose - u} ยูนิต`);
       else ctx.say('warn', `ตอนนี้ ${u} ยูนิต — เกิน ${u - S.dose} ยูนิต ดันยาส่วนเกินกลับเข้าขวด`);
     }
@@ -572,10 +603,12 @@ function sceneDrawDrug(st, ctx) {
       b.c.setAttribute('cx', lerp(from[i][0], tx, t)); b.c.setAttribute('cy', lerp(from[i][1], ty, t));
       b.x = lerp(from[i][0], tx, t); b.y = lerp(from[i][1], ty, t);
     }));
+    if (!ctx.alive()) return;
     if (taps === 3) {
       bubbles.forEach((b, i) => { if (i) b.c.remove(); });
       bubbles[0].c.setAttribute('r', 12); bubbles[0].c.setAttribute('cx', SX0 + 13); bubbles[0].c.setAttribute('cy', 82);
       st.querySelector('#bubAct').hidden = false;
+      ctx.clip('d2');
       ctx.say('info', 'ฟองอากาศรวมกันที่ปลายเข็มแล้ว — กดปุ่มด้านล่างเพื่อดันฟองออก');
     }
   });
@@ -583,11 +616,12 @@ function sceneDrawDrug(st, ctx) {
     e.target.disabled = true;
     const b = bubbles[0].c, u0 = syr.u;
     await Promise.all([syr.anim(u0 - BU, 700), tween(700, t => b.setAttribute('r', lerp(12, 0, t)))]);
+    if (!ctx.alive()) return;
     b.remove(); st.querySelector('#bubAct').hidden = true;
     phase = 'adjust'; syr.enable(true);
     const u = syr.u;
-    if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ — ถอนเข็มออกจากขวด`); ctx.done(); }
-    else ctx.say('warn', `ฟองอากาศหมดแล้ว แต่ยาเหลือ <b>${u} ยูนิต</b> — ปรับก้านสูบให้ได้ <b>${S.dose} ยูนิต</b> พอดี`);
+    if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.clip('d4'); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ — ถอนเข็มออกจากขวด`); ctx.done(); }
+    else { ctx.clip('d3'); ctx.say('warn', `ฟองอากาศหมดแล้ว แต่ยาเหลือ <b>${u} ยูนิต</b> — ปรับก้านสูบให้ได้ <b>${S.dose} ยูนิต</b> พอดี`); }
   });
   ctx.say('info', `ดึงก้านสูบช้าๆ ให้ได้ <b>${S.dose} ยูนิต</b>`);
 }
@@ -674,7 +708,8 @@ function sceneInject(st, ctx) {
     ['👍 ดันก้านสูบจนสุด', () => tween(1800, t => { vSet(vs, lerp(S.dose, 0, t), TOP, LEN); depot.setAttribute('rx', 22 * t); depot.setAttribute('ry', 12 * t); }),
       '<b>ค่อยๆ ดันก้านสูบช้าๆ</b> จนสุด ยาจะเข้าไปอยู่ในชั้นไขมันใต้ผิวหนัง'],
     ['⏱️ ค้างเข็ม นับ 1–10', async () => {
-        for (let n = 1; n <= 10; n++) { if (!ctx.alive()) return; cd.textContent = n; await sleep(1000); }
+        await ctx.clip('i4');
+        for (let n = 1; n <= 10; n++) { if (!ctx.alive()) return; cd.textContent = n; ctx.clip('c' + String(n).padStart(2, '0')); await sleep(1000); }
         cd.textContent = '';
       }, '<b>ค้างเข็มไว้ นับ 1–10 ช้าๆ</b> เพื่อให้ยาเข้าไปครบ ไม่ไหลย้อนออกมา'],
     ['↑ ถอนเข็มออก', () => tween(600, t => setTy(80 * (1 - t))),
@@ -689,6 +724,7 @@ function sceneInject(st, ctx) {
     if (i >= acts.length) return;
     btn.disabled = true;
     ctx.say('info', acts[i][2]);
+    if (i !== 3) ctx.clip('i' + (i + 1));
     await acts[i][1]();
     if (!ctx.alive()) return;
     i++;
@@ -798,18 +834,57 @@ const STEPS = [
 let cur = 0, token = 0, speakOn = false;
 const fb = $('#fb');
 function say(kind, html) { fb.className = 'fb' + (kind ? ' ' + kind : ''); fb.innerHTML = html || ''; }
-function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'th-TH'; u.rate = .95;
-  const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('th'));
-  if (v) u.voice = v;
-  speechSynthesis.speak(u);
+/* ===== narration: pre-generated MP3 (audio/insulin/<id>.mp3), falls back to the device's Thai voice ===== */
+const NARR = JSON.parse($('#narration').textContent);
+const player = new Audio();
+let playSeq = 0;
+function thaiVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith('th'));
+  return vs.find(v => /premwadee|niwat|achara|natural|online/i.test(v.name)) || vs.find(v => /google/i.test(v.name)) || vs[0];
 }
+function speakText(text, seq) {
+  return new Promise(res => {
+    if (!('speechSynthesis' in window) || !text) return res();
+    speechSynthesis.cancel();
+    // short chunks at phrase breaks: smoother pacing and avoids Chrome cutting off long utterances
+    const parts = [];
+    text.split(/\s+/).forEach(w => {
+      if (parts.length && (parts[parts.length - 1] + ' ' + w).length <= 60) parts[parts.length - 1] += ' ' + w;
+      else parts.push(w);
+    });
+    const v = thaiVoice();
+    let i = 0;
+    (function nx() {
+      if (seq !== playSeq || i >= parts.length) return res();
+      const u = new SpeechSynthesisUtterance(parts[i++]);
+      u.lang = 'th-TH'; u.rate = .95; if (v) u.voice = v;
+      u.onend = nx; u.onerror = () => res();
+      speechSynthesis.speak(u);
+    })();
+  });
+}
+function stopAudio() {
+  playSeq++;
+  player.pause();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+function playClip(id) {
+  if (!speakOn || !NARR[id]) return Promise.resolve();
+  stopAudio();
+  const seq = playSeq;
+  return new Promise(res => {
+    let fell = false;
+    const fallback = () => { if (fell || seq !== playSeq) return; fell = true; speakText(NARR[id], seq).then(res); };
+    player.onended = res;
+    player.onerror = fallback;
+    player.src = `audio/insulin/${id}.mp3`;
+    player.play().catch(fallback);
+  });
+}
+const stepClip = i => (i === 2 || i === 9) ? `s0${i}-${S.type}` : 's' + String(i).padStart(2, '0');
 function go(i) {
   cur = i; const my = ++token;
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  stopAudio();
   const s = STEPS[i];
   $('#stepNo').textContent = i === 0 ? 'เริ่มต้น' : `ขั้นที่ ${i} จาก ${STEPS.length - 1}`;
   $('#title').textContent = s.title;
@@ -825,26 +900,27 @@ function go(i) {
   const ctx = {
     alive: () => my === token,
     done: () => { if (my !== token) return; isDone = true; nav(); },
-    say: (k, h) => { if (my === token) say(k, h); }
+    say: (k, h) => { if (my === token) say(k, h); },
+    clip: id => my === token ? playClip(id) : Promise.resolve()
   };
   const st = $('#stage'); st.innerHTML = '';
   s.render(st, ctx);
   nav();
   $('#progress').innerHTML = STEPS.map((_, j) => `<span class="${j < i ? 'on' : j === i ? 'cur' : ''}" data-j="${j}" title="${STEPS[j].title}"></span>`).join('');
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (speakOn) speak(s.title + '. ' + $('#instr').innerText);
+  playClip(stepClip(i));
 }
 $('#nextBtn').addEventListener('click', () => go(cur === STEPS.length - 1 ? 0 : cur + 1));
 $('#skipBtn').addEventListener('click', () => go(Math.min(cur + 1, STEPS.length - 1)));
 $('#backBtn').addEventListener('click', () => cur > 0 && go(cur - 1));
 $('#progress').addEventListener('click', e => { const j = e.target.dataset.j; if (j !== undefined) go(Number(j)); });
-if ('speechSynthesis' in window) {
+{
   const b = $('#speakBtn'); b.hidden = false;
-  speechSynthesis.getVoices();
+  if ('speechSynthesis' in window) speechSynthesis.getVoices();
   b.addEventListener('click', () => {
     speakOn = !speakOn; b.classList.toggle('on', speakOn);
-    b.textContent = speakOn ? '🔊 กำลังอ่าน' : '🔊 อ่านให้ฟัง';
-    speakOn ? speak(STEPS[cur].title + '. ' + $('#instr').innerText) : speechSynthesis.cancel();
+    b.textContent = speakOn ? '🔊 เสียงเปิด' : '🔊 เปิดเสียงบรรยาย';
+    speakOn ? playClip(stepClip(cur)) : stopAudio();
   });
 }
 go(0);

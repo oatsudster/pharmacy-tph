@@ -7,3 +7,4 @@ admin-error-classify/node_modules/
 .expiry-notify-sent
 backups/
 .wrangler/
+tts/.env
