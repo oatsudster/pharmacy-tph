@@ -2685,15 +2685,18 @@ async function fcEmrDrugs(s) {
     const res = await fetch(HOSXP_EMR_GRID_URL, { cache: 'no-store', targetAddressSpace: 'loopback' });
     if (!res.ok) { fcEmrMsg = ''; return; }
     const gh = res.headers.get('X-Grid-Hash') || s.emrGridHash;
-    const { data } = await (await getTessWorker()).recognize(await binarizeGrid(await res.blob()));
+    const lines = await emrDrugNameLines(await res.blob());
     fcEmrHash = gh;
     // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
     if (!clinicWin || clinicWin.closed || s.emrHn !== document.getElementById('f-hn').value.trim()) { fcEmrMsg = ''; return; }
     const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
     const added = [], unknown = [];
-    parseOrderLines(data.text).forEach(o => {
-      const key = hxMatchDrug(o.name);
-      if (!key) { unknown.push(o.name.replace(/\s+(เม็ด|แคปซูล|\d+\s*(OR|pt|OD)).*$/i, '')); return; }
+    let skipped = 0;
+    lines.forEach(name => {
+      const key = hxMatchDrug(name);
+      // บรรทัดที่ดูเป็นชื่อยา (มีความแรง) แต่ไม่รู้จัก แจ้งให้เพิ่มเอง — เศษ OCR อื่นๆ (หัวตาราง/แถบเลื่อนหน้า) ทิ้งไป
+      if (!key) { if (/\d\s*(mg|mcg|g|ml|iu|u)\b/i.test(name)) unknown.push(name.replace(/\s+\S{1,5}$/, '')); return; }
+      if (emrSkipDrug(key, name)) { skipped++; return; }
       if (have.some(h => h === key || drugMatches(h, key))) return;
       have.push(key);
       const info = getDrugPrice(key) || {};
@@ -2701,6 +2704,7 @@ async function fcEmrDrugs(s) {
       added.push(key);
     });
     fcEmrMsg = added.length ? `📷 ดึงชื่อยาจาก EMR ${added.length} รายการ — ใส่จำนวนที่คนไข้นำมา (ยาที่ไม่ได้นำมา เว้นว่างไว้ ไม่ถูกบันทึก)` : '';
+    if (skipped) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + `ข้ามยาบรรเทาอาการ/ยาหยอดตา-หู/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`;
     if (unknown.length) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + '⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', ');
     renderFloatClinic();
   } catch (e) {
@@ -2711,6 +2715,59 @@ async function fcEmrDrugs(s) {
     fcRenderEmrMsg();
   }
 }
+// ตารางยาใน EMR: OCR แบบ tha+eng อ่านชื่อยาภาษาอังกฤษเพี้ยนเป็นอักษรไทย (FOLIC → 76060016, SimVastatin → ร5กาล...)
+// จึงตัดเฉพาะคอลัมน์ "ชื่อรายการ" แล้วอ่านด้วยภาษาอังกฤษอย่างเดียว
+// หาเส้นแบ่งคอลัมน์จากเส้นแนวตั้งสีเทาที่ยาวต่อเนื่องในหัวตาราง+แถวแรกๆ: เส้นแรก = หลังคอลัมน์ลำดับ, ถัดไป = หลังชื่อรายการ
+let tessEngP = null;
+function getTessEngWorker() {
+  if (!tessEngP) tessEngP = (async () => {
+    await getTessWorker();   // โหลด tesseract.min.js ให้ก่อน
+    const w = await Tesseract.createWorker('eng', 1, {
+      workerPath: TESS_BASE + 'worker.min.js', corePath: TESS_BASE, langPath: TESS_BASE, workerBlobURL: false,
+    });
+    await w.setParameters({ preserve_interword_spaces: '1' });
+    return w;
+  })().catch(e => { tessEngP = null; throw e; });
+  return tessEngP;
+}
+async function emrDrugNameLines(blob) {
+  const img = await createImageBitmap(blob);
+  const c0 = document.createElement('canvas'); c0.width = img.width; c0.height = img.height;
+  const g0 = c0.getContext('2d'); g0.drawImage(img, 0, 0);
+  const px = g0.getImageData(0, 0, img.width, img.height).data;
+  const H = Math.min(img.height, 64), lines = [];
+  for (let x = 0; x < img.width; x++) {
+    let n = 0;
+    for (let y = 0; y < H; y++) { const i = (y * img.width + x) * 4; if (px[i] + px[i+1] + px[i+2] < 705) n++; }
+    if (n / H > 0.9) lines.push(x);
+  }
+  const x0 = lines.find(x => x > 10) || 0;
+  const x1 = lines.find(x => x > x0 + 60) || Math.min(img.width, x0 + 300);
+  // ขยาย 3 เท่า ไม่ทำขาว-ดำ (ทำแล้วเส้นตารางติดตัวอักษร อ่านแย่ลง) แต่กลับสีบรรทัดที่พื้นเข้ม (แถวที่ถูกเลือก = ตัวขาวบนน้ำเงิน)
+  const S = 3, W = (x1 - x0) * S, HH = img.height * S;
+  const c = document.createElement('canvas'); c.width = W; c.height = HH;
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+  g.drawImage(img, x0, 0, x1 - x0, img.height, 0, 0, W, HH);
+  const id = g.getImageData(0, 0, W, HH), p = id.data;
+  for (let y = 0; y < HH; y++) {
+    const v = [];
+    for (let x = 0; x < W; x += 4) { const i = (y * W + x) * 4; v.push(p[i] + p[i+1] + p[i+2]); }
+    if (v.sort((a, b) => a - b)[v.length >> 1] >= 384) continue;
+    for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; p[i] = 255 - p[i]; p[i+1] = 255 - p[i+1]; p[i+2] = 255 - p[i+2]; }
+  }
+  g.putImageData(id, 0, 0);
+  const { data } = await (await getTessEngWorker()).recognize(c);
+  return data.text.split('\n').map(t => t.trim())
+    .filter(t => /[A-Za-z]{3,}/.test(t) && !/doctor|\bfee\b|\bof\s*\d/i.test(t));
+}
+
+// ยาที่ไม่ดึงจาก EMR มาใส่ช่องยาคงเหลือ: ยาบรรเทาอาการ, ยาหยอดตา/หู, ยาฉีด (ยกเว้นอินซูลิน ซึ่งคิดเหลือเป็น vial)
+function emrSkipDrug(key, name) {
+  if (isSymptomatic(key, name)) return true;
+  if (/\beye\b|\bear\b|\boph|otic|tears?\b|หยอดตา|หยอดหู/i.test(key + ' ' + name)) return true;
+  return (/^\((inj|iv)\.\)/i.test(key) || /\binj\b|ฉีด/i.test(name)) && !isInsulin(key, name);
+}
+
 function fcRenderEmrMsg() {
   if (!clinicWin || clinicWin.closed) return;
   const el = clinicWin.document.getElementById('fc-emr');
@@ -3062,7 +3119,8 @@ function insulinLoUnits(qty, unit) {
 // ยาบรรเทาอาการ ไม่ต้องปรับตามวันนัด — ชื่ออังกฤษเทียบแบบยอมให้ OCR ผิดได้ 2 ตัวอักษร
 // (ไม่ใช้คำว่า GLYCERYL เพราะจะไปโดน glyceryl trinitrate ซึ่งเป็นยาโรคหัวใจ)
 const SYMPTOMATIC_DRUGS = ['GUAIACOLATE', 'GUAIFENESIN', 'DEXTROMETHORPHAN', 'PARACETAMOL', 'ACETAMINOPHEN',
-  'DICLOFENAC', 'VOLTAREN', 'HYOSCINE', 'BUSCOPAN', 'DOMPERIDONE', 'MOTILIUM'];   // diclofenac (voltaren/fenac) — ยาแก้ปวด ใช้ตามอาการ ไม่ปรับตามวันนัด (ไม่ใส่ FENAC เพราะสั้นเกินไป จะไปจับ mefenamic ฯลฯ ตอน fuzzy match)
+  'DICLOFENAC', 'VOLTAREN', 'HYOSCINE', 'BUSCOPAN', 'DOMPERIDONE', 'MOTILIUM',
+  'TRAMADOL', 'TRAMAL', 'NORGESIC', 'ORPHENADRINE'];   // diclofenac (voltaren/fenac) — ยาแก้ปวด ใช้ตามอาการ ไม่ปรับตามวันนัด (ไม่ใส่ FENAC เพราะสั้นเกินไป จะไปจับ mefenamic ฯลฯ ตอน fuzzy match)
 function isSymptomatic(...texts) {
   return texts.some(t => {
     t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');   // OCR อ่าน O เป็นเลข 0
