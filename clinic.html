@@ -1753,10 +1753,12 @@ function savePatients() {
 }
 
 // ── LEFTOVER ROWS ────────────────────────────────────────
-function addLoRow(drug='', qty='', unit='', price=0) {
+// auto = แถวที่ดึงชื่อยามาจาก EMR ให้เอง (หน้าต่างลอยบันทึกคลินิก) ถ้าเภสัชไม่ได้ใส่จำนวน จะไม่ถูกบันทึก
+function addLoRow(drug='', qty='', unit='', price=0, auto=false) {
   const list = document.getElementById('lo-list');
   const div = document.createElement('div');
   div.className = 'lo-row';
+  if (auto) div.dataset.auto = '1';
   div.innerHTML = `
     <input class="lo-drug" type="text" list="drug-dl" placeholder="ชื่อยา..." value="${escHtml(drug)}" oninput="onDrugInput(this)" autocomplete="off"
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.lo-row').querySelector('.lo-qty').select();}">
@@ -1768,7 +1770,7 @@ function addLoRow(drug='', qty='', unit='', price=0) {
     <button class="btn-rm" type="button" onclick="this.closest('.lo-row').remove();updateLoTotal()">✕</button>`;
   div.querySelector('.lo-qty')._price = price;
   list.appendChild(div);
-  div.querySelector('.lo-drug').focus();
+  if (!auto) div.querySelector('.lo-drug').focus();
   updateLoTotal();
 }
 
@@ -1818,6 +1820,7 @@ function getLoData() {
     const qty = parseFloat(row.querySelector('.lo-qty').value)||0;
     const unit = row.querySelector('.lo-unit').value.trim();
     const price = row.querySelector('.lo-qty')._price||0;
+    if (row.dataset.auto && !qty) return null;   // ชื่อยาจาก EMR ที่คนไข้ไม่ได้นำมา (ไม่ได้ใส่จำนวน)
     return drug||qty ? {drug,qty,unit,priceUnit:price,total:Math.round(qty*price*100)/100} : null;
   }).filter(Boolean);
 }
@@ -2263,6 +2266,7 @@ async function openFloatLeftover() {
     const na = e.target.closest('button[data-na]');
     if (na) { toggleNoAdjust(na.dataset.na); return; }
     if (e.target.closest('button[data-na-save]')) { saveNoAdjust(); return; }
+    if (e.target.closest('button[data-reocr]')) { reReadOrder(); return; }
     if (e.target.closest('button[data-na-cancel]')) cancelNoAdjust();
   });
   // ขนาดยา/วัน ที่กรอกในตาราง — คำนวณเฉพาะแถวนั้น ไม่ render ทั้งตาราง (จะได้ไม่เสีย focus)
@@ -2272,6 +2276,7 @@ async function openFloatLeftover() {
     updateFloatNeed(e.target.closest('tr'));
   });
   floatWin.addEventListener('pagehide', () => { floatWin = null; bridgeKey = ''; });
+  if (window.tphSessionWatch) tphSessionWatch(d);
   // ตั้ง timer บนหน้าต่างลอย (มองเห็นอยู่ตลอด) ไม่ใช่แท็บหลักที่ซ่อนอยู่ ซึ่ง Chrome จะชะลอ timer จนแทบไม่ทำงาน
   bridgeKey = '';
   floatPollTimer = floatWin.setInterval(pollHosxpBridge, 1500);
@@ -2282,6 +2287,16 @@ async function openFloatLeftover() {
   if (formHn.trim()) hnEl.value = formHn.trim();
   hnEl.focus();
   renderFloatLeftover();
+}
+
+// ทำงานผ่าน HOSxP อย่างเดียว (หน้าต่างลอยอัปเดตเอง ไม่ได้แตะเว็บเลย) ก็นับเป็นการใช้งาน
+// ไม่งั้นหน้าเว็บจะ logout ทั้งที่ จพ./เภสัช ทำงานอยู่ — นับเมื่อ HOSxP เปลี่ยนคนไข้/หน้าจอ/ตารางยาเท่านั้น เปิดทิ้งไว้เฉยๆ ยัง logout ตามปกติ
+let bridgeActSig = '';
+function noteBridgeActivity(s) {
+  const sig = [s.hn, s.active, s.gridVer, s.apptDays, s.emrHn, s.emrGridVer].join('|');
+  if (sig === bridgeActSig) return;
+  if (bridgeActSig && window.tphSessionActivity) tphSessionActivity();
+  bridgeActSig = sig;
 }
 
 // ดึงคนไข้ที่เปิดหน้าจ่ายยาอยู่ใน HOSxP มาแสดงเอง ถ้าไม่ได้เปิด bridge ไว้ ก็พิมพ์/วาง HN เองได้เหมือนเดิม
@@ -2298,6 +2313,7 @@ async function pollHosxpBridge() {
     return;
   }
   if (!floatWin || floatWin.closed) return;
+  noteBridgeActivity(s);
   const wasActive = lastBridge && lastBridge.active;
   lastBridge = s;
   if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer) runOrderOcr();
@@ -2394,6 +2410,7 @@ async function openFloatClinic() {
       <div class="box">
         <div class="sec">📦 ยาที่คนไข้นำกลับมา <span class="muted">(กรอกที่นี่ ไม่ต้องพิมพ์ใน HOSxP)</span></div>
         <div class="row" id="fc-lo-chips"></div>
+        <div id="fc-emr" class="muted" style="margin-bottom:4px"></div>
         <div id="fc-lo-table"></div>
         <div class="row" style="margin-top:6px;margin-bottom:0">
           <input id="fc-lo-drug" placeholder="พิมพ์ชื่อยา เช่น metf, amlo 10" autocomplete="off">
@@ -2520,6 +2537,7 @@ async function openFloatClinic() {
   // แก้อะไรในหน้าหลักระหว่างนั้น กลับมาที่หน้าต่างลอยก็เห็นตรงกัน
   clinicWin.addEventListener('focus', renderFloatClinic);
   clinicWin.addEventListener('pagehide', () => { clinicWin = null; clinicBridgeHn = ''; clinicPendingHn = null; });
+  if (window.tphSessionWatch) tphSessionWatch(d);
   clinicBridgeHn = '';
   clinicWin.setInterval(pollClinicBridge, 1500);
   pollClinicBridge();
@@ -2544,7 +2562,7 @@ async function fcApplyText(txt) {
 // ยาเหลือที่คนไข้คนนี้เคยนำกลับมา (3 ครั้งล่าสุด) เป็นปุ่มลัด คนไข้โรคเรื้อรังได้ยาชุดเดิมเกือบทุกครั้ง
 function fcPrevDrugs(hn) {
   if (!hn) return [];
-  const have = new Set(getLoData().map(l => l.drug)), seen = new Set(), out = [];
+  const have = new Set([...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim())), seen = new Set(), out = [];
   visitRecords.filter(r => (r.hn || '').trim() === hn && r.leftovers && r.leftovers.length)
     .sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 3)
     .forEach(r => r.leftovers.forEach(l => {
@@ -2616,6 +2634,10 @@ function fcAddFromInputs() {
 function fcHasData() { return getDrpData().length > 0 || getLoData().length > 0; }
 
 function fcSetPatient(hn, name) {
+  // ชื่อยาที่ดึงจาก EMR ของคนก่อนแต่ยังไม่ได้ใส่จำนวน ไม่ใช่ของคนใหม่
+  document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
+  updateLoTotal();
+  fcEmrHash = ''; fcEmrMsg = '';
   document.getElementById('f-hn').value = hn;
   document.getElementById('f-name').value = '';
   onHnLookup();
@@ -2634,15 +2656,65 @@ async function pollClinicBridge() {
   const link = clinicWin.document.getElementById('fl-link');
   if (!s) { link.textContent = '⚪ ไม่ได้เชื่อม HOSxP — พิมพ์ HN เอง'; link.className = 'fc-link'; return; }
   // ลงคลินิกใช้หน้า Patient EMR เป็นหลัก ไม่มีค่อยใช้หน้าจ่ายยา (bridge รุ่นเก่าไม่มี emrHn ก็ยังใช้ได้)
+  noteBridgeActivity(s);
   const hn = s.emrHn || s.hn, name = s.emrHn ? s.emrName : s.name;
   link.textContent = hn ? `🔗 HOSxP${s.emrHn ? ' (EMR)' : ''}: ${hn} ${name || ''}` : '🔗 เชื่อม HOSxP แล้ว — ยังไม่เห็น HN บนหน้าจอ HOSxP (เปิด Patient EMR)';
   link.className = 'fc-link on';
-  if (!hn || hn === clinicBridgeHn) return;
-  clinicBridgeHn = hn;
-  const cur = document.getElementById('f-hn').value.trim();
-  if (cur === hn) return;
-  if (cur && fcHasData()) { clinicPendingHn = { hn, name }; renderFloatClinic(); return; }
-  fcSetPatient(hn, name);
+  if (hn && hn !== clinicBridgeHn) {
+    clinicBridgeHn = hn;
+    const cur = document.getElementById('f-hn').value.trim();
+    if (cur !== hn) {
+      if (cur && fcHasData()) { clinicPendingHn = { hn, name }; renderFloatClinic(); }
+      else fcSetPatient(hn, name);
+    }
+  }
+  fcEmrDrugs(s);
+}
+
+// เภสัชเปิด visit ก่อนหน้าใน Patient EMR (แท็บ "รายการยา") → bridge ส่งภาพตารางยามา → OCR เอาชื่อยา
+// ใส่ช่องยาคงเหลือให้ (จำนวนว่างไว้ให้เภสัชใส่เอง) เฉพาะเมื่อ EMR เป็นคนเดียวกับในฟอร์ม ยาที่มีอยู่แล้วไม่ใส่ซ้ำ
+// ดูหลาย visit ก็เพิ่มเฉพาะยาที่ยังไม่มี แถวที่ไม่ได้ใส่จำนวนจะไม่ถูกบันทึก
+let fcEmrHash = '', fcEmrBusy = false, fcEmrMsg = '';
+const HOSXP_EMR_GRID_URL = 'http://127.0.0.1:8765/emrgrid.png';
+async function fcEmrDrugs(s) {
+  if (fcEmrBusy || !s.emrHn || !s.emrGridHash || s.emrGridHash === fcEmrHash) return;
+  if (s.emrHn !== document.getElementById('f-hn').value.trim()) return;
+  fcEmrBusy = true;
+  try {
+    fcEmrMsg = '⏳ กำลังอ่านรายการยาจาก EMR…'; fcRenderEmrMsg();
+    const res = await fetch(HOSXP_EMR_GRID_URL, { cache: 'no-store', targetAddressSpace: 'loopback' });
+    if (!res.ok) { fcEmrMsg = ''; return; }
+    const gh = res.headers.get('X-Grid-Hash') || s.emrGridHash;
+    const { data } = await (await getTessWorker()).recognize(await binarizeGrid(await res.blob()));
+    fcEmrHash = gh;
+    // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
+    if (!clinicWin || clinicWin.closed || s.emrHn !== document.getElementById('f-hn').value.trim()) { fcEmrMsg = ''; return; }
+    const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
+    const added = [], unknown = [];
+    parseOrderLines(data.text).forEach(o => {
+      const key = hxMatchDrug(o.name);
+      if (!key) { unknown.push(o.name.replace(/\s+(เม็ด|แคปซูล|\d+\s*(OR|pt|OD)).*$/i, '')); return; }
+      if (have.some(h => h === key || drugMatches(h, key))) return;
+      have.push(key);
+      const info = getDrugPrice(key) || {};
+      addLoRow(key, '', info.u || 'เม็ด', info.p || 0, true);
+      added.push(key);
+    });
+    fcEmrMsg = added.length ? `📷 ดึงชื่อยาจาก EMR ${added.length} รายการ — ใส่จำนวนที่คนไข้นำมา (ยาที่ไม่ได้นำมา เว้นว่างไว้ ไม่ถูกบันทึก)` : '';
+    if (unknown.length) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + '⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', ');
+    renderFloatClinic();
+  } catch (e) {
+    console.error('OCR รายการยา EMR', e);
+    fcEmrHash = s.emrGridHash; fcEmrMsg = '⚠️ อ่านรายการยาจาก EMR ไม่สำเร็จ — กรอกชื่อยาเอง';
+  } finally {
+    fcEmrBusy = false;
+    fcRenderEmrMsg();
+  }
+}
+function fcRenderEmrMsg() {
+  if (!clinicWin || clinicWin.closed) return;
+  const el = clinicWin.document.getElementById('fc-emr');
+  if (el) el.innerHTML = fcEmrMsg;
 }
 
 function renderFloatClinic() {
@@ -2695,6 +2767,7 @@ function renderFloatClinic() {
 
   d.body.querySelectorAll('[data-chk]').forEach(c => { c.checked = main(c.dataset.chk).checked; });
   d.getElementById('fc-icebox').style.display = main('chk-insulin').checked ? '' : 'none';
+  fcRenderEmrMsg();
 }
 
 function floatDaysToAppt() {
@@ -2741,6 +2814,26 @@ const TESS_BASE = new URL('lib/tesseract5/', location.href).href;
 let tessWorkerP = null, floatOrder = null, lastBridge = null;
 let ocrBusy = false, ocrDoneVer = null, floatOcrStatus = '';
 const ocrCache = new Map();   // "HN|แฮชภาพตาราง" → รายการยาที่ OCR ได้ (จำไว้ใช้ซ้ำ สูงสุด 40 ภาพ)
+// ล็อคผลอ่านใบสั่งยาต่อ HN: อ่านได้ครั้งแรกแล้วไม่ทับอีก — จพ. คลิกช่องจำนวนใน HOSxP แถวนั้นจะเป็นแถบสีน้ำเงิน
+// OCR อ่านชื่อยาแถวนั้นไม่ออก ผลที่ปรับไว้จะหายไป จึงยอมรับผลใหม่เฉพาะเมื่ออ่านได้ยาครบทุกตัวเดิมและมีเพิ่ม
+// (ตารางโหลดยังไม่ครบตอนอ่านครั้งแรก) หรือเมื่อกด "อ่านใหม่" เอง
+const ocrLocked = new Map();   // HN → rows
+function lockedOrderRows(hn, rows) {
+  const old = ocrLocked.get(hn);
+  if (!rows.length) return old || rows;
+  if (old && !(rows.length > old.length && old.every(o => rows.some(r => drugMatches(o.name, r.name))))) return old;
+  ocrLocked.set(hn, rows);
+  if (ocrLocked.size > 40) ocrLocked.delete(ocrLocked.keys().next().value);
+  return rows;
+}
+function reReadOrder() {
+  const hn = lastBridge && lastBridge.hn;
+  if (!hn) return;
+  ocrLocked.delete(hn);
+  [...ocrCache.keys()].forEach(k => { if (k.startsWith(hn + '|')) ocrCache.delete(k); });
+  ocrDoneVer = null;
+  runOrderOcr();
+}
 
 function getTessWorker() {
   if (!tessWorkerP) tessWorkerP = (async () => {
@@ -2849,7 +2942,7 @@ async function runOrderOcr() {
       // HN เดิม + ภาพตารางเดิม (เช่น สลับหน้า ข้อมูลทั่วไป ↔ สั่งยา แล้วกลับมา) ใช้ผล OCR ที่จำไว้ ไม่ต้องรอใหม่
       if (hash && ocrCache.has(hn + '|' + hash)) {
         ocrDoneVer = ver;
-        floatOrder = { hn, rows: ocrCache.get(hn + '|' + hash) };
+        floatOrder = { hn, rows: lockedOrderRows(hn, ocrCache.get(hn + '|' + hash)) };
         floatOcrStatus = 'done';
         renderFloatLeftover();
         continue;
@@ -2863,7 +2956,7 @@ async function runOrderOcr() {
       ocrDoneVer = ver;
       const rows = parseOrderLines(data.text);
       if (gh) { ocrCache.set(hn + '|' + gh, rows); if (ocrCache.size > 40) ocrCache.delete(ocrCache.keys().next().value); }
-      floatOrder = { hn, rows };
+      floatOrder = { hn, rows: lockedOrderRows(hn, rows) };
       floatOcrStatus = 'done';
       renderFloatLeftover();
     }
@@ -2887,9 +2980,18 @@ function renderFloatOcrStatus() {
     if (b.covered) { msg = '⏸ มีหน้าต่างอื่นบังตารางยา/วันนัดใน HOSxP (เช่นหน้าต่างลอย หรือหน้าเปรียบเทียบประวัติ) — หยุดอ่านไว้ก่อน แสดงผลล่าสุด'; cls = 'warn'; }
     else if (floatOcrStatus === 'running') msg = '⏳ กำลังอ่านใบสั่งยาจาก HOSxP… (ครั้งแรกต้องโหลดตัวอ่านภาษาไทย อาจช้า)';
     else if (floatOcrStatus === 'error') { msg = '⚠️ อ่านใบสั่งยาไม่สำเร็จ — กรอก "ใช้/วัน" เอง'; cls = 'warn'; }
-    else if (floatOrder && floatOrder.hn === hn) msg = '📷 วิธีใช้อ่านจากหน้าจอ HOSxP (OCR) — ตรวจทานกับใบสั่งยาก่อนจ่ายทุกครั้ง';
+    else if (floatOrder && floatOrder.hn === hn) {
+      msg = '📷 วิธีใช้อ่านจากหน้าจอ HOSxP (OCR) — ตรวจทานกับใบสั่งยาก่อนจ่ายทุกครั้ง';
+      if (ocrLocked.has(hn)) {
+        // เรียกทุกรอบ poll — เขียนใหม่เฉพาะเมื่อเปลี่ยน ไม่งั้นปุ่มถูกแทนที่ระหว่างกดแล้วคลิกไม่ติด
+        const html = `🔒 ล็อคผลไว้แล้ว — คลิกแก้จำนวนใน HOSxP ได้ ผลไม่เปลี่ยน <button type="button" data-reocr="1" title="แพทย์เพิ่ม/เปลี่ยนยา หรือผลที่อ่านได้ไม่ครบ">🔄 อ่านใบสั่งยาใหม่</button><br>${msg}`;
+        if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+        el.className = cls;
+        return;
+      }
+    }
   }
-  el.textContent = msg; el.className = cls;
+  el.textContent = msg; el.className = cls; el.dataset.html = '';
 }
 
 // จับคู่ชื่อยาในบันทึกยาคงเหลือกับชื่อในใบสั่งยา HOSxP ด้วยคำภาษาอังกฤษที่ตรงกัน (ยอมให้ OCR ผิดได้ 2 ตัวอักษร)

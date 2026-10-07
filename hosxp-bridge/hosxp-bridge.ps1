@@ -9,6 +9,7 @@
 #               ถ้าไม่มีหน้า EMR ไหนเห็นบนจอ คงคนล่าสุดไว้ ไม่มีหน้า EMR เปิดเลย = ค่าว่าง
 #               active = หน้าบันทึกจ่ายยาอยู่บนจอจริง (ช่อง HN และตารางยาไม่ถูกหน้าอื่น/dialog ของ HOSxP ทับ)
 #               ถ้าไม่ active จะไม่อ่านวันนัด/ตารางยา และหน้าเว็บจะไม่คำนวณ
+#   /emrgrid.png — ภาพตารางยาของ visit ที่เลือกใน Patient EMR (emrGridVer/emrGridHash เปลี่ยนเมื่อภาพเปลี่ยน)
 #   /grid.png — ภาพตารางใบสั่งยาล่าสุด หน้าเว็บเอาไป OCR ภาษาไทยเองด้วย Tesseract (Windows OCR ไม่มีภาษาไทย)
 #
 # ตำแหน่งข้อมูลในหน้าจ่ายยา (THOSxPDiepensingDispenseEntryFrame) ของ HOSxP XE 4:
@@ -59,12 +60,13 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
 $apptByHn = @{}   # HN → จำนวนวันถึงนัดที่อ่านได้ล่าสุด (ล้างเมื่อปิด bridge)
 $gridPng = $null; $gridHash = ''
+$emrGridPng = $null; $emrGridRaw = ''; $nextEmrGrid = [DateTime]::MinValue
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
 
 function FieldRightOf($frame, $labelText) {
@@ -134,7 +136,10 @@ function ScanEmr {
       $hr = $hn.Current.BoundingRectangle
       $name = $edits | Where-Object { $r = $_.Current.BoundingRectangle; [Math]::Abs($r.Y - $hr.Y) -lt 6 -and $r.X -gt $hr.X } |
         Sort-Object { $_.Current.BoundingRectangle.X } | Select-Object -First 1
-      $list += , @{ form = $emr; hn = $hn; name = $name }
+      # ตารางยาของ visit ที่เลือก (แท็บ "รายการยา" → TcxGridSite) มีเฉพาะตอนแท็บนั้นเปิดอยู่
+      $sheet = $emr.FindAll($TS::Descendants, (ClassCond 'TcxTabSheet')) | Where-Object { $_.Current.Name -eq 'รายการยา' } | Select-Object -First 1
+      $grid = if ($sheet) { $sheet.FindFirst($TS::Descendants, (ClassCond 'TcxGridSite')) } else { $null }
+      $list += , @{ form = $emr; hn = $hn; name = $name; grid = $grid }
     }
   }
   $cache.emr = $list
@@ -156,6 +161,29 @@ function ReadEmr {
   if ($hn -notmatch '^\d{5,10}$') { return }
   $state.emrHn = $hn
   $state.emrName = if ($best.name) { $best.name.Current.Name.Trim() } else { '' }
+  if ((Get-Date) -ge $script:nextEmrGrid) {
+    $script:nextEmrGrid = (Get-Date).AddSeconds(2)
+    CaptureEmrGrid $best.grid $hn
+  }
+}
+
+# จับภาพตารางยาของ visit ที่เภสัชเลือกใน Patient EMR ให้หน้าต่างลอยบันทึกคลินิก OCR เอาชื่อยาไปใส่ช่องยาคงเหลือ
+# ภาพเปลี่ยน (เลือก visit อื่น) → emrGridVer เพิ่ม; แฮชรวม HN ไว้ด้วย คนละคนที่บังเอิญภาพเหมือนกันจะได้ไม่ถือว่าซ้ำ
+function CaptureEmrGrid($grid, $hn) {
+  if (-not $grid -or -not (ElShowing $grid)) { return }
+  $r = $grid.Current.BoundingRectangle
+  if ($r.Width -le 0 -or $r.Height -le 0) { return }
+  $vis = VisibleWidth $r $grid
+  if ($vis -lt 300) { return }
+  $bmp = CaptureScreen ([int]$r.X) ([int]$r.Y) $vis ([int]$r.Height)
+  $ms = New-Object System.IO.MemoryStream
+  $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
+  $bytes = $ms.ToArray(); $ms.Dispose()
+  $raw = $hn + '|' + [BitConverter]::ToString($md5.ComputeHash($bytes))
+  if ($raw -ne $script:emrGridRaw) {
+    $script:emrGridRaw = $raw; $script:emrGridPng = $bytes; $state.emrGridVer++
+    $state.emrGridHash = ([BitConverter]::ToString($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($raw))) -replace '-', '').Substring(0, 16)
+  }
 }
 
 # ความกว้างจากขอบซ้ายของ control ที่มองเห็นจริง (ไม่ถูกหน้าต่างอื่นบัง) — สุ่มตรวจเป็นจุดๆ
@@ -197,12 +225,18 @@ function ReadApptDays {
 
 # หน้า "ข้อมูลทั่วไป" ของ จพ.: วันนัดเป็นข้อความที่วาดเอง "นัดครั้งหน้า[126 วัน] 4 กุมภาพันธ์ ..." อยู่ถัดจากป้าย "นัดครั้งหน้า"
 # อ่านผ่าน API ไม่ได้ จึง OCR แถบทางขวาของป้ายเฉพาะตอนป้ายนั้นอยู่บนจอ (ถ้าถูกบัง OCR จะไม่เจอเลข ก็คงค่าเดิมไว้)
+# คนไข้ที่มีหลายนัด มีบรรทัดที่สองใต้ป้าย "วันนัดอื่นๆ [119 วัน]" (ขึ้นต้นตรงแนวป้าย) — อ่านแยกอีกแถบ แล้วใช้นัดที่ไกลที่สุด
+# (อ่านรวมสองบรรทัดในภาพเดียวไม่ได้ OCR ทิ้ง "[8 วัน]" สีแดงตัวเล็กของบรรทัดแรกไป)
 function ReadApptCard {
   $lb = $cache.apptLabel
   if (-not $lb -or -not (ElShowing $lb)) { return $null }
   $r = $lb.Current.BoundingRectangle
   $x = [int]($r.X + $r.Width + 2); $y = [int]($r.Y - 2); $h = [int]($r.Height + 4)
-  return OcrDays $x $y 380 $h $true
+  $first = OcrDays $x $y 380 $h $true
+  $other = $null
+  try { $other = OcrDays ([int]$r.X) ([int]($r.Y + $r.Height - 6)) 300 ([int]($r.Height + 4)) } catch {}
+  if ($other -ne $null -and ($first -eq $null -or $other -gt $first)) { return $other }
+  return $first
 }
 
 # OCR ภาษาอังกฤษของ Windows อ่านแถบข้อความ เอาตัวเลขในวงเล็บ [N วัน]
@@ -330,8 +364,10 @@ function Respond($client) {
   if ($method -eq 'OPTIONS') { $status = '204 No Content' }
   elseif ($path -like '/current*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(($state | ConvertTo-Json -Compress)) }
   elseif ($path -like '/grid.png*' -and $script:gridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:gridPng }
+  elseif ($path -like '/emrgrid.png*' -and $script:emrGridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:emrGridPng }
   else { $status = '404 Not Found' }
-  $extra = if ($path -like '/grid.png*' -and $state.gridHash) { "X-Grid-Hash: $($state.gridHash)`r`n" } else { '' }
+  $extra = if ($path -like '/grid.png*' -and $state.gridHash) { "X-Grid-Hash: $($state.gridHash)`r`n" }
+    elseif ($path -like '/emrgrid.png*' -and $state.emrGridHash) { "X-Grid-Hash: $($state.emrGridHash)`r`n" } else { '' }
   $head = "HTTP/1.1 $status`r`nContent-Type: $type`r`nCache-Control: no-store`r`n$cors$extra" + "Content-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
   $hb = [System.Text.Encoding]::ASCII.GetBytes($head)
   $stream.Write($hb, 0, $hb.Length)
