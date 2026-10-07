@@ -2637,7 +2637,7 @@ function fcSetPatient(hn, name) {
   // ชื่อยาที่ดึงจาก EMR ของคนก่อนแต่ยังไม่ได้ใส่จำนวน ไม่ใช่ของคนใหม่
   document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
   updateLoTotal();
-  fcEmrHash = ''; fcEmrMsg = '';
+  fcEmrHash = ''; fcEmrMsg = ''; fcEmrSrc = null;
   document.getElementById('f-hn').value = hn;
   document.getElementById('f-name').value = '';
   onHnLookup();
@@ -2675,16 +2675,37 @@ async function pollClinicBridge() {
 // ใส่ช่องยาคงเหลือให้ (จำนวนว่างไว้ให้เภสัชใส่เอง) เฉพาะเมื่อ EMR เป็นคนเดียวกับในฟอร์ม ยาที่มีอยู่แล้วไม่ใส่ซ้ำ
 // ดูหลาย visit ก็เพิ่มเฉพาะยาที่ยังไม่มี แถวที่ไม่ได้ใส่จำนวนจะไม่ถูกบันทึก
 let fcEmrHash = '', fcEmrBusy = false, fcEmrMsg = '';
+// visit ที่ใช้เป็น "ยาเดิม" อยู่ตอนนี้ { sort: 'ปปปป-ดด-วว เวลา', label, n }
+// เภสัชไล่เปิด visit ย้อนหลังได้ ยาจะไม่เปลี่ยนตาม — ใช้ visit ที่ใหม่ที่สุด (ไม่นับวันนี้) ที่มียาโรคเรื้อรัง
+let fcEmrSrc = null;
+const TH_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+// bridge ส่ง emrVisit = "20 พฤษภาคม 2569|07:48:22|คลินิกเบาหวาน-ความดัน"
+function fcEmrSrcLine() { return fcEmrSrc ? `📷 <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b> (${fcEmrSrc.n} รายการ)` : ''; }
+function parseEmrVisit(v) {
+  const [d = '', t = '', room = ''] = String(v || '').split('|');
+  const m = d.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})$/);
+  const mi = m ? TH_MONTHS_FULL.indexOf(m[2]) : -1;
+  if (mi < 0) return null;
+  const now = new Date();
+  const isToday = +m[1] === now.getDate() && mi === now.getMonth() && +m[3] === now.getFullYear() + 543;
+  return {
+    sort: `${m[3]}-${String(mi + 1).padStart(2, '0')}-${m[1].padStart(2, '0')} ${t}`,
+    label: `${m[1]} ${TH_MONTHS[mi]} ${m[3]}${t ? ' ' + t.slice(0, 5) : ''}${room ? ' · ' + room : ''}`,
+    isToday,
+  };
+}
 const HOSXP_EMR_GRID_URL = 'http://127.0.0.1:8765/emrgrid.png';
 async function fcEmrDrugs(s) {
   if (fcEmrBusy || !s.emrHn || !s.emrGridHash || s.emrGridHash === fcEmrHash) return;
   if (s.emrHn !== document.getElementById('f-hn').value.trim()) return;
   fcEmrBusy = true;
   try {
-    fcEmrMsg = '⏳ กำลังอ่านรายการยาจาก EMR…'; fcRenderEmrMsg();
+    fcEmrMsg = (fcEmrSrc ? `📷 <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b><br>` : '') + '⏳ กำลังอ่านรายการยาจาก EMR…'; fcRenderEmrMsg();
     const res = await fetch(HOSXP_EMR_GRID_URL, { cache: 'no-store', targetAddressSpace: 'loopback' });
-    if (!res.ok) { fcEmrMsg = ''; return; }
+    if (!res.ok) { fcEmrMsg = fcEmrSrcLine(); return; }
     const gh = res.headers.get('X-Grid-Hash') || s.emrGridHash;
+    // ภาพที่ได้ไม่ใช่ของ visit ที่ poll มา (เภสัชเพิ่งกดเปลี่ยน visit) — รอ poll รอบหน้า จะได้วันที่ visit ตรงกับยา
+    if (gh !== s.emrGridHash) { fcEmrMsg = fcEmrSrcLine(); return; }
     const lines = await emrDrugNameLines(await res.blob());
     fcEmrHash = gh;
     // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
@@ -2698,10 +2719,17 @@ async function fcEmrDrugs(s) {
       if (emrSkipDrug(key, name)) { skipped++; return; }
       if (!keys.some(h => h === key || drugMatches(h, key))) keys.push(key);
     });
-    // เภสัชไล่เปิดหลาย visit หา visit ยาเดิม — แสดงเฉพาะยาของ visit ที่เปิดอยู่ล่าสุด ไม่สะสมจากทุก visit
-    // (ลบแถวจาก EMR ที่ยังไม่ได้ใส่จำนวน แถวที่ใส่จำนวนแล้วหรือพิมพ์เองคงไว้) visit ที่ไม่มียาเรื้อรังเลยไม่ล้างของเดิม
+    // เภสัชไล่เปิดหลาย visit หา visit ยาเดิม — ใช้ยาของ visit เดียวเท่านั้น ไม่สะสม และไม่ดึงยาของ visit ที่เปิดข้ามไป:
+    //   visit วันนี้ (ยาที่แพทย์เพิ่งสั่ง ไม่ใช่ยาเดิม), visit ที่ไม่มียาโรคเรื้อรัง, visit ที่เก่ากว่าที่ใช้อยู่ → ไม่เปลี่ยน
+    //   visit ที่ใหม่กว่า → แทนที่ (ลบแถวจาก EMR ที่ยังไม่ได้ใส่จำนวน แถวที่ใส่จำนวนแล้วหรือพิมพ์เองคงไว้)
+    const visit = parseEmrVisit(s.emrVisit);
+    const vLabel = visit ? 'visit ' + visit.label : 'visit ที่เปิดอยู่';
+    let note = '';
+    if (visit && visit.isToday) note = `${vLabel} เป็นของวันนี้ — ไม่ใช้เป็นยาเดิม`;
+    else if (!keys.length) note = `${vLabel} ไม่มียาโรคเรื้อรัง — ไม่ใช้`;
+    else if (fcEmrSrc && (!visit || visit.sort < fcEmrSrc.sort)) note = `${vLabel} เก่ากว่า — ยาไม่เปลี่ยน`;
     const added = [];
-    if (keys.length) {
+    if (!note && keys.length) {
       document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
       const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
       keys.forEach(key => {
@@ -2711,14 +2739,21 @@ async function fcEmrDrugs(s) {
         added.push(key);
       });
       updateLoTotal();
+      fcEmrSrc = { sort: visit ? visit.sort : '', label: vLabel, n: keys.length };
     }
-    fcEmrMsg = added.length ? `📷 ดึงชื่อยาจาก EMR ${added.length} รายการ — ใส่จำนวนที่คนไข้นำมา (ยาที่ไม่ได้นำมา เว้นว่างไว้ ไม่ถูกบันทึก)` : '';
-    if (skipped) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + `ข้ามยาตามอาการ/ยาฆ่าเชื้อ/ยาน้ำ-หยอด-ล้าง/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`;
-    if (unknown.length) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + '⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', ');
+    const lines2 = [];
+    if (fcEmrSrc) lines2.push(`📷 <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b> (${fcEmrSrc.n} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`);
+    if (note) lines2.push('ℹ️ ' + escHtml(note));
+    else {
+      if (skipped) lines2.push(`ข้ามยาตามอาการ/ยาฆ่าเชื้อ/ยาน้ำ-หยอด-ล้าง/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
+      if (unknown.length) lines2.push('⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', '));
+    }
+    fcEmrMsg = lines2.join('<br>');
     renderFloatClinic();
   } catch (e) {
     console.error('OCR รายการยา EMR', e);
     fcEmrHash = s.emrGridHash; fcEmrMsg = '⚠️ อ่านรายการยาจาก EMR ไม่สำเร็จ — กรอกชื่อยาเอง';
+    if (fcEmrSrc) fcEmrMsg = `📷 <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b><br>` + fcEmrMsg;
   } finally {
     fcEmrBusy = false;
     fcRenderEmrMsg();

@@ -9,7 +9,8 @@
 #               ถ้าไม่มีหน้า EMR ไหนเห็นบนจอ คงคนล่าสุดไว้ ไม่มีหน้า EMR เปิดเลย = ค่าว่าง
 #               active = หน้าบันทึกจ่ายยาอยู่บนจอจริง (ช่อง HN และตารางยาไม่ถูกหน้าอื่น/dialog ของ HOSxP ทับ)
 #               ถ้าไม่ active จะไม่อ่านวันนัด/ตารางยา และหน้าเว็บจะไม่คำนวณ
-#   /emrgrid.png — ภาพตารางยาของ visit ที่เลือกใน Patient EMR (emrGridVer/emrGridHash เปลี่ยนเมื่อภาพเปลี่ยน)
+#   /emrgrid.png — ภาพตารางยาของ visit ที่เลือกใน Patient EMR (emrGridVer/emrGridHash เปลี่ยนเมื่อภาพหรือ visit เปลี่ยน)
+#                 emrVisit = "วันที่มา|เวลา|ห้องตรวจ" ของ visit นั้น
 #   /grid.png — ภาพตารางใบสั่งยาล่าสุด หน้าเว็บเอาไป OCR ภาษาไทยเองด้วย Tesseract (Windows OCR ไม่มีภาษาไทย)
 #
 # ตำแหน่งข้อมูลในหน้าจ่ายยา (THOSxPDiepensingDispenseEntryFrame) ของ HOSxP XE 4:
@@ -60,7 +61,7 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
@@ -163,13 +164,30 @@ function ReadEmr {
   $state.emrName = if ($best.name) { $best.name.Current.Name.Trim() } else { '' }
   if ((Get-Date) -ge $script:nextEmrGrid) {
     $script:nextEmrGrid = (Get-Date).AddSeconds(2)
-    CaptureEmrGrid $best.grid $hn
+    CaptureEmrGrid $best.grid $hn $best.form
   }
 }
 
 # จับภาพตารางยาของ visit ที่เภสัชเลือกใน Patient EMR ให้หน้าต่างลอยบันทึกคลินิก OCR เอาชื่อยาไปใส่ช่องยาคงเหลือ
 # ภาพเปลี่ยน (เลือก visit อื่น) → emrGridVer เพิ่ม; แฮชรวม HN ไว้ด้วย คนละคนที่บังเอิญภาพเหมือนกันจะได้ไม่ถือว่าซ้ำ
-function CaptureEmrGrid($grid, $hn) {
+# visit ที่เปิดอยู่ใน Patient EMR (แท็บ Screen & ตรวจรักษา) — ช่องไม่มีป้ายกำกับ อ่านตามรูปแบบ/ตำแหน่ง:
+#   วันที่มา = ช่องที่เป็น "20 พฤษภาคม 2569" (บนสุด), เวลา = ช่อง "07:48:22" แถวเดียวกัน
+#   ห้องตรวจ = ช่องขวาสุดของแถวถัดลงมา (แถว สิทธิการรักษา / เลขที่ / ห้องตรวจ)
+# คืน "วันที่|เวลา|ห้องตรวจ" หรือ '' ถ้าหาไม่เจอ
+function ReadEmrVisit($form) {
+  $sheet = $form.FindAll($TS::Descendants, (ClassCond 'TcxTabSheet')) | Where-Object { $_.Current.Name -like 'Screen*' } | Select-Object -First 1
+  $root = if ($sheet) { $sheet } else { $form }
+  $edits = @($root.FindAll($TS::Descendants, (ClassCond 'TcxTextEdit')) | ForEach-Object { @{ t = $_.Current.Name.Trim(); r = $_.Current.BoundingRectangle } })
+  $date = $edits | Where-Object { $_.t -match '^\d{1,2}\s+\S+\s+\d{4}$' } | Sort-Object { $_.r.Y } | Select-Object -First 1
+  if (-not $date) { return '' }
+  $dr = $date.r
+  $time = $edits | Where-Object { [Math]::Abs($_.r.Y - $dr.Y) -lt 6 -and $_.t -match '^\d{1,2}:\d{2}' } | Select-Object -First 1
+  $room = $edits | Where-Object { $_.r.Y -gt $dr.Y + 10 -and $_.r.Y -lt $dr.Y + 40 -and $_.r.X -gt $dr.X + 300 } |
+    Sort-Object { $_.r.Y }, { -$_.r.X } | Select-Object -First 1
+  return ($date.t + '|' + $(if ($time) { $time.t } else { '' }) + '|' + $(if ($room) { $room.t } else { '' }))
+}
+
+function CaptureEmrGrid($grid, $hn, $form) {
   if (-not $grid -or -not (ElShowing $grid)) { return }
   $r = $grid.Current.BoundingRectangle
   if ($r.Width -le 0 -or $r.Height -le 0) { return }
@@ -179,9 +197,12 @@ function CaptureEmrGrid($grid, $hn) {
   $ms = New-Object System.IO.MemoryStream
   $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
   $bytes = $ms.ToArray(); $ms.Dispose()
-  $raw = $hn + '|' + [BitConverter]::ToString($md5.ComputeHash($bytes))
+  $visit = ''
+  try { $visit = ReadEmrVisit $form } catch {}
+  # รวม visit ไว้ในแฮช — เปิด visit อื่นที่ยาเหมือนกันทุกตัว หน้าเว็บก็ต้องรู้ว่าเป็นคนละ visit
+  $raw = $hn + '|' + $visit + '|' + [BitConverter]::ToString($md5.ComputeHash($bytes))
   if ($raw -ne $script:emrGridRaw) {
-    $script:emrGridRaw = $raw; $script:emrGridPng = $bytes; $state.emrGridVer++
+    $script:emrGridRaw = $raw; $script:emrGridPng = $bytes; $state.emrGridVer++; $state.emrVisit = $visit
     $state.emrGridHash = ([BitConverter]::ToString($md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($raw))) -replace '-', '').Substring(0, 16)
   }
 }
