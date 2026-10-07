@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สอนฉีดอินซูลิน — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1A5E38; --primary-dark: #124228; --primary-mid: #237A4A; --primary-light: #EAF4EE;
+    --gold: #C49A22; --gold-light: #FBF3DC;
+    --bg: #F4F7F5; --surface: #ffffff;
+    --text: #1C2B22; --muted: #5f7a69; --border: #D6E4DA;
+    --red: #b91c1c; --red-light: #fee2e2; --ok: #15803d; --ok-light: #dcfce7;
+    --shadow: 0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
+    --radius: 14px;
+  }
+  body { font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; background: var(--bg); color: var(--text); font-size: 17px; line-height: 1.6; min-height: 100vh; }
+  svg text { font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; }
+
+  .app-header { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: #fff; padding: 12px 16px; }
+  .app-header .in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .app-header h1 { font-size: 19px; font-weight: 700; line-height: 1.3; }
+  .app-header .sub { font-size: 13px; opacity: .8; }
+  .speak-btn { margin-left: auto; background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .speak-btn.on { background: var(--gold); border-color: var(--gold); }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 14px 16px 32px; }
+  .progress { display: flex; gap: 4px; margin-bottom: 12px; }
+  .progress span { flex: 1; height: 6px; border-radius: 3px; background: var(--border); cursor: pointer; }
+  .progress span.on { background: var(--primary-mid); }
+  .progress span.cur { background: var(--gold); }
+
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+  .step-no { color: var(--gold); font-weight: 700; font-size: 14px; }
+  .card h2 { font-size: 22px; color: var(--primary-dark); margin: 2px 0 8px; line-height: 1.35; }
+  .instr { font-size: 16.5px; }
+  .instr b { color: var(--primary-dark); }
+  .instr .tip { display: block; margin-top: 6px; color: var(--muted); font-size: 15px; }
+
+  .stage { margin: 14px 0 12px; background: linear-gradient(#f8fbf9, #e8f1eb); border-radius: 12px; padding: 12px; }
+  .stage svg { display: block; width: 100%; height: auto; }
+  .drag { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+  .drag:active { cursor: grabbing; }
+
+  .fb { min-height: 0; border-radius: 10px; font-weight: 600; font-size: 16px; }
+  .fb:not(:empty) { padding: 10px 14px; }
+  .fb.info { background: var(--primary-light); color: var(--primary-dark); }
+  .fb.ok { background: var(--ok-light); color: #14532d; }
+  .fb.warn { background: var(--gold-light); color: #7a5b06; }
+  .fb.err { background: var(--red-light); color: var(--red); }
+
+  .nav { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+  .nav .sp { flex: 1; }
+  .skip { background: none; border: none; color: var(--muted); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+  .btn { font: inherit; font-weight: 700; border: none; border-radius: 10px; padding: 11px 18px; cursor: pointer; min-height: 48px; font-size: 16px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-ghost { background: #fff; border: 2px solid var(--border); color: var(--primary); }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .row-c { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* syringe */
+  .readout { text-align: center; font-size: 15px; color: var(--muted); margin-bottom: 4px; }
+  .readout .ro-num { font-size: 34px; font-weight: 800; color: var(--primary-dark); line-height: 1.1; }
+  .fine { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+  .fine .btn { min-width: 72px; padding: 8px 12px; min-height: 42px; }
+  .loupe { position: relative; max-width: 300px; margin: 6px auto 4px; border: 3px solid var(--gold); border-radius: 12px; overflow: hidden; background: #f8fbf9; }
+  .loupe span { position: absolute; left: 6px; top: 2px; font-size: 12px; color: var(--muted); }
+  .loupe svg { display: block; width: 100%; height: auto; }
+  .drag-hint { text-align: center; color: var(--muted); font-size: 14px; }
+  .shake { animation: shake .28s; }
+  @keyframes shake { 0%,100% { transform: translateY(0); } 25% { transform: translateY(-4px); } 75% { transform: translateY(4px); } }
+
+  /* setup */
+  .lbl { font-weight: 700; margin: 4px 0 8px; }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .type-card { font: inherit; text-align: left; background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 12px; cursor: pointer; }
+  .type-card b { display: block; font-size: 17px; color: var(--primary-dark); }
+  .type-card small { color: var(--muted); font-size: 13.5px; line-height: 1.45; display: block; }
+  .type-card.sel { border-color: var(--primary); background: var(--primary-light); box-shadow: inset 0 0 0 1px var(--primary); }
+  .dose-row { display: flex; gap: 8px; align-items: center; }
+  .dose-row input { font: inherit; font-size: 28px; font-weight: 800; text-align: center; width: 110px; padding: 6px; border: 2px solid var(--border); border-radius: 10px; color: var(--primary-dark); }
+  .dose-row .btn { min-width: 54px; font-size: 22px; }
+  .hint { color: #7a5b06; font-size: 14.5px; margin-top: 6px; min-height: 1em; }
+  .staff { margin-top: 16px; font-size: 14.5px; color: var(--muted); }
+  .staff summary { cursor: pointer; }
+  .link-row { display: flex; gap: 8px; margin-top: 8px; }
+  .link-row input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
+
+  /* checklist */
+  .checks { display: flex; flex-direction: column; gap: 8px; }
+  .chk { font: inherit; display: flex; gap: 12px; align-items: flex-start; text-align: left; background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+  .chk .box { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--border); display: grid; place-items: center; font-weight: 800; color: #fff; }
+  .chk.on { border-color: var(--primary-mid); background: var(--primary-light); }
+  .chk.on .box { background: var(--primary-mid); border-color: var(--primary-mid); }
+  .chk small { display: block; color: var(--muted); font-size: 14px; }
+
+  .meter { margin-top: 8px; }
+  .meter-bar { height: 12px; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .meter-bar span { display: block; height: 100%; width: 0; background: var(--primary-mid); transition: width .1s; }
+  .meter-lbl { text-align: center; font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+  .mini-wrap { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .mini-wrap p { font-size: 14.5px; color: var(--muted); }
+  .closeup { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 2px; }
+
+  .site-info { margin-top: 10px; }
+  .zone { cursor: pointer; transition: fill .15s; }
+  .zone:hover { fill-opacity: .6; }
+  .zone.sel { fill: var(--primary-mid); fill-opacity: .55; }
+
+  .info-cards { display: grid; gap: 10px; }
+  .info-card { background: #fff; border-radius: 12px; padding: 12px 14px; border-left: 5px solid var(--primary-mid); }
+  .info-card h3 { font-size: 17px; color: var(--primary-dark); margin-bottom: 2px; }
+  .info-card.warn { border-left-color: var(--gold); }
+  .info-card ul { padding-left: 20px; font-size: 15.5px; }
+
+  .qhead { font-weight: 700; color: var(--gold); font-size: 14px; }
+  .qtext { font-size: 19px; font-weight: 700; margin-bottom: 8px; color: var(--primary-dark); }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .opt { font: inherit; font-size: 20px; font-weight: 700; background: #fff; border: 2px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; color: var(--primary-dark); }
+  .opt.right { background: var(--ok-light); border-color: var(--ok); }
+  .opt.wrong { background: var(--red-light); border-color: var(--red); color: var(--red); }
+  .score { text-align: center; padding: 14px 0; }
+  .score .big { font-size: 48px; font-weight: 800; color: var(--primary-dark); }
+
+  .foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 16px; }
+
+  @media (max-width: 480px) {
+    .card { padding: 14px; }
+    .card h2 { font-size: 20px; }
+    .stage { padding: 8px; margin-left: -4px; margin-right: -4px; }
+    .mini-wrap { grid-template-columns: 90px 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="in">
+    <div>
+      <h1>💉 วิธีฉีดอินซูลินด้วยกระบอกฉีดยา</h1>
+      <div class="sub">กลุ่มงานเภสัชกรรมฯ โรงพยาบาลถ้ำพรรณรา</div>
+    </div>
+    <button class="speak-btn" id="speakBtn" hidden>🔊 อ่านให้ฟัง</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="progress" id="progress"></div>
+  <section class="card">
+    <div class="step-no" id="stepNo"></div>
+    <h2 id="title"></h2>
+    <div class="instr" id="instr"></div>
+    <div class="stage" id="stage"></div>
+    <div class="fb" id="fb"></div>
+    <div class="nav">
+      <button class="btn btn-ghost" id="backBtn">← ย้อนกลับ</button>
+      <span class="sp"></span>
+      <button class="skip" id="skipBtn">ข้ามขั้นนี้</button>
+      <button class="btn btn-primary" id="nextBtn">ถัดไป →</button>
+    </div>
+  </section>
+  <p class="foot">สื่อประกอบการให้คำแนะนำโดยเภสัชกร — หากมีข้อสงสัย สอบถามเภสัชกรหรือแพทย์ผู้รักษา</p>
+</main>
+
+<script>
+'use strict';
+/* ===== state ===== */
+const TYPES = {
+  mix: { short: '70/30', label: 'Mixtard 70/30', desc: 'อินซูลินผสม (ขุ่น)', time: 'ฉีด <b>ก่อนอาหาร 30 นาที</b> ตามมื้อที่แพทย์สั่ง (เช่น ก่อนอาหารเช้าและเย็น) ฉีดแล้วต้องกินอาหารตามเวลา' },
+  nph: { short: 'NPH', label: 'NPH', desc: 'ออกฤทธิ์นานปานกลาง (ขุ่น)', time: 'ฉีด <b>ตามเวลาที่แพทย์สั่ง</b> ให้ตรงเวลาเดิมทุกวัน' }
+};
+const S = { type: 'mix', dose: 20 };
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (TYPES[q.get('type')]) S.type = q.get('type');
+  const d = parseInt(q.get('dose'), 10);
+  if (d >= 1 && d <= 100) S.dose = d;
+})();
+
+/* ===== helpers ===== */
+const $ = s => document.querySelector(s);
+const lerp = (a, b, t) => a + (b - a) * t;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function tween(dur, fn) {
+  return new Promise(res => {
+    const t0 = performance.now();
+    (function f(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      fn(p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+      p < 1 ? requestAnimationFrame(f) : res();
+    })(t0);
+  });
+}
+function svgPoint(svg, e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function evenOddHint(n) { return n % 2 ? `<span class="tip">ขนาดยาเลขคี่ — ระดับยาจะอยู่ <b>กึ่งกลางระหว่าง 2 ขีดเล็ก</b></span>` : ''; }
+
+/* ===== horizontal syringe (close-up, interactive) =====
+   1 mL U-100: 1 small line = 2 units, numbered every 10 units.
+   Read at the needle-side edge of the black rubber stopper. */
+const SX0 = 90, SPU = 6;
+let uid = 0;
+function makeSyringe(host, { interactive = true, readout = true, fluid = 'drug', units = 0, fine = true, loupe = true } = {}) {
+  const id = 'sy' + (++uid);
+  let ticks = '';
+  for (let u = 0; u <= 100; u += 2) {
+    const x = SX0 + u * SPU, m = u % 10 === 0;
+    ticks += `<line x1="${x}" y1="54" x2="${x}" y2="${54 + (m ? 22 : 11)}" stroke="#1C2B22" stroke-width="${m ? 2.2 : 1.3}"/>`;
+    if (m && u > 0) ticks += `<text x="${x}" y="45" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2B22">${u}</text>`;
+  }
+  host.innerHTML = `
+    ${readout ? `<div class="readout"><span class="ro-num">0</span> ยูนิต <span class="ro-kind"></span></div>` : ''}
+    <svg class="syr${interactive ? ' drag' : ''}" viewBox="0 0 760 150" aria-label="กระบอกฉีดยาอินซูลิน 1 มล.">
+      <defs>
+        <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#f7f4ec"/><stop offset="1" stop-color="#e6e0cf"/></linearGradient>
+        <clipPath id="${id}c"><rect x="90" y="56" width="632" height="52"/></clipPath>
+      </defs>
+      <g id="${id}g">
+      <line x1="6" y1="82" x2="72" y2="82" stroke="#8d99a3" stroke-width="3" stroke-linecap="round"/>
+      <rect x="68" y="70" width="24" height="24" rx="3" fill="#F28C28"/>
+      <rect x="88" y="54" width="636" height="56" rx="6" fill="#dce8ee"/>
+      <g clip-path="url(#${id}c)">
+        <rect class="fl" x="90" y="56" height="52" width="0"/>
+        <g class="bub"></g>
+      </g>
+      <g class="plg">
+        <rect x="24" y="73" width="800" height="18" fill="#f1f5f8" stroke="#9fb3be" stroke-width="1.5"/>
+        <rect x="0" y="55" width="24" height="54" rx="3" fill="#2a2a2a"/>
+        <rect x="6" y="55" width="3" height="54" fill="#4a4a4a"/><rect x="15" y="55" width="3" height="54" fill="#4a4a4a"/>
+      </g>
+      ${ticks}
+      <rect x="88" y="54" width="636" height="56" rx="6" fill="none" stroke="#87a0ad" stroke-width="2"/>
+      <rect x="722" y="34" width="12" height="96" rx="3" fill="#cfdbe2" stroke="#9fb3be" stroke-width="1.5"/>
+      </g>
+      <line class="rl" x1="0" y1="30" x2="0" y2="124" stroke="#d62828" stroke-width="2.5" stroke-dasharray="6 4" opacity="0"/>
+    </svg>
+    ${loupe ? `<div class="loupe"><span>🔍 ขยาย</span><svg viewBox="0 30 200 90"><use href="#${id}g"/></svg></div>` : ''}
+    ${interactive ? `<div class="drag-hint">⟷ ลากบนกระบอกฉีดยาเพื่อดึง/ดันก้านสูบ</div>` : ''}
+    ${interactive && fine ? `<div class="fine"><button class="btn btn-ghost" data-f="-1">− 1</button><button class="btn btn-ghost" data-f="1">+ 1</button></div>` : ''}`;
+  const svg = host.querySelector('svg'), fl = svg.querySelector('.fl'), plg = svg.querySelector('.plg'),
+        rl = svg.querySelector('.rl'), bub = svg.querySelector('.bub'),
+        ro = host.querySelector('.ro-num'), rk = host.querySelector('.ro-kind'),
+        lp = host.querySelector('.loupe svg');
+  let u = units, enabled = interactive, drag = null;
+  const cb = {};
+  function setFluid(f) {
+    fluid = f;
+    fl.setAttribute('fill', f === 'air' ? 'rgba(255,255,255,.5)' : `url(#${id}m)`);
+    if (rk) rk.textContent = f === 'air' ? '(อากาศ)' : '(ยา)';
+  }
+  function draw() {
+    const x = SX0 + u * SPU;
+    fl.setAttribute('width', Math.max(0, u * SPU));
+    plg.setAttribute('transform', `translate(${x},0)`);
+    rl.setAttribute('x1', x); rl.setAttribute('x2', x);
+    if (lp) lp.setAttribute('viewBox', `${Math.max(0, Math.min(560, x - 100))} 30 200 90`);
+    if (ro) ro.textContent = Math.round(u);
+  }
+  function commit(nu) {
+    nu = Math.max(0, Math.min(100, nu));
+    if (nu !== u) { u = nu; draw(); cb.change && cb.change(u); }
+  }
+  if (interactive) {
+    svg.addEventListener('pointerdown', e => {
+      if (!enabled) return;
+      svg.setPointerCapture(e.pointerId);
+      drag = { x0: svgPoint(svg, e).x, u0: u };
+      rl.setAttribute('opacity', 1);
+    });
+    svg.addEventListener('pointermove', e => {
+      if (!drag) return;
+      commit(Math.round(drag.u0 + (svgPoint(svg, e).x - drag.x0) / SPU));
+    });
+    const up = () => { if (!drag) return; drag = null; rl.setAttribute('opacity', 0); cb.release && cb.release(u); };
+    svg.addEventListener('pointerup', up);
+    svg.addEventListener('pointercancel', up);
+    host.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
+      if (!enabled) return;
+      commit(u + Number(b.dataset.f));
+      cb.release && cb.release(u);
+    }));
+  }
+  setFluid(fluid); draw();
+  return {
+    svg, bub,
+    get u() { return u; },
+    set(v) { u = v; draw(); },
+    anim(to, dur = 600) { const from = u; return tween(dur, t => { u = lerp(from, to, t); draw(); }).then(() => { u = to; draw(); }); },
+    setFluid,
+    enable(b) { enabled = b; host.querySelectorAll('[data-f]').forEach(x => x.disabled = !b); svg.classList.toggle('drag', b); },
+    on(ev, fn) { cb[ev] = fn; }
+  };
+}
+
+/* ===== vertical syringe (illustrations) ===== */
+function vSyrSVG(cx, top, len) {
+  const w = 30, x = cx - w / 2, bot = top + len;
+  let ticks = '';
+  for (let u = 10; u <= 100; u += 10) { const y = bot - u * len / 100; ticks += `<line x1="${x}" x2="${x + 9}" y1="${y}" y2="${y}" stroke="#1C2B22" stroke-width="1.5"/>`; }
+  return `
+    <rect x="${x}" y="${top}" width="${w}" height="${len}" rx="4" fill="#dce8ee"/>
+    <rect class="vfl" x="${x + 2}" width="${w - 4}" y="${bot}" height="0" fill="#fbf9f2"/>
+    <g class="vplg">
+      <rect x="${cx - 6}" y="${-(len + 40)}" width="12" height="${len + 28}" fill="#f1f5f8" stroke="#9fb3be"/>
+      <rect x="${cx - 20}" y="${-(len + 48)}" width="40" height="8" rx="3" fill="#cfdbe2" stroke="#9fb3be"/>
+      <rect x="${x + 1}" y="-12" width="${w - 2}" height="12" rx="2" fill="#2a2a2a"/>
+    </g>
+    <rect x="${x}" y="${top}" width="${w}" height="${len}" rx="4" fill="none" stroke="#87a0ad" stroke-width="2"/>
+    ${ticks}
+    <rect x="${x - 10}" y="${top - 6}" width="${w + 20}" height="6" rx="2" fill="#cfdbe2" stroke="#9fb3be"/>
+    <rect x="${cx - 7}" y="${bot}" width="14" height="10" fill="#F28C28"/>
+    <line x1="${cx}" y1="${bot + 10}" x2="${cx}" y2="${bot + 55}" stroke="#8d99a3" stroke-width="2.5"/>`;
+}
+function vSet(g, u, top, len, fill) {
+  const bot = top + len, sy = bot - u * len / 100;
+  g.querySelector('.vplg').setAttribute('transform', `translate(0,${sy})`);
+  const fl = g.querySelector('.vfl');
+  fl.setAttribute('y', sy); fl.setAttribute('height', bot - sy);
+  if (fill) fl.setAttribute('fill', fill);
+}
+
+/* ===== scenes ===== */
+function sceneSetup(st, ctx) {
+  st.innerHTML = `
+    <div class="lbl">ชนิดอินซูลิน</div>
+    <div class="types">${Object.entries(TYPES).map(([k, t]) =>
+      `<button class="type-card${S.type === k ? ' sel' : ''}" data-k="${k}"><b>${t.label}</b><small>${t.desc}</small></button>`).join('')}</div>
+    <div class="lbl">ขนาดยาต่อครั้ง (ยูนิต)</div>
+    <div class="dose-row">
+      <button class="btn btn-ghost" data-d="-1">−</button>
+      <input id="doseIn" type="number" inputmode="numeric" min="1" max="100" value="${S.dose}">
+      <button class="btn btn-ghost" data-d="1">+</button>
+    </div>
+    <div class="hint" id="doseHint"></div>
+    <details class="staff"><summary>สำหรับเจ้าหน้าที่: ลิงก์เฉพาะผู้ป่วยรายนี้</summary>
+      <div class="link-row"><input id="linkOut" readonly><button class="btn btn-ghost" id="copyBtn">คัดลอก</button></div>
+    </details>`;
+  const inp = st.querySelector('#doseIn');
+  function upd() {
+    const d = Math.max(1, Math.min(100, parseInt(inp.value, 10) || 1));
+    S.dose = d;
+    st.querySelector('#doseHint').innerHTML = d % 2 ? 'ขนาดยาเลขคี่: ระดับยาจะอยู่กึ่งกลางระหว่าง 2 ขีดเล็ก' : '';
+    const url = `${location.origin}${location.pathname}?type=${S.type}&dose=${S.dose}`;
+    st.querySelector('#linkOut').value = url;
+    history.replaceState(null, '', `?type=${S.type}&dose=${S.dose}`);
+  }
+  st.querySelectorAll('.type-card').forEach(b => b.addEventListener('click', () => {
+    S.type = b.dataset.k;
+    st.querySelectorAll('.type-card').forEach(x => x.classList.toggle('sel', x === b));
+    upd();
+  }));
+  st.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => { inp.value = S.dose + Number(b.dataset.d); upd(); inp.value = S.dose; }));
+  inp.addEventListener('input', upd);
+  inp.addEventListener('blur', () => { inp.value = S.dose; });
+  st.querySelector('#copyBtn').addEventListener('click', () => {
+    const o = st.querySelector('#linkOut'); o.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(o.value) : Promise.reject()).then(
+      () => ctx.say('ok', 'คัดลอกลิงก์แล้ว'), () => document.execCommand('copy'));
+  });
+  upd();
+}
+
+function sceneChecklist(st, ctx) {
+  const items = [
+    ['ล้างมือด้วยสบู่และน้ำสะอาด', 'เช็ดมือให้แห้ง'],
+    [`ขวดยา ${TYPES[S.type].label}`, 'ตรวจชื่อยาให้ถูกต้อง และยังไม่หมดอายุ — ถ้าเก็บในตู้เย็น นำออกมาวางสักครู่ให้หายเย็น จะฉีดไม่เจ็บ'],
+    ['กระบอกฉีดยาอินซูลิน 1 มล. (100 ยูนิต)', 'ใช้กับอินซูลินชนิด U-100 เท่านั้น ปลอกเข็มสีส้ม'],
+    ['สำลีชุบแอลกอฮอล์ 70%', 'สำหรับเช็ดจุกยางขวดยาและผิวหนัง'],
+    ['ขวดพลาสติกแข็งมีฝาปิด', 'สำหรับทิ้งเข็มที่ใช้แล้ว']
+  ];
+  st.innerHTML = `<div class="checks">${items.map(([a, b], i) =>
+    `<button class="chk" data-i="${i}"><span class="box">✓</span><span><b>${a}</b><small>${b}</small></span></button>`).join('')}</div>`;
+  const on = new Set();
+  st.querySelectorAll('.chk').forEach(b => b.addEventListener('click', () => {
+    const i = b.dataset.i; on.has(i) ? on.delete(i) : on.add(i);
+    b.classList.toggle('on', on.has(i));
+    if (on.size === items.length) { ctx.say('ok', 'เตรียมอุปกรณ์ครบแล้ว ✓'); ctx.done(); }
+    else ctx.say('', '');
+  }));
+}
+
+function sceneRoll(st, ctx) {
+  st.innerHTML = `
+    <svg class="roll drag" viewBox="0 0 400 230">
+      <rect class="h1" x="70" y="16" width="260" height="58" rx="29" fill="#f0c7a4" stroke="#d29d78" stroke-width="2"/>
+      <rect x="100" y="82" width="190" height="66" rx="14" fill="#eef4f6" stroke="#8fa6b1" stroke-width="2.5"/>
+      <rect class="liq" x="105" y="87" width="180" height="56" rx="10" fill="#e3edf0"/>
+      <rect class="sed" x="105" y="126" width="180" height="17" rx="7" fill="#fbfaf4"/>
+      <rect x="289" y="96" width="18" height="38" fill="#dfe8ec" stroke="#8fa6b1" stroke-width="2"/>
+      <rect x="305" y="89" width="22" height="52" rx="4" fill="#b8c3c9" stroke="#8a979e" stroke-width="2"/>
+      <g class="lab">
+        <rect x="155" y="84" width="80" height="62" fill="#fff" stroke="#c9d6cf"/>
+        <text x="195" y="114" text-anchor="middle" font-size="16" font-weight="700" fill="#1A5E38">${TYPES[S.type].short}</text>
+        <text x="195" y="133" text-anchor="middle" font-size="11" fill="#5f7a69">U-100</text>
+      </g>
+      <rect class="h2" x="70" y="156" width="260" height="58" rx="29" fill="#f0c7a4" stroke="#d29d78" stroke-width="2"/>
+    </svg>
+    <div class="meter"><div class="meter-bar"><span></span></div><div class="meter-lbl">ยาเข้ากันแล้ว 0%</div></div>
+    <div class="row-c"><button class="btn btn-ghost" id="autoBtn">▶ ดูตัวอย่างการคลึง</button></div>`;
+  const svg = st.querySelector('svg'), h1 = svg.querySelector('.h1'), h2 = svg.querySelector('.h2'),
+        lab = svg.querySelector('.lab'), liq = svg.querySelector('.liq'), sed = svg.querySelector('.sed'),
+        bar = st.querySelector('.meter-bar span'), lbl = st.querySelector('.meter-lbl');
+  let p = 0, phase = 0, finished = false;
+  const mix = (a, b, t) => { const c = i => Math.round(lerp(parseInt(a.substr(i, 2), 16), parseInt(b.substr(i, 2), 16), t)); return `rgb(${c(1)},${c(3)},${c(5)})`; };
+  function draw() {
+    const off = Math.sin(phase) * 22;
+    h1.setAttribute('transform', `translate(${off},0)`);
+    h2.setAttribute('transform', `translate(${-off},0)`);
+    lab.setAttribute('transform', `translate(0,${Math.sin(phase) * 3})`);
+    liq.setAttribute('fill', mix('#e3edf0', '#fbfaf4', p));
+    sed.setAttribute('opacity', 1 - p);
+    bar.style.width = (p * 100) + '%';
+    lbl.textContent = `ยาเข้ากันแล้ว ${Math.round(p * 100)}%`;
+    if (p >= 1 && !finished) {
+      finished = true;
+      ctx.say('ok', 'ยาขุ่นขาวสม่ำเสมอทั้งขวดแล้ว ✓ พร้อมใช้งาน');
+      ctx.done();
+    }
+  }
+  let last = null;
+  svg.addEventListener('pointerdown', e => { svg.setPointerCapture(e.pointerId); last = e.clientX; });
+  svg.addEventListener('pointermove', e => {
+    if (last === null) return;
+    const dx = e.clientX - last; last = e.clientX;
+    phase += dx / 35; p = Math.min(1, p + Math.abs(dx) / 1500); draw();
+  });
+  const up = () => { last = null; };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  st.querySelector('#autoBtn').addEventListener('click', e => {
+    e.target.disabled = true;
+    const p0 = p, ph0 = phase;
+    tween(3500, t => { phase = ph0 + t * 28; p = Math.max(p, lerp(p0, 1, t)); draw(); });
+  });
+  draw();
+  ctx.say('info', '👉 ลากนิ้วไปมา ซ้าย–ขวา บนภาพ เพื่อคลึงขวด');
+}
+
+function sceneWipe(st, ctx) {
+  st.innerHTML = `
+    <svg viewBox="0 0 400 260" style="cursor:pointer">
+      <rect x="140" y="110" width="120" height="142" rx="14" fill="#eef4f6" stroke="#8fa6b1" stroke-width="2.5"/>
+      <rect x="146" y="138" width="108" height="108" rx="10" fill="#fbfaf4"/>
+      <rect x="150" y="165" width="100" height="56" fill="#fff" stroke="#c9d6cf"/>
+      <text x="200" y="198" text-anchor="middle" font-size="16" font-weight="700" fill="#1A5E38">${TYPES[S.type].short}</text>
+      <rect x="168" y="90" width="64" height="22" fill="#dfe8ec" stroke="#8fa6b1" stroke-width="2"/>
+      <rect x="156" y="62" width="88" height="30" rx="5" fill="#b8c3c9" stroke="#8a979e" stroke-width="2"/>
+      <ellipse class="rub" cx="200" cy="62" rx="34" ry="9" fill="#7d8389"/>
+      <g class="shine" opacity="0" fill="#C49A22">
+        <path d="M150 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4z"/>
+        <path d="M252 34 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3z"/>
+      </g>
+      <g class="swab" transform="translate(330,70)">
+        <rect x="-28" y="-20" width="56" height="40" rx="9" fill="#fff" stroke="#c4ced3" stroke-width="2"/>
+        <text x="0" y="5" text-anchor="middle" font-size="11" fill="#5f7a69">แอลกอฮอล์</text>
+      </g>
+      <text class="tap" x="200" y="24" text-anchor="middle" font-size="15" fill="#5f7a69">👆 แตะที่จุกยางเพื่อเช็ด</text>
+    </svg>`;
+  const svg = st.querySelector('svg'), swab = svg.querySelector('.swab');
+  let busy = false;
+  svg.addEventListener('click', async () => {
+    if (busy) return; busy = true;
+    svg.querySelector('.tap').setAttribute('opacity', 0);
+    const mv = (x, y) => swab.setAttribute('transform', `translate(${x},${y})`);
+    await tween(500, t => mv(lerp(330, 200, t), lerp(70, 50, t)));
+    await tween(1400, t => { const a = t * Math.PI * 4; mv(200 + 18 * Math.cos(a), 50 + 4 * Math.sin(a)); });
+    await tween(500, t => mv(lerp(218, 330, t), lerp(50, 70, t)));
+    svg.querySelector('.rub').setAttribute('fill', '#9aa1a7');
+    svg.querySelector('.shine').setAttribute('opacity', 1);
+    ctx.say('ok', 'จุกยางสะอาดแล้ว ✓ รอให้แอลกอฮอล์แห้งก่อนแทงเข็ม');
+    ctx.done();
+  });
+}
+
+function sceneDrawAir(st, ctx) {
+  const syr = makeSyringe(st, { fluid: 'air' });
+  syr.on('release', u => {
+    if (u === S.dose) { ctx.say('ok', `ถูกต้อง! อากาศ ${S.dose} ยูนิต ✓`); ctx.done(); }
+    else if (u < S.dose) ctx.say('warn', `ตอนนี้ ${u} ยูนิต — ดึงก้านสูบเพิ่มอีก ${S.dose - u} ยูนิต`);
+    else ctx.say('warn', `ตอนนี้ ${u} ยูนิต — เกินไป ${u - S.dose} ยูนิต ดันก้านสูบกลับ`);
+  });
+  ctx.say('info', `เป้าหมาย: <b>${S.dose} ยูนิต</b> (ขอบบนของยางสีดำ ต้องตรงขีด ${S.dose})`);
+}
+
+function sceneInjectAir(st, ctx) {
+  const TOP = 60, LEN = 120;
+  st.innerHTML = `
+    <svg viewBox="0 0 300 380" style="max-width:340px;margin:0 auto">
+      <rect x="100" y="282" width="100" height="92" rx="12" fill="#eef4f6" stroke="#8fa6b1" stroke-width="2.5"/>
+      <rect x="105" y="304" width="90" height="65" rx="8" fill="#fbfaf4"/>
+      <rect x="132" y="266" width="36" height="18" fill="#dfe8ec" stroke="#8fa6b1" stroke-width="2"/>
+      <rect x="124" y="248" width="52" height="20" rx="4" fill="#9aa1a7" stroke="#8a979e" stroke-width="2"/>
+      <text x="150" y="342" text-anchor="middle" font-size="14" font-weight="700" fill="#1A5E38">${TYPES[S.type].short}</text>
+      <g class="press" opacity="0" stroke="#C49A22" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M118 292 q-8 -4 -14 2"/><path d="M182 292 q8 -4 14 2"/>
+      </g>
+      <g class="vs">${vSyrSVG(150, TOP, LEN)}</g>
+      <text x="236" y="296" font-size="13" fill="#5f7a69">ช่องอากาศ</text>
+      <text x="236" y="336" font-size="13" fill="#5f7a69">น้ำยา</text>
+    </svg>
+    <div class="row-c"><button class="btn btn-gold" id="goBtn">▶ แทงเข็ม แล้วดันอากาศเข้าขวด</button></div>`;
+  const vs = st.querySelector('.vs');
+  let ty = -30;
+  const setTy = v => { ty = v; vs.setAttribute('transform', `translate(0,${ty})`); };
+  setTy(-30); vSet(vs, S.dose, TOP, LEN, 'rgba(255,255,255,.75)');
+  st.querySelector('#goBtn').addEventListener('click', async e => {
+    e.target.disabled = true;
+    await tween(800, t => setTy(lerp(-30, 40, t)));
+    if (!ctx.alive()) return;
+    st.querySelector('.press').setAttribute('opacity', 1);
+    await tween(1500, t => vSet(vs, lerp(S.dose, 0, t), TOP, LEN));
+    ctx.say('ok', 'ดันอากาศเข้าขวดแล้ว ✓ ปลายเข็มอยู่เหนือน้ำยา จึงไม่เกิดฟอง');
+    ctx.done();
+  });
+}
+
+function sceneDrawDrug(st, ctx) {
+  const MT = 150, ML = 90;
+  st.innerHTML = `
+    <div class="mini-wrap">
+      <svg viewBox="0 0 300 330">
+        <rect x="100" y="10" width="100" height="86" rx="12" fill="#eef4f6" stroke="#8fa6b1" stroke-width="3"/>
+        <rect x="105" y="44" width="90" height="48" rx="8" fill="#fbfaf4"/>
+        <rect x="120" y="95" width="60" height="14" fill="#dfe8ec" stroke="#8fa6b1" stroke-width="2"/>
+        <rect x="112" y="108" width="76" height="18" rx="4" fill="#9aa1a7" stroke="#8a979e" stroke-width="2"/>
+        <g class="ms" transform="rotate(180 150 190)">${vSyrSVG(150, MT, ML)}</g>
+      </svg>
+      <p>🔄 <b>คว่ำขวดลง</b> โดยเข็มยังคาอยู่ ให้ <b>ปลายเข็มจุ่มอยู่ในน้ำยา</b> แล้วค่อยๆ ดึงก้านสูบ<br>ภาพด้านล่างคือภาพขยายของกระบอกฉีดยา (ปลายเข็มชี้ขึ้น)</p>
+    </div>
+    <div class="closeup">🔍 ภาพขยาย — ปลายเข็มอยู่ทางซ้าย</div>
+    <div class="sh"></div>
+    <div class="row-c" id="bubAct" hidden><button class="btn btn-gold" id="pushBub">ดันไล่ฟองอากาศออก</button></div>`;
+  vSet(st.querySelector('.ms'), S.dose, MT, ML);
+  const syr = makeSyringe(st.querySelector('.sh'), { fluid: 'drug' });
+  const svg = syr.svg, NS = 'http://www.w3.org/2000/svg';
+  let phase = 'draw', taps = 0, bubbles = [];
+  const BU = 4; // units of air in bubbles
+
+  function addBubbles() {
+    const u = syr.u;
+    bubbles = [[.25, 66, 5], [.5, 96, 7], [.75, 74, 6], [.6, 70, 4]].map(([f, y, r]) => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('r', r); c.setAttribute('fill', 'rgba(255,255,255,.95)');
+      c.setAttribute('stroke', '#87a0ad'); c.setAttribute('stroke-width', '1.5');
+      const b = { c, x: SX0 + u * SPU * f, y }; c.setAttribute('cx', b.x); c.setAttribute('cy', b.y);
+      syr.bub.appendChild(c); return b;
+    });
+  }
+  syr.on('release', u => {
+    if (phase === 'draw') {
+      if (u < S.dose) { ctx.say('warn', `ตอนนี้ ${u} ยูนิต — ดึงก้านสูบช้าๆ ให้ถึง ${S.dose} ยูนิต`); return; }
+      phase = 'bubbles'; syr.enable(false); addBubbles();
+      ctx.say('warn', '🫧 มีฟองอากาศในกระบอก! <b>ใช้นิ้วดีดกระบอกเบาๆ</b> ให้ฟองลอยไปรวมกันที่ปลายเข็ม — แตะที่กระบอกยา 3 ครั้ง');
+    } else if (phase === 'adjust') {
+      if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ ไม่มีฟองอากาศ — ถอนเข็มออกจากขวด`); ctx.done(); }
+      else if (u < S.dose) ctx.say('warn', `ตอนนี้ ${u} ยูนิต — ดึงเพิ่มอีก ${S.dose - u} ยูนิต`);
+      else ctx.say('warn', `ตอนนี้ ${u} ยูนิต — เกิน ${u - S.dose} ยูนิต ดันยาส่วนเกินกลับเข้าขวด`);
+    }
+  });
+  svg.addEventListener('click', async () => {
+    if (phase !== 'bubbles' || taps >= 3) return;
+    taps++;
+    svg.classList.remove('shake'); void svg.getBBox(); svg.classList.add('shake');
+    const k = taps / 3;
+    const from = bubbles.map(b => [b.x, b.y]);
+    await tween(400, t => bubbles.forEach((b, i) => {
+      const tx = lerp(from[i][0], SX0 + 12 + i * 3, k), ty = lerp(from[i][1], 82, k);
+      b.c.setAttribute('cx', lerp(from[i][0], tx, t)); b.c.setAttribute('cy', lerp(from[i][1], ty, t));
+      b.x = lerp(from[i][0], tx, t); b.y = lerp(from[i][1], ty, t);
+    }));
+    if (taps === 3) {
+      bubbles.forEach((b, i) => { if (i) b.c.remove(); });
+      bubbles[0].c.setAttribute('r', 12); bubbles[0].c.setAttribute('cx', SX0 + 13); bubbles[0].c.setAttribute('cy', 82);
+      st.querySelector('#bubAct').hidden = false;
+      ctx.say('info', 'ฟองอากาศรวมกันที่ปลายเข็มแล้ว — กดปุ่มด้านล่างเพื่อดันฟองออก');
+    }
+  });
+  st.querySelector('#pushBub').addEventListener('click', async e => {
+    e.target.disabled = true;
+    const b = bubbles[0].c, u0 = syr.u;
+    await Promise.all([syr.anim(u0 - BU, 700), tween(700, t => b.setAttribute('r', lerp(12, 0, t)))]);
+    b.remove(); st.querySelector('#bubAct').hidden = true;
+    phase = 'adjust'; syr.enable(true);
+    const u = syr.u;
+    if (u === S.dose) { phase = 'done'; syr.enable(false); ctx.say('ok', `ได้ยา ${S.dose} ยูนิตพอดี ✓ — ถอนเข็มออกจากขวด`); ctx.done(); }
+    else ctx.say('warn', `ฟองอากาศหมดแล้ว แต่ยาเหลือ <b>${u} ยูนิต</b> — ปรับก้านสูบให้ได้ <b>${S.dose} ยูนิต</b> พอดี`);
+  });
+  ctx.say('info', `ดึงก้านสูบช้าๆ ให้ได้ <b>${S.dose} ยูนิต</b>`);
+}
+
+function sceneSite(st, ctx) {
+  st.innerHTML = `
+    <svg viewBox="0 0 300 430" style="max-width:300px;margin:0 auto">
+      <g fill="#f3d3b8" stroke="#c99a7a" stroke-width="2">
+        <circle cx="150" cy="44" r="30"/>
+        <rect x="138" y="70" width="24" height="16"/>
+        <rect x="98" y="82" width="104" height="176" rx="26"/>
+        <rect x="66" y="88" width="30" height="160" rx="15"/>
+        <rect x="204" y="88" width="30" height="160" rx="15"/>
+        <rect x="104" y="246" width="44" height="172" rx="18"/>
+        <rect x="152" y="246" width="44" height="172" rx="18"/>
+      </g>
+      <rect class="zone" data-z="abd" x="108" y="168" width="84" height="72" rx="14" fill="#C49A22" fill-opacity=".35" stroke="#C49A22" stroke-width="2"/>
+      <rect class="zone" data-z="thigh" x="108" y="268" width="36" height="76" rx="12" fill="#C49A22" fill-opacity=".35" stroke="#C49A22" stroke-width="2"/>
+      <rect class="zone" data-z="thigh" x="156" y="268" width="36" height="76" rx="12" fill="#C49A22" fill-opacity=".35" stroke="#C49A22" stroke-width="2"/>
+      <rect class="zone" data-z="arm" x="66" y="104" width="16" height="64" rx="8" fill="#C49A22" fill-opacity=".35" stroke="#C49A22" stroke-width="2"/>
+      <rect class="zone" data-z="arm" x="218" y="104" width="16" height="64" rx="8" fill="#C49A22" fill-opacity=".35" stroke="#C49A22" stroke-width="2"/>
+      <circle class="zone" data-z="navel" cx="150" cy="204" r="17" fill="#fee2e2" fill-opacity=".95" stroke="#b91c1c" stroke-width="2" stroke-dasharray="4 3"/>
+      <circle cx="150" cy="204" r="3" fill="#a06b4b" pointer-events="none"/>
+      <text x="150" y="426" text-anchor="middle" font-size="13" fill="#5f7a69">👆 แตะบริเวณสีเหลืองเพื่อดูรายละเอียด</text>
+    </svg>
+    <div class="site-info"></div>`;
+  const info = st.querySelector('.site-info');
+  const rot = `<br><span style="font-weight:500">🔁 <b>หมุนเวียนจุดฉีด</b>: ฉีดแต่ละครั้งห่างจากจุดเดิมอย่างน้อย 1 นิ้วมือ ไม่ฉีดซ้ำที่เดิม หลีกเลี่ยงบริเวณที่เป็นก้อนแข็ง แผล หรือรอยช้ำ</span>`;
+  const Z = {
+    abd: ['ok', '✅ <b>หน้าท้อง</b> — ตำแหน่งที่แนะนำ ยาดูดซึมสม่ำเสมอ ฉีดเองได้สะดวก ให้ฉีด <b>ห่างสะดืออย่างน้อย 2 นิ้ว (ประมาณ 5 ซม.)</b>'],
+    thigh: ['ok', '✅ <b>ต้นขาด้านหน้าและด้านนอก</b> — ช่วงบนถึงกลางต้นขา ยาดูดซึมช้ากว่าหน้าท้องเล็กน้อย'],
+    arm: ['ok', '✅ <b>ต้นแขนด้านนอกค่อนไปด้านหลัง</b> — ฉีดเองได้ยาก เหมาะให้ญาติช่วยฉีด'],
+    navel: ['err', '⛔ <b>ใกล้สะดือเกินไป</b> — ห้ามฉีดภายในรัศมี 2 นิ้วรอบสะดือ']
+  };
+  st.querySelectorAll('.zone').forEach(z => z.addEventListener('click', () => {
+    const k = z.dataset.z, [kind, msg] = Z[k];
+    st.querySelectorAll('.zone').forEach(x => x.classList.toggle('sel', x.dataset.z === k && k !== 'navel'));
+    info.innerHTML = '';
+    ctx.say(kind, msg + (kind === 'ok' ? rot : ''));
+    if (kind === 'ok') ctx.done();
+  }));
+}
+
+function sceneInject(st, ctx) {
+  const TOP = -70, LEN = 110;
+  st.innerHTML = `
+    <svg viewBox="0 -80 400 400">
+      <rect x="0" y="245" width="400" height="75" fill="#c8665a"/>
+      <g stroke="#a94f45" stroke-width="2" opacity=".6"><line x1="0" y1="265" x2="400" y2="265"/><line x1="0" y1="285" x2="400" y2="285"/><line x1="0" y1="305" x2="400" y2="305"/></g>
+      <path class="fat" fill="#f7df95"/>
+      <ellipse class="depot" cx="200" cy="175" rx="0" ry="0" fill="#fbf9f2" stroke="#c9b98a" stroke-width="1.5"/>
+      <path class="skin" fill="none" stroke="#e7b08a" stroke-width="10"/>
+      <g class="fingers" opacity="0" fill="#eebc97" stroke="#c98f6a" stroke-width="2">
+        <ellipse class="f1" rx="16" ry="28"/><ellipse class="f2" rx="16" ry="28"/>
+      </g>
+      <g class="vs">${vSyrSVG(200, TOP, LEN)}</g>
+      <text x="392" y="158" text-anchor="end" font-size="14" fill="#8a5a3c">ผิวหนัง</text>
+      <text x="392" y="226" text-anchor="end" font-size="14" font-weight="700" fill="#7a5b06">ชั้นไขมันใต้ผิวหนัง</text>
+      <text x="392" y="300" text-anchor="end" font-size="14" fill="#fff">กล้ามเนื้อ</text>
+      <text class="cd" x="60" y="20" text-anchor="middle" font-size="64" font-weight="800" fill="#C49A22"></text>
+    </svg>
+    <div class="row-c"><button class="btn btn-gold" id="actBtn"></button></div>`;
+  const svg = st.querySelector('svg'), fat = svg.querySelector('.fat'), skin = svg.querySelector('.skin'),
+        fg = svg.querySelector('.fingers'), vs = svg.querySelector('.vs'), depot = svg.querySelector('.depot'),
+        cd = svg.querySelector('.cd'), btn = st.querySelector('#actBtn');
+  let k = 0;
+  function setK(v) {
+    k = v; const H = 60 * k, y = 170 - H;
+    const surf = `M0,170 L110,170 C150,170 150,${y} 200,${y} C250,${y} 250,170 290,170 L400,170`;
+    skin.setAttribute('d', surf);
+    fat.setAttribute('d', surf + ' L400,245 L0,245 Z');
+    fg.setAttribute('opacity', k);
+    fg.querySelector('.f1').setAttribute('transform', `translate(${lerp(100, 128, k)},${170 - H * .55}) rotate(20)`);
+    fg.querySelector('.f2').setAttribute('transform', `translate(${lerp(300, 272, k)},${170 - H * .55}) rotate(-20)`);
+    depot.setAttribute('cy', 200 - 25 * k);
+  }
+  const setTy = v => vs.setAttribute('transform', `translate(0,${v})`);
+  setK(0); setTy(0); vSet(vs, S.dose, TOP, LEN);
+  const acts = [
+    ['✋ จับผิวหนังยกขึ้น', () => tween(700, t => setK(t)),
+      'ใช้นิ้วโป้งกับนิ้วชี้ <b>จับผิวหนังและไขมันยกขึ้นเบาๆ</b> (ไม่ดึงกล้ามเนื้อขึ้นมาด้วย)'],
+    ['💉 แทงเข็มตั้งฉาก 90°', () => tween(600, t => setTy(80 * t)),
+      'แทงเข็มเร็วๆ ทำ <b>มุมตั้งฉาก 90°</b> จนสุดเข็ม (คนที่ผอมมาก อาจแทงทำมุม 45°)'],
+    ['👍 ดันก้านสูบจนสุด', () => tween(1800, t => { vSet(vs, lerp(S.dose, 0, t), TOP, LEN); depot.setAttribute('rx', 22 * t); depot.setAttribute('ry', 12 * t); }),
+      '<b>ค่อยๆ ดันก้านสูบช้าๆ</b> จนสุด ยาจะเข้าไปอยู่ในชั้นไขมันใต้ผิวหนัง'],
+    ['⏱️ ค้างเข็ม นับ 1–10', async () => {
+        for (let n = 1; n <= 10; n++) { if (!ctx.alive()) return; cd.textContent = n; await sleep(1000); }
+        cd.textContent = '';
+      }, '<b>ค้างเข็มไว้ นับ 1–10 ช้าๆ</b> เพื่อให้ยาเข้าไปครบ ไม่ไหลย้อนออกมา'],
+    ['↑ ถอนเข็มออก', () => tween(600, t => setTy(80 * (1 - t))),
+      'ถอนเข็มออกตรงๆ ในแนวเดียวกับที่แทง'],
+    ['✋ ปล่อยมือที่จับผิวหนัง', () => tween(700, t => setK(1 - t)),
+      'ปล่อยมือ ถ้ามีเลือดซึมให้ใช้สำลีแห้งกดเบาๆ — <b>ห้ามคลึงหรือนวดบริเวณที่ฉีด</b>']
+  ];
+  let i = 0;
+  btn.textContent = acts[0][0];
+  ctx.say('info', acts[0][2]);
+  btn.addEventListener('click', async () => {
+    if (i >= acts.length) return;
+    btn.disabled = true;
+    ctx.say('info', acts[i][2]);
+    await acts[i][1]();
+    if (!ctx.alive()) return;
+    i++;
+    if (i < acts.length) { btn.textContent = acts[i][0]; btn.disabled = false; }
+    else { btn.hidden = true; ctx.say('ok', 'ฉีดยาเรียบร้อย ✓ — ห้ามคลึงหรือนวดบริเวณที่ฉีด'); ctx.done(); }
+  });
+}
+
+function sceneAfter(st) {
+  st.innerHTML = `<div class="info-cards">
+    <div class="info-card"><h3>🗑️ ทิ้งเข็ม</h3><ul>
+      <li>ไม่ต้องสวมปลอกเข็มกลับ ทิ้งทั้งกระบอกลงขวดพลาสติกแข็งที่มีฝาปิด</li>
+      <li>เมื่อขวดใกล้เต็ม ปิดฝาให้แน่น แล้วนำมาคืนที่โรงพยาบาล</li>
+      <li>ใช้กระบอกฉีดยาครั้งเดียวแล้วทิ้ง</li></ul></div>
+    <div class="info-card"><h3>❄️ การเก็บรักษายา</h3><ul>
+      <li>ขวดที่ยังไม่เปิด เก็บในตู้เย็นช่องธรรมดา (2–8 °C) <b>ห้ามแช่ช่องแข็ง</b></li>
+      <li>ขวดที่เปิดใช้แล้ว ใช้ได้ไม่เกิน 6 สัปดาห์ เขียนวันที่เปิดขวดไว้ที่ขวด</li>
+      <li>เก็บให้พ้นแสงแดดและความร้อน ห้ามทิ้งไว้ในรถ</li></ul></div>
+    <div class="info-card"><h3>⏰ เวลาฉีดยา ${TYPES[S.type].label}</h3><ul><li>${TYPES[S.type].time}</li></ul></div>
+    <div class="info-card warn"><h3>⚠️ อาการน้ำตาลในเลือดต่ำ</h3><ul>
+      <li>ใจสั่น เหงื่อออก มือสั่น หิว ตาพร่า มึนงง</li>
+      <li>ให้กินน้ำตาล 1 ช้อนโต๊ะ หรือน้ำหวาน/น้ำผลไม้ ครึ่งถึง 1 แก้ว แล้วพัก 15 นาที ถ้ายังไม่ดีขึ้นให้ทำซ้ำ และรีบมาพบแพทย์</li></ul></div>
+  </div>`;
+}
+
+function sceneQuiz(st, ctx) {
+  const used = new Set([S.dose]);
+  const rnd = (a, b) => { let v; do { v = a + 2 * Math.floor(Math.random() * ((b - a) / 2 + 1)); } while (used.has(v)); used.add(v); return v; };
+  const qs = [{ k: 'drag', t: S.dose }, { k: 'read', t: rnd(6, 30) }, { k: 'drag', t: rnd(32, 60) }, { k: 'read', t: rnd(62, 94) }, { k: 'drag', t: rnd(8, 48) }];
+  let i = 0, score = 0;
+  function next(btnHost) {
+    btnHost.innerHTML = `<div class="row-c"><button class="btn btn-primary">${i + 1 < qs.length ? 'ข้อต่อไป →' : 'ดูผลคะแนน'}</button></div>`;
+    btnHost.querySelector('button').addEventListener('click', () => { i++; show(); });
+  }
+  function show() {
+    ctx.say('', '');
+    if (i >= qs.length) return finish();
+    const q = qs[i];
+    st.innerHTML = `<div class="qhead">ข้อ ${i + 1} จาก ${qs.length}</div><div class="qtext"></div><div class="sh"></div><div class="qa"></div>`;
+    const qt = st.querySelector('.qtext'), qa = st.querySelector('.qa');
+    if (q.k === 'drag') {
+      qt.innerHTML = `ดึงก้านสูบให้ได้ ${q.t} ยูนิต`;
+      const syr = makeSyringe(st.querySelector('.sh'), { readout: false });
+      qa.innerHTML = `<div class="row-c"><button class="btn btn-gold">ตรวจคำตอบ</button></div>`;
+      qa.querySelector('button').addEventListener('click', () => {
+        syr.enable(false);
+        if (syr.u === q.t) { score++; ctx.say('ok', `ถูกต้อง! ${q.t} ยูนิต ✓`); }
+        else ctx.say('err', `ยังไม่ถูก — คุณดึงได้ ${syr.u} ยูนิต แต่ต้องการ ${q.t} ยูนิต`);
+        next(qa);
+      });
+    } else {
+      qt.innerHTML = 'กระบอกนี้มียากี่ยูนิต?';
+      makeSyringe(st.querySelector('.sh'), { interactive: false, readout: false, units: q.t });
+      const opts = [q.t, q.t - 2, q.t + 4, q.t + 10 <= 100 ? q.t + 10 : q.t - 10].sort(() => Math.random() - .5);
+      qa.innerHTML = `<div class="opts">${opts.map(o => `<button class="opt" data-v="${o}">${o} ยูนิต</button>`).join('')}</div>`;
+      qa.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+        const v = Number(b.dataset.v);
+        qa.querySelectorAll('.opt').forEach(x => { x.disabled = true; if (Number(x.dataset.v) === q.t) x.classList.add('right'); });
+        if (v === q.t) { score++; ctx.say('ok', 'ถูกต้อง! ✓'); }
+        else {
+          b.classList.add('wrong');
+          ctx.say('err', v === q.t + 4 ? 'คุณอ่านที่ขอบล่างของยางดำ — ต้องอ่านที่ <b>ขอบบน (ด้านที่ใกล้เข็ม)</b>' : `คำตอบที่ถูกคือ ${q.t} ยูนิต — 1 ขีดเล็ก = 2 ยูนิต`);
+        }
+        const box = document.createElement('div'); qa.appendChild(box); next(box);
+      }));
+    }
+  }
+  function finish() {
+    const pass = score >= 4;
+    st.innerHTML = `<div class="score"><div class="big">${score}/${qs.length}</div>
+      <div>${pass ? '🎉 เยี่ยมมาก! คุณอ่านขีดกระบอกฉีดยาได้ถูกต้อง' : 'ลองทบทวนอีกครั้ง: 1 ขีดเล็ก = 2 ยูนิต อ่านที่ขอบบนของยางดำ'}</div>
+      <div class="row-c"><button class="btn btn-ghost" id="again">ทำแบบทดสอบใหม่</button></div></div>`;
+    st.querySelector('#again').addEventListener('click', () => sceneQuiz(st, ctx));
+    ctx.say(pass ? 'ok' : 'warn', pass ? 'ผ่านแบบทดสอบ ✓' : 'แนะนำให้ฝึกอีกครั้งกับเภสัชกร');
+    ctx.done();
+  }
+  show();
+}
+
+/* ===== steps ===== */
+const STEPS = [
+  { title: 'ข้อมูลยาของคุณ', free: true, render: sceneSetup,
+    instr: () => 'เลือกชนิดอินซูลินและขนาดยาที่แพทย์สั่ง ระบบจะใช้ขนาดยานี้ในการฝึก' },
+  { title: 'เตรียมอุปกรณ์', render: sceneChecklist,
+    instr: () => 'เตรียมของให้ครบก่อนฉีดยา แตะเพื่อทำเครื่องหมายทีละข้อ' },
+  { title: 'คลึงขวดยาให้เข้ากัน', render: sceneRoll,
+    instr: () => `${TYPES[S.type].label} เป็นยาชนิด<b>ขุ่น</b> ตะกอนจะนอนก้นขวด ต้อง<b>คลึงขวดระหว่างฝ่ามือไปมา</b>จนยาขุ่นขาวสม่ำเสมอ<span class="tip">⚠️ ห้ามเขย่าขวดแรงๆ เพราะจะเกิดฟองอากาศ</span>` },
+  { title: 'เช็ดจุกยางขวดยา', render: sceneWipe,
+    instr: () => 'ถ้าเป็นขวดใหม่ ให้เปิดฝาพลาสติกออกก่อน แล้ว<b>เช็ดจุกยางด้วยสำลีแอลกอฮอล์</b>' },
+  { title: 'ดึงอากาศเข้ากระบอกฉีดยา', render: sceneDrawAir,
+    instr: () => `ถอดปลอกเข็ม แล้วดึงก้านสูบเพื่อดูดอากาศเข้ากระบอก <b>เท่ากับขนาดยา ${S.dose} ยูนิต</b><span class="tip">📏 กระบอก 1 มล.: <b>1 ขีดเล็ก = 2 ยูนิต</b> ขีดยาวมีตัวเลขทุก 10 ยูนิต — อ่านค่าตรง <b>ขอบบนของยางสีดำ</b> (ด้านที่ใกล้เข็ม)</span>${evenOddHint(S.dose)}` },
+  { title: 'ฉีดอากาศเข้าขวดยา', render: sceneInjectAir,
+    instr: () => 'ตั้งขวดยาบนโต๊ะ แทงเข็มผ่านจุกยางตรงกลาง แล้ว<b>ดันอากาศเข้าไปในขวด</b> จะช่วยให้ดูดยาออกได้ง่าย' },
+  { title: 'คว่ำขวด ดูดยา และไล่ฟองอากาศ', render: sceneDrawDrug,
+    instr: () => `ดูดยาให้ได้ <b>${S.dose} ยูนิต</b> แล้วตรวจดูฟองอากาศ ฟองอากาศทำให้ได้ยาไม่ครบขนาด` },
+  { title: 'เลือกตำแหน่งฉีดยา', render: sceneSite,
+    instr: () => 'ฉีดยาเข้า<b>ชั้นไขมันใต้ผิวหนัง</b> บริเวณที่แนะนำ ทำความสะอาดผิวด้วยสำลีแอลกอฮอล์ รอให้แห้งก่อนฉีด' },
+  { title: 'ฉีดยา', render: sceneInject,
+    instr: () => 'กดปุ่มด้านล่างทีละขั้นตอน เพื่อดูวิธีฉีดยาเข้าชั้นไขมันใต้ผิวหนัง' },
+  { title: 'หลังฉีดยา', free: true, render: sceneAfter,
+    instr: () => 'สิ่งที่ควรรู้หลังฉีดยา' },
+  { title: 'แบบทดสอบ: อ่านขีดกระบอกฉีดยา', render: sceneQuiz,
+    instr: () => 'ทดสอบการดึงยาและอ่านขีดกระบอกฉีดยา 5 ข้อ (ไม่มีตัวเลขช่วย)' }
+];
+
+/* ===== controller ===== */
+let cur = 0, token = 0, speakOn = false;
+const fb = $('#fb');
+function say(kind, html) { fb.className = 'fb' + (kind ? ' ' + kind : ''); fb.innerHTML = html || ''; }
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'th-TH'; u.rate = .95;
+  const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('th'));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+function go(i) {
+  cur = i; const my = ++token;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  const s = STEPS[i];
+  $('#stepNo').textContent = i === 0 ? 'เริ่มต้น' : `ขั้นที่ ${i} จาก ${STEPS.length - 1}`;
+  $('#title').textContent = s.title;
+  $('#instr').innerHTML = s.instr();
+  say('', '');
+  let isDone = !!s.free;
+  const nav = () => {
+    $('#nextBtn').disabled = !isDone;
+    $('#skipBtn').hidden = isDone;
+    $('#backBtn').disabled = i === 0;
+    $('#nextBtn').textContent = i === STEPS.length - 1 ? 'เริ่มใหม่ ↺' : 'ถัดไป →';
+  };
+  const ctx = {
+    alive: () => my === token,
+    done: () => { if (my !== token) return; isDone = true; nav(); },
+    say: (k, h) => { if (my === token) say(k, h); }
+  };
+  const st = $('#stage'); st.innerHTML = '';
+  s.render(st, ctx);
+  nav();
+  $('#progress').innerHTML = STEPS.map((_, j) => `<span class="${j < i ? 'on' : j === i ? 'cur' : ''}" data-j="${j}" title="${STEPS[j].title}"></span>`).join('');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (speakOn) speak(s.title + '. ' + $('#instr').innerText);
+}
+$('#nextBtn').addEventListener('click', () => go(cur === STEPS.length - 1 ? 0 : cur + 1));
+$('#skipBtn').addEventListener('click', () => go(Math.min(cur + 1, STEPS.length - 1)));
+$('#backBtn').addEventListener('click', () => cur > 0 && go(cur - 1));
+$('#progress').addEventListener('click', e => { const j = e.target.dataset.j; if (j !== undefined) go(Number(j)); });
+if ('speechSynthesis' in window) {
+  const b = $('#speakBtn'); b.hidden = false;
+  speechSynthesis.getVoices();
+  b.addEventListener('click', () => {
+    speakOn = !speakOn; b.classList.toggle('on', speakOn);
+    b.textContent = speakOn ? '🔊 กำลังอ่าน' : '🔊 อ่านให้ฟัง';
+    speakOn ? speak(STEPS[cur].title + '. ' + $('#instr').innerText) : speechSynthesis.cancel();
+  });
+}
+go(0);
+</script>
+</body>
+</html>
