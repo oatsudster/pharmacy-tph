@@ -2689,22 +2689,31 @@ async function fcEmrDrugs(s) {
     fcEmrHash = gh;
     // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
     if (!clinicWin || clinicWin.closed || s.emrHn !== document.getElementById('f-hn').value.trim()) { fcEmrMsg = ''; return; }
-    const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
-    const added = [], unknown = [];
+    const keys = [], unknown = [];
     let skipped = 0;
     lines.forEach(name => {
       const key = hxMatchDrug(name);
       // บรรทัดที่ดูเป็นชื่อยา (มีความแรง) แต่ไม่รู้จัก แจ้งให้เพิ่มเอง — เศษ OCR อื่นๆ (หัวตาราง/แถบเลื่อนหน้า) ทิ้งไป
       if (!key) { if (/\d\s*(mg|mcg|g|ml|iu|u)\b/i.test(name)) unknown.push(name.replace(/\s+\S{1,5}$/, '')); return; }
       if (emrSkipDrug(key, name)) { skipped++; return; }
-      if (have.some(h => h === key || drugMatches(h, key))) return;
-      have.push(key);
-      const info = getDrugPrice(key) || {};
-      addLoRow(key, '', info.u || 'เม็ด', info.p || 0, true);
-      added.push(key);
+      if (!keys.some(h => h === key || drugMatches(h, key))) keys.push(key);
     });
+    // เภสัชไล่เปิดหลาย visit หา visit ยาเดิม — แสดงเฉพาะยาของ visit ที่เปิดอยู่ล่าสุด ไม่สะสมจากทุก visit
+    // (ลบแถวจาก EMR ที่ยังไม่ได้ใส่จำนวน แถวที่ใส่จำนวนแล้วหรือพิมพ์เองคงไว้) visit ที่ไม่มียาเรื้อรังเลยไม่ล้างของเดิม
+    const added = [];
+    if (keys.length) {
+      document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
+      const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
+      keys.forEach(key => {
+        if (have.some(h => h === key || drugMatches(h, key))) return;
+        const info = getDrugPrice(key) || {};
+        addLoRow(key, '', info.u || 'เม็ด', info.p || 0, true);
+        added.push(key);
+      });
+      updateLoTotal();
+    }
     fcEmrMsg = added.length ? `📷 ดึงชื่อยาจาก EMR ${added.length} รายการ — ใส่จำนวนที่คนไข้นำมา (ยาที่ไม่ได้นำมา เว้นว่างไว้ ไม่ถูกบันทึก)` : '';
-    if (skipped) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + `ข้ามยาบรรเทาอาการ/ยาหยอดตา-หู/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`;
+    if (skipped) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + `ข้ามยาตามอาการ/ยาฆ่าเชื้อ/ยาน้ำ-หยอด-ล้าง/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`;
     if (unknown.length) fcEmrMsg += (fcEmrMsg ? '<br>' : '') + '⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', ');
     renderFloatClinic();
   } catch (e) {
@@ -2761,11 +2770,20 @@ async function emrDrugNameLines(blob) {
     .filter(t => /[A-Za-z]{3,}/.test(t) && !/doctor|\bfee\b|\bof\s*\d/i.test(t));
 }
 
-// ยาที่ไม่ดึงจาก EMR มาใส่ช่องยาคงเหลือ: ยาบรรเทาอาการ, ยาหยอดตา/หู, ยาฉีด (ยกเว้นอินซูลิน ซึ่งคิดเหลือเป็น vial)
+// ดึงจาก EMR เฉพาะยาโรคเรื้อรังที่คนไข้มักนำกลับมา: ยาเม็ด/แคปซูล, อินซูลิน (คิดเหลือเป็น vial), ยาพ่น
+// ไม่เอา: ยาบรรเทาอาการ, ยาฆ่าเชื้อ, ยาน้ำ/ยาหยอดตา-หู/น้ำเกลือล้างจมูก, ครีม, ยาฉีดอื่น (visit ที่มาตามอาการมักมียาพวกนี้)
+// ยาที่มักสั่งตามอาการในวันนั้น (ใช้เฉพาะตอนดึงจาก EMR ไม่กระทบการปรับยาตามนัดของ จพ.)
+const EMR_ACUTE_DRUGS = ['CETIRIZINE', 'LORATADINE', 'CHLORPHENIRAMINE', 'HYDROXYZINE', 'ATARAX', 'DIMENHYDRINATE', 'DRAMAMINE',
+  'IBUPROFEN', 'MEFENAMIC', 'NAPROXEN', 'METOCLOPRAMIDE', 'SIMETHICONE', 'SENOKOT', 'BISACODYL', 'ALBENDAZOLE',
+  'ACYCLOVIR', 'FAVIPIRAVIR', 'CAFERGOT', 'AMBROXOL', 'BROMHEXINE', 'CARBOCYSTEINE', 'KETOCONAZOLE'];
 function emrSkipDrug(key, name) {
-  if (isSymptomatic(key, name)) return true;
-  if (/\beye\b|\bear\b|\boph|otic|tears?\b|หยอดตา|หยอดหู/i.test(key + ' ' + name)) return true;
-  return (/^\((inj|iv)\.\)/i.test(key) || /\binj\b|ฉีด/i.test(name)) && !isInsulin(key, name);
+  if (isInsulin(key, name)) return false;
+  if (isSymptomatic(key, name) || isAntibiotic(key, name)) return true;
+  if (/\bCPM\b|มะแว้ง/i.test(key + ' ' + name)) return true;
+  if (drugTokens(key + ' ' + name).some(x => EMR_ACUTE_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)))) return true;
+  if (/\beye\b|\bear\b|\boph|otic|tears?\b|saline|\bnss\b|irrigat|nasal|หยอด|ล้างจมูก|\binj\b|ฉีด/i.test(key + ' ' + name)) return true;
+  if (isInhaler(key, name)) return false;
+  return !/^\((tab|cap)\.\)/i.test(key);
 }
 
 function fcRenderEmrMsg() {
