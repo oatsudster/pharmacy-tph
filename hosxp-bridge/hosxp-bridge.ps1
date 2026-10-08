@@ -17,6 +17,8 @@
 #   /db/order?hn=   — ใบสั่งยาของ visit วันนี้ (visit ล่าสุดของวันที่มียา) + นัดที่ยังไม่ถึง (ไม่นับยกเลิก/มาแล้ว)
 #   /db/visits?hn=  — ยาของ visit ก่อนวันนี้ 6 visit ล่าสุดที่มียา (ใหม่ → เก่า)
 #   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
+#   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
+#                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
 #   /current มี db (ต่อฐานข้อมูลได้) / dbErr และถ้า DB ใช้ได้ apptDays มาจากตาราง oapp ไม่ใช่ OCR
 #
@@ -147,6 +149,43 @@ function DbVisits($hn) {
   [ordered]@{ ok = $true; hn = $hn; visits = $visits }
 }
 
+# คลินิกนัดที่ใช้หายาเดิม: คลินิคเบาหวานนัดLAB, โรคเบาหวาน(DM), คลีนิคความดันนัดLAB, โรคความดัน(HT), โรคถุงลมโปงพอง(COPD)
+$MED_CLINICS = "'023','001','024','002','013'"
+function DbMeds($hn) {
+  # visit ที่มาตามนัดของคลินิกเหล่านี้ — ผูกกับนัดด้วย visit_vn ถ้าไม่ได้ผูก ใช้ visit ของ HN นี้ในวันนัด
+  $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn, o.vstdate, o.vsttime FROM oapp a " +
+    "JOIN clinic c ON c.clinic=a.clinic " +
+    "JOIN ovst o ON o.vn=a.visit_vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
+    "WHERE a.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
+    "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
+  $drugs = @{}
+  if ($vis.Count) {
+    $vns = ($vis | ForEach-Object { "'" + [HxDb]::Digits($_['vn']) + "'" } | Select-Object -Unique) -join ','
+    foreach ($r in (DbQuery "SELECT r.vn, $DRUG_COLS $DRUG_JOIN WHERE r.vn IN ($vns) AND (r.an IS NULL OR r.an='') ORDER BY r.item_no")) {
+      if (-not $drugs.ContainsKey($r['vn'])) { $drugs[$r['vn']] = New-Object System.Collections.ArrayList }
+      [void]$drugs[$r['vn']].Add((DrugRow $r))
+    }
+  }
+  # แต่ละคลินิกเอา visit ล่าสุดที่มียา (นัด LAB บางครั้งไม่มียา ข้ามไป visit ก่อนหน้าของคลินิกนั้น)
+  $visits = New-Object System.Collections.ArrayList; $seen = @{}
+  foreach ($v in $vis) {
+    if ($seen.ContainsKey($v['clinic']) -or -not $drugs.ContainsKey($v['vn'])) { continue }
+    $seen[$v['clinic']] = $true
+    [void]$visits.Add([ordered]@{ clinic = $v['clinic']; clinicName = $v['clinic_name']; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; drugs = $drugs[$v['vn']] })
+  }
+  # ยากลับบ้านของการนอน รพ. ครั้งล่าสุดที่จำหน่ายแล้ว
+  $dc = $null
+  $ipt = DbQuery "SELECT an, regdate, dchdate, dchtime FROM ipt WHERE hn='$hn' AND dchdate IS NOT NULL AND dchdate<=CURDATE() AND dchdate>=CURDATE()-INTERVAL 2 YEAR ORDER BY dchdate DESC, dchtime DESC LIMIT 1"
+  if ($ipt.Count) {
+    $an = [HxDb]::Digits($ipt[0]['an'])
+    $hme = DbQuery ("SELECT $DRUG_COLS $DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no " +
+      "WHERE r.an='$an' AND n.order_type='HMe' ORDER BY r.item_no")
+    $dc = [ordered]@{ an = $an; regdate = $ipt[0]['regdate']; dchdate = $ipt[0]['dchdate']; dchtime = $ipt[0]['dchtime']
+      drugs = @($hme | ForEach-Object { DrugRow $_ }) }
+  }
+  [ordered]@{ ok = $true; hn = $hn; visits = $visits; discharge = $dc }
+}
+
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -173,6 +212,7 @@ function DbEndpoint($path) {
   try {
     if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
     $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
+      elseif ($path -like '/db/meds*') { DbMeds $hn }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)

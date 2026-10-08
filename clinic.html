@@ -2749,26 +2749,74 @@ function fcEmrKeys(lines) {
   return { keys, unknown, skipped };
 }
 
-// ยาเดิมจากฐานข้อมูล HOSxP: ไม่ต้องให้เภสัชเปิดแท็บรายการยาใน EMR — ใช้ visit ล่าสุดก่อนวันนี้ที่มียาโรคเรื้อรัง
-// ทำครั้งเดียวต่อ HN (ไม่ใช่ทุกรอบ poll) ถ้าฐานข้อมูลใช้ไม่ได้ ค่อยกลับไปใช้ OCR จาก EMR เหมือนเดิม
+// ── ยาเดิมจากฐานข้อมูล HOSxP (ไม่ต้องเปิดแท็บรายการยาใน EMR) ──
+// แหล่งยา: visit ล่าสุดที่มียาของแต่ละคลินิกนัด (DM นัด LAB, DM, HT นัด LAB, HT, COPD) + ยากลับบ้านของการนอน รพ. ครั้งล่าสุด
+// รวมทุกแหล่งเป็นรายการยาปัจจุบัน: เรียงใหม่ → เก่า ยาตัวเดียวกันใช้ของแหล่งที่ใหม่กว่า
+// ยากลับบ้านเป็นจุดตัด: ยาจาก visit ก่อนวันจำหน่ายที่ไม่อยู่ในยากลับบ้าน (อาจหยุดแล้ว) และ visit ที่เก่ากว่าแหล่งล่าสุดเกิน 1 ปี
+// ไม่ใส่ให้ แสดงเป็นปุ่มให้กดเพิ่มเองถ้าคนไข้นำมา — ทำครั้งเดียวต่อ HN ถ้าฐานข้อมูลใช้ไม่ได้ กลับไปใช้ OCR จาก EMR เหมือนเดิม
+const MED_CLINIC_SHORT = { '023': 'DM นัด LAB', '001': 'DM', '024': 'HT นัด LAB', '002': 'HT', '013': 'COPD' };
+// ยาแก้ปวด/คลายกล้ามเนื้อที่ยังไม่อยู่ในรายการยาบรรเทาอาการ (ใช้เฉพาะตอนดึงยาเดิม)
+const EMR_PAIN_DRUGS = ['PIROXICAM', 'MELOXICAM', 'CELECOXIB', 'CELEBREX', 'ETORICOXIB', 'ARCOXIA', 'INDOMETHACIN', 'NAPROXEN',
+  'METHOCARBAMOL', 'TOLPERISONE', 'EPERISONE', 'MYDOCALM', 'CARISOPRODOL', 'ETODOLAC'];
+function dbDrugName(d) { return [d.name, d.strength].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(); }
+// ยาโรคเรื้อรังที่ควรนับยาเหลือ: ยาเม็ด/แคปซูล, อินซูลิน, ยาพ่น — ไม่เอายาบรรเทาอาการ แก้ปวด ยาฆ่าเชื้อ ยาใช้เมื่อมีอาการ
+// ยานวด ยาอม ยาทา ยาหยอด ยาเหน็บ ยาน้ำ ยาฉีดอื่น
+function dbLeftoverDrug(d) {
+  const name = dbDrugName(d), usage = String(d.usage || '').replace(/\s+/g, ' ').trim();
+  if (isInsulin(name)) return true;
+  if (/พ่น|สูด/.test(usage) || /\bMDI\b|haler/i.test(name)) return true;
+  if (!/^(tab|cap)/i.test(d.form || '')) return false;
+  if (/(^|\s)(อม|ทา(?!น)|นวด|หยอด|เหน็บ)/.test(usage)) return false;
+  if (parseUsage(usage).prn) return false;
+  if (isSymptomatic(name) || isAntibiotic(name) || /\bCPM\b|มะแว้ง/i.test(name)) return false;
+  return !drugTokens(name).some(x => EMR_ACUTE_DRUGS.concat(EMR_PAIN_DRUGS).some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
+}
 let fcDbEmrHn = '', fcDbEmrOk = false;
 async function fcDbEmrDrugs(hn) {
   if (!hn || hn === fcDbEmrHn) return;
   fcDbEmrHn = hn; fcDbEmrOk = false;
-  const v = await tphHosxp.visits(hn);
-  if (!v || !clinicWin || clinicWin.closed || document.getElementById('f-hn').value.trim() !== hn) return;
+  const m = await tphHosxp.meds(hn);
+  if (!m || !clinicWin || clinicWin.closed || document.getElementById('f-hn').value.trim() !== hn) return;
   fcDbEmrOk = true;
-  for (const visit of v.visits || []) {
-    const lines = (visit.drugs || []).map(d => [d.name, d.strength].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim());
-    if (!fcEmrKeys(lines).keys.length) continue;
-    const [y, m, dd] = String(visit.date).split('-').map(Number);
-    const label = `${dd} ${TH_MONTHS_FULL[m - 1]} ${y + 543}|${visit.time || ''}|${visit.dep || ''}`;
-    fcApplyEmrLines(lines, parseEmrVisit(label), '🗄️');
-    fcRenderEmrMsg();
-    return;
+  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), drugs: v.drugs || [],
+    label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName} ${tphHosxp.thDate(v.date)}` }));
+  const dc = m.discharge;
+  if (dc && (dc.drugs || []).length) srcs.push({ sort: dc.dchdate + ' ' + (dc.dchtime || ''), drugs: dc.drugs, dc: true,
+    label: `ยากลับบ้าน (D/C ${tphHosxp.thDate(dc.dchdate)})` });
+  srcs.sort((a, b) => a.sort < b.sort ? 1 : -1);
+  if (!srcs.length) { fcEmrMsg = '🗄️ ไม่พบ visit คลินิก DM/HT/COPD หรือยากลับบ้านใน 2 ปี — กรอกยาเหลือเอง'; fcRenderEmrMsg(); return; }
+  // จุดตัด: วันจำหน่ายครั้งล่าสุด (ถ้ามียากลับบ้าน) หรือ 1 ปีก่อนแหล่งล่าสุด แล้วแต่อันไหนใหม่กว่า
+  const dcSrc = srcs.find(x => x.dc);
+  const yearAgo = (+srcs[0].sort.slice(0, 4) - 1) + srcs[0].sort.slice(4, 10);
+  const cut = dcSrc && dcSrc.sort.slice(0, 10) > yearAgo ? dcSrc.sort : yearAgo;
+  const picked = [], older = [], used = [];
+  let skipped = 0;
+  for (const src of srcs) {
+    const current = src.sort >= cut;
+    if (current) used.push(src.label);
+    for (const d of src.drugs) {
+      if (!dbLeftoverDrug(d)) { if (current) skipped++; continue; }
+      const name = dbDrugName(d);
+      const key = hxMatchDrug(name) || name;
+      if (picked.concat(older).some(x => x.key === key || drugMatches(x.key, key))) continue;
+      (current ? picked : older).push({ key, d });
+    }
   }
-  fcEmrMsg = '🗄️ ไม่พบยาโรคเรื้อรังใน 6 visit ล่าสุด (ฐานข้อมูล HOSxP) — กรอกยาเหลือเอง';
-  fcRenderEmrMsg();
+  document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
+  const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
+  picked.forEach(({ key, d }) => {
+    if (have.some(h => h === key || drugMatches(h, key))) return;
+    const info = getDrugPrice(key) || {};
+    addLoRow(key, '', info.u || d.units || 'เม็ด', info.p || 0, true);
+  });
+  updateLoTotal();
+  fcEmrSrc = null;
+  const lines = [`🗄️ <b>ยาเดิมจาก ${used.map(escHtml).join(' · ')}</b> (${picked.length} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`];
+  if (skipped) lines.push(`ข้ามยาบรรเทาอาการ/แก้ปวด/ยาฆ่าเชื้อ/ยาใช้เมื่อมีอาการ/ยาน้ำ-ทา-อม-หยอด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
+  if (older.length) lines.push((dcSrc && cut === dcSrc.sort ? 'ยาก่อนนอน รพ. ที่ไม่อยู่ในยากลับบ้าน (อาจหยุดแล้ว)' : 'ยาจาก visit เก่ากว่า 1 ปี') +
+    ' — กดเพิ่มถ้าคนไข้นำมา:<br>' + older.map(x => `<button class="chip" data-drug="${escHtml(x.key)}">+ ${escHtml(drugLabel(x.key))}</button>`).join(' '));
+  fcEmrMsg = lines.join('<br>');
+  renderFloatClinic();
 }
 
 function fcApplyEmrLines(lines, visit, icon) {
