@@ -269,34 +269,61 @@ function DbDmRoster {
     firstDate = $_['first_date']; lastDate = $_['last_date']; nextDate = $_['next_date'] } }) }
 }
 
-function DbDmVisits($hn) {
-  # วันที่อยู่ในคลินิก = วันที่ลงนัดครั้งถัดไปของคลินิกนี้ (vstdate ของนัด) + วันที่มาตามนัดแล้ว (visit_vn)
-  $dates = DbQuery ("SELECT DISTINCT d FROM (SELECT a.vstdate AS d FROM oapp a WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC) " +
-    "UNION SELECT o.vstdate FROM oapp a JOIN ovst o ON o.vn=a.visit_vn WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC)) x WHERE d<=CURDATE() ORDER BY d DESC")
-  $codes = ($DM_LABS.Values -join ',')
-  $labs = DbQuery ("SELECT h.order_date, o.lab_items_code, o.lab_order_result FROM lab_head h JOIN lab_order o ON o.lab_order_number=h.lab_order_number " +
-    "WHERE h.hn='$hn' AND o.lab_items_code IN ($codes) AND o.lab_order_result IS NOT NULL AND o.lab_order_result<>'' ORDER BY h.order_date DESC")
-  $visits = New-Object System.Collections.ArrayList
-  foreach ($dr in $dates) {
-    $d = $dr['d']
-    $vit = DbQuery ("SELECT s.bw, s.height, s.bmi, s.bps, s.bpd, s.fbs, s.waist FROM opdscreen s JOIN ovst o ON o.vn=s.vn " +
-      "WHERE o.hn='$hn' AND o.vstdate='$d' ORDER BY (s.bw IS NULL), o.vsttime LIMIT 1")
-    $drugs = DbQuery ("SELECT $DRUG_COLS, d.unitprice $DRUG_JOIN WHERE r.hn='$hn' AND r.vstdate='$d' AND (r.an IS NULL OR r.an='') ORDER BY r.vn, r.item_no")
-    $lab = [ordered]@{}; $labDate = [ordered]@{}
-    $dd = [DateTime]::Parse($d)
-    foreach ($k in $DM_LABS.Keys) {
-      $set = $DM_LABS[$k] -split ','
-      $hit = $labs | Where-Object { $set -contains $_['lab_items_code'] -and ([DateTime]::Parse($_['order_date']) -le $dd) -and (($dd - [DateTime]::Parse($_['order_date'])).TotalDays -le 60) } | Select-Object -First 1
-      if ($hit) { $lab[$k] = $hit['lab_order_result']; $labDate[$k] = $hit['order_date'] }
-    }
-    $v = if ($vit.Count) { $vit[0] } else { @{} }
-    [void]$visits.Add([ordered]@{ date = $d; weight = $v['bw']; height = $v['height']; bmi = $v['bmi']
-      bp = $(if ($v['bps'] -and $v['bpd']) { "$([int][double]$v['bps'])/$([int][double]$v['bpd'])" } else { '' }); dtx = $v['fbs']; waist = $v['waist']
-      lab = $lab; labDate = $labDate
-      drugs = @($drugs | ForEach-Object { [ordered]@{ name = (@($_['name'], $_['strength']) -join ' ').Trim(); unit = $_['units']; qty = $_['qty']
-        price = $_['unitprice']; usage = $_['usage_text']; form = $_['dosageform'] } }) })
+# วันเข้าคลินิก NCDs remission ของ HN นี้ + วันที่ขอเพิ่ม (?dates=YYYY-MM-DD,... เช่น visit ที่บันทึกไว้แล้วในหน้าเว็บ)
+# ต่อวัน: สัญญาณชีพ (opdscreen), lab ล่าสุดภายใน 60 วันก่อนวันนั้น, ยาที่ได้ (พร้อมรหัสวิธีใช้ให้หน้าเว็บแปลงเป็น "1x2 pc")
+# baseline = visit ล่าสุดก่อนเข้าคลินิกครั้งแรกที่มียาลดน้ำตาล (ค่ายาก่อนเข้าโครงการ) · dx = โรคเรื้อรังจาก ICD-10 2 ปี
+# ดึงทีละตาราง (ไม่ query ต่อวัน) — 1 คนใช้เวลา < 1 วินาที
+function DbDmVisits($hn, $path) {
+  $clinic = DbQuery ("SELECT DISTINCT d FROM (SELECT a.vstdate AS d FROM oapp a WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC) " +
+    "UNION SELECT o.vstdate FROM oapp a JOIN ovst o ON o.vn=a.visit_vn WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC)) x WHERE d<=CURDATE()")
+  $clinicDates = @($clinic | ForEach-Object { $_['d'] })
+  $extra = @()
+  if ($path -match '[?&]dates=([0-9,\-]+)') { $extra = @($Matches[1] -split ',' | Where-Object { $_ -match '^\d{4}-\d{2}-\d{2}$' }) }
+  $first = ($clinicDates + $extra | Sort-Object | Select-Object -First 1)
+  # baseline: visit ล่าสุดก่อนวันแรกที่มียาลดน้ำตาล
+  $base = $null
+  if ($first) {
+    $b = DbQuery ("SELECT MAX(r.vstdate) AS d FROM opitemrece r JOIN drugitems d ON d.icode=r.icode WHERE r.hn='$hn' AND r.vstdate<'$first' " +
+      "AND r.vstdate>=DATE_SUB('$first', INTERVAL 1 YEAR) AND (r.an IS NULL OR r.an='') AND d.name REGEXP '$GLUCOSE_DRUG_RE' AND d.name NOT LIKE '%STAT%'")
+    if ($b.Count -and $b[0]['d']) { $base = $b[0]['d'] }
   }
-  [ordered]@{ ok = $true; hn = $hn; visits = $visits }
+  $all = @($clinicDates + $extra + @($base) | Where-Object { $_ } | Sort-Object -Unique -Descending)
+  $visits = New-Object System.Collections.ArrayList
+  $dx = @()
+  if ($all.Count) {
+    $in = ($all | ForEach-Object { "'$_'" }) -join ','
+    $vit = DbQuery ("SELECT o.vstdate, s.bw, s.height, s.bmi, s.bps, s.bpd, s.fbs, s.waist FROM opdscreen s JOIN ovst o ON o.vn=s.vn " +
+      "WHERE o.hn='$hn' AND o.vstdate IN ($in) ORDER BY o.vstdate, (s.bw IS NULL), o.vsttime")
+    $drugs = DbQuery ("SELECT r.vstdate, $DRUG_COLS, d.unitprice, u.iperdose, u.opi_frequency_code, u.opi_time_code $DRUG_JOIN " +
+      "WHERE r.hn='$hn' AND r.vstdate IN ($in) AND (r.an IS NULL OR r.an='') ORDER BY r.vstdate, r.vn, r.item_no")
+    $codes = ($DM_LABS.Values -join ',')
+    $oldest = $all[-1]
+    $labs = DbQuery ("SELECT h.order_date, o.lab_items_code, o.lab_order_result FROM lab_head h JOIN lab_order o ON o.lab_order_number=h.lab_order_number " +
+      "WHERE h.hn='$hn' AND o.lab_items_code IN ($codes) AND h.order_date>=DATE_SUB('$oldest', INTERVAL 60 DAY) " +
+      "AND o.lab_order_result IS NOT NULL AND o.lab_order_result<>'' ORDER BY h.order_date DESC")
+    $dxr = DbQuery ("SELECT DISTINCT LEFT(icd10,3) AS c FROM ovstdiag WHERE hn='$hn' AND vstdate>=CURDATE()-INTERVAL 2 YEAR " +
+      "AND LEFT(icd10,3) IN ('E11','E10','E14','I10','I11','E78','N18','I25','I63','J44','J45','E66','M10','K76')")
+    $dx = @($dxr | ForEach-Object { $_['c'] })
+    foreach ($d in $all) {
+      $dd = [DateTime]::Parse($d)
+      $v = $vit | Where-Object { $_['vstdate'] -eq $d } | Select-Object -First 1
+      $lab = [ordered]@{}; $labDate = [ordered]@{}
+      foreach ($k in $DM_LABS.Keys) {
+        $set = $DM_LABS[$k] -split ','
+        $hit = $labs | Where-Object { $set -contains $_['lab_items_code'] -and ([DateTime]::Parse($_['order_date']) -le $dd) -and (($dd - [DateTime]::Parse($_['order_date'])).TotalDays -le 60) } | Select-Object -First 1
+        if ($hit) { $lab[$k] = $hit['lab_order_result']; $labDate[$k] = $hit['order_date'] }
+      }
+      $kind = if ($d -eq $base -and $clinicDates -notcontains $d) { 'baseline' } elseif ($clinicDates -contains $d) { 'clinic' } else { 'requested' }
+      [void]$visits.Add([ordered]@{ date = $d; kind = $kind
+        weight = $(if ($v) { $v['bw'] }); height = $(if ($v) { $v['height'] }); bmi = $(if ($v) { $v['bmi'] })
+        bp = $(if ($v -and $v['bps'] -and $v['bpd']) { "$([int][double]$v['bps'])/$([int][double]$v['bpd'])" } else { '' }); dtx = $(if ($v) { $v['fbs'] })
+        lab = $lab; labDate = $labDate
+        drugs = @($drugs | Where-Object { $_['vstdate'] -eq $d } | ForEach-Object { [ordered]@{ name = (@($_['name'], $_['strength']) -join ' ').Trim(); unit = $_['units']
+          qty = $_['qty']; price = $_['unitprice']; usage = $_['usage_text']; form = $_['dosageform']
+          dose = $_['iperdose']; freqCode = $_['opi_frequency_code']; timeCode = $_['opi_time_code'] } }) })
+    }
+  }
+  [ordered]@{ ok = $true; hn = $hn; visits = $visits; baselineDate = $base; dx = $dx }
 }
 
 function DbDmScreen {
@@ -363,7 +390,7 @@ function DbEndpoint($path) {
     if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
     $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
       elseif ($path -like '/db/meds*') { DbMeds $hn }
-      elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn }
+      elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)

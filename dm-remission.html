@@ -674,7 +674,10 @@ const DashUX = {
 
   <!-- =========== PAGE: REPORT (ภาพรวม + สรุปผล + วิชาการ) =========== -->
   <div id="page-report" class="page">
-    <div class="rep-bar"><a href="#page-dashboard">ภาพรวมคลินิก</a><a href="#dash-lab-container">แนวโน้มรายบุคคล</a><a href="#page-summary">ผลลัพธ์และค่ายา</a><a href="#page-research">รายงานวิชาการ</a></div>
+    <div class="rep-bar"><a href="#page-infographic">สรุปผลลัพธ์ (Infographic)</a><a href="#page-dashboard">ภาพรวมคลินิก</a><a href="#dash-lab-container">แนวโน้มรายบุคคล</a><a href="#page-summary">ผลลัพธ์และค่ายา</a><a href="#page-research">รายงานวิชาการ</a></div>
+  <!-- =========== INFOGRAPHIC (lib/dm-infographic.js) =========== -->
+  <div id="page-infographic" class="rep-sec"></div>
+
   <!-- =========== PAGE: DASHBOARD =========== -->
   <div id="page-dashboard" class="rep-sec">
     <h2 class="dash-section">ภาพรวมคลินิก</h2><div class="dash-context">ข้อมูลสะสมทุกช่วงเวลา · ผลตรวจรายคนใช้ค่าล่าสุดที่บันทึกไว้</div><div id="dash-content"></div>
@@ -720,7 +723,6 @@ const DashUX = {
 
   <!-- =========== PAGE: PATIENTS =========== -->
   <div id="page-patients" class="page">
-    <div id="hx-roster"></div>
     <div class="card" style="margin-bottom:0;"><div class="card-body"><div class="patient-strip" id="hist-patient-strip"></div></div></div>
     <div class="card">
       <div class="card-header">📋 ประวัติการตรวจ <span style="font-weight:400;font-size:13px;opacity:.8">· เลือกคนไข้ด้านล่าง</span></div>
@@ -729,7 +731,6 @@ const DashUX = {
         <div id="hist-trend-wrap" style="display:none;margin-bottom:16px;">
           <canvas id="hist-trend-chart" height="90"></canvas>
         </div>
-        <div id="hx-import"></div>
         <div id="hist-content"></div>
       </div>
     </div>
@@ -3763,6 +3764,7 @@ function resExportPDF() {
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <script src="lib/dm-hosxp.js"></script>
+<script src="lib/dm-infographic.js"></script>
 <script src="lib/ai-assistant.js"></script>
 <script>
 AiAssistant.init({
