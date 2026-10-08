@@ -1276,12 +1276,28 @@ function allDrugNames() {
   return [...new Set([..._allDrugNames, ...Object.keys(DRUG_PRICES), ...Object.keys(priceOverrides)])];
 }
 
+// ชื่อยาจากฐานข้อมูล HOSxP (ชื่อ + ความแรง) → ชื่อในรายการราคายาแบบตรงตัว ไม่เดา
+// รายการราคาสร้างจากชื่อใน HOSxP อยู่แล้ว ต่างกันแค่คำนำหน้ารูปแบบยา "(tab.) " / ลำดับ "[20] " และช่องว่าง
+let _exactKeys = null, _exactKeysN = -1;
+function drugNameNorm(s) {
+  return String(s || '').replace(/^\s*\([a-z]+\.\)\s*/i, '').replace(/^\s*[\[(]\s*\d+\s*[\])]\s*/, '')
+    .replace(/[\s.]+/g, '').toLowerCase();
+}
+function hxExactKey(name) {
+  const keys = allDrugNames();
+  if (!_exactKeys || _exactKeysN !== keys.length) {
+    _exactKeys = new Map(); _exactKeysN = keys.length;
+    keys.forEach(k => { const n = drugNameNorm(k); if (!_exactKeys.has(n)) _exactKeys.set(n, k); });
+  }
+  return _exactKeys.get(drugNameNorm(name)) || '';
+}
+
 // ชื่อยาที่พิมพ์ย่อๆ ใน HOSxP → ชื่อในรายการราคายา ถ้ามีหลายความแรง เลือกตัวที่ตัวเลขตรงกับที่พิมพ์
 function hxMatchDrug(name) {
   const keys = allDrugNames();
   let cands = keys.filter(k => drugMatches(name, k));
   // ชื่อย่อ เช่น simva → SIMVASTATIN
-  if (!cands.length) { const A = drugTokens(name); cands = keys.filter(k => drugTokens(k).some(y => A.some(x => y.startsWith(x)))); }
+  if (!cands.length) { const A = drugCoreTokens(name); cands = keys.filter(k => drugCoreTokens(k).some(y => A.some(x => y.startsWith(x)))); }
   if (!cands.length && name.length >= 3) cands = keys.filter(k => k.toLowerCase().includes(name.toLowerCase()));
   if (!cands.length) return '';
   const nums = name.match(/\d+(?:\.\d+)?/g) || [];
@@ -2797,7 +2813,8 @@ async function fcDbEmrDrugs(hn) {
     for (const d of src.drugs) {
       if (!dbLeftoverDrug(d)) { if (current) skipped++; continue; }
       const name = dbDrugName(d);
-      const key = hxMatchDrug(name) || name;
+      // ชื่อจาก DB ไม่ต้องเดา — ไม่มีในรายการราคาก็ใช้ชื่อ DB ตรงๆ (เดาอาจได้คนละความแรง เช่น Gabapentin 100 → 300)
+      const key = hxExactKey(name) || name;
       if (picked.concat(older).some(x => x.key === key || drugMatches(x.key, key))) continue;
       (current ? picked : older).push({ key, d });
     }
@@ -3079,48 +3096,62 @@ async function binarizeGrid(blob) {
 }
 
 // วิธีใช้ → จำนวนต่อวัน เช่น "รับประทาน 2 เม็ด วันละ 3 ครั้ง" = 6 เม็ด/วัน
-// ใช้เมื่อมีอาการ หรือระบุเป็นช่วง (2 - 4 ที) ไม่คำนวณให้ ให้เภสัชกรกรอกเอง
+// ใช้เมื่อมีอาการ ครั้งเดียว (ทันที/stat) หรือระบุเป็นช่วง (2 - 4 ที) ไม่คำนวณให้ ให้เภสัชกรกรอกเอง
+// จำนวนรับ "1", "1.5", "ครึ่ง", "½", "1/4", "1 /2" (เศษส่วนต้องมาก่อนเลขเดี่ยว ไม่งั้น "1/4 เม็ด" อ่านเป็น 4 เม็ด)
+const USAGE_NUM = String.raw`\d+\s*\/\s*\d+|\d+(?:\.\d+)?|ครึ่ง|½`;
+function usageNum(x) {
+  x = String(x).replace(/\s+/g, '');
+  if (x === 'ครึ่ง' || x === '½') return 0.5;
+  const f = x.match(/^(\d+)\/(\d+)$/);
+  return f ? (+f[2] ? +f[1] / +f[2] : NaN) : parseFloat(x);
+}
 function parseUsage(u) {
   const t = u.replace(/\s+/g, ' ').trim();
   const prn = /เวลา\s*มี\s*อาการ|เมื่อ\s*มี\s*อาการ|เมื่อ|ถ้า|prn/i.test(t)
+    || /เวลา\s*(ปวด|เจ็บ|ไอ|มีไข้|ไข้|คลื่นไส้|อาเจียน|นอนไม่หลับ|คัน|แน่น|เหนื่อย|หอบ|ท้องผูก|ท้องเสีย|ถ่ายเหลว|เวียน)/.test(t)
+    || /ทันที|\bstat\b/i.test(t)
     || /\d\s*-\s*\d\s*(เม็ด|ที|หยด|ซอง|แคปซูล)/.test(t);
+  const N = USAGE_NUM;
   let amt = null, unit = '';
-  const m = t.match(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)/i);
+  const m = t.match(new RegExp(`(${N})\\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)`, 'i'));
   if (m) {
-    amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2];
+    amt = usageNum(m[1]); unit = m[2];
     if (amt >= 1 && /^\s*ครึ่ง/.test(t.slice(m.index + m[0].length))) amt += 0.5;   // "1 เม็ดครึ่ง" = 1.5
   }
   else {
     // OCR อ่านหน่วยผิด (เช่น "เม็ด" → "Ulm") ใช้ตัวเลขหลัง "ครั้งละ" แทน ส่วนหน่วยให้ผู้เรียกเดาจากชื่อยา
-    const k = t.match(/ครั้งละ\s*(\d+(?:\.\d+)?|ครึ่ง|½)/);
-    if (k) amt = (k[1] === 'ครึ่ง' || k[1] === '½') ? 0.5 : parseFloat(k[1]);
+    const k = t.match(new RegExp(`ครั้งละ\\s*(${N})`));
+    if (k) amt = usageNum(k[1]);
     else {
       // "รับประทาน 1 via วันละ 2 ครั้ง" (OCR อ่านหน่วยเป็นอย่างอื่น) ใช้เลขที่ตามหลัง "รับประทาน" ทันที
-      const r = t.match(/(?:รับประทาน|รับปร\S*)\s*(\d+(?:\.\d+)?|ครึ่ง|½)(?=\s|$)/);
-      if (r) amt = (r[1] === 'ครึ่ง' || r[1] === '½') ? 0.5 : parseFloat(r[1]);
+      const r = t.match(new RegExp(`(?:รับประทาน|รับปร\\S*)\\s*(${N})(?=\\s|$)`));
+      if (r) amt = usageNum(r[1]);
     }
   }
   let freq = null;
   // เอาเลขหลัง "วันละ" ตรงๆ ไม่ต้องรอคำว่า "ครั้ง"/"เวลา" เพราะ OCR อ่านผิดบ่อย (เช่น "วันละ 3 50") ยกเว้นเป็นช่วง "วันละ 1-2"
   const f = t.match(/วันละ\s*(\d+)(?!\s*[-–]\s*\d)/);   // HOSxP เขียนทั้ง "วันละ 2 ครั้ง" และ "วันละ 2 เวลา"
   const wk = t.match(/สัปดาห์ละ\s*(\d+)/);
+  const every = t.match(/ทุก\s*(\d+)\s*(?:ชั่วโมง|ชัวโมง|ชม)/);   // "ทุก 8 ชั่วโมง" = วันละ 3 ครั้ง
   if (f) freq = +f[1];
   else if (/วันเว้นวัน/.test(t)) freq = 0.5;
   else if (wk) freq = +wk[1] / 7;
+  else if (every && +every[1] > 0 && 24 % +every[1] === 0) freq = 24 / +every[1];
   else {
     const meals = ['เช้า|เข้า(?!ใต้|กล้าม|หลอด|ผิว)', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
     if (meals) freq = meals;
   }
   // ระบุขนาดแยกมื้อ เช่น "เช้า 2 เม็ด - เที่ยง 1 เม็ด - เย็น 2 เม็ด" = 5 เม็ด/วัน (ไม่ใช่ 2 × 3) ใช้ผลรวมของแต่ละมื้อ
   // (OCR มักอ่าน "เช้า" เป็น "เข้า" จึงรับทั้งสองแบบ)
-  const perMeal = [...t.matchAll(/(?:เช้า|เข้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)\s*(\d+(?:\.\d+)?|ครึ่ง|½)\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)/gi)]
-    .map(x => (x[1] === 'ครึ่ง' || x[1] === '½') ? 0.5 : parseFloat(x[1]));
+  const perMeal = [...t.matchAll(new RegExp(`(?:เช้า|เข้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)\\s*(${N})\\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)`, 'gi'))]
+    .map(x => usageNum(x[1]));
   if (perMeal.length >= 2) return { text: t, unit, prn, perDay: prn ? null : perMeal.reduce((a, b) => a + b, 0) };
   // แบบจำนวนนำหน้ามื้อ เช่น "3 เม็ด หลังอาหารเช้า 2 เม็ด หลังอาหารเย็น" = 5 เม็ด/วัน
-  const amtMeal = [...t.matchAll(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)\s*(?:ครึ่ง)?\s*(?:หลัง|ก่อน)?\s*(?:อาหาร)?\s*(?:เช้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)/gi)];
+  const amtMeal = [...t.matchAll(new RegExp(`(${N})\\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)\\s*(ครึ่ง)?\\s*(?:หลัง|ก่อน)?\\s*(?:อาหาร)?\\s*(?:เช้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)`, 'gi'))];
   if (amtMeal.length >= 2) return { text: t, unit, prn, perDay: prn ? null : amtMeal.reduce((a, x) =>
-    a + ((x[1] === 'ครึ่ง' || x[1] === '½') ? 0.5 : parseFloat(x[1])) + (/ครึ่ง\s*(?:หลัง|ก่อน|อาหาร|เช้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)/.test(x[0]) && x[1] !== 'ครึ่ง' ? 0.5 : 0), 0) };
-  return { text: t, unit, prn, perDay: (!prn && amt && freq) ? amt * freq : null };
+    a + usageNum(x[1]) + (x[2] && usageNum(x[1]) >= 1 ? 0.5 : 0), 0) };
+  const perDay = (!prn && amt && freq) ? amt * freq : null;
+  return { text: t, unit, prn, perDay: perDay != null && isFinite(perDay) ? perDay : null };
 }
 
 // ข้อความ OCR ทั้งตาราง → รายการยา (1 บรรทัด = 1 รายการ) เอาเฉพาะแถวที่มีวิธีใช้
@@ -3256,9 +3287,28 @@ function editDist(a, b) {
     d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
   return d[a.length][b.length];
 }
+// ชื่อเกลือ/ส่วนประกอบร่วม ไม่ใช่ตัวยา — ตรงกันแค่คำพวกนี้ไม่นับว่าเป็นยาเดียวกัน
+// (เคยจับ Sodamint (Sodium bicarbonate) 300 mg เป็น LITHIUM CARBONATE 300 mg, calcium carbonate ↔ lithium carbonate,
+//  Losartan potassium ↔ Potassium chloride)
+const SALT_TOKENS = new Set(['CARBONATE', 'BICARBONATE', 'HYDROCHLORIDE', 'CHLORIDE', 'SULFATE', 'SULPHATE', 'MALEATE',
+  'CITRATE', 'ACETATE', 'PHOSPHATE', 'TARTRATE', 'SUCCINATE', 'FUMARATE', 'BESYLATE', 'MESYLATE', 'SODIUM', 'POTASSIUM',
+  'ACID', 'HYDROXIDE', 'OXIDE', 'GLUCONATE', 'LACTATE']);
+// คำหลักของชื่อยา (ตัดชื่อเกลือ) — ชื่อที่มีแต่ชื่อเกลือ เช่น "Potassium chloride" ใช้ทุกคำ
+function drugCoreTokens(s) { const T = drugTokens(s), c = T.filter(x => !SALT_TOKENS.has(x)); return c.length ? c : T; }
+// คำเดียวกันแม้ OCR อ่านผิดเล็กน้อย: ผิดได้ 1 ตัวอักษร หรือ 2 ตัวถ้าคำยาว 8 ตัวขึ้นไปและขึ้นต้น 3 ตัวเหมือนกัน
+// (ยอมผิด 2 ตัวทุกคำเคยจับ CLONAZEPAM ≈ LORAZEPAM, PLAVIX ≈ PLASIL, CALCIUM ≈ VALIUM, BICARBONATE ≈ CARBONATE)
+function drugWordNear(x, y) {
+  if (x === y) return true;
+  if (x.length < 6 || y.length < 6 || Math.abs(x.length - y.length) > 1) return false;
+  const d = editDist(x, y);
+  return d <= 1 || (d === 2 && Math.min(x.length, y.length) >= 8 && x.slice(0, 3) === y.slice(0, 3));
+}
 function drugMatches(a, b) {
-  const A = drugTokens(a), B = drugTokens(b);
-  return A.some(x => B.some(y => x === y || (x.length >= 6 && y.length >= 6 && editDist(x, y) <= 2)));
+  const A = drugCoreTokens(a), B = drugCoreTokens(b);
+  if (A.some(x => B.some(y => drugWordNear(x, y)))) return true;
+  // ชื่อที่มีแต่ชื่อเกลือ ("Sodium bicarbonate") กับชื่อการค้า ("Sodamint (Sodium bicarbonate)") — ตรงกันตั้งแต่ 2 คำขึ้นไป
+  const FA = drugTokens(a), FB = drugTokens(b);
+  return FA.filter(x => FB.includes(x)).length >= 2;
 }
 // ปรับจำนวนเฉพาะยาเม็ด/แคปซูล — ยาพ่น (MDI, BUDESONIDE, SEROFLO, BERODUAL ฯลฯ) และยารูปแบบอื่นไม่ปรับ
 function isInhaler(...texts) {
@@ -3290,14 +3340,16 @@ const INSULIN_DRUGS = ['INSULIN', 'MIXTARD', 'LANTUS', 'LEVEMIR', 'TOUJEO', 'TRE
 function isInsulin(...texts) {
   return texts.some(t => {
     t = String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O');
-    return /อินซูลิน/.test(t) || drugTokens(t).some(x => INSULIN_DRUGS.some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
+    // ชื่อยาวพอ (7 ตัวขึ้นไป) ยอมผิด 2 ตัวอักษร สั้นกว่านั้นยอม 1 — ไม่งั้น "aspent" (aspirin) ใกล้ ASPART จนถูกมองเป็นอินซูลิน
+    return /อินซูลิน/.test(t) || drugTokens(t).some(x => INSULIN_DRUGS.some(y => x === y
+      || (Math.min(x.length, y.length) >= 7 ? editDist(x, y) <= 2 : x.length >= 6 && editDist(x, y) <= 1)));
   });
 }
 // วิธีใช้อินซูลิน → ยูนิต/วัน เช่น "เช้า 20 ยูนิต เย็น 10 ยูนิต" = 30, "วันละ 2 ครั้ง ครั้งละ 20 ยูนิต" = 40
 // ใช้เมื่อมีอาการ/ปรับตามน้ำตาล (sliding scale) หรือเป็นช่วง ไม่คำนวณให้ ให้เภสัชกรกรอกเอง
 function parseInsulinPerDay(u) {
   const t = String(u || '').replace(/\s+/g, ' ');
-  if (/เมื่อ|ถ้า|ตามระดับ|ตามน้ำตาล|sliding|prn/i.test(t) || /\d\s*-\s*\d+\s*(ยูนิต|unit|u\b|iu)/i.test(t)) return null;
+  if (/เมื่อ|ถ้า|ตามระดับ|ตามน้ำตาล|sliding|prn|ทันที|\bstat\b/i.test(t) || /\d\s*-\s*\d+\s*(ยูนิต|unit|u\b|iu)/i.test(t)) return null;
   const amts = [...t.matchAll(/(\d+(?:\.\d+)?)\s*(?:ยูนิต|units?|iu|u\b)/gi)].map(m => parseFloat(m[1]));
   if (!amts.length) return null;
   const f = t.match(/วันละ\s*(\d+)\s*ครั้ง/);
