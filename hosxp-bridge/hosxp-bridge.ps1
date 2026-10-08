@@ -19,6 +19,9 @@
 #   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
 #   /db/denom       — ตัวหาร ME รายเดือน 24 เดือนล่าสุด: opd = จำนวน visit (ovst), ipd = วันนอน (an_stat.admdate ตามเดือนที่จำหน่าย)
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
+#   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
+#   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
+#   /db/dmscreen    — คัดกรองคนไข้คลินิกเบาหวาน (023 นัด LAB, 001 DM) ใน 1 ปี: HbA1c 2 ปี + การจ่ายยาลดน้ำตาล 2 ปี
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -250,6 +253,82 @@ function DbAdr($path) {
   [ordered]@{ ok = $true; items = $items }
 }
 
+# ── DM remission ─────────────────────────────────────────────
+# lab ที่ใช้ในฟอร์ม DM remission → รหัส lab ใน HOSxP (หลายรหัส = ชุดเก่า/ใหม่ ใช้ค่าล่าสุดของรหัสใดก็ได้)
+$DM_LABS = [ordered]@{ hba1c = '3119'; fbs = '3117'; ldl = '3191,3008,3122'; tc = '3038,3005,3120'; tg = '3006,3039,3123'
+  cr = '3036,3003,3118'; egfr = '3189'; urineAlb = '3138' }
+$DM_CLINIC = "'032'"
+# ยาลดน้ำตาล (ไม่นับอินซูลินฉีดครั้งเดียว STAT ที่ ER)
+$GLUCOSE_DRUG_RE = 'metformin|glipizide|glibencl|gliclaz|glimepir|pioglit|gliptin|gliflozin|acarbose|insulin|mixtard|lantus|glargine|novomix|novorapid|humulin|gensulin|actrapid|insulatard|levemir|toujeo|tresiba|glp|liraglutide|semaglutide|dulaglutide'
+
+function DbDmRoster {
+  $rows = DbQuery ("SELECT a.hn, CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,'')) AS ptname, p.birthday, p.sex, " +
+    "MIN(a.vstdate) AS first_date, MAX(a.vstdate) AS last_date, MAX(IF(a.nextdate>=CURDATE() AND (a.oapp_status_id IS NULL OR a.oapp_status_id=1), a.nextdate, NULL)) AS next_date " +
+    "FROM oapp a LEFT JOIN patient p ON p.hn=a.hn WHERE a.clinic IN ($DM_CLINIC) GROUP BY a.hn ORDER BY MIN(a.vstdate)")
+  [ordered]@{ ok = $true; patients = @($rows | ForEach-Object { [ordered]@{ hn = $_['hn']; name = $_['ptname'].Trim(); birthday = $_['birthday']; sex = $_['sex']
+    firstDate = $_['first_date']; lastDate = $_['last_date']; nextDate = $_['next_date'] } }) }
+}
+
+function DbDmVisits($hn) {
+  # วันที่อยู่ในคลินิก = วันที่ลงนัดครั้งถัดไปของคลินิกนี้ (vstdate ของนัด) + วันที่มาตามนัดแล้ว (visit_vn)
+  $dates = DbQuery ("SELECT DISTINCT d FROM (SELECT a.vstdate AS d FROM oapp a WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC) " +
+    "UNION SELECT o.vstdate FROM oapp a JOIN ovst o ON o.vn=a.visit_vn WHERE a.hn='$hn' AND a.clinic IN ($DM_CLINIC)) x WHERE d<=CURDATE() ORDER BY d DESC")
+  $codes = ($DM_LABS.Values -join ',')
+  $labs = DbQuery ("SELECT h.order_date, o.lab_items_code, o.lab_order_result FROM lab_head h JOIN lab_order o ON o.lab_order_number=h.lab_order_number " +
+    "WHERE h.hn='$hn' AND o.lab_items_code IN ($codes) AND o.lab_order_result IS NOT NULL AND o.lab_order_result<>'' ORDER BY h.order_date DESC")
+  $visits = New-Object System.Collections.ArrayList
+  foreach ($dr in $dates) {
+    $d = $dr['d']
+    $vit = DbQuery ("SELECT s.bw, s.height, s.bmi, s.bps, s.bpd, s.fbs, s.waist FROM opdscreen s JOIN ovst o ON o.vn=s.vn " +
+      "WHERE o.hn='$hn' AND o.vstdate='$d' ORDER BY (s.bw IS NULL), o.vsttime LIMIT 1")
+    $drugs = DbQuery ("SELECT $DRUG_COLS, d.unitprice $DRUG_JOIN WHERE r.hn='$hn' AND r.vstdate='$d' AND (r.an IS NULL OR r.an='') ORDER BY r.vn, r.item_no")
+    $lab = [ordered]@{}; $labDate = [ordered]@{}
+    $dd = [DateTime]::Parse($d)
+    foreach ($k in $DM_LABS.Keys) {
+      $set = $DM_LABS[$k] -split ','
+      $hit = $labs | Where-Object { $set -contains $_['lab_items_code'] -and ([DateTime]::Parse($_['order_date']) -le $dd) -and (($dd - [DateTime]::Parse($_['order_date'])).TotalDays -le 60) } | Select-Object -First 1
+      if ($hit) { $lab[$k] = $hit['lab_order_result']; $labDate[$k] = $hit['order_date'] }
+    }
+    $v = if ($vit.Count) { $vit[0] } else { @{} }
+    [void]$visits.Add([ordered]@{ date = $d; weight = $v['bw']; height = $v['height']; bmi = $v['bmi']
+      bp = $(if ($v['bps'] -and $v['bpd']) { "$([int][double]$v['bps'])/$([int][double]$v['bpd'])" } else { '' }); dtx = $v['fbs']; waist = $v['waist']
+      lab = $lab; labDate = $labDate
+      drugs = @($drugs | ForEach-Object { [ordered]@{ name = (@($_['name'], $_['strength']) -join ' ').Trim(); unit = $_['units']; qty = $_['qty']
+        price = $_['unitprice']; usage = $_['usage_text']; form = $_['dosageform'] } }) })
+  }
+  [ordered]@{ ok = $true; hn = $hn; visits = $visits }
+}
+
+function DbDmScreen {
+  $cohort = "SELECT DISTINCT hn FROM oapp WHERE clinic IN ('023','001') AND nextdate>=CURDATE()-INTERVAL 1 YEAR"
+  $pts = DbQuery ("SELECT p.hn, CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,'')) AS ptname, p.birthday, p.sex, " +
+    "(SELECT MIN(a.nextdate) FROM oapp a WHERE a.hn=p.hn AND a.clinic IN ('023','001') AND a.nextdate>=CURDATE() AND (a.oapp_status_id IS NULL OR a.oapp_status_id=1)) AS next_dm, " +
+    "(SELECT COUNT(*) FROM oapp a WHERE a.hn=p.hn AND a.clinic IN ($DM_CLINIC)) AS in_remission " +
+    "FROM patient p WHERE p.hn IN ($cohort)")
+  $a1c = DbQuery ("SELECT h.hn, h.order_date, o.lab_order_result FROM lab_head h JOIN lab_order o ON o.lab_order_number=h.lab_order_number " +
+    "WHERE o.lab_items_code='3119' AND h.order_date>=CURDATE()-INTERVAL 2 YEAR AND h.hn IN ($cohort) ORDER BY h.order_date")
+  $icodes = DbQuery "SELECT icode FROM drugitems WHERE name REGEXP '$GLUCOSE_DRUG_RE' AND name NOT LIKE '%STAT%'"
+  $ic = ($icodes | ForEach-Object { "'" + [HxDb]::Digits($_['icode']) + "'" } | Where-Object { $_ -ne "''" }) -join ','
+  $rx = @()
+  if ($ic) {
+    $rx = DbQuery ("SELECT r.hn, IFNULL(r.rxdate, r.vstdate) AS d, d.name, r.qty, u.iperday, u.iperdose, (r.an IS NOT NULL AND r.an<>'') AS ipd, " +
+      "(SELECT DATEDIFF(MAX(a.nextdate), r.vstdate) FROM oapp a WHERE a.vn=r.vn) AS appt_days " +
+      "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode LEFT JOIN drugusage u ON u.drugusage=r.drugusage " +
+      "WHERE r.icode IN ($ic) AND IFNULL(r.rxdate, r.vstdate)>=CURDATE()-INTERVAL 2 YEAR AND r.hn IN ($cohort)")
+  }
+  $byHn = @{}
+  foreach ($p in $pts) { $byHn[$p['hn']] = [ordered]@{ hn = $p['hn']; name = $p['ptname'].Trim(); birthday = $p['birthday']; sex = $p['sex']
+    nextDm = $p['next_dm']; inRemission = ([int]$p['in_remission'] -gt 0); a1c = New-Object System.Collections.ArrayList; rx = New-Object System.Collections.ArrayList } }
+  foreach ($r in $a1c) { if ($byHn.ContainsKey($r['hn'])) { [void]$byHn[$r['hn']].a1c.Add(@($r['order_date'], $r['lab_order_result'])) } }
+  foreach ($r in $rx) {
+    if (-not $byHn.ContainsKey($r['hn'])) { continue }
+    $perDay = 0.0
+    try { if ($r['iperday'] -and $r['iperdose']) { $perDay = [double]$r['iperday'] * [double]$r['iperdose'] } } catch {}
+    [void]$byHn[$r['hn']].rx.Add(@($r['d'], $r['name'], $r['qty'], $perDay, $r['appt_days'], ($r['ipd'] -eq '1')))
+  }
+  [ordered]@{ ok = $true; patients = @($byHn.Values) }
+}
+
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -272,8 +351,9 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*') {
-    try { $res = if ($path -like '/db/denom*') { DbDenom } else { DbAdr $path } }
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
+    try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }
@@ -283,6 +363,7 @@ function DbEndpoint($path) {
     if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
     $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
       elseif ($path -like '/db/meds*') { DbMeds $hn }
+      elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)

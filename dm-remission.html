@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,6 +42,20 @@
   .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
   .sync-dot { flex-shrink:0; border:1px solid rgba(255,255,255,.3); background:rgba(0,0,0,.15); color:#fff; border-radius:16px; padding:4px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
   .rep-sec { scroll-margin-top:12px; margin-top:8px; }
+  /* ดึงจาก HOSxP / คัดกรอง */
+  .hx-muted { font-size:12px; color:#6b7280; }
+  .hx-chip { font:inherit; font-size:12px; padding:4px 10px; margin:0 6px 6px 0; border-radius:14px; border:1.5px solid #D6E4DA; background:#fff; color:#1A5E38; cursor:pointer; }
+  .hx-chip:hover { background:#EAF4EE; }
+  .hx-chip.saved { color:#6b7280; }
+  .hx-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px solid #EAF4EE; font-size:13px; }
+  .hx-row:first-child { border-top:none; }
+  .hx-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .hx-table th, .hx-table td { padding:5px 6px; border-top:1px solid #EAF4EE; text-align:left; vertical-align:top; }
+  .hx-table th { background:#F4F7F5; white-space:nowrap; }
+  .hx-badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:6px; background:#e0f2fe; color:#0e7490; }
+  .card-header.hx-ok { background:#dcfce7; color:#166534; }
+  .card-header.hx-wait { background:#e0f2fe; color:#0e7490; }
+  .card-header.hx-near { background:#FBF3DC; color:#7c5a00; }
   .rep-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; }
   .rep-bar a { padding:8px 15px; border:1px solid #D6E4DA; border-radius:24px; background:#fff; color:#124228; text-decoration:none; font-size:13px; }
   details.pt-manage { margin-top:14px; } details.pt-manage > summary { cursor:pointer; font-weight:700; padding:10px 4px; }
@@ -434,6 +448,7 @@ const DashUX = {
     <button class="nav-tab active" onclick="showPage('entry')">📝 บันทึก</button>
     <button class="nav-tab" onclick="showPage('patients')">👥 คนไข้</button>
     <button class="nav-tab" onclick="showPage('report')">📊 รายงาน</button>
+    <button class="nav-tab" onclick="showPage('screen')">🔎 คัดกรองเข้าคลินิก</button>
   </div>
   <button class="sync-dot" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
 </div>
@@ -500,6 +515,12 @@ const DashUX = {
     <div class="card" id="pre-visit-summary-card" style="display:none;">
       <div class="card-header">📝 สรุปก่อนพบแพทย์</div>
       <div class="card-body" id="pre-visit-summary"></div>
+    </div>
+
+    <!-- ดึงจาก HOSxP (เครื่องที่มี HOSxP Bridge) -->
+    <div class="card" id="hx-card" style="display:none;">
+      <div class="card-header">🗄 ดึงจาก HOSxP — วันเข้าคลินิก NCDs remission</div>
+      <div class="card-body" id="hx-body"></div>
     </div>
 
     <!-- Paste & Parse -->
@@ -678,8 +699,28 @@ const DashUX = {
 
   </div>
 
+  <!-- =========== PAGE: SCREEN (คัดกรองคนไข้คลินิกเบาหวานเข้าคลินิก NCDs remission) =========== -->
+  <div id="page-screen" class="page">
+    <div class="card">
+      <div class="card-header">🔎 คัดกรองคนไข้คลินิกเบาหวานเข้าคลินิก NCDs remission</div>
+      <div class="card-body">
+        <div style="font-size:13px;line-height:1.7;margin-bottom:10px;">
+          ดึงคนไข้ที่มีนัด <b>คลินิคเบาหวานนัดLAB</b> หรือ <b>โรคเบาหวาน(DM)</b> ใน 1 ปีที่ผ่านมา พร้อม HbA1c และการจ่ายยาลดน้ำตาลย้อนหลัง 2 ปีจาก HOSxP
+          แล้วจัดกลุ่มตามนิยามภาวะสงบของไทย: <b>HbA1c &lt; 6.5% อย่างน้อย 3 เดือนโดยไม่ใช้ยาลดน้ำตาล</b>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" id="screen-btn">🗄 ดึงข้อมูลจาก HOSxP</button>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" id="screen-hide-in" checked> ซ่อนคนที่อยู่ในคลินิก NCDs remission แล้ว</label>
+        </div>
+        <div id="screen-meta" class="hx-muted" style="margin-top:6px;"></div>
+      </div>
+    </div>
+    <div id="screen-out"></div>
+  </div>
+
   <!-- =========== PAGE: PATIENTS =========== -->
   <div id="page-patients" class="page">
+    <div id="hx-roster"></div>
     <div class="card" style="margin-bottom:0;"><div class="card-body"><div class="patient-strip" id="hist-patient-strip"></div></div></div>
     <div class="card">
       <div class="card-header">📋 ประวัติการตรวจ <span style="font-weight:400;font-size:13px;opacity:.8">· เลือกคนไข้ด้านล่าง</span></div>
@@ -688,6 +729,7 @@ const DashUX = {
         <div id="hist-trend-wrap" style="display:none;margin-bottom:16px;">
           <canvas id="hist-trend-chart" height="90"></canvas>
         </div>
+        <div id="hx-import"></div>
         <div id="hist-content"></div>
       </div>
     </div>
@@ -3719,6 +3761,8 @@ function resExportPDF() {
 }
 </script>
 <script src="lib/xlsx.full.min.js"></script>
+<script src="lib/hosxp-db.js"></script>
+<script src="lib/dm-hosxp.js"></script>
 <script src="lib/ai-assistant.js"></script>
 <script>
 AiAssistant.init({
