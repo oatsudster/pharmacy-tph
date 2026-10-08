@@ -1,6 +1,10 @@
 ﻿# สร้างตัวติดตั้ง hosxp-bridge\HOSxPBridge-Installer.exe ด้วย IExpress (มากับ Windows อยู่แล้ว)
 #   powershell -ExecutionPolicy Bypass -File hosxp-bridge\installer\build-installer.ps1
 # exe ที่ได้จะแตกไฟล์ลง temp แล้วรัน install.ps1 (ติดตั้งให้ผู้ใช้คนปัจจุบัน ไม่ต้องใช้ admin)
+# -Zip: สร้าง output\HOSxPBridge-noexe.zip แทน (เครื่อง รพ. ที่บล็อก exe) พร้อม db.json จาก -DbJson
+#   (ค่าเริ่มต้น %LOCALAPPDATA%\HOSxPBridge\db.json) — zip มีรหัสฐานข้อมูล ห้าม commit/อัปโหลด แจกในเครือข่าย รพ. เท่านั้น
+#   exe ที่ commit ไว้ใน repo ไม่มี db.json เสมอ
+param([switch]$Zip, [string]$DbJson = (Join-Path $env:LOCALAPPDATA 'HOSxPBridge\db.json'))
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $bridgeDir = Split-Path $here
@@ -14,10 +18,23 @@ foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $here 'in
   [IO.File]::WriteAllText((Join-Path $stage (Split-Path $f -Leaf)), [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8), $bom)
 }
 Copy-Item (Join-Path $bridgeDir 'start-bridge.bat') $stage
+Copy-Item (Join-Path $bridgeDir 'hxdb.cs') $stage
 [IO.File]::WriteAllText((Join-Path $stage 'install.cmd'),
   "@powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0install.ps1`"`r`n", [Text.Encoding]::ASCII)
 [IO.File]::WriteAllText((Join-Path $stage 'uninstall.cmd'),
   "@powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0uninstall.ps1`"`r`n", [Text.Encoding]::ASCII)
+
+if ($Zip) {
+  Copy-Item (Join-Path $here 'README.txt') $stage
+  if (Test-Path $DbJson) { Copy-Item $DbJson (Join-Path $stage 'db.json') } else { Write-Warning "ไม่พบ $DbJson — zip จะไม่มี db.json (ใช้ OCR)" }
+  $zipOut = Join-Path (Split-Path $bridgeDir) 'output\HOSxPBridge-noexe.zip'
+  New-Item -ItemType Directory -Force (Split-Path $zipOut) | Out-Null
+  Remove-Item $zipOut -Force -ErrorAction SilentlyContinue
+  Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipOut
+  Remove-Item $stage -Recurse -Force
+  Write-Host "สร้างแล้ว: $zipOut"
+  return
+}
 
 $files = Get-ChildItem $stage -File | Select-Object -ExpandProperty Name
 $sed = @"

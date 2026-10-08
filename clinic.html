@@ -19,6 +19,7 @@
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/clinic-store.js"></script>
+<script src="lib/hosxp-db.js"></script>
 <style>
 :root {
   --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
@@ -1416,6 +1417,12 @@ function onHnLookup() {
   if (!nameEl.value.trim()) {
     const known = patientIndex().get(hn);
     if (known) nameEl.value = known.name;
+    // ไม่มีในทะเบียน/บันทึกเดิม → ถามฐานข้อมูล HOSxP (เฉพาะเครื่องที่มี bridge) เติมชื่อถ้ายังไม่ได้พิมพ์เอง
+    else if (window.tphHosxp && /^\d{7}$/.test(hn)) tphHosxp.patient(hn).then(p => {
+      if (!p || document.getElementById('f-hn').value.trim() !== hn || nameEl.value.trim()) return;
+      nameEl.value = p.fullName;
+      renderFloatClinic();
+    });
   }
 
   const matches = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => b.created - a.created);
@@ -2316,13 +2323,19 @@ async function pollHosxpBridge() {
   noteBridgeActivity(s);
   const wasActive = lastBridge && lastBridge.active;
   lastBridge = s;
-  if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer) runOrderOcr();
+  if (s.hn && s.db) loadDbOrder(s.hn);
+  // ใบสั่งยาจากฐานข้อมูลได้แล้ว ไม่ต้อง OCR — OCR เฉพาะเมื่อไม่มี DB หรือ visit วันนี้ยังไม่มียาบันทึกใน HOSxP
+  if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer && !hasDbOrder(s.hn)) runOrderOcr();
   if (s.active !== wasActive) applyFloatPaused();
   renderFloatOcrStatus();
-  link.textContent = s.hn ? `🔗 HOSxP: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
+  link.textContent = s.hn ? `🔗 HOSxP${s.db ? ' + ฐานข้อมูล' : ''}: ${s.hn} ${s.name || ''}` : '🔗 เชื่อม HOSxP แล้ว — รอเปิดหน้าจ่ายยา';
   link.className = 'on';
   // ยังไม่ได้วันนัดของคนไข้คนนี้ (จพ. ยังไม่ได้เปิดหน้า "ข้อมูลทั่วไป") ตัวเลขในช่อง "นัดอีก" เป็นค่าที่ใช้ล่าสุด ไม่ใช่ของคนไข้คนนี้
-  if (s.hn && s.apptDays == null) { link.textContent += ' · ⚠️ ยังไม่ทราบวันนัด — เปิดหน้า "ข้อมูลทั่วไป" หรือกรอกวันนัดเอง'; link.className = 'warn'; }
+  // ต่อฐานข้อมูลได้แต่ไม่มีวันนัด = HOSxP ยังไม่ได้ลงนัดครั้งหน้า
+  if (s.hn && s.apptDays == null) {
+    link.textContent += s.db ? ' · ⚠️ ยังไม่มีนัดครั้งหน้าใน HOSxP — กรอกวันนัดเอง' : ' · ⚠️ ยังไม่ทราบวันนัด — เปิดหน้า "ข้อมูลทั่วไป" หรือกรอกวันนัดเอง';
+    link.className = 'warn';
+  }
   // เปลี่ยนค่าเฉพาะตอน HOSxP เปลี่ยนคนไข้หรือได้วันนัดใหม่ ค่าที่แก้เองในหน้าต่างลอยจะไม่ถูกทับทุกรอบ
   const key = s.hn + '|' + s.apptDays;
   if (!s.hn || key === bridgeKey) return;
@@ -2637,7 +2650,7 @@ function fcSetPatient(hn, name) {
   // ชื่อยาที่ดึงจาก EMR ของคนก่อนแต่ยังไม่ได้ใส่จำนวน ไม่ใช่ของคนใหม่
   document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
   updateLoTotal();
-  fcEmrHash = ''; fcEmrMsg = ''; fcEmrSrc = null;
+  fcEmrHash = ''; fcEmrMsg = ''; fcEmrSrc = null; fcDbEmrHn = ''; fcDbEmrOk = false;
   document.getElementById('f-hn').value = hn;
   document.getElementById('f-name').value = '';
   onHnLookup();
@@ -2668,7 +2681,9 @@ async function pollClinicBridge() {
       else fcSetPatient(hn, name);
     }
   }
-  fcEmrDrugs(s);
+  // ยาเดิม: จากฐานข้อมูล HOSxP ถ้า bridge ต่อได้ ไม่งั้น OCR ตารางยาใน EMR ที่เภสัชเปิดอยู่
+  if (s.db) fcDbEmrDrugs(document.getElementById('f-hn').value.trim());
+  if (!s.db || !fcDbEmrOk) fcEmrDrugs(s);
 }
 
 // เภสัชเปิด visit ก่อนหน้าใน Patient EMR (แท็บ "รายการยา") → bridge ส่งภาพตารางยามา → OCR เอาชื่อยา
@@ -2710,46 +2725,7 @@ async function fcEmrDrugs(s) {
     fcEmrHash = gh;
     // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
     if (!clinicWin || clinicWin.closed || s.emrHn !== document.getElementById('f-hn').value.trim()) { fcEmrMsg = ''; return; }
-    const keys = [], unknown = [];
-    let skipped = 0;
-    lines.forEach(name => {
-      const key = hxMatchDrug(name);
-      // บรรทัดที่ดูเป็นชื่อยา (มีความแรง) แต่ไม่รู้จัก แจ้งให้เพิ่มเอง — เศษ OCR อื่นๆ (หัวตาราง/แถบเลื่อนหน้า) ทิ้งไป
-      if (!key) { if (/\d\s*(mg|mcg|g|ml|iu|u)\b/i.test(name)) unknown.push(name.replace(/\s+\S{1,5}$/, '')); return; }
-      if (emrSkipDrug(key, name)) { skipped++; return; }
-      if (!keys.some(h => h === key || drugMatches(h, key))) keys.push(key);
-    });
-    // เภสัชไล่เปิดหลาย visit หา visit ยาเดิม — ใช้ยาของ visit เดียวเท่านั้น ไม่สะสม และไม่ดึงยาของ visit ที่เปิดข้ามไป:
-    //   visit วันนี้ (ยาที่แพทย์เพิ่งสั่ง ไม่ใช่ยาเดิม), visit ที่ไม่มียาโรคเรื้อรัง, visit ที่เก่ากว่าที่ใช้อยู่ → ไม่เปลี่ยน
-    //   visit ที่ใหม่กว่า → แทนที่ (ลบแถวจาก EMR ที่ยังไม่ได้ใส่จำนวน แถวที่ใส่จำนวนแล้วหรือพิมพ์เองคงไว้)
-    const visit = parseEmrVisit(s.emrVisit);
-    const vLabel = visit ? 'visit ' + visit.label : 'visit ที่เปิดอยู่';
-    let note = '';
-    if (visit && visit.isToday) note = `${vLabel} เป็นของวันนี้ — ไม่ใช้เป็นยาเดิม`;
-    else if (!keys.length) note = `${vLabel} ไม่มียาโรคเรื้อรัง — ไม่ใช้`;
-    else if (fcEmrSrc && (!visit || visit.sort < fcEmrSrc.sort)) note = `${vLabel} เก่ากว่า — ยาไม่เปลี่ยน`;
-    const added = [];
-    if (!note && keys.length) {
-      document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
-      const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
-      keys.forEach(key => {
-        if (have.some(h => h === key || drugMatches(h, key))) return;
-        const info = getDrugPrice(key) || {};
-        addLoRow(key, '', info.u || 'เม็ด', info.p || 0, true);
-        added.push(key);
-      });
-      updateLoTotal();
-      fcEmrSrc = { sort: visit ? visit.sort : '', label: vLabel, n: keys.length };
-    }
-    const lines2 = [];
-    if (fcEmrSrc) lines2.push(`📷 <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b> (${fcEmrSrc.n} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`);
-    if (note) lines2.push('ℹ️ ' + escHtml(note));
-    else {
-      if (skipped) lines2.push(`ข้ามยาตามอาการ/ยาฆ่าเชื้อ/ยาน้ำ-หยอด-ล้าง/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
-      if (unknown.length) lines2.push('⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', '));
-    }
-    fcEmrMsg = lines2.join('<br>');
-    renderFloatClinic();
+    fcApplyEmrLines(lines, parseEmrVisit(s.emrVisit), '📷');
   } catch (e) {
     console.error('OCR รายการยา EMR', e);
     fcEmrHash = s.emrGridHash; fcEmrMsg = '⚠️ อ่านรายการยาจาก EMR ไม่สำเร็จ — กรอกชื่อยาเอง';
@@ -2758,6 +2734,73 @@ async function fcEmrDrugs(s) {
     fcEmrBusy = false;
     fcRenderEmrMsg();
   }
+}
+
+// ชื่อยาของ visit หนึ่ง → ยาโรคเรื้อรังที่รู้จัก (key ในรายการราคายา) + ยาที่ไม่รู้จัก + จำนวนที่ข้าม
+function fcEmrKeys(lines) {
+  const keys = [], unknown = [];
+  let skipped = 0;
+  lines.forEach(name => {
+    const key = hxMatchDrug(name);
+    if (!key) { if (/\d\s*(mg|mcg|g|ml|iu|u)\b/i.test(name)) unknown.push(name.replace(/\s+\S{1,5}$/, '')); return; }
+    if (emrSkipDrug(key, name)) { skipped++; return; }
+    if (!keys.some(h => h === key || drugMatches(h, key))) keys.push(key);
+  });
+  return { keys, unknown, skipped };
+}
+
+// ยาเดิมจากฐานข้อมูล HOSxP: ไม่ต้องให้เภสัชเปิดแท็บรายการยาใน EMR — ใช้ visit ล่าสุดก่อนวันนี้ที่มียาโรคเรื้อรัง
+// ทำครั้งเดียวต่อ HN (ไม่ใช่ทุกรอบ poll) ถ้าฐานข้อมูลใช้ไม่ได้ ค่อยกลับไปใช้ OCR จาก EMR เหมือนเดิม
+let fcDbEmrHn = '', fcDbEmrOk = false;
+async function fcDbEmrDrugs(hn) {
+  if (!hn || hn === fcDbEmrHn) return;
+  fcDbEmrHn = hn; fcDbEmrOk = false;
+  const v = await tphHosxp.visits(hn);
+  if (!v || !clinicWin || clinicWin.closed || document.getElementById('f-hn').value.trim() !== hn) return;
+  fcDbEmrOk = true;
+  for (const visit of v.visits || []) {
+    const lines = (visit.drugs || []).map(d => [d.name, d.strength].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim());
+    if (!fcEmrKeys(lines).keys.length) continue;
+    const [y, m, dd] = String(visit.date).split('-').map(Number);
+    const label = `${dd} ${TH_MONTHS_FULL[m - 1]} ${y + 543}|${visit.time || ''}|${visit.dep || ''}`;
+    fcApplyEmrLines(lines, parseEmrVisit(label), '🗄️');
+    fcRenderEmrMsg();
+    return;
+  }
+  fcEmrMsg = '🗄️ ไม่พบยาโรคเรื้อรังใน 6 visit ล่าสุด (ฐานข้อมูล HOSxP) — กรอกยาเหลือเอง';
+  fcRenderEmrMsg();
+}
+
+function fcApplyEmrLines(lines, visit, icon) {
+  const { keys, unknown, skipped } = fcEmrKeys(lines);
+  // เภสัชไล่เปิดหลาย visit หา visit ยาเดิม — ใช้ยาของ visit เดียวเท่านั้น ไม่สะสม และไม่ดึงยาของ visit ที่เปิดข้ามไป:
+  //   visit วันนี้ (ยาที่แพทย์เพิ่งสั่ง ไม่ใช่ยาเดิม), visit ที่ไม่มียาโรคเรื้อรัง, visit ที่เก่ากว่าที่ใช้อยู่ → ไม่เปลี่ยน
+  //   visit ที่ใหม่กว่า → แทนที่ (ลบแถวจาก EMR ที่ยังไม่ได้ใส่จำนวน แถวที่ใส่จำนวนแล้วหรือพิมพ์เองคงไว้)
+  const vLabel = visit ? 'visit ' + visit.label : 'visit ที่เปิดอยู่';
+  let note = '';
+  if (visit && visit.isToday) note = `${vLabel} เป็นของวันนี้ — ไม่ใช้เป็นยาเดิม`;
+  else if (!keys.length) note = `${vLabel} ไม่มียาโรคเรื้อรัง — ไม่ใช้`;
+  else if (fcEmrSrc && (!visit || visit.sort < fcEmrSrc.sort)) note = `${vLabel} เก่ากว่า — ยาไม่เปลี่ยน`;
+  if (!note && keys.length) {
+    document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
+    const have = [...document.querySelectorAll('#lo-list .lo-drug')].map(el => el.value.trim()).filter(Boolean);
+    keys.forEach(key => {
+      if (have.some(h => h === key || drugMatches(h, key))) return;
+      const info = getDrugPrice(key) || {};
+      addLoRow(key, '', info.u || 'เม็ด', info.p || 0, true);
+    });
+    updateLoTotal();
+    fcEmrSrc = { sort: visit ? visit.sort : '', label: vLabel, n: keys.length, icon };
+  }
+  const lines2 = [];
+  if (fcEmrSrc) lines2.push(`${fcEmrSrc.icon || icon} <b>ยาเดิมจาก ${escHtml(fcEmrSrc.label)}</b> (${fcEmrSrc.n} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`);
+  if (note) lines2.push('ℹ️ ' + escHtml(note));
+  else {
+    if (skipped) lines2.push(`ข้ามยาตามอาการ/ยาฆ่าเชื้อ/ยาน้ำ-หยอด-ล้าง/ยาฉีด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
+    if (unknown.length) lines2.push('⚠️ ไม่รู้จักชื่อยา (เพิ่มเองถ้ามี): ' + unknown.map(escHtml).join(', '));
+  }
+  fcEmrMsg = lines2.join('<br>');
+  renderFloatClinic();
 }
 // ตารางยาใน EMR: OCR แบบ tha+eng อ่านชื่อยาภาษาอังกฤษเพี้ยนเป็นอักษรไทย (FOLIC → 76060016, SimVastatin → ร5กาล...)
 // จึงตัดเฉพาะคอลัมน์ "ชื่อรายการ" แล้วอ่านด้วยภาษาอังกฤษอย่างเดียว
@@ -2995,7 +3038,10 @@ function parseUsage(u) {
     || /\d\s*-\s*\d\s*(เม็ด|ที|หยด|ซอง|แคปซูล)/.test(t);
   let amt = null, unit = '';
   const m = t.match(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(เม็ด|แคปซูล|ที|หยด|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml|ยูนิต|unit)/i);
-  if (m) { amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2]; }
+  if (m) {
+    amt = (m[1] === 'ครึ่ง' || m[1] === '½') ? 0.5 : parseFloat(m[1]); unit = m[2];
+    if (amt >= 1 && /^\s*ครึ่ง/.test(t.slice(m.index + m[0].length))) amt += 0.5;   // "1 เม็ดครึ่ง" = 1.5
+  }
   else {
     // OCR อ่านหน่วยผิด (เช่น "เม็ด" → "Ulm") ใช้ตัวเลขหลัง "ครั้งละ" แทน ส่วนหน่วยให้ผู้เรียกเดาจากชื่อยา
     const k = t.match(/ครั้งละ\s*(\d+(?:\.\d+)?|ครึ่ง|½)/);
@@ -3009,7 +3055,10 @@ function parseUsage(u) {
   let freq = null;
   // เอาเลขหลัง "วันละ" ตรงๆ ไม่ต้องรอคำว่า "ครั้ง"/"เวลา" เพราะ OCR อ่านผิดบ่อย (เช่น "วันละ 3 50") ยกเว้นเป็นช่วง "วันละ 1-2"
   const f = t.match(/วันละ\s*(\d+)(?!\s*[-–]\s*\d)/);   // HOSxP เขียนทั้ง "วันละ 2 ครั้ง" และ "วันละ 2 เวลา"
+  const wk = t.match(/สัปดาห์ละ\s*(\d+)/);
   if (f) freq = +f[1];
+  else if (/วันเว้นวัน/.test(t)) freq = 0.5;
+  else if (wk) freq = +wk[1] / 7;
   else {
     const meals = ['เช้า|เข้า(?!ใต้|กล้าม|หลอด|ผิว)', 'กลางวัน|เที่ยง', 'เย็น', 'ก่อนนอน'].filter(w => new RegExp(w).test(t)).length;
     if (meals) freq = meals;
@@ -3019,6 +3068,10 @@ function parseUsage(u) {
   const perMeal = [...t.matchAll(/(?:เช้า|เข้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)\s*(\d+(?:\.\d+)?|ครึ่ง|½)\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)/gi)]
     .map(x => (x[1] === 'ครึ่ง' || x[1] === '½') ? 0.5 : parseFloat(x[1]));
   if (perMeal.length >= 2) return { text: t, unit, prn, perDay: prn ? null : perMeal.reduce((a, b) => a + b, 0) };
+  // แบบจำนวนนำหน้ามื้อ เช่น "3 เม็ด หลังอาหารเช้า 2 เม็ด หลังอาหารเย็น" = 5 เม็ด/วัน
+  const amtMeal = [...t.matchAll(/(\d+(?:\.\d+)?|ครึ่ง|½)\s*(?:เม็ด|แคปซูล|ซอง|ช้อนชา|ช้อนโต๊ะ|มล|ml)\s*(?:ครึ่ง)?\s*(?:หลัง|ก่อน)?\s*(?:อาหาร)?\s*(?:เช้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)/gi)];
+  if (amtMeal.length >= 2) return { text: t, unit, prn, perDay: prn ? null : amtMeal.reduce((a, x) =>
+    a + ((x[1] === 'ครึ่ง' || x[1] === '½') ? 0.5 : parseFloat(x[1])) + (/ครึ่ง\s*(?:หลัง|ก่อน|อาหาร|เช้า|กลางวัน|เที่ยง|เย็น|ก่อนนอน)/.test(x[0]) && x[1] !== 'ครึ่ง' ? 0.5 : 0), 0) };
   return { text: t, unit, prn, perDay: (!prn && amt && freq) ? amt * freq : null };
 }
 
@@ -3043,11 +3096,47 @@ function parseOrderLines(text) {
   return rows;
 }
 
+// ── ใบสั่งยาจากฐานข้อมูล HOSxP (bridge ที่มี db.json) ──────
+// แม่นกว่า OCR: ชื่อยา/วิธีใช้ตรงตามที่แพทย์บันทึก — อ่านใหม่ทุก 10 วินาที เผื่อแพทย์เพิ่ม/แก้ยา
+// ยาที่ จพ. เพิ่มเองในหน้าสั่งยาแต่ยังไม่กดบันทึกใน HOSxP จะยังไม่มีในฐานข้อมูล
+const DB_ORDER_REFRESH_MS = 10000;
+let dbOrderAt = 0, dbOrderHn = '', dbOrderBusy = false, dbOrderSig = '';
+function hasDbOrder(hn) { return !!(floatOrder && floatOrder.src === 'db' && floatOrder.hn === hn && floatOrder.rows.length); }
+function dbOrderRows(drugs) {
+  return drugs.map(d => {
+    const name = [d.name, d.strength].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const usage = String(d.usage || '').replace(/\s+/g, ' ').trim();
+    const u = parseUsage(usage);
+    if (!u.unit && /^(tab|cap)/i.test(d.form || '')) u.unit = d.units || 'เม็ด';
+    return { name, ...u, insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null };
+  });
+}
+async function loadDbOrder(hn) {
+  if (dbOrderBusy || (hn === dbOrderHn && Date.now() - dbOrderAt < DB_ORDER_REFRESH_MS)) return;
+  dbOrderBusy = true;
+  try {
+    const o = await tphHosxp.order(hn);
+    dbOrderHn = hn; dbOrderAt = Date.now();
+    if (!o || !lastBridge || lastBridge.hn !== hn) return;
+    const rows = dbOrderRows(o.drugs || []);
+    if (!rows.length) {
+      // visit วันนี้ยังไม่มียาในฐานข้อมูล — ทิ้งผลเก่าจาก DB ให้ OCR ทำงานแทน
+      if (hasDbOrder(hn)) { floatOrder = null; ocrDoneVer = null; dbOrderSig = ''; renderFloatLeftover(); }
+      return;
+    }
+    const sig = hn + '|' + JSON.stringify(rows);
+    floatOrder = { hn, rows, src: 'db', time: String(o.time || '').slice(0, 5) };
+    // เขียนตารางใหม่เฉพาะเมื่อยาเปลี่ยน — ไม่งั้นช่อง "ใช้/วัน" ที่กำลังพิมพ์จะเสีย focus ทุก 10 วินาที
+    if (sig !== dbOrderSig) { dbOrderSig = sig; renderFloatLeftover(); }
+  } finally { dbOrderBusy = false; }
+}
+
 async function runOrderOcr() {
   if (ocrBusy) return;
   ocrBusy = true;
   try {
     while (lastBridge && lastBridge.hn && lastBridge.gridVer !== ocrDoneVer) {
+      if (hasDbOrder(lastBridge.hn)) { ocrDoneVer = lastBridge.gridVer; break; }
       const ver = lastBridge.gridVer, hn = lastBridge.hn, hash = lastBridge.gridHash || '';
       // HN เดิม + ภาพตารางเดิม (เช่น สลับหน้า ข้อมูลทั่วไป ↔ สั่งยา แล้วกลับมา) ใช้ผล OCR ที่จำไว้ ไม่ต้องรอใหม่
       if (hash && ocrCache.has(hn + '|' + hash)) {
@@ -3064,6 +3153,7 @@ async function runOrderOcr() {
       const canvas = await binarizeGrid(await res.blob());
       const { data } = await (await getTessWorker()).recognize(canvas);
       ocrDoneVer = ver;
+      if (hasDbOrder(hn)) break;   // ระหว่าง OCR ได้ใบสั่งยาจากฐานข้อมูลมาแล้ว
       const rows = parseOrderLines(data.text);
       if (gh) { ocrCache.set(hn + '|' + gh, rows); if (ocrCache.size > 40) ocrCache.delete(ocrCache.keys().next().value); }
       floatOrder = { hn, rows: lockedOrderRows(hn, rows) };
@@ -3086,7 +3176,9 @@ function renderFloatOcrStatus() {
   const hn = floatWin.document.getElementById('fl-hn').value.trim();
   const b = lastBridge;
   let msg = '', cls = 'muted';
-  if (b && b.hn && b.hn === hn) {
+  if (b && b.hn && b.hn === hn && hasDbOrder(hn)) {
+    msg = `🗄️ ใบสั่งยาจากฐานข้อมูล HOSxP (visit วันนี้${floatOrder.time ? ' ' + floatOrder.time : ''}) — ยาที่เพิ่มแต่ยังไม่กดบันทึกใน HOSxP จะยังไม่ขึ้น`;
+  } else if (b && b.hn && b.hn === hn) {
     if (b.covered) { msg = '⏸ มีหน้าต่างอื่นบังตารางยา/วันนัดใน HOSxP (เช่นหน้าต่างลอย หรือหน้าเปรียบเทียบประวัติ) — หยุดอ่านไว้ก่อน แสดงผลล่าสุด'; cls = 'warn'; }
     else if (floatOcrStatus === 'running') msg = '⏳ กำลังอ่านใบสั่งยาจาก HOSxP… (ครั้งแรกต้องโหลดตัวอ่านภาษาไทย อาจช้า)';
     else if (floatOcrStatus === 'error') { msg = '⚠️ อ่านใบสั่งยาไม่สำเร็จ — กรอก "ใช้/วัน" เอง'; cls = 'warn'; }

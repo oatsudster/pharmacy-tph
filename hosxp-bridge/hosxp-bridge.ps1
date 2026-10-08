@@ -2,7 +2,9 @@
 #   หน้าจ่ายยา       → หน้าต่างลอยยาคงเหลือ (HN, วันนัด, ตารางยา)
 #   หน้า Patient EMR → หน้าต่างลอยบันทึกคลินิก (HN, ชื่อ) ที่เภสัชเปิดตอนลงคลินิก
 #
-# อ่านจากหน้าจอ HOSxP เท่านั้น (Windows UI Automation + จับภาพ) ไม่แตะฐานข้อมูล ไม่กด/แก้อะไรใน HOSxP
+# อ่านจากหน้าจอ HOSxP (Windows UI Automation + จับภาพ) ไม่กด/แก้อะไรใน HOSxP
+# ถ้ามี db.json อยู่โฟลเดอร์เดียวกัน (host/port/user/password/database ของ MySQL HOSxP แบบ SELECT อย่างเดียว)
+# จะอ่านวันนัด/ใบสั่งยา/ยาของ visit ก่อนๆ จากฐานข้อมูลแทน OCR — ตัวต่อ MySQL อยู่ใน hxdb.cs (ไม่มีคำสั่งเขียน มีแค่ SELECT)
 # เปิดให้เฉพาะเครื่องนี้ (127.0.0.1) และรับเฉพาะหน้าเว็บของเรา (ALLOWED_ORIGINS):
 #   /current  — JSON { ok, hn, name, active, apptDays, gridVer, gridCut, covered, emrHn, emrName, ts }
 #               emrHn/emrName = คนไข้ใน Patient EMR ที่อยู่บนจอ (มีหลายหน้า EMR เลือกหน้าที่อยู่บนสุด)
@@ -12,6 +14,11 @@
 #   /emrgrid.png — ภาพตารางยาของ visit ที่เลือกใน Patient EMR (emrGridVer/emrGridHash เปลี่ยนเมื่อภาพหรือ visit เปลี่ยน)
 #                 emrVisit = "วันที่มา|เวลา|ห้องตรวจ" ของ visit นั้น
 #   /grid.png — ภาพตารางใบสั่งยาล่าสุด หน้าเว็บเอาไป OCR ภาษาไทยเองด้วย Tesseract (Windows OCR ไม่มีภาษาไทย)
+#   /db/order?hn=   — ใบสั่งยาของ visit วันนี้ (visit ล่าสุดของวันที่มียา) + นัดที่ยังไม่ถึง (ไม่นับยกเลิก/มาแล้ว)
+#   /db/visits?hn=  — ยาของ visit ก่อนวันนี้ 6 visit ล่าสุดที่มียา (ใหม่ → เก่า)
+#   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
+#   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
+#   /current มี db (ต่อฐานข้อมูลได้) / dbErr และถ้า DB ใช้ได้ apptDays มาจากตาราง oapp ไม่ใช่ OCR
 #
 # ตำแหน่งข้อมูลในหน้าจ่ายยา (THOSxPDiepensingDispenseEntryFrame) ของ HOSxP XE 4:
 #   HN / ชื่อ     — TcxDBTextEdit ที่อยู่ทางขวาของป้าย "HN" / "ชื่อ"
@@ -61,7 +68,7 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; db = $false; dbErr = ''; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
@@ -69,6 +76,107 @@ $apptByHn = @{}   # HN → จำนวนวันถึงนัดที่�
 $gridPng = $null; $gridHash = ''
 $emrGridPng = $null; $emrGridRaw = ''; $nextEmrGrid = [DateTime]::MinValue
 $lastHn = ''; $nextAppt = [DateTime]::MinValue; $nextGrid = [DateTime]::MinValue
+
+# ── ฐานข้อมูล HOSxP (อ่านอย่างเดียว) ─────────────────────────
+$db = $null
+$dbFile = Join-Path $PSScriptRoot 'db.json'
+if (Test-Path $dbFile) {
+  try {
+    Add-Type -Path (Join-Path $PSScriptRoot 'hxdb.cs')
+    $cfg = Get-Content $dbFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    $db = New-Object HxDb $cfg.host, ([int]$(if ($cfg.port) { $cfg.port } else { 3306 })), $cfg.user, $cfg.password, $(if ($cfg.database) { $cfg.database } else { 'hos' })
+  } catch { $state.dbErr = "ตั้งค่าฐานข้อมูลไม่ได้: $($_.Exception.Message)" }
+} else { $state.dbErr = 'ไม่มี db.json' }
+$dbRetryAt = [DateTime]::MinValue
+$apptDbAt = @{}   # HN → เวลาที่อ่านวันนัดจาก DB ล่าสุด
+
+# รัน SELECT — ต่อไม่ได้ให้เว้น 30 วินาทีก่อนลองใหม่ (bridge ทำงานวนรอบเดียว จะได้ไม่ค้างรอ DB ทุกวินาที)
+function DbQuery($sql) {
+  if (-not $db) { throw $state.dbErr }
+  if (-not $db.Connected -and (Get-Date) -lt $script:dbRetryAt) { throw $state.dbErr }
+  try { $r = $db.Query($sql); $state.db = $true; $state.dbErr = ''; return , $r }
+  catch {
+    $msg = if ($_.Exception.InnerException) { $_.Exception.InnerException.Message } else { $_.Exception.Message }
+    if (-not $db.Connected) { $state.db = $false; $script:dbRetryAt = (Get-Date).AddSeconds(30) }
+    $state.dbErr = $msg; throw $msg
+  }
+}
+
+# วิธีใช้: ข้อความวิธีใช้พิเศษ (sp_use) ถ้ามี ไม่งั้นรหัสวิธีใช้ปกติ — 3 บรรทัดต่อกันเหมือนบนฉลากยา
+$DRUG_COLS = "d.icode, d.name, d.strength, d.units, d.dosageform, r.qty, r.item_no, " +
+  "TRIM(IF(r.sp_use IS NOT NULL AND r.sp_use<>'', CONCAT_WS(' ', s.name1, s.name2, s.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text"
+$DRUG_JOIN = "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode " +
+  "LEFT JOIN drugusage u ON u.drugusage=r.drugusage LEFT JOIN sp_use s ON s.sp_use=r.sp_use"
+
+# $hn ผ่าน [HxDb]::Digits มาแล้วทุกครั้ง (ตัวเลขล้วน) จึงใส่ใน SQL ได้ตรงๆ
+function DbAppts($hn) {
+  $rows = DbQuery ("SELECT a.nextdate, DATEDIFF(a.nextdate, CURDATE()) AS days, k.department AS clinic, a.app_cause " +
+    "FROM oapp a LEFT JOIN kskdepartment k ON k.depcode=a.depcode " +
+    "WHERE a.hn='$hn' AND a.nextdate>CURDATE() AND (a.oapp_status_id IS NULL OR a.oapp_status_id=1) ORDER BY a.nextdate")
+  , @($rows | ForEach-Object { [ordered]@{ date = $_['nextdate']; days = [int]$_['days']; clinic = $_['clinic']; cause = $_['app_cause'] } })
+}
+
+function DrugRow($r) {
+  [ordered]@{ icode = $r['icode']; name = $r['name']; strength = $r['strength']; units = $r['units']; form = $r['dosageform']; qty = $r['qty']; usage = $r['usage_text'] }
+}
+
+function DbOrder($hn) {
+  $rows = DbQuery ("SELECT r.vn, o.vsttime, $DRUG_COLS $DRUG_JOIN JOIN ovst o ON o.vn=r.vn " +
+    "WHERE r.hn='$hn' AND r.vstdate=CURDATE() AND (r.an IS NULL OR r.an='') ORDER BY r.vn DESC, r.item_no")
+  $vn = if ($rows.Count) { $rows[0]['vn'] } else { '' }
+  $appts = DbAppts $hn
+  $max = if ($appts.Count) { ($appts | ForEach-Object { $_.days } | Measure-Object -Maximum).Maximum } else { $null }
+  [ordered]@{ ok = $true; hn = $hn; vn = $vn; time = $(if ($rows.Count) { $rows[0]['vsttime'] } else { '' })
+    drugs = @($rows | Where-Object { $_['vn'] -eq $vn } | ForEach-Object { DrugRow $_ }); appts = $appts; apptDays = $max }
+}
+
+function DbVisits($hn) {
+  $rows = DbQuery ("SELECT r.vn, r.vstdate, o.vsttime, k.department, $DRUG_COLS $DRUG_JOIN JOIN ovst o ON o.vn=r.vn " +
+    "LEFT JOIN kskdepartment k ON k.depcode=o.main_dep " +
+    "WHERE r.hn='$hn' AND r.vstdate<CURDATE() AND r.vstdate>=CURDATE()-INTERVAL 2 YEAR AND (r.an IS NULL OR r.an='') " +
+    "ORDER BY r.vstdate DESC, r.vn DESC, r.item_no LIMIT 300")
+  $visits = New-Object System.Collections.ArrayList; $cur = $null
+  foreach ($r in $rows) {
+    if (-not $cur -or $cur.vn -ne $r['vn']) {
+      if ($visits.Count -ge 6) { break }
+      $cur = [ordered]@{ vn = $r['vn']; date = $r['vstdate']; time = $r['vsttime']; dep = $r['department']; drugs = New-Object System.Collections.ArrayList }
+      [void]$visits.Add($cur)
+    }
+    [void]$cur.drugs.Add((DrugRow $r))
+  }
+  [ordered]@{ ok = $true; hn = $hn; visits = $visits }
+}
+
+function DbPatient($hn) {
+  $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
+  if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
+  $p = $rows[0]
+  [ordered]@{ ok = $true; hn = $hn; pname = $p['pname']; fname = $p['fname']; lname = $p['lname']; birthday = $p['birthday']; sex = $p['sex'] }
+}
+
+# วันนัดจาก DB แทน OCR: อ่านเมื่อเปลี่ยนคนไข้ แล้วทุก 20 วินาที (เผื่อเพิ่งลงนัดใน HOSxP) — DB ใช้ไม่ได้ค่อยกลับไป OCR
+function ApptFromDb($hn) {
+  if (-not $db -or -not $hn) { return $false }
+  if ($apptDbAt.ContainsKey($hn) -and ((Get-Date) - $apptDbAt[$hn]).TotalSeconds -lt 20) { return $true }
+  try {
+    $a = DbAppts $hn
+    $apptDbAt[$hn] = Get-Date
+    $d = if ($a.Count) { ($a | ForEach-Object { $_.days } | Measure-Object -Maximum).Maximum } else { $null }
+    $state.apptDays = $d; $script:apptByHn[$hn] = $d
+    return $true
+  } catch { return $false }
+}
+
+function DbEndpoint($path) {
+  $hn = $null
+  if ($path -match '[?&]hn=([^&]*)') { $hn = [HxDb]::Digits([Uri]::UnescapeDataString($Matches[1])) }
+  try {
+    if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
+    $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
+      elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
+  } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
+  return [HxDb]::Json($res)
+}
 
 function FieldRightOf($frame, $labelText) {
   $label = $frame.FindAll($TS::Descendants, (ClassCond 'TcxLabel')) | Where-Object { $_.Current.Name -eq $labelText } | Select-Object -First 1
@@ -344,14 +452,16 @@ function UpdateState {
   if ($hn) { try { $active = if ($cache.layout2) { ElShowing $cache.grid } else { (ElShowing $cache.hnEdit) -and (ElShowing $cache.grid) } } catch {} }
   $state.active = $active
   # หน้า "ข้อมูลทั่วไป" ของ จพ. (กรอบข้อมูลผู้ป่วยอยู่บนจอ ตารางยาอาจไม่เต็ม) อ่านวันนัดแล้วจำตาม HN ไว้ใช้ตอนสลับไปหน้าสั่งยา
-  if ($hn -and $cache.layout2 -and (Get-Date) -ge $script:nextCard) {
+  $apptDb = $false
+  if ($hn) { $apptDb = ApptFromDb $hn }
+  if ($hn -and -not $apptDb -and $cache.layout2 -and (Get-Date) -ge $script:nextCard) {
     $script:nextCard = (Get-Date).AddSeconds(2)
     try { $d = ReadApptCard; if ($d -ne $null) { $state.apptDays = $d; $script:apptByHn[$hn] = $d } } catch {}
   }
   if ($active) {
     $state.covered = $false
     # วันนัดอ่านซ้ำทุก 5 วินาที ตารางยาทุก 2 วินาที เผื่อข้อมูลโหลดขึ้นมาทีหลัง หรือเพิ่งเลื่อนหน้าต่างที่บังออก
-    if ((Get-Date) -ge $script:nextAppt) {
+    if (-not $apptDb -and (Get-Date) -ge $script:nextAppt) {
       try { $d = ReadApptDays; if ($d -ne $null) { $state.apptDays = $d; $script:apptByHn[$hn] = $d } } catch {}
       $script:nextAppt = (Get-Date).AddSeconds(5)
     }
@@ -384,6 +494,7 @@ function Respond($client) {
   $type = 'application/json; charset=utf-8'; $bytes = [byte[]]@()
   if ($method -eq 'OPTIONS') { $status = '204 No Content' }
   elseif ($path -like '/current*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(($state | ConvertTo-Json -Compress)) }
+  elseif ($path -like '/db/*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes((DbEndpoint $path)) }
   elseif ($path -like '/grid.png*' -and $script:gridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:gridPng }
   elseif ($path -like '/emrgrid.png*' -and $script:emrGridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:emrGridPng }
   else { $status = '404 Not Found' }
@@ -399,6 +510,8 @@ function Respond($client) {
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $PORT)
 try { $listener.Start() } catch { Write-Host "เปิดพอร์ต $PORT ไม่ได้ — อาจมี HOSxP Bridge เปิดอยู่แล้ว"; exit 1 }
 Write-Host "HOSxP Bridge ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (ปิดหน้าต่างนี้เพื่อหยุด)"
+if ($db) { try { [void](DbQuery 'SELECT 1'); Write-Host "เชื่อมฐานข้อมูล HOSxP แล้ว" } catch { Write-Host "ยังเชื่อมฐานข้อมูลไม่ได้: $_ (ใช้ OCR แทน)" } }
+else { Write-Host "ไม่ได้ตั้งฐานข้อมูล ($($state.dbErr)) — ใช้ OCR" }
 $nextPoll = [DateTime]::MinValue
 while ($true) {
   if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }

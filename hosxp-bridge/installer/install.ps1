@@ -3,6 +3,7 @@
 #   2. ตั้งให้เปิดเองตอน login (ทางลัดในโฟลเดอร์ Startup) — ถามว่าทุกวัน หรือเฉพาะวันพุธ-พฤหัส (วันคลินิก)
 #   3. ปิดตัวเก่า (ถ้ามี) แล้วเปิดตัวใหม่ และตรวจว่าตอบได้
 #   4. ตรวจ OCR ของ Windows (ใช้อ่านวันนัด) และเปิดหน้าตั้งค่า Chrome/Edge ให้กดอนุญาต
+#   db.json (รหัสฐานข้อมูล HOSxP แบบอ่านอย่างเดียว) ถ้ามีในชุดติดตั้งจะคัดลอกไปด้วย — ไม่มีก็ยังใช้ OCR ได้เหมือนเดิม
 # -Target / -Quiet / -NoStartup / -Days ใช้ตอนทดสอบตัวติดตั้งเท่านั้น (-Days 'all' หรือ '3,4')
 param([string]$Target = (Join-Path $env:LOCALAPPDATA 'HOSxPBridge'), [switch]$Quiet, [switch]$NoStartup, [string]$Days = '')
 
@@ -25,9 +26,10 @@ try {
   Start-Sleep -Milliseconds 500
 
   New-Item -ItemType Directory -Force $Target | Out-Null
-  foreach ($f in 'hosxp-bridge.ps1', 'start-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
+  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'start-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
+  if (Test-Path (Join-Path $src 'db.json')) { Copy-Item (Join-Path $src 'db.json') $Target -Force }
 
   # วันที่ให้เปิดเองตอน login — เครื่องลงคลินิกใช้แค่พุธ-พฤหัส เครื่องห้องจ่ายยาใช้หน้าต่างยาคงเหลือทุกวัน
   if (-not $Days) {
@@ -69,6 +71,11 @@ try {
   } elseif ($null -eq $state.PSObject.Properties['active']) {
     # ตัวเก่าที่เปิดด้วยสิทธิ์ admin ยังค้างอยู่ ตัวใหม่จึงเปิดพอร์ตไม่ได้
     $notes += '⚠️ ยังมี HOSxP Bridge ตัวเก่าเปิดอยู่ — ปิดหน้าต่าง "HOSxP Bridge" ที่ taskbar แล้วรันตัวติดตั้งนี้อีกครั้ง'
+  } elseif (Test-Path (Join-Path $Target 'db.json')) {
+    # รอให้ bridge ลองต่อฐานข้อมูลก่อน (ครั้งแรกใช้เวลา ~1 วินาที)
+    for ($i = 0; $i -lt 10 -and -not $state.db; $i++) { Start-Sleep -Milliseconds 500; $s2 = BridgeState; if ($s2) { $state = $s2 } }
+    $dbNote = if ($state.db) { '✅ เชื่อมฐานข้อมูล HOSxP แล้ว — ใบสั่งยา/วันนัด/ยาเดิม อ่านจากฐานข้อมูล' } else { "⚠️ ยังเชื่อมฐานข้อมูล HOSxP ไม่ได้ ($($state.dbErr)) — ใช้ OCR ไปก่อน" }
+    $notes += $dbNote
   }
 
   Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -91,7 +98,7 @@ try {
     "• เปิดเองตอน login เครื่องนี้: $daysText`n" +
     "• ในหน้าตั้งค่าเบราว์เซอร์ที่เปิดขึ้นมา ให้ตั้ง `"Local network`" และ `"Apps on device`" เป็น Allow`n" +
     "• เปิดหน้าคลินิก → กด 🩺 บันทึกคลินิก (ลอย) หรือ 🪟 ยาคงเหลือ (ลอย) แล้ววางหน้าต่างลอยไว้ทางขวาสุด`n" +
-    "• ถอนการติดตั้ง: $Target\uninstall.cmd") + $(if ($notes) { "`n`n" + ($notes -join "`n") } else { '' })) $(if ($notes) { 'Warning' } else { 'Information' })
+    "• ถอนการติดตั้ง: $Target\uninstall.cmd") + $(if ($notes) { "`n`n" + ($notes -join "`n") } else { '' })) $(if ($notes | Where-Object { $_ -like '⚠️*' }) { 'Warning' } else { 'Information' })
 } catch {
   Msg ("ติดตั้งไม่สำเร็จ:`n" + $_) 'Error'
   exit 1
