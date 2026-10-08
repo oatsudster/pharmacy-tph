@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +18,7 @@
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/hosxp-db.js"></script>
 <style>
 :root {
   --primary: #1A5E38; --primary-dark: #124228; --primary-mid: #237A4A;
@@ -206,6 +207,16 @@ tr.missing-symptom:hover td { background: #fef3c7; }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
 .btn-ok { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .btn-cancel { padding: 8px 18px; background: var(--bg); color: var(--text-mid); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+/* รายละเอียดจาก HOSxP ในหน้าต่างแก้ไข (อ่านอย่างเดียว) — กว้างขึ้นเมื่อมีรายละเอียด */
+.modal-box:has(.hosxp-detail) { width: 640px; }
+.hosxp-detail { margin-top: 12px; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+.hosxp-detail .hd-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); margin-bottom: 6px; }
+.hosxp-detail table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.hosxp-detail .hd-kv th { text-align: left; font-weight: 600; color: var(--text-mid); width: 38%; padding: 3px 6px 3px 0; vertical-align: top; }
+.hosxp-detail .hd-kv td { padding: 3px 0; white-space: pre-wrap; word-break: break-word; }
+.hosxp-detail .hd-meds { margin-top: 8px; }
+.hosxp-detail .hd-meds th, .hosxp-detail .hd-meds td { border-top: 1px solid var(--border); padding: 4px; text-align: left; }
+.hd-flag { font-size: 11px; margin-left: 4px; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
@@ -432,6 +443,7 @@ const DashUX = {
   <div class="topbar-title">⚠️ ระบบรายงาน ADR</div>
   <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
   <div class="topbar-btns">
+    <button class="tbtn" id="adr-db-btn" onclick="syncAdrFromHosxp(true)" title="ดึงรายงาน ADR จาก HOSxP (Pharmacy › Adverse drug reactions) พร้อมรายละเอียด — เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge">🗄 ดึงจาก HOSxP</button>
     <div class="tbtn"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
@@ -630,6 +642,7 @@ const DashUX = {
       <label>ผลวินิจฉัย / รายละเอียด</label>
       <textarea id="m-diag"></textarea>
     </div>
+    <div id="m-hosxp"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">ยกเลิก</button>
       <button class="btn-ok" onclick="saveModal()">บันทึก</button>
@@ -919,6 +932,7 @@ function editRecord(id) {
   document.getElementById('m-drug').value = r.drug||'';
   document.getElementById('m-sev').value = r.severity||'ไม่ร้ายแรง (Non-serious)';
   document.getElementById('m-diag').value = r.diagnosis||'';
+  document.getElementById('m-hosxp').innerHTML = adrHosxpDetailHtml(r.hosxp);
   document.getElementById('edit-modal').classList.add('show');
 }
 
@@ -1033,6 +1047,101 @@ async function importHosXP(input) {
     renderAll();
     showToast(`✅ Import ${imported} รายการ (ข้าม ${skipped} ซ้ำ)${imported?'\n⚠️ กรุณาระบุลักษณะอาการให้ครบ':''}`, 4000);
   } catch(e) { showToast('❌ เกิดข้อผิดพลาด: '+e.message); console.error(e); }
+}
+
+// ═══ ดึงจากฐานข้อมูล HOSxP (Pharmacy > Adverse drug reactions) ═══
+// ใช้ได้เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge — ดึงรายงานตั้งแต่ต้นปีงบ 2569 (1 ต.ค. 68)
+// รายการที่มีอยู่แล้ว (HN + วันที่รายงานตรงกัน หรือเคยดึงมาแล้ว) แนบรายละเอียดจาก HOSxP เพิ่ม และเติมเฉพาะช่องที่ยังว่าง
+// ไม่ทับสิ่งที่เภสัชแก้ในหน้านี้ — ลักษณะอาการจับคู่กับรายการอาการเฉพาะที่ตรงชัดเจน ที่เหลือให้ปุ่ม AI ระบุ
+const ADR_DB_FROM = '2025-10-01';
+const ADR_SEV_OPTIONS = () => [...document.querySelectorAll('#m-sev option')].map(o => o.value);
+function adrDbType(item) {
+  const t = String(item.allergyType || '');
+  if (/G6PD|hemoly/i.test((item.effect || '') + ' ' + (item.drugs || ''))) return 'G6PD';
+  return /type\s*a/i.test(t) ? 'A' : /type\s*b/i.test(t) ? 'B' : '';
+}
+function adrDbSymptom(type, effect) {
+  const list = type === 'A' ? TYPE_A_SYMPTOMS : type === 'B' ? TYPE_B_SYMPTOMS : type === 'G6PD' ? G6PD_SYMPTOMS : [];
+  const e = String(effect || '').toLowerCase().trim();
+  if (!e) return '';
+  // ข้อความทั้งหมดตรงกับชื่ออาการในรายการ (ไม่สนตัวพิมพ์) เช่น "dry cough" → Dry cough
+  return list.find(s => s !== 'อื่นๆ' && s.toLowerCase() === e) || '';
+}
+function adrDbSeverity(s) {
+  s = String(s || '');
+  return ADR_SEV_OPTIONS().find(o => o === s || o.replace(/อันตราย/, 'อัตราย') === s) || (s ? s : 'ยังไม่ทราบ');
+}
+async function syncAdrFromHosxp(manual) {
+  if (!window.tphHosxp) return;
+  const btn = document.getElementById('adr-db-btn');
+  if (manual && btn) { btn.disabled = true; btn.textContent = '⏳ กำลังดึงจาก HOSxP…'; }
+  try {
+    const res = await tphHosxp.adr(ADR_DB_FROM);
+    if (!res) { if (manual) showToast('⚠️ ต่อฐานข้อมูล HOSxP ไม่ได้ — ใช้ได้เฉพาะเครื่อง รพ. ที่ติดตั้ง HOSxP Bridge ตัวใหม่', 5000); return; }
+    let added = 0, linked = 0;
+    for (const it of res.items || []) {
+      const hn = String(it.hn || '').trim(), date = String(it.reportDate || '').slice(0, 10);
+      const suspected = (it.meds || []).filter(m => /suspect/i.test(m.role || '')).map(m => m.name).filter(Boolean);
+      const drug = suspected.join(', ') || it.drugs || '';
+      const type = adrDbType(it);
+      const diag = [it.effect, it.otherDx].filter(Boolean).join(' — ');
+      let rec = records.find(r => r.hosxpId === it.id)
+        || records.find(r => !r.hosxpId && String(r.hn || '').trim().padStart(7, '0') === hn.padStart(7, '0') && r.date === date);
+      if (rec) {
+        const before = JSON.stringify(rec);
+        rec.hosxpId = it.id; rec.hosxp = it;
+        if (!rec.name && it.name) rec.name = it.name;
+        if (!rec.type && type) rec.type = type;
+        if (!rec.symptom) { const s = adrDbSymptom(rec.type || type, it.effect); if (s) rec.symptom = s; }
+        if (!rec.drug && drug) rec.drug = drug;
+        if (!rec.diagnosis && diag) rec.diagnosis = diag;
+        if ((!rec.severity || rec.severity === 'ยังไม่ทราบ') && it.seriousness) rec.severity = adrDbSeverity(it.seriousness);
+        if (JSON.stringify(rec) !== before) linked++;
+        continue;
+      }
+      records.unshift({
+        id: uid(), hosxpId: it.id, date, hn, name: it.name || '',
+        dept: /ipd|ward|หอ/i.test(it.dept || '') || it.an ? 'หอผู้ป่วยใน' : (it.dept || 'OPD'), an: it.an || '',
+        type, symptom: adrDbSymptom(type, it.effect), drug,
+        productType: it.productType || 'ยา/วัตถุเสพติด', severity: adrDbSeverity(it.seriousness),
+        diagnosis: diag, source: 'hosxp-db', created: Date.now(), hosxp: it,
+      });
+      added++;
+    }
+    if (added || linked) {
+      saveLocal();
+      if (window.fbSaveADR && window._adrFbLoaded) fbSaveADR();
+      renderAll();
+    }
+    if (manual || added) showToast(`🗄 HOSxP: เพิ่มใหม่ ${added} รายการ · แนบรายละเอียดให้รายการเดิม ${linked} รายการ` +
+      (records.some(r => !r.symptom) ? '\n⚠️ ยังมีรายการที่ไม่ได้ระบุลักษณะอาการ — ใช้ปุ่ม 🤖 AI หรือแก้เอง' : ''), 5000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🗄 ดึงจาก HOSxP'; }
+  }
+}
+
+// รายละเอียดที่ HOSxP เก็บไว้ (ต้องกดเข้าไปดูทีละคนใน HOSxP) — แสดงในหน้าต่างแก้ไข แบบอ่านอย่างเดียว
+function adrHosxpDetailHtml(it) {
+  if (!it) return '';
+  const yn = v => v === 'Y' ? 'ใช่' : v === 'N' ? 'ไม่ใช่' : '';
+  const thd = d => d ? thDate(String(d).slice(0, 10)) : '';
+  const row = (k, v) => v ? `<tr><th>${k}</th><td>${escHtml(String(v))}</td></tr>` : '';
+  const meds = (it.meds || []).map(m => `<tr><td>${escHtml(m.role || '')}</td><td>${escHtml(m.name || '')}</td>` +
+    `<td>${escHtml([thd(m.begin), thd(m.end)].filter(Boolean).join(' – '))}</td><td>${escHtml(m.indication || '')}</td><td>${escHtml(m.usage || '')}</td></tr>`).join('');
+  return `<div class="hosxp-detail"><div class="hd-title">🗄 รายละเอียดจาก HOSxP (Pharmacy › Adverse drug reactions)</div>
+    <table class="hd-kv">
+      ${row('วันที่รายงาน', thd(it.reportDate))}${row('วันที่เกิดอาการ', thd(it.onsetDate))}
+      ${row('อาการไม่พึงประสงค์', it.effect)}${row('การวินิจฉัยอื่น', it.otherDx)}${row('Lab / ตรวจร่างกาย', it.labPe)}
+      ${row('ผลิตภัณฑ์', it.productType)}${row('ความร้ายแรง', it.seriousness)}${row('ผลการรักษา', it.outcome)}
+      ${row('ความสัมพันธ์ (Causality)', it.possibility)}${row('สาเหตุ', it.cause)}${row('ชนิด (จากประวัติแพ้ยา)', it.allergyType)}
+      ${row('หยุดยาแล้วอาการดีขึ้น (Dechallenge)', [yn(it.dechallenge), it.dechallengeType].filter(Boolean).join(' · '))}
+      ${row('ให้ยาซ้ำ (Rechallenge)', [yn(it.rechallenge), it.rechallengeType].filter(Boolean).join(' · '))}
+      ${row('เคยมีประวัติ ADR', yn(it.hasHistory))}${row('ประเภทรายงาน', it.reportType)}
+      ${row('แพทย์ผู้วินิจฉัย', [it.doctor, it.doctorPosition].filter(Boolean).join(' · '))}
+      ${row('ผู้บันทึก', [it.officer, it.officerPosition].filter(Boolean).join(' · '))}
+    </table>
+    ${meds ? `<table class="hd-meds"><thead><tr><th>บทบาท</th><th>ยา</th><th>ช่วงที่ใช้</th><th>ข้อบ่งใช้</th><th>วิธีใช้</th></tr></thead><tbody>${meds}</tbody></table>` : ''}
+  </div>`;
 }
 
 // ═══ EXPORT / IMPORT JSON ═══════════════════════════════════════
@@ -1248,7 +1357,7 @@ function renderTable(fRecs) {
       <tbody>
         ${fRecs.map(r=>`
           <tr class="${!r.symptom?'missing-symptom':''}">
-            <td style="white-space:nowrap">${thDate(r.date)}</td>
+            <td style="white-space:nowrap">${thDate(r.date)}${r.hosxp ? '<span class="hd-flag" title="มีรายละเอียดจาก HOSxP — กด ✏️ เพื่อดู">🗄</span>' : ''}</td>
             <td><strong>${escHtml(r.hn||'-')}</strong>${r.name?`<br><small style="color:var(--text-light)">${escHtml(r.name)}</small>`:''}</td>
 
             <td>${escHtml(r.drug||'-')}</td>
@@ -1309,6 +1418,8 @@ function renderTable(fRecs) {
         } else if (records.length) {
           window.fbSaveADR();
         }
+        // ได้ข้อมูลจาก Firebase ครบแล้ว ค่อยดึงรายการใหม่จาก HOSxP (ไม่งั้นจะเขียนทับรายการที่เพิ่งบันทึกบนเครื่องอื่น)
+        if (!window._adrFbLoaded) { window._adrFbLoaded = true; syncAdrFromHosxp(false); }
       }, err => {
         console.warn('fbSnapshot:', err.message);
         setBadge('⚠️ ออฟไลน์', false);

@@ -17,6 +17,8 @@
 #   /db/order?hn=   — ใบสั่งยาของ visit วันนี้ (visit ล่าสุดของวันที่มียา) + นัดที่ยังไม่ถึง (ไม่นับยกเลิก/มาแล้ว)
 #   /db/visits?hn=  — ยาของ visit ก่อนวันนี้ 6 visit ล่าสุดที่มียา (ใหม่ → เก่า)
 #   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
+#   /db/denom       — ตัวหาร ME รายเดือน 24 เดือนล่าสุด: opd = จำนวน visit (ovst), ipd = วันนอน (an_stat.admdate ตามเดือนที่จำหน่าย)
+#   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -186,6 +188,68 @@ function DbMeds($hn) {
   [ordered]@{ ok = $true; hn = $hn; visits = $visits; discharge = $dc }
 }
 
+# ตัวหาร ME — นับแบบเดียวกับที่กรอกมือมาตลอด (ตรวจแล้วตรงกับที่กรอกไว้ ต.ค. 68 – ก.ย. 69)
+function DbDenom {
+  $from = "DATE_FORMAT(CURDATE() - INTERVAL 24 MONTH, '%Y-%m-01')"
+  $months = [ordered]@{}
+  foreach ($r in (DbQuery "SELECT DATE_FORMAT(vstdate, '%Y-%m') AS m, COUNT(*) AS n FROM ovst WHERE vstdate>=$from GROUP BY 1")) {
+    $months[$r['m']] = [ordered]@{ opd = [int]$r['n']; ipd = $null }
+  }
+  foreach ($r in (DbQuery "SELECT DATE_FORMAT(dchdate, '%Y-%m') AS m, SUM(admdate) AS n FROM an_stat WHERE dchdate>=$from AND dchdate<=CURDATE() GROUP BY 1")) {
+    if (-not $months.Contains($r['m'])) { $months[$r['m']] = [ordered]@{ opd = $null; ipd = $null } }
+    $months[$r['m']].ipd = [int]$r['n']
+  }
+  [ordered]@{ ok = $true; months = $months }
+}
+
+# รายงาน ADR ของห้องยา พร้อมรายละเอียดที่ต้องกดเข้าไปดูทีละคนใน HOSxP
+# ชนิด Type A/B ไม่มีใน patient_adr — ใช้ของ opd_allergy (ประวัติแพ้ยา) ของคนเดียวกันที่บันทึกใกล้วันรายงานที่สุด (±60 วัน)
+function DbAdr($path) {
+  $from = '2025-01-01'
+  if ($path -match '[?&]from=(\d{4}-\d{2}-\d{2})') { $from = $Matches[1] }
+  $rows = DbQuery ("SELECT a.patient_adr_id, a.hn, CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,'')) AS ptname, " +
+    "a.department, a.an, a.report_date, a.adverse_effect_date, a.adverse_effect, a.other_dx, a.lab_pe_text, a.medication_list, " +
+    "a.adr_dechallange, a.adr_rechallenge, a.adr_continue_rechallenge, a.adr_norechallenge, a.has_adr_history, " +
+    "a.dx_doctor_name, a.dx_doctor_position, a.entry_officer_name, a.entry_officer_position, " +
+    "pt.adr_product_type_name, se.adr_seriousness_name, oc.adr_outcome_name, po.adr_possibility_name, rt.adr_report_type_name, " +
+    "ca.adr_cause_name, dt.adr_dechallenge_type_name, rct.adr_rechallenge_type_name, " +
+    "(SELECT t.opd_allergy_type_name FROM opd_allergy x JOIN opd_allergy_type t ON t.opd_allergy_type_id=x.opd_allergy_type_id " +
+    "  WHERE x.hn=a.hn AND ABS(DATEDIFF(x.report_date, a.report_date))<=60 ORDER BY ABS(DATEDIFF(x.report_date, a.report_date)) LIMIT 1) AS allergy_type " +
+    "FROM patient_adr a LEFT JOIN patient p ON p.hn=a.hn " +
+    "LEFT JOIN adr_product_type pt ON pt.adr_product_type_id=a.adr_product_type_id " +
+    "LEFT JOIN adr_seriousness se ON se.adr_seriousness_id=a.adr_seriousness_id " +
+    "LEFT JOIN adr_outcome oc ON oc.adr_outcome_id=a.adr_outcome_id " +
+    "LEFT JOIN adr_possibility po ON po.adr_possibility_id=a.adr_possibility_id " +
+    "LEFT JOIN adr_report_type rt ON rt.adr_report_type_id=a.adr_report_type_id " +
+    "LEFT JOIN adr_cause ca ON ca.adr_cause_id=a.adr_cause_id " +
+    "LEFT JOIN adr_dechallenge_type dt ON dt.adr_dechallenge_type_id=a.adr_dechallenge_type_id " +
+    "LEFT JOIN adr_rechallenge_type rct ON rct.adr_rechallenge_type_id=a.adr_rechallenge_type_id " +
+    "WHERE a.report_date>='$from' ORDER BY a.report_date DESC, a.patient_adr_id DESC LIMIT 500")
+  $meds = @{}
+  if ($rows.Count) {
+    $ids = ($rows | ForEach-Object { [HxDb]::Digits($_['patient_adr_id']) } | Where-Object { $_ }) -join ','
+    foreach ($m in (DbQuery ("SELECT m.patient_adr_id, t.adr_medication_type_name, m.medication_name, m.medication_begin_date, m.medication_end_date, m.medication_icd, m.medication_idr " +
+        "FROM patient_adr_medication m LEFT JOIN adr_medication_type t ON t.adr_medication_type_id=m.adr_medication_type_id WHERE m.patient_adr_id IN ($ids) ORDER BY m.patient_adr_medication_id"))) {
+      $k = $m['patient_adr_id']
+      if (-not $meds.ContainsKey($k)) { $meds[$k] = New-Object System.Collections.ArrayList }
+      [void]$meds[$k].Add([ordered]@{ role = $m['adr_medication_type_name']; name = $m['medication_name']; begin = $m['medication_begin_date']
+        end = $m['medication_end_date']; indication = $m['medication_icd']; usage = $m['medication_idr'] })
+    }
+  }
+  $items = @($rows | ForEach-Object {
+    [ordered]@{ id = $_['patient_adr_id']; hn = $_['hn']; name = $_['ptname'].Trim(); dept = $_['department']; an = $_['an']
+      reportDate = $_['report_date']; onsetDate = $_['adverse_effect_date']; effect = $_['adverse_effect']; otherDx = $_['other_dx']
+      labPe = $_['lab_pe_text']; drugs = $_['medication_list']; productType = $_['adr_product_type_name']; seriousness = $_['adr_seriousness_name']
+      outcome = $_['adr_outcome_name']; possibility = $_['adr_possibility_name']; reportType = $_['adr_report_type_name']; cause = $_['adr_cause_name']
+      dechallenge = $_['adr_dechallange']; dechallengeType = $_['adr_dechallenge_type_name']; rechallenge = $_['adr_rechallenge']
+      rechallengeType = $_['adr_rechallenge_type_name']; continueRechallenge = $_['adr_continue_rechallenge']; noRechallenge = $_['adr_norechallenge']
+      hasHistory = $_['has_adr_history']; doctor = $_['dx_doctor_name']; doctorPosition = $_['dx_doctor_position']
+      officer = $_['entry_officer_name']; officerPosition = $_['entry_officer_position']; allergyType = $_['allergy_type']
+      meds = @(if ($meds.ContainsKey($_['patient_adr_id'])) { $meds[$_['patient_adr_id']] }) }
+  })
+  [ordered]@{ ok = $true; items = $items }
+}
+
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -207,6 +271,12 @@ function ApptFromDb($hn) {
 }
 
 function DbEndpoint($path) {
+  # endpoint ที่ไม่ใช้ HN
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*') {
+    try { $res = if ($path -like '/db/denom*') { DbDenom } else { DbAdr $path } }
+    catch { $res = [ordered]@{ ok = $false; error = "$_" } }
+    return [HxDb]::Json($res)
+  }
   $hn = $null
   if ($path -match '[?&]hn=([^&]*)') { $hn = [HxDb]::Digits([Uri]::UnescapeDataString($Matches[1])) }
   try {

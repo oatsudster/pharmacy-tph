@@ -5,7 +5,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://admin-error-classify.oatsudster.workers.dev http://127.0.0.1:8765; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +17,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/admin-gate.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/hosxp-db.js"></script>
 <script src="lib/admin-error-categories.js"></script>
 <style>
 
@@ -4244,11 +4245,56 @@ function renderHosXPKPI(dept) {
     const sStr=rate===null?'<span class="kpi-na">—</span>':rate<=std?'<span class="kpi-ok">✅ ผ่าน</span>':'<span class="kpi-fail">❌ เกินมาตรฐาน</span>';
     return '<tr data-key="'+escHtml(dk)+'"><td style="white-space:nowrap;font-weight:600">'+lbl+'</td>'+
       '<td style="text-align:center;font-size:18px;font-weight:700">'+meN+'</td>'+
-      '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')"></td>'+
+      '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')">'+denomDbHint(dk, denom, std)+'</td>'+
       '<td style="text-align:center;font-weight:700;font-size:17px" id="rate-'+escHtml(dk)+'">'+rStr+'</td>'+
       '<td style="text-align:center" id="status-'+escHtml(dk)+'">'+sStr+'</td></tr>';
   }).join('');
 }
+
+// ── ตัวหารจากฐานข้อมูล HOSxP (เฉพาะเครื่องที่มี HOSxP Bridge) ──
+// OPD = จำนวน visit ผู้ป่วยนอกทั้งเดือน, IPD = วันนอนของผู้ป่วยที่จำหน่ายในเดือนนั้น (นับแบบเดียวกับที่กรอกมือมาตลอด)
+// เติมให้เองเฉพาะเดือนที่ยังว่าง และเดือนที่ระบบเคยเติมให้แล้วยังไม่มีใครแก้ (เดือนปัจจุบันตัวเลขขยับทุกวัน)
+// เดือนที่กรอกเองแล้วตัวเลขไม่ตรง HOSxP จะไม่ทับ แสดงค่า HOSxP ไว้ให้กดใช้แทน
+let hosxpDenomDb = {};
+function denomDbHint(dk, denom, std) {
+  const v = hosxpDenomDb[dk];
+  if (!v) return '';
+  if (+denom === v) return '<div style="font-size:12px;color:var(--text-light)">🗄 ตรงกับ HOSxP</div>';
+  return '<div style="font-size:12px"><button type="button" class="btn" style="font-size:12px;padding:2px 8px" title="ใช้ตัวเลขจากฐานข้อมูล HOSxP แล้วกดบันทึก"' +
+    ' onclick="useDenomDb(this,'+escHtml(JSON.stringify(dk))+','+std+')">🗄 HOSxP: '+v.toLocaleString('th-TH')+'</button></div>';
+}
+function useDenomDb(btn, dk, std) {
+  const inp = btn.closest('td').querySelector('.denom-input');
+  inp.value = hosxpDenomDb[dk];
+  previewKPIRate(inp, dk, std);
+}
+async function syncDenomFromHosxp() {
+  if (!window.tphHosxp) return;
+  const r = await tphHosxp.denom();
+  if (!r) return;
+  let auto = {};
+  try { auto = JSON.parse(localStorage.getItem('hosxp_denom_auto') || '{}'); } catch (e) {}
+  let changed = 0;
+  Object.entries(r.months || {}).forEach(([m, v]) => {
+    [['OPD', v.opd], ['IPD', v.ipd]].forEach(([dept, n]) => {
+      if (!(n > 0)) return;
+      const k = m + '_' + dept;
+      hosxpDenomDb[k] = n;
+      if (!hosxpDenom[k] || (auto[k] && hosxpDenom[k] === auto[k] && hosxpDenom[k] !== n)) {
+        hosxpDenom[k] = n; auto[k] = n; changed++;
+      }
+    });
+  });
+  try { localStorage.setItem('hosxp_denom_auto', JSON.stringify(auto)); } catch (e) {}
+  if (changed) {
+    saveHosXPDenomStorage();
+    if (window._fbSaveDenom && window._denomFbLoaded) _fbSaveDenom();
+    showToast('🗄 เติมจำนวนผู้ป่วยนอก/วันนอนจาก HOSxP ' + changed + ' เดือน');
+  }
+  ['OPD', 'IPD'].forEach(d => { renderHosXPKPI(d); renderHosXPDashboard(d); });
+}
+// ปกติเริ่มจาก snapshot ของ Firebase (fbStartListeners) — ถ้า Firebase ใช้ไม่ได้ เติมในเครื่องนี้อย่างเดียวหลัง 15 วินาที
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (!window._denomFbLoaded) syncDenomFromHosxp(); }, 15000));
 
 function previewKPIRate(inp,dk,std){
   const parts=dk.split('_'),m=parts[0],dept=parts.slice(1).join('_');
@@ -4779,6 +4825,8 @@ function renderOverview() {
         hosxpDenom = Object.assign({}, fbDenom, hosxpDenom);
         localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
       }
+      // ได้ตัวหารที่บันทึกไว้ใน Firebase แล้ว ค่อยเติมจาก HOSxP (ไม่งั้นจะเขียนทับค่าที่กรอกเองบนเครื่องอื่น)
+      if (!window._denomFbLoaded) { window._denomFbLoaded = true; syncDenomFromHosxp(); }
     });
 
     db.collection(COL).doc('hosxp_ai_cat').onSnapshot(snap => {
