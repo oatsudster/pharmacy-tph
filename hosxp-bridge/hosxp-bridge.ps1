@@ -19,6 +19,8 @@
 #   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
 #   /db/denom       — ตัวหาร ME รายเดือน 24 เดือนล่าสุด: opd = จำนวน visit (ovst), ipd = วันนอน (an_stat.admdate ตามเดือนที่จำหน่าย)
 #   /db/me?from=YYYY-MM-DD  — รายงาน Medication error (Pharmacy > Medication error = med_error) OPD/IPD พร้อมชื่อยา/แพทย์/ผู้บันทึก
+#   /db/nightmeds?date=YYYY-MM-DD[&from=19:30&to=08:00] — ยาที่สั่งช่วงเวรบ่าย-ดึก (date-1 from → date to) ทั้ง OPD/ER และ AN
+#                     พร้อมแผนกที่สั่ง เวลา admit — หน้า night-meds.html คัดยาที่ต้องคืนรถยาเอง
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
@@ -229,6 +231,29 @@ function DbMe($path) {
   })
   [ordered]@{ ok = $true; items = $items }
 }
+function DbNightMeds($path) {
+  # ใช้ rxdate IN (2 วัน) ให้ใช้ index ix_rxdate ได้ (ห้าม TIMESTAMP(rxdate,rxtime) ตรงๆ — สแกนทั้งตาราง)
+  if ($path -notmatch '[?&]date=(\d{4}-\d{2}-\d{2})') { throw 'ต้องระบุ date=YYYY-MM-DD' }
+  $d = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null)
+  $from = '19:30:00'; $to = '08:00:00'
+  if ($path -match '[?&]from=(\d{1,2}):(\d{2})') { $from = '{0:00}:{1}:00' -f [int]$Matches[1], $Matches[2] }
+  if ($path -match '[?&]to=(\d{1,2}):(\d{2})') { $to = '{0:00}:{1}:00' -f [int]$Matches[1], $Matches[2] }
+  $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
+  $rows = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, " +
+    "o.dep_code, k.department, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, " +
+    "DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward " +
+    "FROM opitemrece o JOIN drugitems d ON d.icode=o.icode LEFT JOIN patient p ON p.hn=o.hn " +
+    "LEFT JOIN kskdepartment k ON k.depcode=o.dep_code LEFT JOIN ipt i ON i.an=o.an LEFT JOIN ward w ON w.ward=i.ward " +
+    "WHERE o.rxdate IN ('$d0','$d1') AND ((o.rxdate='$d0' AND o.rxtime>='$from') OR (o.rxdate='$d1' AND o.rxtime<'$to')) " +
+    "ORDER BY o.rxdate, o.rxtime, o.hn, o.item_no LIMIT 5000")
+  $items = @($rows | ForEach-Object {
+    [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['rxdate']; time = $_['rxtime']
+      dep = $_['dep_code']; depName = $_['department']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
+      units = $_['units']; form = $_['dosageform']; qty = $_['qty']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
+  })
+  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items }
+}
 function DbAdr($path) {
   $from = '2025-01-01'
   if ($path -match '[?&]from=(\d{4}-\d{2}-\d{2})') { $from = $Matches[1] }
@@ -400,9 +425,10 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
+      elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
       elseif ($path -like '/db/dmroster*') { DbDmRoster } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
