@@ -10,7 +10,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js"></script>
+<script src="lib/hosxp-db.js?v=20261009"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -36,6 +36,10 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto 
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-gold { background: var(--gold); color: #fff; border-color: var(--gold); }
 .btn:disabled { opacity: .5; cursor: default; }
+.hn-row { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.hn-row label { font-size: 13px; color: var(--text-mid); display: block; margin-bottom: 4px; }
+.hn-row input { font: inherit; font-size: 18px; padding: 7px 12px; border: 2px solid var(--gold); border-radius: 8px; width: 180px; }
+.hn-msg { font-size: 14px; align-self: center; }
 .window-note { font-size: 13px; color: var(--text-mid); margin-top: 8px; }
 .status { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--gold-light); margin-bottom: 14px; display: none; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
@@ -106,8 +110,16 @@ td.why { font-size: 12px; color: var(--text-light); }
       <div><label for="f-from">ตั้งแต่ (เมื่อวาน)</label><input type="time" id="f-from" value="19:30"></div>
       <div><label for="f-to">ถึง (วันนี้)</label><input type="time" id="f-to" value="08:00"></div>
       <button class="btn btn-primary" id="btn-load" onclick="load()">🗄 ดึงจาก HOSxP</button>
-      <button class="btn btn-gold" id="btn-sticker" onclick="printStickers()" disabled>🖨 พิมพ์สติกเกอร์ 9×6 ซม.</button>
+      <button class="btn btn-gold" id="btn-sticker" onclick="printStickers()" disabled>🖨 พิมพ์สติกเกอร์ทุกคน (9×6 ซม.)</button>
       <button class="btn" id="btn-sum" onclick="printSummary()" disabled>🖨 พิมพ์สรุปรวม (A4)</button>
+    </div>
+    <div class="hn-row">
+      <label for="f-hn">🔎 พิมพ์ทีละใบ: ใส่/สแกน HN จากใบสั่งยา แล้วกด Enter → พิมพ์สติกเกอร์ของคนนั้นทันที</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="f-hn" inputmode="numeric" placeholder="HN" autocomplete="off">
+        <button class="btn btn-gold" onclick="printByHn()">🖨 พิมพ์ HN นี้</button>
+        <span id="hn-msg" class="hn-msg"></span>
+      </div>
     </div>
     <div class="window-note" id="window-note"></div>
     <div class="opts">
@@ -305,8 +317,18 @@ function setView(v, btn) {
 
 // ── พิมพ์ ──
 const PER_STICKER = 10; // บรรทัดยาต่อดวง (ตัวอักษร 8pt บนสติกเกอร์สูง 6 ซม.)
-function printStickers() {
-  const pts = patients().filter(p => !NO_STICKER[p.key]).map(p => Object.assign(p, { rows: sumItems(p.items) })).filter(p => p.rows.length);
+function printByHn() {
+  const el = document.getElementById('f-hn'), msg = document.getElementById('hn-msg');
+  const hn = el.value.replace(/\D/g, '');
+  if (!hn) return;
+  const keys = patients().filter(p => String(p.hn || '').replace(/^0+/, '') === hn.replace(/^0+/, '') && sumItems(p.items).length).map(p => p.key);
+  if (!DATA) msg.textContent = '⚠️ ยังไม่ได้ดึงข้อมูลจาก HOSxP';
+  else if (!keys.length) msg.textContent = `⚠️ ไม่พบยาที่ต้องคืนของ HN ${hn} ในช่วงเวลานี้`;
+  else { msg.textContent = `✅ พิมพ์ HN ${hn} (${keys.length} ใบสั่ง)`; printStickers(keys); }
+  el.value = ''; el.focus();
+}
+function printStickers(onlyKeys) {
+  const pts = patients().filter(p => onlyKeys ? onlyKeys.includes(p.key) : !NO_STICKER[p.key]).map(p => Object.assign(p, { rows: sumItems(p.items) })).filter(p => p.rows.length);
   if (!pts.length) return;
   const html = pts.map(p => {
     const pages = [];
@@ -339,6 +361,7 @@ function doPrint(html, pageCss) {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('f-date').value = todayISO();
   ['f-date', 'f-from', 'f-to'].forEach(id => document.getElementById(id).addEventListener('change', load));
+  document.getElementById('f-hn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); printByHn(); } });
   load();
 });
 </script>
