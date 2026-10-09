@@ -124,7 +124,6 @@ td.why { font-size: 12px; color: var(--text-light); }
     <div class="window-note" id="window-note"></div>
     <div class="opts">
       <label><input type="checkbox" id="opt-vaccine" onchange="reclassify()"> รวมวัคซีน/เซรุ่ม</label>
-      <label><input type="checkbox" id="opt-pharm" onchange="reclassify()"> รวมรายการที่ห้องจ่ายยาจ่ายเอง</label>
     </div>
   </div>
 
@@ -152,9 +151,10 @@ td.why { font-size: 12px; color: var(--text-light); }
 <script>
 // ── กติกาคัดยาที่ต้องคืนรถยา (ตามที่เภสัชกำหนด) ──
 // เอา: ยาทุกชนิด ยาเม็ด ยาน้ำ ยาหยอดตา ยาฉีด น้ำเกลือขวด 1000 ml ที่สั่งใน ER/หอผู้ป่วยช่วงเวร
-// ไม่เอา: ยาพ่น (NB/MDI/inhaler), น้ำเกลือขวด 100 ml, ยาเดิมของผู้ป่วย, ของที่ไม่ใช่ยา, รายการที่ห้องจ่ายยาจ่ายเอง (030),
-//         ยาของผู้ป่วยในเดิม (ไม่ได้ admit ในเวรนี้) — ยาแรกรับที่สั่งจาก ER นับเสมอ
-const PHARMACY_DEP = '030', ER_DEP = '002';
+// ไม่เอา: ยาพ่น (NB/MDI/inhaler), น้ำเกลือขวด 100 ml, ยาเดิมของผู้ป่วย, ของที่ไม่ใช่ยา,
+//         ยาของผู้ป่วยในเดิม (ไม่ได้ admit ในเวรนี้ — order หอผู้ป่วยช่วงหัวค่ำที่ห้องจ่ายยายังเปิด) — ยาแรกรับที่สั่งจาก ER นับเสมอ
+// รายการ OPD ที่คีย์ในนามห้องจ่ายยา (030) ตอนกลางดึกก็นับ เพราะห้องจ่ายยาปิดแล้ว ยามาจากรถยา
+const ER_DEP = '002';
 const RE_INHALE = /\bNB\b|\bMDI\b|inhaler|nebul|BERODUAL|evohaler|accuhaler|turbuhaler/i;
 const RE_SMALL_NSS = /\b(50|100)\s*(ซีซี|ml|cc)/i;
 const RE_NSS = /\bNSS\b|saline|sodium\s*chloride|NaCl/i;
@@ -187,7 +187,6 @@ function classify(it, win) {
   const txt = [it.drug, it.form, it.units].join(' ');
   if (!it.form) return [false, 'ไม่ใช่ยา (เช่น ขวดยา)'];
   if (/^ยาเดิม/.test(String(it.drug || '').trim())) return [false, 'ยาเดิมของผู้ป่วย'];
-  if (it.dep === PHARMACY_DEP && !document.getElementById('opt-pharm').checked) return [false, 'ห้องจ่ายยาจ่ายเอง'];
   if (it.an && it.dep !== ER_DEP) {
     const reg = it.regdate && it.regtime ? `${it.regdate} ${it.regtime}` : '';
     if (!reg || reg < win.from || reg >= win.to) return [false, 'ผู้ป่วยในเดิม (ไม่ใช่ยาแรกรับ)'];
