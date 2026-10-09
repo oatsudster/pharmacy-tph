@@ -262,6 +262,9 @@ tr.missing-symptom:hover td { background: #fef3c7; }
   .modal-box { padding: 16px; width: 100%; }
   table { font-size: 11px; }
 }
+/* รายงาน ADR ดึงจาก HOSxP อัตโนมัติรายเดือน — ฟอร์มเพิ่มเอง/นำเข้า Excel ซ่อนไว้ เปิดด้วยปุ่ม ⚙️ ลงข้อมูลเอง */
+body:not(.hx-manual) .hx-manual-only { display: none !important; }
+body.hx-manual .hx-manual-toggle { background: #fef3c7; color: #78350f; }
 </style>
 <style id="suite-design">
 /* Shared visual language, kept inline so each page remains self-contained. */
@@ -444,10 +447,11 @@ const DashUX = {
   <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
   <div class="topbar-btns">
     <button class="tbtn" id="adr-db-btn" onclick="syncAdrFromHosxp(true)" title="ดึงรายงาน ADR จาก HOSxP (Pharmacy › Adverse drug reactions) พร้อมรายละเอียด — เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge">🗄 ดึงจาก HOSxP</button>
-    <div class="tbtn"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
+    <div class="tbtn hx-manual-only"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <div class="tbtn"><label>📂 Import JSON<input type="file" accept=".json" onchange="importJSON(this)"></label></div>
+    <button class="tbtn hx-manual-toggle" onclick="toggleHxManual()" title="รายงาน ADR ดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการเพิ่ม/นำเข้าเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
   <span class="sync-badge" id="sync-badge">⏳ กำลังเชื่อมต่อ...</span>
 </div>
@@ -463,7 +467,7 @@ const DashUX = {
 <!-- LAYOUT -->
 <div class="page-wrap">
   <!-- SIDEBAR FORM -->
-  <div class="sidebar-form">
+  <div class="sidebar-form hx-manual-only">
     <div class="form-title" id="form-title">➕ เพิ่มรายการ ADR</div>
     <input type="hidden" id="edit-id">
 
@@ -762,6 +766,11 @@ let editingId = null;
 let charts = {};
 
 // ═══ HELPERS ════════════════════════════════════════════════════
+function toggleHxManual() {
+  const on = document.body.classList.toggle('hx-manual');
+  try { localStorage.setItem('hx_manual_mode_adr', on ? '1' : ''); } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', () => { try { if (localStorage.getItem('hx_manual_mode_adr')) document.body.classList.add('hx-manual'); } catch (e) {} });
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function today() { return new Date().toISOString().slice(0,10); }
 // ── Thai Date Helpers (พ.ศ. DD/MM/YY) ────────
@@ -1050,7 +1059,8 @@ async function importHosXP(input) {
 }
 
 // ═══ ดึงจากฐานข้อมูล HOSxP (Pharmacy > Adverse drug reactions) ═══
-// ใช้ได้เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge — ดึงรายงานตั้งแต่ต้นปีงบ 2569 (1 ต.ค. 68)
+// ปุ่ม "🗄 ดึงจาก HOSxP" (เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge) — ดึงรายงานตั้งแต่ต้นปีงบ 2569 (1 ต.ค. 68) ทันที
+// ปกติไม่ต้องกด: hosxp-sync/hosxp_monthly_sync.py ดึงของเดือนก่อน + ให้ AI ระบุอาการให้เองทุกวันที่ 1
 // รายการที่มีอยู่แล้ว (HN + วันที่รายงานตรงกัน หรือเคยดึงมาแล้ว) แนบรายละเอียดจาก HOSxP เพิ่ม และเติมเฉพาะช่องที่ยังว่าง
 // ไม่ทับสิ่งที่เภสัชแก้ในหน้านี้ — ลักษณะอาการจับคู่กับรายการอาการเฉพาะที่ตรงชัดเจน ที่เหลือให้ปุ่ม AI ระบุ
 const ADR_DB_FROM = '2025-10-01';
@@ -1418,8 +1428,7 @@ function renderTable(fRecs) {
         } else if (records.length) {
           window.fbSaveADR();
         }
-        // ได้ข้อมูลจาก Firebase ครบแล้ว ค่อยดึงรายการใหม่จาก HOSxP (ไม่งั้นจะเขียนทับรายการที่เพิ่งบันทึกบนเครื่องอื่น)
-        if (!window._adrFbLoaded) { window._adrFbLoaded = true; syncAdrFromHosxp(false); }
+        window._adrFbLoaded = true;
       }, err => {
         console.warn('fbSnapshot:', err.message);
         setBadge('⚠️ ออฟไลน์', false);

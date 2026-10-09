@@ -261,6 +261,10 @@
   .ocr-thumb img { width:100%; height:100%; object-fit:cover; }
   .ocr-thumb .remove-btn { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
   .ocr-thumb .status-badge { position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; font-size:9px; text-align:center; border-radius:3px; padding:1px 3px; }
+/* คนไข้/visit ดึงจาก HOSxP แล้ว (lib/dm-hosxp.js) — หน้าบันทึกเองซ่อนไว้ เปิดด้วยปุ่ม ⚙️ ลงข้อมูลเอง */
+body:not(.hx-manual) .hx-manual-only { display: none !important; }
+body.hx-manual .hx-manual-toggle { background: #fef3c7; color: #78350f; }
+.hx-manual-toggle { opacity: .8; }
 </style>
 <style id="suite-design">
 /* Shared visual language, kept inline so each page remains self-contained. */
@@ -445,10 +449,11 @@ const DashUX = {
     <div class="sub">รพ.ถ้ำพรรณา · คลินิกทุกวันศุกร์สุดท้ายของเดือน</div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('entry')">📝 บันทึก</button>
+    <button class="nav-tab hx-manual-only" id="nav-entry" onclick="showPage('entry')">📝 บันทึก</button>
     <button class="nav-tab" onclick="showPage('patients')">👥 คนไข้</button>
-    <button class="nav-tab" onclick="showPage('report')">📊 รายงาน</button>
+    <button class="nav-tab active" id="nav-report" onclick="showPage('report')">📊 รายงาน</button>
     <button class="nav-tab" onclick="showPage('screen')">🔎 คัดกรองเข้าคลินิก</button>
+    <button class="nav-tab hx-manual-toggle" onclick="toggleHxManual()" title="ข้อมูลคนไข้/visit ดึงจาก HOSxP อัตโนมัติ — เปิดเมื่อต้องการบันทึกเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
   <button class="sync-dot" onclick="openSyncModal()" id="sync-status-btn" title="ตั้งค่า Firebase Sync">⚫ Offline</button>
 </div>
@@ -487,7 +492,7 @@ const DashUX = {
 <div class="container">
 
   <!-- =========== PAGE: ENTRY =========== -->
-  <div id="page-entry" class="page active">
+  <div id="page-entry" class="page">
 
     <!-- Patient Select -->
     <div class="card">
@@ -673,7 +678,7 @@ const DashUX = {
   </div><!-- end page-entry -->
 
   <!-- =========== PAGE: REPORT (ภาพรวม + สรุปผล + วิชาการ) =========== -->
-  <div id="page-report" class="page">
+  <div id="page-report" class="page active">
     <div class="rep-bar"><a href="#page-infographic">สรุปผลลัพธ์ (Infographic)</a><a href="#page-dashboard">ภาพรวมคลินิก</a><a href="#dash-lab-container">แนวโน้มรายบุคคล</a><a href="#page-summary">ผลลัพธ์และค่ายา</a><a href="#page-research">รายงานวิชาการ</a></div>
   <!-- =========== INFOGRAPHIC (lib/dm-infographic.js) =========== -->
   <div id="page-infographic" class="rep-sec"></div>
@@ -1275,6 +1280,7 @@ async function clearAllVisitDocs() {
 
 function _afterChange() {
   renderDashboard();
+  if (document.getElementById('page-report').classList.contains('active')) { renderSummary(); renderResearch(); }
   if (currentHistPatient) renderHistory(currentHistPatient);
 }
 
@@ -1433,7 +1439,18 @@ document.addEventListener('DOMContentLoaded', () => {
   addDrugRow();
   renderDashboard();
   renderPatientsPage();
+  let manual = false;
+  try { manual = !!localStorage.getItem('hx_manual_mode_dm'); } catch (e) {}
+  if (manual) { document.body.classList.add('hx-manual'); showPage('entry', document.getElementById('nav-entry')); }
+  else showPage('report', document.getElementById('nav-report'));
 });
+
+function toggleHxManual() {
+  const on = document.body.classList.toggle('hx-manual');
+  try { localStorage.setItem('hx_manual_mode_dm', on ? '1' : ''); } catch (e) {}
+  if (on) showPage('entry', document.getElementById('nav-entry'));
+  else if (document.getElementById('page-entry').classList.contains('active')) showPage('report', document.getElementById('nav-report'));
+}
 
 function rebuildAllStrips() {
   buildPatientStrip('patient-strip', selectPatient);

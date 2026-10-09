@@ -596,6 +596,11 @@
     .filter-bar .form-group { min-width: 0; flex: 1 1 140px; }
   }
 
+  /* ME OPD/IPD + ตัวหาร ดึงจาก HOSxP อัตโนมัติรายเดือนแล้ว — ส่วนลงข้อมูลเองซ่อนไว้ เปิดได้ด้วยปุ่ม ⚙️ ลงข้อมูลเอง */
+  body:not(.hx-manual) .hx-manual-only { display: none !important; }
+  body:not(.hx-manual) .kpi-month-table .denom-input { pointer-events: none; border-color: transparent; background: transparent; }
+  body.hx-manual .hx-manual-toggle { background: #fef3c7; }
+  .hx-manual-toggle { margin-left: auto; opacity: .75; }
 </style>
 <style id="suite-design">
 /* Shared visual language, kept inline so each page remains self-contained. */
@@ -915,8 +920,9 @@ const DashUX = {
     <button class="tab-btn active" id="tab-opd-dash"    onclick="showHosXPTab('opd','dash',this)">📊 Dashboard</button>
     <button class="tab-btn"        id="tab-opd-kpi"     onclick="showHosXPTab('opd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-opd-records" onclick="showHosXPTab('opd','records',this)">📋 รายการ</button>
-    <button class="tab-btn"        id="tab-opd-upload"  onclick="showHosXPTab('opd','upload',this)">📤 นำเข้าข้อมูล</button>
-    <button class="tab-btn"        id="tab-opd-manual"  onclick="showHosXPTab('opd','manual',this)">✏️ บันทึกเอง</button>
+    <button class="tab-btn hx-manual-only" id="tab-opd-upload"  onclick="showHosXPTab('opd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn hx-manual-only" id="tab-opd-manual"  onclick="showHosXPTab('opd','manual',this)">✏️ บันทึกเอง</button>
+    <button class="tab-btn hx-manual-toggle" onclick="toggleHxManual()" title="ข้อมูลดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการนำเข้า/บันทึกเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
 
   <!-- OPD DASHBOARD -->
@@ -976,8 +982,8 @@ const DashUX = {
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-          <div class="card-title" style="margin-bottom:0">📅 กรอกจำนวนใบสั่งยารายเดือนเพื่อคำนวณอัตรา ME</div>
-          <button class="btn btn-primary" style="font-size:16px" onclick="saveHosXPDenom('OPD')">💾 บันทึก</button>
+          <div class="card-title" style="margin-bottom:0">📅 จำนวนใบสั่งยารายเดือน (ดึงจาก HOSxP อัตโนมัติทุกวันที่ 1)</div>
+          <button class="btn btn-primary hx-manual-only" style="font-size:16px" onclick="saveHosXPDenom('OPD')">💾 บันทึก</button>
         </div>
         <div class="table-wrap">
           <table class="kpi-month-table">
@@ -1249,9 +1255,10 @@ const DashUX = {
     <button class="tab-btn active" id="tab-ipd-dash"    onclick="showHosXPTab('ipd','dash',this)">📊 Dashboard</button>
     <button class="tab-btn"        id="tab-ipd-kpi"     onclick="showHosXPTab('ipd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-ipd-records" onclick="showHosXPTab('ipd','records',this)">📋 รายการ</button>
-    <button class="tab-btn"        id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">📤 นำเข้าข้อมูล</button>
-    <button class="tab-btn"        id="tab-ipd-manual"  onclick="showHosXPTab('ipd','manual',this)">✏️ บันทึกเอง</button>
+    <button class="tab-btn hx-manual-only" id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn hx-manual-only" id="tab-ipd-manual"  onclick="showHosXPTab('ipd','manual',this)">✏️ บันทึกเอง</button>
     <button class="tab-btn"        id="tab-ipd-adminrpt" onclick="showHosXPTab('ipd','adminrpt',this)">🧾 Admin Error รายเดือน</button>
+    <button class="tab-btn hx-manual-toggle" onclick="toggleHxManual()" title="ข้อมูลดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการนำเข้า/บันทึกเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
 
   <!-- IPD DASHBOARD -->
@@ -1311,8 +1318,8 @@ const DashUX = {
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-          <div class="card-title" style="margin-bottom:0">📅 กรอกจำนวนวันนอนรายเดือนเพื่อคำนวณอัตรา ME</div>
-          <button class="btn btn-primary" style="font-size:16px" onclick="saveHosXPDenom('IPD')">💾 บันทึก</button>
+          <div class="card-title" style="margin-bottom:0">📅 จำนวนวันนอนรายเดือน (ดึงจาก HOSxP อัตโนมัติทุกวันที่ 1) เพื่อคำนวณอัตรา ME</div>
+          <button class="btn btn-primary hx-manual-only" style="font-size:16px" onclick="saveHosXPDenom('IPD')">💾 บันทึก</button>
         </div>
         <div class="table-wrap">
           <table class="kpi-month-table">
@@ -3393,6 +3400,8 @@ function deleteManualME(id, dept) {
 }
 
 let hosxpRecords = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
+// เดือนตั้งแต่นี้ ME/ตัวหาร มาจากตัวดึงรายเดือน (hosxp-sync/hosxp_monthly_sync.py)
+const HX_AUTO_FROM = '2026-10';
 function saveHosXP() { localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords)); }
 
 // ======= SECTION NAVIGATION =======
@@ -3420,6 +3429,16 @@ function showSection(name) {
   if (name === 'overview') { populateOverviewFilter(); renderOverview(); }
   updateLandingCounts();
 }
+
+function toggleHxManual() {
+  const on = document.body.classList.toggle('hx-manual');
+  try { localStorage.setItem('hx_manual_mode', on ? '1' : ''); } catch (e) {}
+  if (!on) ['opd', 'ipd'].forEach(d => {
+    const act = document.querySelector('#section-' + d + ' .tab-btn.hx-manual-only.active');
+    if (act) showHosXPTab(d, 'dash', document.getElementById('tab-' + d + '-dash'));
+  });
+}
+document.addEventListener('DOMContentLoaded', () => { try { if (localStorage.getItem('hx_manual_mode')) document.body.classList.add('hx-manual'); } catch (e) {} });
 
 function showHosXPTab(dept, tab, btn) {
   if (tab === 'manual') {
@@ -3631,7 +3650,8 @@ function parseHosXPFile(file, hintDept) {
 }
 
 // ======= ME จากฐานข้อมูล HOSxP (med_error) =======
-// ดึงรายงาน ME OPD/IPD ตั้งแต่ต้นปีงบ 2569 ทุกครั้งที่เปิดหน้า (เฉพาะเครื่องที่มี HOSxP Bridge)
+// ปุ่ม "🗄 ดึงจาก HOSxP" — ดึงรายงาน ME OPD/IPD ตั้งแต่ต้นปีงบ 2569 ทันที (เฉพาะเครื่องที่มี HOSxP Bridge)
+// ปกติไม่ต้องกด: hosxp-sync/hosxp_monthly_sync.py ดึงของเดือนก่อนให้เองทุกวันที่ 1 (Task Scheduler บนเครื่อง รพ.)
 // รายการที่มีอยู่แล้ว (นำเข้าจาก Excel / บันทึกเอง / ดึงไปแล้ว) ไม่ลงซ้ำ — แค่จับคู่ไว้แล้วเติมช่องที่ยังว่าง ไม่เขียนทับที่แก้เอง
 const HX_ME_FROM = '2025-10-01';
 async function syncMeFromHosxp(manual) {
@@ -3675,8 +3695,6 @@ async function syncMeFromHosxp(manual) {
   if (added) showToast('🗄 เพิ่ม ME จาก HOSxP ' + added + ' รายการ (OPD ' + cnt.OPD + ', IPD ' + cnt.IPD + ')');
   else if (manual) showToast('🗄 ME จาก HOSxP ' + (r.items || []).length + ' รายการ มีในระบบครบแล้ว' + (filled ? ' (เติมข้อมูล ' + filled + ' รายการ)' : ''));
 }
-// ปกติเริ่มหลังได้ hosxp_records จาก Firebase (fbStartListeners) — ถ้า Firebase ใช้ไม่ได้ ดึงในเครื่องนี้อย่างเดียวหลัง 15 วินาที
-document.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (!window._hxRecFbLoaded) { window._hxRecFbLoaded = true; syncMeFromHosxp(); } }, 15000));
 
 // ======= HOSXP STATUS =======
 function updateHosXPStatus() {
@@ -4290,12 +4308,19 @@ function renderHosXPKPI(dept) {
     const lbl=thM[parseInt(mo)-1]+' '+(parseInt(y)+543);
     const meN=allRecs.filter(r=>r.date&&r.date.startsWith(m)).length;
     const dk=m+'_'+dept, denom=hosxpDenom[dk]||'';
-    const rate=denom?((meN/denom)*1000):null;
+    const auto=m>=HX_AUTO_FROM, curYM=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
+    const pending=auto&&m>=curYM;
+    const rate=denom&&!pending?((meN/denom)*1000):null;
     const rStr=rate!==null?rate.toFixed(2):'<span class="kpi-na">—</span>';
     const sStr=rate===null?'<span class="kpi-na">—</span>':rate<=std?'<span class="kpi-ok">✅ ผ่าน</span>':'<span class="kpi-fail">❌ เกินมาตรฐาน</span>';
     return '<tr data-key="'+escHtml(dk)+'"><td style="white-space:nowrap;font-weight:600">'+lbl+'</td>'+
       '<td style="text-align:center;font-size:18px;font-weight:700">'+meN+'</td>'+
-      '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')">'+denomDbHint(dk, denom, std)+'</td>'+
+      (auto
+        ? '<td style="text-align:center">'+(pending
+            ? '<span class="kpi-na" title="ตัวดึงอัตโนมัติจะลงตัวเลขของเดือนนี้ให้วันที่ 1 ของเดือนถัดไป">⏳ ดึงอัตโนมัติสิ้นเดือน</span>'
+            : denom ? '<span style="font-size:17px;font-weight:700">'+(+denom).toLocaleString('th-TH')+'</span> <span title="ดึงจาก HOSxP อัตโนมัติ" style="font-size:12px;color:var(--text-light)">🗄 HOSxP</span>'
+            : '<span class="kpi-na">รอดึงจาก HOSxP</span>')+'</td>'
+        : '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')">'+denomDbHint(dk, denom, std)+'</td>')+
       '<td style="text-align:center;font-weight:700;font-size:17px" id="rate-'+escHtml(dk)+'">'+rStr+'</td>'+
       '<td style="text-align:center" id="status-'+escHtml(dk)+'">'+sStr+'</td></tr>';
   }).join('');
@@ -4303,8 +4328,8 @@ function renderHosXPKPI(dept) {
 
 // ── ตัวหารจากฐานข้อมูล HOSxP (เฉพาะเครื่องที่มี HOSxP Bridge) ──
 // OPD = จำนวน visit ผู้ป่วยนอกทั้งเดือน, IPD = วันนอนของผู้ป่วยที่จำหน่ายในเดือนนั้น (นับแบบเดียวกับที่กรอกมือมาตลอด)
-// เติมให้เองเฉพาะเดือนที่ยังว่าง และเดือนที่ระบบเคยเติมให้แล้วยังไม่มีใครแก้ (เดือนปัจจุบันตัวเลขขยับทุกวัน)
-// เดือนที่กรอกเองแล้วตัวเลขไม่ตรง HOSxP จะไม่ทับ แสดงค่า HOSxP ไว้ให้กดใช้แทน
+// ตั้งแต่ ต.ค. 69 (HX_AUTO_FROM) ตัวดึงรายเดือน (hosxp-sync) เขียนให้ทุกวันที่ 1 — ตารางแสดงอย่างเดียว
+// เดือนก่อนหน้านั้นเป็นตัวเลขที่กรอกเอง ถ้าไม่ตรง HOSxP มีปุ่มค่า HOSxP ให้กดใช้แทน (ต้องเปิดโหมดลงข้อมูลเอง)
 let hosxpDenomDb = {};
 function denomDbHint(dk, denom, std) {
   const v = hosxpDenomDb[dk];
@@ -4318,33 +4343,17 @@ function useDenomDb(btn, dk, std) {
   inp.value = hosxpDenomDb[dk];
   previewKPIRate(inp, dk, std);
 }
+// อ่านตัวเลขจาก HOSxP มาแสดงเป็นปุ่ม "🗄 HOSxP: N" ข้างช่องที่กรอกเองเท่านั้น (ไม่เขียนลง Firebase)
 async function syncDenomFromHosxp() {
   if (!window.tphHosxp) return;
   const r = await tphHosxp.denom();
   if (!r) return;
-  let auto = {};
-  try { auto = JSON.parse(localStorage.getItem('hosxp_denom_auto') || '{}'); } catch (e) {}
-  let changed = 0;
   Object.entries(r.months || {}).forEach(([m, v]) => {
-    [['OPD', v.opd], ['IPD', v.ipd]].forEach(([dept, n]) => {
-      if (!(n > 0)) return;
-      const k = m + '_' + dept;
-      hosxpDenomDb[k] = n;
-      if (!hosxpDenom[k] || (auto[k] && hosxpDenom[k] === auto[k] && hosxpDenom[k] !== n)) {
-        hosxpDenom[k] = n; auto[k] = n; changed++;
-      }
-    });
+    if (v.opd > 0) hosxpDenomDb[m + '_OPD'] = v.opd;
+    if (v.ipd > 0) hosxpDenomDb[m + '_IPD'] = v.ipd;
   });
-  try { localStorage.setItem('hosxp_denom_auto', JSON.stringify(auto)); } catch (e) {}
-  if (changed) {
-    saveHosXPDenomStorage();
-    if (window._fbSaveDenom && window._denomFbLoaded) _fbSaveDenom();
-    showToast('🗄 เติมจำนวนผู้ป่วยนอก/วันนอนจาก HOSxP ' + changed + ' เดือน');
-  }
-  ['OPD', 'IPD'].forEach(d => { renderHosXPKPI(d); renderHosXPDashboard(d); });
+  ['OPD', 'IPD'].forEach(d => renderHosXPKPI(d));
 }
-// ปกติเริ่มจาก snapshot ของ Firebase (fbStartListeners) — ถ้า Firebase ใช้ไม่ได้ เติมในเครื่องนี้อย่างเดียวหลัง 15 วินาที
-document.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (!window._denomFbLoaded) syncDenomFromHosxp(); }, 15000));
 
 function previewKPIRate(inp,dk,std){
   const parts=dk.split('_'),m=parts[0],dept=parts.slice(1).join('_');
@@ -4867,14 +4876,14 @@ function renderOverview() {
           if (typeof renderOverview === 'function') renderOverview();
         }
       }
-      // ได้รายการเดิมจาก Firebase แล้ว ค่อยดึง ME จาก HOSxP (จะได้เช็คซ้ำกับของทุกเครื่อง)
-      if (!window._hxRecFbLoaded) { window._hxRecFbLoaded = true; syncMeFromHosxp(); }
     });
 
     db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
       if (snap.exists) {
         const fbDenom = snap.data().data || {};
         hosxpDenom = Object.assign({}, fbDenom, hosxpDenom);
+        // ตั้งแต่ HX_AUTO_FROM ตัวเลขมาจากตัวดึงรายเดือน — ค่าใน Firebase ถูกเสมอ ไม่ใช้ค่าเก่าที่ค้างในเครื่อง
+        Object.keys(hosxpDenom).forEach(k => { if (k.slice(0, 7) >= HX_AUTO_FROM) { if (fbDenom[k]) hosxpDenom[k] = fbDenom[k]; else delete hosxpDenom[k]; } });
         localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
       }
       // ได้ตัวหารที่บันทึกไว้ใน Firebase แล้ว ค่อยเติมจาก HOSxP (ไม่งั้นจะเขียนทับค่าที่กรอกเองบนเครื่องอื่น)
