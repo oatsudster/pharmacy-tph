@@ -18,6 +18,7 @@
 #   /db/visits?hn=  — ยาของ visit ก่อนวันนี้ 6 visit ล่าสุดที่มียา (ใหม่ → เก่า)
 #   /db/patient?hn= — คำนำหน้า ชื่อ สกุล วันเกิด เพศ
 #   /db/denom       — ตัวหาร ME รายเดือน 24 เดือนล่าสุด: opd = จำนวน visit (ovst), ipd = วันนอน (an_stat.admdate ตามเดือนที่จำหน่าย)
+#   /db/me?from=YYYY-MM-DD  — รายงาน Medication error (Pharmacy > Medication error = med_error) OPD/IPD พร้อมชื่อยา/แพทย์/ผู้บันทึก
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
@@ -207,6 +208,27 @@ function DbDenom {
 
 # รายงาน ADR ของห้องยา พร้อมรายละเอียดที่ต้องกดเข้าไปดูทีละคนใน HOSxP
 # ชนิด Type A/B ไม่มีใน patient_adr — ใช้ของ opd_allergy (ประวัติแพ้ยา) ของคนเดียวกันที่บันทึกใกล้วันรายงานที่สุด (±60 วัน)
+function DbMe($path) {
+  # วันที่ = update_datetime (ตรงกับคอลัมน์ วันที่/เวลา ของรายงาน Excel ที่ส่งออกจาก HOSxP)
+  $from = '2025-10-01'
+  if ($path -match '[?&]from=(\d{4}-\d{2}-\d{2})') { $from = $Matches[1] }
+  $rows = DbQuery ("SELECT m.med_error_id, m.hn, m.vn, m.dep_type, m.icode, DATE_FORMAT(m.update_datetime, '%Y-%m-%d') AS d, " +
+    "DATE_FORMAT(m.update_datetime, '%H:%i') AS t, CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,'')) AS ptname, " +
+    "dr.name AS doctor, di.name AS drug, pt.med_error_process_type_name AS stage, rt.med_error_risk_type_name AS severity, " +
+    "et.med_error_type_name AS metype, m.med_error_note_text AS note, o.officer_name AS officer " +
+    "FROM med_error m LEFT JOIN patient p ON p.hn=m.hn LEFT JOIN doctor dr ON dr.code=m.doctor_code " +
+    "LEFT JOIN drugitems di ON di.icode=m.icode LEFT JOIN officer o ON o.officer_id=m.officer_id " +
+    "LEFT JOIN med_error_process_type pt ON pt.med_error_process_type_id=m.med_error_process_type_id " +
+    "LEFT JOIN med_error_risk_type rt ON rt.med_error_risk_type_id=m.med_error_risk_type_id " +
+    "LEFT JOIN med_error_type et ON et.med_error_type_id=m.med_error_type_id " +
+    "WHERE m.update_datetime>='$from' ORDER BY m.update_datetime, m.med_error_id LIMIT 2000")
+  $items = @($rows | ForEach-Object {
+    [ordered]@{ id = $_['med_error_id']; hn = $_['hn']; vn = $_['vn']; dept = $_['dep_type']; date = $_['d']; time = $_['t']
+      patient = $_['ptname'].Trim(); doctor = $_['doctor']; icode = $_['icode']; drug = $_['drug']; stage = $_['stage']
+      severity = $_['severity']; meType = $_['metype']; note = $_['note']; officer = $_['officer'] }
+  })
+  [ordered]@{ ok = $true; items = $items }
+}
 function DbAdr($path) {
   $from = '2025-01-01'
   if ($path -match '[?&]from=(\d{4}-\d{2}-\d{2})') { $from = $Matches[1] }
@@ -378,8 +400,9 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
+      elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/dmroster*') { DbDmRoster } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)

@@ -1075,6 +1075,7 @@ const DashUX = {
         <input type="file" id="opd-file-input" accept=".xls,.xlsx" style="display:none"
                onchange="handleHosXPUpload(this,'OPD')">
       </div>
+      <div style="margin-top:12px"><button type="button" class="btn" onclick="syncMeFromHosxp(true)" title="ดึงรายงาน Medication error จากฐานข้อมูล HOSxP ตั้งแต่ ต.ค.68 (เฉพาะเครื่องที่มี HOSxP Bridge) — รายการที่มีแล้วไม่ลงซ้ำ">🗄 ดึงจาก HOSxP</button></div>
       <div id="opd-upload-log" style="font-size:15px;color:var(--text-mid);margin-top:12px;line-height:1.7"></div>
       <div class="card" style="margin-top:20px;background:var(--primary-light)">
         <div class="card-title" style="font-size:16px">📌 วิธีใช้งาน</div>
@@ -1409,6 +1410,7 @@ const DashUX = {
         <input type="file" id="ipd-file-input" accept=".xls,.xlsx" style="display:none"
                onchange="handleHosXPUpload(this,'IPD')">
       </div>
+      <div style="margin-top:12px"><button type="button" class="btn" onclick="syncMeFromHosxp(true)" title="ดึงรายงาน Medication error จากฐานข้อมูล HOSxP ตั้งแต่ ต.ค.68 (เฉพาะเครื่องที่มี HOSxP Bridge) — รายการที่มีแล้วไม่ลงซ้ำ">🗄 ดึงจาก HOSxP</button></div>
       <div id="ipd-upload-log" style="font-size:15px;color:var(--text-mid);margin-top:12px;line-height:1.7"></div>
       <div class="card" style="margin-top:20px;background:var(--primary-light)">
         <div class="card-title" style="font-size:16px">📌 วิธีใช้งาน</div>
@@ -3628,6 +3630,54 @@ function parseHosXPFile(file, hintDept) {
   reader.readAsArrayBuffer(file);
 }
 
+// ======= ME จากฐานข้อมูล HOSxP (med_error) =======
+// ดึงรายงาน ME OPD/IPD ตั้งแต่ต้นปีงบ 2569 ทุกครั้งที่เปิดหน้า (เฉพาะเครื่องที่มี HOSxP Bridge)
+// รายการที่มีอยู่แล้ว (นำเข้าจาก Excel / บันทึกเอง / ดึงไปแล้ว) ไม่ลงซ้ำ — แค่จับคู่ไว้แล้วเติมช่องที่ยังว่าง ไม่เขียนทับที่แก้เอง
+const HX_ME_FROM = '2025-10-01';
+async function syncMeFromHosxp(manual) {
+  if (!window.tphHosxp) return;
+  const r = await tphHosxp.me(HX_ME_FROM);
+  if (!r) { if (manual) showToast('⚠️ ต่อ HOSxP ไม่ได้ — ใช้ได้เฉพาะเครื่องที่เปิด HOSxP Bridge'); return; }
+  let added = 0, filled = 0;
+  const cnt = { OPD: 0, IPD: 0 };
+  (r.items || []).forEach(it => {
+    const dept = String(it.dept || '').toUpperCase().trim();
+    if ((dept !== 'OPD' && dept !== 'IPD') || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || '')) return;
+    const hxId = String(it.id);
+    const rec = {
+      date: it.date, time: it.time || '', hn: String(it.hn || ''), patient: it.patient || '', doctor: it.doctor || '', dept,
+      drug: it.drug || '', stage: extractStageShort(it.stage || ''), stageRaw: it.stage || '', meType: it.meType || '',
+      severity: extractSeverity(it.severity || ''), severityRaw: it.severity || '', detail: it.note || '', reporter: it.officer || '',
+    };
+    let ex = hosxpRecords.find(x => String(x.hxMeId || '') === hxId);
+    if (!ex) {
+      const c = hosxpRecords.filter(x => !x.hxMeId && x.dept === dept && x.date === rec.date && String(x.hn || '') === rec.hn && rec.hn);
+      ex = c.find(x => x.drug === rec.drug) || c.find(x => x.time === rec.time) || c[0];
+    }
+    if (ex) {
+      let ch = !ex.hxMeId;
+      ex.hxMeId = hxId;
+      Object.keys(rec).forEach(k => { if (rec[k] && !ex[k]) { ex[k] = rec[k]; ch = true; } });
+      if (ch) filled++;
+      return;
+    }
+    hosxpRecords.push(Object.assign({ id: Date.now() + Math.random() }, rec, { source: 'hosxp_db', hxMeId: hxId }));
+    added++; cnt[dept]++;
+  });
+  if (added || filled) {
+    saveHosXP();
+    updateHosXPStatus();
+    renderHosXPDashboard('OPD');
+    renderHosXPDashboard('IPD');
+    updateLandingCounts();
+    if (typeof renderOverview === 'function') renderOverview();
+  }
+  if (added) showToast('🗄 เพิ่ม ME จาก HOSxP ' + added + ' รายการ (OPD ' + cnt.OPD + ', IPD ' + cnt.IPD + ')');
+  else if (manual) showToast('🗄 ME จาก HOSxP ' + (r.items || []).length + ' รายการ มีในระบบครบแล้ว' + (filled ? ' (เติมข้อมูล ' + filled + ' รายการ)' : ''));
+}
+// ปกติเริ่มหลังได้ hosxp_records จาก Firebase (fbStartListeners) — ถ้า Firebase ใช้ไม่ได้ ดึงในเครื่องนี้อย่างเดียวหลัง 15 วินาที
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (!window._hxRecFbLoaded) { window._hxRecFbLoaded = true; syncMeFromHosxp(); } }, 15000));
+
 // ======= HOSXP STATUS =======
 function updateHosXPStatus() {
   const opdCount = hosxpRecords.filter(r => r.dept === 'OPD').length;
@@ -4817,6 +4867,8 @@ function renderOverview() {
           if (typeof renderOverview === 'function') renderOverview();
         }
       }
+      // ได้รายการเดิมจาก Firebase แล้ว ค่อยดึง ME จาก HOSxP (จะได้เช็คซ้ำกับของทุกเครื่อง)
+      if (!window._hxRecFbLoaded) { window._hxRecFbLoaded = true; syncMeFromHosxp(); }
     });
 
     db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
