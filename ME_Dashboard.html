@@ -4316,7 +4316,7 @@ function renderHosXPKPI(dept) {
     return '<tr data-key="'+escHtml(dk)+'"><td style="white-space:nowrap;font-weight:600">'+lbl+'</td>'+
       '<td style="text-align:center;font-size:18px;font-weight:700">'+meN+'</td>'+
       (auto
-        ? '<td style="text-align:center">'+(pending
+        ? '<td style="text-align:center">'+(m>curYM ? '<span class="kpi-na">—</span>' : pending
             ? '<span class="kpi-na" title="ตัวดึงอัตโนมัติจะลงตัวเลขของเดือนนี้ให้วันที่ 1 ของเดือนถัดไป">⏳ ดึงอัตโนมัติสิ้นเดือน</span>'
             : denom ? '<span style="font-size:17px;font-weight:700">'+(+denom).toLocaleString('th-TH')+'</span> <span title="ดึงจาก HOSxP อัตโนมัติ" style="font-size:12px;color:var(--text-light)">🗄 HOSxP</span>'
             : '<span class="kpi-na">รอดึงจาก HOSxP</span>')+'</td>'
