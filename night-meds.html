@@ -373,12 +373,19 @@ function printStickers(onlyKeys) {
       <div class="h1">${escHtml(p.name || '-')} · HN ${escHtml(p.hn || '')}</div>
       <div class="h2"><span>${p.an ? 'ยาแรกรับ AN ' + escHtml(p.an) : 'OPD/ER'}</span>
         <span>${escHtml(thD(p.first.slice(0, 10)))} ${escHtml(p.first.slice(11))} น.${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}</span></div>
-      ${pi === 0 && warn.length ? `<div class="al">${warn.map(a => '⚠ ' + escHtml(a.text.length > 95 ? a.text.slice(0, 93) + '…' : a.text)).join('<br>')}</div>` : ''}
+      ${pi === 0 && warn.length ? `<div class="al">${warn.map(a => '⚠ ' + escHtml(stickerText(a.text))).join('<br>')}</div>` : ''}
       <table>${rows.map(r => `<tr><td>${escHtml(r.label)}</td><td class="q">${escHtml(fmtQty(r.qty))} ${escHtml(shortUnit(r.units))}</td></tr>`).join('')}</table>
       <div class="ft">ยาที่ใช้ไป เวรบ่าย-ดึก · คืนรถยา</div>
     </div>`).join('');
   }).join('');
   doPrint(html, '@page { size: 90mm 60mm; margin: 0; }');
+}
+// ข้อความเตือนบนสติกเกอร์: ตัดรายละเอียดในวงเล็บ (ชื่อยายาวๆ) ให้เหลือใจความ แล้วจำกัดความยาว
+function stickerText(t) {
+  let x = String(t);
+  for (let i = 0; i < 3; i++) x = x.replace(/\s*\([^()]*\)/g, '');
+  x = x.replace(/\s+/g, ' ').trim();
+  return x.length > 100 ? x.slice(0, 98) + '…' : x;
 }
 function shortUnit(u) { return String(u || '').replace(/\s*\(.*\)\s*$/, '').trim(); }
 // สรุปรวมทั้งเวรลงสติกเกอร์ 9×6 ซม. (ดวงละ PER_STICKER รายการ เรียงตามกลุ่มยา ต่อดวงถัดไปพร้อมเลขหน้า)
