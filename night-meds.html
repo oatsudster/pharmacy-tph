@@ -11,6 +11,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/hosxp-db.js?v=20261009"></script>
+<script src="lib/rx-check.js?v=20261009b"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -42,7 +43,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto 
 .hn-msg { font-size: 14px; align-self: center; }
 .window-note { font-size: 13px; color: var(--text-mid); margin-top: 8px; }
 .status { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--gold-light); margin-bottom: 14px; display: none; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .stat .n { font-size: 22px; font-weight: 800; color: var(--primary); }
 .stat .l { font-size: 12px; color: var(--text-light); }
@@ -65,6 +66,18 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 tr.off td { color: #9aa9a0; text-decoration: line-through; }
 tr.off td.why, tr.off td:first-child { text-decoration: none; }
 td.why { font-size: 12px; color: var(--text-light); }
+td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
+.alert-stat .n { color: #b45309; }
+.alerts { margin: 0; padding: 8px 12px; list-style: none; border-bottom: 1px solid var(--border); }
+.alerts li { font-size: 13.5px; padding: 3px 0 3px 26px; position: relative; line-height: 1.45; }
+.alerts li::before { position: absolute; left: 2px; top: 2px; }
+.alerts li.high { color: #991b1b; font-weight: 600; } .alerts li.high::before { content: '🔴'; }
+.alerts li.warn { color: #92400e; } .alerts li.warn::before { content: '🟠'; }
+.alerts li.info { color: var(--text-mid); } .alerts li.info::before { content: '🔵'; }
+.pt.has-high { border-color: #fca5a5; box-shadow: 0 0 0 1px #fecaca; }
+.pt.has-warn { border-color: #fcd34d; }
+.pt-head .pinfo { font-size: 12.5px; color: var(--text-mid); }
+.ok-check { font-size: 12.5px; color: #15803d; padding: 6px 12px; border-bottom: 1px solid var(--border); }
 .opts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-mid); margin-top: 10px; }
 .empty { text-align: center; color: var(--text-light); padding: 24px; }
 #print-area { display: none; }
@@ -79,6 +92,7 @@ td.why { font-size: 12px; color: var(--text-light); }
 .sticker table { width: 100%; border-collapse: collapse; }
 .sticker td { font-size: 8pt; line-height: 1.22; padding: .15mm 0; border: 0; vertical-align: top; }
 .sticker td.q { text-align: right; white-space: nowrap; padding-left: 1.5mm; font-weight: 700; }
+.sticker .al { font-size: 7pt; line-height: 1.2; font-weight: 700; border: .3mm solid #000; padding: .4mm .8mm; margin-bottom: .6mm; max-height: 9mm; overflow: hidden; }
 .sticker .ft { margin-top: auto; font-size: 6.5pt; color: #333; text-align: right; }
 
 /* ── สรุปรวม A4 ── */
@@ -124,6 +138,8 @@ td.why { font-size: 12px; color: var(--text-light); }
     <div class="window-note" id="window-note"></div>
     <div class="opts">
       <label><input type="checkbox" id="opt-vaccine" onchange="reclassify()"> รวมวัคซีน/เซรุ่ม</label>
+      <label><input type="checkbox" id="opt-alert-only" onchange="render()"> แสดงเฉพาะใบสั่งที่มีแจ้งเตือน</label>
+      <label><input type="checkbox" id="opt-sticker-alert" checked> พิมพ์คำเตือนบนสติกเกอร์</label>
     </div>
   </div>
 
@@ -134,6 +150,7 @@ td.why { font-size: 12px; color: var(--text-light); }
     <div class="stat"><div class="n" id="st-ipd">0</div><div class="l">admit (ยาแรกรับ)</div></div>
     <div class="stat"><div class="n" id="st-drug">0</div><div class="l">รายการยาไม่ซ้ำ</div></div>
     <div class="stat"><div class="n" id="st-off">0</div><div class="l">รายการที่ไม่นับ</div></div>
+    <div class="stat alert-stat"><div class="n" id="st-alert">0</div><div class="l">⚠️ ใบสั่งที่มีแจ้งเตือน</div></div>
   </div>
 
   <div class="card" id="result" style="display:none">
@@ -218,6 +235,7 @@ async function load() {
     DATA = r;
     Object.keys(OVERRIDE).forEach(k => delete OVERRIDE[k]);
     Object.keys(NO_STICKER).forEach(k => delete NO_STICKER[k]);
+    Object.keys(CHECK).forEach(k => delete CHECK[k]);
     reclassify();
   } catch (e) {
     showStatus('⚠️ ต่อ HOSxP ไม่ได้ — ใช้ได้เฉพาะเครื่องใน รพ. ที่เปิด HOSxP Bridge ตัวใหม่ (มีไฟล์ db.json)');
@@ -240,10 +258,19 @@ function patients() {
   const map = new Map();
   ITEMS.forEach(it => {
     if (!map.has(it.key)) map.set(it.key, { key: it.key, hn: it.hn, name: it.name, an: it.an, vn: it.vn, ward: it.ward,
-      regdate: it.regdate, regtime: it.regtime, first: `${it.date} ${it.time}`, dep: it.depName, items: [] });
+      regdate: it.regdate, regtime: it.regtime, first: `${it.date} ${it.time}`, dep: it.depName, items: [],
+      ageM: it.ageM, bw: it.bw, egfr: it.egfr, pregnancy: it.pregnancy, sex: it.sex });
     map.get(it.key).items.push(it);
   });
-  return [...map.values()].sort((a, b) => a.first.localeCompare(b.first));
+  const pts = [...map.values()].sort((a, b) => a.first.localeCompare(b.first));
+  pts.forEach(p => { p.check = CHECK[p.key] || (CHECK[p.key] = runCheck(p)); });
+  return pts;
+}
+// ตรวจสอบใบสั่ง (ขนาดยา/ยาตีกัน/แพ้ยา) — lib/rx-check.js; ตรวจจากทุกรายการในใบสั่ง ไม่ใช่เฉพาะที่คืนรถยา
+const CHECK = {};
+function runCheck(p) {
+  try { return window.tphRxCheck ? tphRxCheck.checkPatient(p, DATA) : { alerts: [], doseInfo: {} }; }
+  catch (e) { console.error('rx-check', e); return { alerts: [{ level: 'info', text: 'ตรวจสอบอัตโนมัติไม่สำเร็จ — ตรวจเอง' }], doseInfo: {} }; }
 }
 // รวมยาชนิดเดียวกันในใบสั่งเดียว (สั่งหลายครั้งในคืนเดียว)
 function sumItems(items) {
@@ -266,17 +293,22 @@ function render() {
   document.getElementById('st-ipd').textContent = withDrugs.filter(p => p.an).length;
   document.getElementById('st-drug').textContent = all.length;
   document.getElementById('st-off').textContent = ITEMS.filter(x => !x.include).length;
+  document.getElementById('st-alert').textContent = pts.filter(p => p.check.alerts.some(a => a.level !== 'info')).length;
   document.getElementById('btn-sticker').disabled = !withDrugs.length;
   document.getElementById('btn-sum').disabled = !all.length;
 
   // รายผู้ป่วย
   const vp = document.getElementById('view-pt');
   if (!pts.length) vp.innerHTML = '<div class="empty">ไม่พบใบสั่งยาในช่วงเวลานี้</div>';
-  else vp.innerHTML = pts.map(p => {
+  else vp.innerHTML = pts.filter(p => !document.getElementById('opt-alert-only').checked || p.check.alerts.some(a => a.level !== 'info')).map(p => {
     const has = p.items.some(x => x.include);
+    const al = p.check.alerts, lv = al.some(a => a.level === 'high') ? 'has-high' : al.some(a => a.level === 'warn') ? 'has-warn' : '';
+    const info = [p.ageM != null && p.ageM !== '' ? tphRxCheck.ageText(+p.ageM) : '', +p.bw > 0 ? `${+p.bw} กก.` : 'ไม่มีน้ำหนัก',
+      +p.egfr > 0 ? `eGFR ${Math.round(+p.egfr)}` : '', p.pregnancy === 'Y' ? 'ตั้งครรภ์' : ''].filter(Boolean).join(' · ');
     const head = `<div class="pt-head">
         <span class="nm">${escHtml(p.name || '-')}</span>
         <span class="meta">HN ${escHtml(p.hn || '')}</span>
+        <span class="pinfo">${escHtml(info)}</span>
         ${p.an ? `<span class="badge ipd">admit AN ${escHtml(p.an)}${p.regtime ? ' · ' + escHtml(p.regtime) + ' น.' : ''}${p.ward ? ' · ' + escHtml(p.ward) : ''}</span>`
                : `<span class="badge">OPD · ${escHtml(p.dep || '')}</span>`}
         <span class="meta">${escHtml(thD(p.first.slice(0, 10)))} ${escHtml(p.first.slice(11))} น.</span>
@@ -288,9 +320,12 @@ function render() {
         <td>${escHtml(drugLabel(x))}</td>
         <td class="num">${escHtml(fmtQty(x.qty))}</td>
         <td>${escHtml(x.units || '')}</td>
+        <td class="dose" title="${escHtml(x.usage || '')}">${escHtml(p.check.doseInfo[x.icode] || '')}</td>
         <td class="why">${escHtml(x.include ? (x.auto ? '' : 'เพิ่มเอง') : (x.why || 'ติ๊กออกเอง'))} <span style="opacity:.6">${escHtml(x.time)}</span></td>
       </tr>`).join('');
-    return `<div class="pt">${head}<table><tbody>${rows}</tbody></table></div>`;
+    const box = al.length ? `<ul class="alerts">${al.map(a => `<li class="${a.level}">${escHtml(a.text)}</li>`).join('')}</ul>`
+      : '<div class="ok-check">✅ ตรวจขนาดยา/ยาตีกัน/แพ้ยาอัตโนมัติ ไม่พบปัญหา</div>';
+    return `<div class="pt ${lv}">${head}${box}<table><tbody>${rows}</tbody></table></div>`;
   }).join('');
 
   // สรุปรวม
@@ -330,12 +365,15 @@ function printStickers(onlyKeys) {
   const pts = patients().filter(p => onlyKeys ? onlyKeys.includes(p.key) : !NO_STICKER[p.key]).map(p => Object.assign(p, { rows: sumItems(p.items) })).filter(p => p.rows.length);
   if (!pts.length) return;
   const html = pts.map(p => {
-    const pages = [];
-    for (let i = 0; i < p.rows.length; i += PER_STICKER) pages.push(p.rows.slice(i, i + PER_STICKER));
+    const warn = document.getElementById('opt-sticker-alert').checked ? p.check.alerts.filter(a => a.level !== 'info').slice(0, 2) : [];
+    const pages = [], first = PER_STICKER - warn.length * 2;
+    pages.push(p.rows.slice(0, first));
+    for (let i = first; i < p.rows.length; i += PER_STICKER) pages.push(p.rows.slice(i, i + PER_STICKER));
     return pages.map((rows, pi) => `<div class="sticker">
       <div class="h1">${escHtml(p.name || '-')} · HN ${escHtml(p.hn || '')}</div>
       <div class="h2"><span>${p.an ? 'ยาแรกรับ AN ' + escHtml(p.an) : 'OPD/ER'}</span>
         <span>${escHtml(thD(p.first.slice(0, 10)))} ${escHtml(p.first.slice(11))} น.${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}</span></div>
+      ${pi === 0 && warn.length ? `<div class="al">${warn.map(a => '⚠ ' + escHtml(a.text.length > 95 ? a.text.slice(0, 93) + '…' : a.text)).join('<br>')}</div>` : ''}
       <table>${rows.map(r => `<tr><td>${escHtml(r.label)}</td><td class="q">${escHtml(fmtQty(r.qty))} ${escHtml(shortUnit(r.units))}</td></tr>`).join('')}</table>
       <div class="ft">ยาที่ใช้ไป เวรบ่าย-ดึก · คืนรถยา</div>
     </div>`).join('');

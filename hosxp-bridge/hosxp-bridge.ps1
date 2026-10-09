@@ -20,7 +20,8 @@
 #   /db/denom       — ตัวหาร ME รายเดือน 24 เดือนล่าสุด: opd = จำนวน visit (ovst), ipd = วันนอน (an_stat.admdate ตามเดือนที่จำหน่าย)
 #   /db/me?from=YYYY-MM-DD  — รายงาน Medication error (Pharmacy > Medication error = med_error) OPD/IPD พร้อมชื่อยา/แพทย์/ผู้บันทึก
 #   /db/nightmeds?date=YYYY-MM-DD[&from=19:30&to=08:00] — ยาที่สั่งช่วงเวรบ่าย-ดึก (date-1 from → date to) ทั้ง OPD/ER และ AN
-#                     พร้อมแผนกที่สั่ง เวลา admit — หน้า night-meds.html คัดยาที่ต้องคืนรถยาเอง
+#                     พร้อมแผนก เวลา admit วิธีใช้ อายุ น้ำหนัก eGFR ตั้งครรภ์ ประวัติแพ้ยา ยาเดิม 180 วัน ตารางยาตีกัน
+#                     — หน้า night-meds.html คัดยาที่ต้องคืนรถยา + ตรวจขนาดยา/ยาตีกัน/แพ้ยา
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
@@ -239,20 +240,46 @@ function DbNightMeds($path) {
   if ($path -match '[?&]from=(\d{1,2}):(\d{2})') { $from = '{0:00}:{1}:00' -f [int]$Matches[1], $Matches[2] }
   if ($path -match '[?&]to=(\d{1,2}):(\d{2})') { $to = '{0:00}:{1}:00' -f [int]$Matches[1], $Matches[2] }
   $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
+  # วิธีใช้: ข้อความวิธีใช้พิเศษ (sp_use) ถ้ามี ไม่งั้นรหัสวิธีใช้ปกติ — ใช้ตรวจขนาดยา
   $rows = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, " +
     "o.dep_code, k.department, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
-    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, " +
+    "TRIM(IF(o.sp_use IS NOT NULL AND o.sp_use<>'', CONCAT_WS(' ', sp.name1, sp.name2, sp.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text, " +
+    "u.iperday, u.iperdose, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, p.sex, " +
+    "TIMESTAMPDIFF(MONTH, p.birthday, o.rxdate) AS age_m, s.bw, s.height, s.pregnancy, s.egfr, " +
     "DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward " +
     "FROM opitemrece o JOIN drugitems d ON d.icode=o.icode LEFT JOIN patient p ON p.hn=o.hn " +
+    "LEFT JOIN drugusage u ON u.drugusage=o.drugusage LEFT JOIN sp_use sp ON sp.sp_use=o.sp_use " +
     "LEFT JOIN kskdepartment k ON k.depcode=o.dep_code LEFT JOIN ipt i ON i.an=o.an LEFT JOIN ward w ON w.ward=i.ward " +
+    "LEFT JOIN opdscreen s ON s.vn=IF(o.vn IS NULL OR o.vn='', i.vn, o.vn) " +
     "WHERE o.rxdate IN ('$d0','$d1') AND ((o.rxdate='$d0' AND o.rxtime>='$from') OR (o.rxdate='$d1' AND o.rxtime<'$to')) " +
     "ORDER BY o.rxdate, o.rxtime, o.hn, o.item_no LIMIT 5000")
   $items = @($rows | ForEach-Object {
     [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['rxdate']; time = $_['rxtime']
       dep = $_['dep_code']; depName = $_['department']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
-      units = $_['units']; form = $_['dosageform']; qty = $_['qty']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
+      units = $_['units']; form = $_['dosageform']; qty = $_['qty']; usage = $_['usage_text']; iperday = $_['iperday']; iperdose = $_['iperdose']
+      sex = $_['sex']; ageM = $_['age_m']; bw = $_['bw']; height = $_['height']; pregnancy = $_['pregnancy']; egfr = $_['egfr']
+      regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
   })
-  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items }
+  # ข้อมูลประกอบการตรวจสอบ: ประวัติแพ้ยา ยาที่ได้รับใน 180 วันก่อนหน้า (ตรวจยาตีกันกับยาเดิม) และตารางยาตีกันของ รพ.
+  $hns = @($rows | ForEach-Object { [HxDb]::Digits($_['hn']) } | Where-Object { $_ } | Select-Object -Unique)
+  $allergy = @(); $homeMeds = @()
+  if ($hns.Count) {
+    $in = ($hns | ForEach-Object { "'$_'" }) -join ','
+    $ar = DbQuery ("SELECT hn, agent, symptom, DATE_FORMAT(report_date,'%Y-%m-%d') AS report_date FROM opd_allergy " +
+      "WHERE hn IN ($in) AND IFNULL(allergy_cancel_status,'')<>'Y'")
+    $allergy = @($ar | ForEach-Object {
+      [ordered]@{ hn = $_['hn']; agent = $_['agent']; symptom = $_['symptom']; date = $_['report_date'] } })
+    $hfrom = $d.AddDays(-181).ToString('yyyy-MM-dd')
+    $hr = DbQuery ("SELECT o.hn, o.icode, d.name, d.strength, d.dosageform, d.units, DATE_FORMAT(MAX(o.vstdate),'%Y-%m-%d') AS last FROM opitemrece o " +
+      "JOIN drugitems d ON d.icode=o.icode WHERE o.hn IN ($in) AND o.vstdate>='$hfrom' AND o.vstdate<'$d0' GROUP BY o.hn, o.icode")
+    $homeMeds = @($hr | ForEach-Object {
+      [ordered]@{ hn = $_['hn']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']; form = $_['dosageform']; units = $_['units']; last = $_['last'] } })
+  }
+  $dr = DbQuery "SELECT drugname1, drugname2, severity, not_allow, note FROM drug_interaction WHERE IFNULL(drug_interaction_type,1)=1"
+  $ddi = @($dr | ForEach-Object {
+    [ordered]@{ a = $_['drugname1']; b = $_['drugname2']; severity = $_['severity']; notAllow = $_['not_allow']; note = $_['note'] } })
+  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items; allergy = $allergy; home = $homeMeds; ddi = $ddi }
 }
 function DbAdr($path) {
   $from = '2025-01-01'
