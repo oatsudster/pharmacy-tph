@@ -111,7 +111,7 @@ td.why { font-size: 12px; color: var(--text-light); }
       <div><label for="f-to">ถึง (วันนี้)</label><input type="time" id="f-to" value="08:00"></div>
       <button class="btn btn-primary" id="btn-load" onclick="load()">🗄 ดึงจาก HOSxP</button>
       <button class="btn btn-gold" id="btn-sticker" onclick="printStickers()" disabled>🖨 พิมพ์สติกเกอร์ทุกคน (9×6 ซม.)</button>
-      <button class="btn" id="btn-sum" onclick="printSummary()" disabled>🖨 พิมพ์สรุปรวม (A4)</button>
+      <button class="btn" id="btn-sum" onclick="printSummary()" disabled>🖨 พิมพ์สรุปรวม (สติกเกอร์ 9×6)</button>
     </div>
     <div class="hn-row">
       <label for="f-hn">🔎 พิมพ์ทีละใบ: ใส่/สแกน HN จากใบสั่งยา แล้วกด Enter → พิมพ์สติกเกอร์ของคนนั้นทันที</label>
@@ -343,13 +343,20 @@ function printStickers(onlyKeys) {
   doPrint(html, '@page { size: 90mm 60mm; margin: 0; }');
 }
 function shortUnit(u) { return String(u || '').replace(/\s*\(.*\)\s*$/, '').trim(); }
+// สรุปรวมทั้งเวรลงสติกเกอร์ 9×6 ซม. (ดวงละ PER_STICKER รายการ เรียงตามกลุ่มยา ต่อดวงถัดไปพร้อมเลขหน้า)
 function printSummary() {
-  const w = windowOf();
-  const html = `<div class="sum-print"><h3>สรุปยาที่ใช้เวรบ่าย-ดึก (คืนรถยา)</h3>
-    <div class="sub">${escHtml(thD(w.prev))} ${escHtml(w.from.slice(11))} น. → ${escHtml(thD(w.date))} ${escHtml(w.to.slice(11))} น. ·
-      ใบสั่งยา ${document.getElementById('st-pt').textContent} ใบ · กลุ่มงานเภสัชกรรม รพ.ถ้ำพรรณรา</div>
-    ${summaryTable(sumItems(ITEMS), true)}</div>`;
-  doPrint(html, '@page { size: A4; margin: 12mm; }');
+  const w = windowOf(), rows = sumItems(ITEMS);
+  if (!rows.length) return;
+  const pages = [];
+  for (let i = 0; i < rows.length; i += PER_STICKER) pages.push(rows.slice(i, i + PER_STICKER));
+  const html = pages.map((pr, pi) => `<div class="sticker">
+      <div class="h1">สรุปยาคืนรถยา เวรบ่าย-ดึก</div>
+      <div class="h2"><span>${escHtml(thD(w.prev))} ${escHtml(w.from.slice(11))} → ${escHtml(thD(w.date))} ${escHtml(w.to.slice(11))} น.</span>
+        <span>${document.getElementById('st-pt').textContent} ใบสั่ง${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}</span></div>
+      <table>${pr.map(r => `<tr><td>${escHtml(r.label)}</td><td class="q">${escHtml(fmtQty(r.qty))} ${escHtml(shortUnit(r.units))}</td></tr>`).join('')}</table>
+      <div class="ft">ยา ${rows.length} รายการ · กลุ่มงานเภสัชกรรม</div>
+    </div>`).join('');
+  doPrint(html, '@page { size: 90mm 60mm; margin: 0; }');
 }
 function doPrint(html, pageCss) {
   document.getElementById('print-area').innerHTML = html;
