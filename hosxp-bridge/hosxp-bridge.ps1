@@ -261,6 +261,15 @@ function DbNightMeds($path) {
       sex = $_['sex']; ageM = $_['age_m']; bw = $_['bw']; height = $_['height']; pregnancy = $_['pregnancy']; egfr = $_['egfr']
       regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
   })
+  # ผู้ป่วยที่มา ER ช่วงเวรทุกคน รวมคนที่ไม่มียา (มีแต่ค่าธรรมเนียม/ADVICE) — ใบสั่งยาทุกใบต้องนับลง ME ER
+  $er = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, k.department, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, p.sex, TIMESTAMPDIFF(MONTH, p.birthday, o.vstdate) AS age_m " +
+    "FROM ovst o JOIN er_regist e ON e.vn=o.vn LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN kskdepartment k ON k.depcode=o.main_dep " +
+    "WHERE o.vstdate IN ('$d0','$d1') AND ((o.vstdate='$d0' AND o.vsttime>='$from') OR (o.vstdate='$d1' AND o.vsttime<'$to')) " +
+    "ORDER BY o.vstdate, o.vsttime LIMIT 1000")
+  $erVisits = @($er | ForEach-Object {
+    [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['vstdate']; time = $_['vsttime']
+      depName = $_['department']; sex = $_['sex']; ageM = $_['age_m'] } })
   # ข้อมูลประกอบการตรวจสอบ: ประวัติแพ้ยา ยาที่ได้รับใน 180 วันก่อนหน้า (ตรวจยาตีกันกับยาเดิม) และตารางยาตีกันของ รพ.
   $hns = @($rows | ForEach-Object { [HxDb]::Digits($_['hn']) } | Where-Object { $_ } | Select-Object -Unique)
   $allergy = @(); $homeMeds = @()
@@ -279,7 +288,7 @@ function DbNightMeds($path) {
   $dr = DbQuery "SELECT drugname1, drugname2, severity, not_allow, note FROM drug_interaction WHERE IFNULL(drug_interaction_type,1)=1"
   $ddi = @($dr | ForEach-Object {
     [ordered]@{ a = $_['drugname1']; b = $_['drugname2']; severity = $_['severity']; notAllow = $_['not_allow']; note = $_['note'] } })
-  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items; allergy = $allergy; home = $homeMeds; ddi = $ddi }
+  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items; erVisits = $erVisits; allergy = $allergy; home = $homeMeds; ddi = $ddi }
 }
 function DbAdr($path) {
   $from = '2025-01-01'

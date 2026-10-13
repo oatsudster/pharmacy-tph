@@ -61,6 +61,8 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .pt-head .meta { font-size: 13px; color: var(--text-mid); }
 .pt-head .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #fff; border: 1px solid var(--border); }
 .pt-head .badge.ipd { background: #fef3c7; border-color: #fcd34d; }
+.pt-head .badge.nodrug { background: #e0f2fe; border-color: #7dd3fc; }
+.pt.nodrug .pt-head { border-bottom: 0; }
 .pt-head label { margin-left: auto; font-size: 13px; display: flex; gap: 4px; align-items: center; cursor: pointer; }
 .pt table td { font-size: 14px; }
 tr.off td { color: #9aa9a0; text-decoration: line-through; }
@@ -147,6 +149,7 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 
   <div class="stats" id="stats" style="display:none">
     <div class="stat"><div class="n" id="st-pt">0</div><div class="l">ใบสั่งยา / ผู้ป่วย</div></div>
+    <div class="stat" id="st-nodrug-box" title="มา ER ช่วงเวรแต่ไม่มียา — ไม่ได้รวมในจำนวนใบสั่งยาด้านซ้าย"><div class="n" id="st-nodrug">0</div><div class="l">ผู้ป่วย ER ไม่มียา</div></div>
     <div class="stat"><div class="n" id="st-ipd">0</div><div class="l">admit (ยาแรกรับ)</div></div>
     <div class="stat"><div class="n" id="st-drug">0</div><div class="l">รายการยาไม่ซ้ำ</div></div>
     <div class="stat"><div class="n" id="st-off">0</div><div class="l">รายการที่ไม่นับ</div></div>
@@ -262,8 +265,14 @@ function patients() {
       ageM: it.ageM, bw: it.bw, egfr: it.egfr, pregnancy: it.pregnancy, sex: it.sex });
     map.get(it.key).items.push(it);
   });
+  // ผู้ป่วย ER ที่ไม่มียา (มีแต่ค่าธรรมเนียม/ADVICE) — แสดงไว้ให้เภสัชนับใบสั่งลง ME ER เอง (หน้านี้ไม่ได้บันทึกลง ME)
+  (DATA.erVisits || []).forEach(v => {
+    if (ITEMS.some(it => it.vn === v.vn || (v.an && it.an === v.an))) return;
+    map.set(v.vn, { key: v.vn, hn: v.hn, name: v.name, an: '', vn: v.vn, first: `${v.date} ${v.time}`, dep: v.depName, items: [],
+      ageM: v.ageM, sex: v.sex, noDrug: true });
+  });
   const pts = [...map.values()].sort((a, b) => a.first.localeCompare(b.first));
-  pts.forEach(p => { p.check = CHECK[p.key] || (CHECK[p.key] = runCheck(p)); });
+  pts.forEach(p => { p.check = p.noDrug ? { alerts: [], doseInfo: {} } : CHECK[p.key] || (CHECK[p.key] = runCheck(p)); });
   return pts;
 }
 // ตรวจสอบใบสั่ง (ขนาดยา/ยาตีกัน/แพ้ยา) — lib/rx-check.js; ตรวจจากทุกรายการในใบสั่ง ไม่ใช่เฉพาะที่คืนรถยา
@@ -286,10 +295,13 @@ function sumItems(items) {
 function render() {
   const pts = patients();
   const withDrugs = pts.filter(p => p.items.some(x => x.include));
+  const noDrug = pts.filter(p => p.noDrug);
   const all = sumItems(ITEMS);
   document.getElementById('stats').style.display = '';
   document.getElementById('result').style.display = '';
   document.getElementById('st-pt').textContent = withDrugs.length;
+  document.getElementById('st-nodrug').textContent = noDrug.length;
+  document.getElementById('st-nodrug-box').style.display = noDrug.length ? '' : 'none';
   document.getElementById('st-ipd').textContent = withDrugs.filter(p => p.an).length;
   document.getElementById('st-drug').textContent = all.length;
   document.getElementById('st-off').textContent = ITEMS.filter(x => !x.include).length;
@@ -301,6 +313,13 @@ function render() {
   const vp = document.getElementById('view-pt');
   if (!pts.length) vp.innerHTML = '<div class="empty">ไม่พบใบสั่งยาในช่วงเวลานี้</div>';
   else vp.innerHTML = pts.filter(p => !document.getElementById('opt-alert-only').checked || p.check.alerts.some(a => a.level !== 'info')).map(p => {
+    if (p.noDrug) return `<div class="pt nodrug"><div class="pt-head">
+        <span class="nm">${escHtml(p.name || '-')}</span>
+        <span class="meta">HN ${escHtml(p.hn || '')}</span>
+        <span class="badge">OPD · ${escHtml(p.dep || '')}</span>
+        <span class="meta">${escHtml(thD(p.first.slice(0, 10)))} ${escHtml(p.first.slice(11))} น.</span>
+        <span class="badge nodrug">ไม่มียา — มี visit ER (นับใบสั่งเอง)</span>
+      </div></div>`;
     const has = p.items.some(x => x.include);
     const al = p.check.alerts, lv = al.some(a => a.level === 'high') ? 'has-high' : al.some(a => a.level === 'warn') ? 'has-warn' : '';
     const info = [p.ageM != null && p.ageM !== '' ? tphRxCheck.ageText(+p.ageM) : '', +p.bw > 0 ? `${+p.bw} กก.` : 'ไม่มีน้ำหนัก',
