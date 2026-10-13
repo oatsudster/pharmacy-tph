@@ -25,7 +25,7 @@
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
-#   /db/dmscreen    — คัดกรองคนไข้คลินิกเบาหวาน (023 นัด LAB, 001 DM) ใน 1 ปี: HbA1c 2 ปี + การจ่ายยาลดน้ำตาล 2 ปี
+#   /db/dmscreen    — คัดกรองคนไข้คลินิกเบาหวาน (023 นัด LAB, 001 DM) ใน 1 ปี: HbA1c 2 ปี + การจ่ายยาลดน้ำตาล 2 ปี + ปีที่เริ่มเป็น DM
 #   /db/rxqueue     — visit วันนี้/เมื่อคืนที่มียา (ล่าสุด 40 visit) + ใครล็อก VN อยู่ (vn_lock) — หน้า rx-sticker.html
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
@@ -422,6 +422,10 @@ function DbDmScreen {
     "FROM patient p WHERE p.hn IN ($cohort)")
   $a1c = DbQuery ("SELECT h.hn, h.order_date, o.lab_order_result FROM lab_head h JOIN lab_order o ON o.lab_order_number=h.lab_order_number " +
     "WHERE o.lab_items_code='3119' AND h.order_date>=CURDATE()-INTERVAL 2 YEAR AND h.hn IN ($cohort) ORDER BY h.order_date")
+  # ปีที่เริ่มเป็นเบาหวาน: ทะเบียนคลินิก DM (begin_year พ.ศ., regdate) + วันแรกที่มีรหัส E10–E14 — หน้าเว็บใช้ค่าที่เก่าที่สุด
+  $dmReg = DbQuery "SELECT hn, regdate, begin_year FROM clinicmember WHERE clinic='001' AND hn IN ($cohort)"
+  $dmDx = DbQuery ("SELECT hn, MIN(vstdate) AS fd FROM ovstdiag WHERE icd10>='E10' AND icd10<'E15' AND vstdate>'1990-01-01' " +
+    "AND hn IN ($cohort) GROUP BY hn")
   $icodes = DbQuery "SELECT icode FROM drugitems WHERE name REGEXP '$GLUCOSE_DRUG_RE' AND name NOT LIKE '%STAT%'"
   $ic = ($icodes | ForEach-Object { "'" + [HxDb]::Digits($_['icode']) + "'" } | Where-Object { $_ -ne "''" }) -join ','
   $rx = @()
@@ -433,7 +437,9 @@ function DbDmScreen {
   }
   $byHn = @{}
   foreach ($p in $pts) { $byHn[$p['hn']] = [ordered]@{ hn = $p['hn']; name = $p['ptname'].Trim(); birthday = $p['birthday']; sex = $p['sex']
-    nextDm = $p['next_dm']; inRemission = ([int]$p['in_remission'] -gt 0); a1c = New-Object System.Collections.ArrayList; rx = New-Object System.Collections.ArrayList } }
+    nextDm = $p['next_dm']; inRemission = ([int]$p['in_remission'] -gt 0); dmReg = $null; dmBeginYear = $null; dmFirstDx = $null; a1c = New-Object System.Collections.ArrayList; rx = New-Object System.Collections.ArrayList } }
+  foreach ($r in $dmReg) { if ($byHn.ContainsKey($r['hn'])) { $byHn[$r['hn']].dmReg = $r['regdate']; $byHn[$r['hn']].dmBeginYear = $r['begin_year'] } }
+  foreach ($r in $dmDx) { if ($byHn.ContainsKey($r['hn'])) { $byHn[$r['hn']].dmFirstDx = $r['fd'] } }
   foreach ($r in $a1c) { if ($byHn.ContainsKey($r['hn'])) { [void]$byHn[$r['hn']].a1c.Add(@($r['order_date'], $r['lab_order_result'])) } }
   foreach ($r in $rx) {
     if (-not $byHn.ContainsKey($r['hn'])) { continue }
