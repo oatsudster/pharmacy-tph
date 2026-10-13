@@ -94,10 +94,10 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
 .hmestk .hd2 { display: flex; justify-content: space-between; gap: 2mm; font-size: 6.5pt; line-height: 1.3; border-bottom: .3mm solid #000; padding-bottom: .5mm; margin-bottom: .4mm; white-space: nowrap; }
 .hmestk .bd { flex: 1; overflow: hidden; }
 .hmestk table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.hmestk td { padding: .3mm .6mm; border: 0; border-bottom: .15mm solid #bbb; vertical-align: top; line-height: 1.25; font-size: inherit; }
-.hmestk td.n { width: 3.4mm; padding-left: 0; }
-.hmestk td.dn { width: 38%; font-weight: 700; }
-.hmestk td.q { width: 10mm; text-align: right; white-space: nowrap; font-weight: 700; }
+.hmestk td { overflow-wrap: anywhere; padding: .3mm .6mm; border: 0; border-bottom: .15mm solid #bbb; vertical-align: top; line-height: 1.25; font-size: inherit; }
+.hmestk td.n { width: 1.6em; padding-left: 0; }
+.hmestk td.dn { width: 38%; font-weight: 700; overflow-wrap: anywhere; }
+.hmestk td.q { width: 4.9em; text-align: right; font-weight: 700; }  /* em = ขยายตามตัวอักษร ไม่ล้นทับคอลัมน์ข้างๆ */
 .hme-row { border-top: 1px solid #eef3ef; padding: 9px 4px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
 .hme-row .nm { font-weight: 600; }
 .hme-row .mt { font-size: 12.5px; color: var(--text-mid); }
@@ -141,14 +141,10 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
       <button class="btn btn-sm" style="margin-left:auto" onclick="loadHme()">🔄</button></h2>
     <div class="actions" style="margin:0 0 8px">
       <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="hme-auto" onchange="saveHmeOpts()"> 🤖 พิมพ์อัตโนมัติเมื่อมีใบสั่งยากลับบ้านใหม่</label>
-      <label class="hint" style="margin:0">ขนาดสติกเกอร์
-        <select id="hme-size" onchange="saveHmeOpts()" style="font:inherit;font-size:13px;padding:2px 6px;border:1px solid var(--border);border-radius:6px">
-          <option value="101.6x59.9">10.16 × 6 ซม. (Zebra สติกเกอร์ยา)</option>
-          <option value="90x60">9 × 6 ซม.</option>
-        </select></label>
+      <span class="hint" style="margin:0">สติกเกอร์ 9 × 6 ซม. · ดวงละไม่เกิน 6 รายการ</span>
     </div>
     <div class="hint" style="margin:-2px 0 10px">ตรวจ HOSxP ทุก 30 วินาที · พิมพ์เมื่อใบสั่งนั้นไม่ถูกแก้มา 2 นาที (กันพิมพ์ตอนยังคีย์ไม่เสร็จ) · แก้รายการหลังพิมพ์ → พิมพ์ใหม่ให้ ·
-      ยาทั้งหมดรวมในดวงเดียว (ยาเยอะตัวอักษรเล็กลง เกิน ~20 รายการจึงต่อดวงถัดไป) · พิมพ์ทันทีไม่ต้องกดยืนยัน: เปิดหน้านี้ด้วย HME-AutoPrint.bat ในโฟลเดอร์ HOSxP Bridge</div>
+      ดวงละไม่เกิน 6 รายการ เกินนั้นต่อดวงถัดไป (มีเลข 1/2, 2/2) · พิมพ์ทันทีไม่ต้องกดยืนยัน: เปิดหน้านี้ด้วย HME-AutoPrint.bat ในโฟลเดอร์ HOSxP Bridge</div>
     <div id="hme-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
 </div>
@@ -401,14 +397,13 @@ function hmeMark(o, skipped) {
   try { localStorage.setItem('hme_printed', JSON.stringify(m)); } catch (e) {}
 }
 function saveHmeOpts() {
-  try { localStorage.setItem('hme_opts', JSON.stringify({ auto: document.getElementById('hme-auto').checked, size: document.getElementById('hme-size').value })); } catch (e) {}
+  try { localStorage.setItem('hme_opts', JSON.stringify({ auto: document.getElementById('hme-auto').checked })); } catch (e) {}
   if (document.getElementById('hme-auto').checked) loadHme();
 }
 function loadHmeOpts() {
   let o = {};
   try { o = JSON.parse(localStorage.getItem('hme_opts') || '{}'); } catch (e) {}
   document.getElementById('hme-auto').checked = !!o.auto;
-  if (o.size) document.getElementById('hme-size').value = o.size;
 }
 const dotLine = t => !String(t || '').replace(/[.\s…_-]/g, '');
 function hmeDrug(i) {
@@ -460,8 +455,10 @@ function hmeStickerHtml(o, rows, pi, pn, w, h, fs) {
     <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
       <td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td><td>${escHtml(d.use)}</td></tr>`).join('')}</table></div></div>`;
 }
+// สติกเกอร์ยากลับบ้าน 9 × 6 ซม. ดวงละไม่เกิน 6 รายการ (ตามที่ห้องยากำหนด — ติดใบ discharge summary)
+const HME_W = 90, HME_H = 60, HME_PER = 6;
 function printHme(keys) {
-  const [w, h] = document.getElementById('hme-size').value.split('x').map(Number);
+  const w = HME_W, h = HME_H;
   const orders = HME.filter(o => keys.includes(hmeKey(o)) && o.items.length);
   if (!orders.length) return;
   const pa = document.getElementById('print-area');
@@ -474,19 +471,11 @@ function printHme(keys) {
   const out = [];
   orders.forEach(o => {
     const rows = o.items.map((i, k) => [hmeDrug(i), i, k + 1]);
-    // ย่อตัวอักษรจาก 8pt ลงทีละ 0.25 จนทุกรายการพอดีดวงเดียว (ต่ำสุด 5.25pt) — ยังไม่พอจึงแบ่งดวง
-    let fs = 8;
-    while (fs > 5.25 && !fits(o, rows, fs)) fs -= 0.25;
     const pages = [];
-    if (fits(o, rows, fs)) pages.push(rows);
-    else {
-      let rest = rows.slice();
-      while (rest.length) {
-        let n = rest.length;
-        while (n > 1 && !fits(o, rest.slice(0, n), fs)) n--;
-        pages.push(rest.slice(0, n)); rest = rest.slice(n);
-      }
-    }
+    for (let k = 0; k < rows.length; k += HME_PER) pages.push(rows.slice(k, k + HME_PER));
+    // ตัวอักษรเริ่ม 9pt ย่อทีละ 0.25 จนทุกดวงพอดี (ใช้ขนาดเดียวกันทุกดวงของคนเดียวกัน) ต่ำสุด 5.5pt
+    let fs = 9;
+    while (fs > 5.5 && !pages.every(rs => fits(o, rs, fs))) fs -= 0.25;
     pages.forEach((rs, pi) => out.push(hmeStickerHtml(o, rs, pi + 1, pages.length, w, h, fs)));
     hmeMark(o);
   });
