@@ -106,17 +106,19 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
 .badge-wait { font-size: 12px; background: var(--gold-light); color: #92400e; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
 
 /* ── หัวสติกเกอร์ผู้ป่วยใน 9 × 6 ซม. (แบบ CUSTOM- stickerผู้ป่วยใน ของ HOSxP: เตียง / ชื่อ / HN) ── */
-.ipdstk { width: 90mm; height: 60mm; padding: 3mm 4mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
-  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; display: flex; flex-direction: column; }
+.ipdstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
+  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; display: flex; align-items: center; justify-content: center; }
 .ipdstk:last-child { page-break-after: auto; break-after: auto; }
-.ipdstk .top { display: flex; justify-content: space-between; align-items: baseline; border-bottom: .3mm solid #000; padding-bottom: 1mm; }
-.ipdstk .bedl { font-size: 24pt; font-weight: 700; }
-.ipdstk .bedv { font-size: 44pt; font-weight: 700; line-height: 1; margin-left: 3mm; }
-.ipdstk .ward { font-size: 16pt; text-align: right; }
-.ipdstk .nm { font-size: 34pt; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; margin-top: 2mm; line-height: 1.15; }
-.ipdstk .hn { font-size: 26pt; font-weight: 700; text-align: center; line-height: 1.1; }
-.ipdstk .hn b { font-size: 44pt; margin-left: 3mm; }
-.ipdstk .ft { margin-top: auto; font-size: 15pt; display: flex; justify-content: space-between; }
+/* ข้อมูลอยู่ในกรอบ 5.5 × 3.2 ซม. กลางดวง — ตัดไปใส่ช่องล็อกยาของผู้ป่วย */
+.ipdstk .box { width: 55mm; height: 32mm; border: .35mm solid #000; padding: 1mm 2mm; display: flex; flex-direction: column; overflow: hidden; }
+.ipdstk .top { display: flex; justify-content: space-between; align-items: baseline; border-bottom: .25mm solid #000; padding-bottom: .3mm; }
+.ipdstk .bedl { font-size: 15pt; font-weight: 700; }
+.ipdstk .bedv { font-size: 26pt; font-weight: 700; line-height: 1; margin-left: 2mm; }
+.ipdstk .ward { font-size: 11pt; text-align: right; white-space: nowrap; }
+.ipdstk .nm { font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; margin-top: .6mm; line-height: 1.1; }
+.ipdstk .hn { font-size: 16pt; font-weight: 700; text-align: center; line-height: 1.05; }
+.ipdstk .hn b { font-size: 24pt; margin-left: 2mm; }
+.ipdstk .ft { margin-top: auto; font-size: 10.5pt; display: flex; justify-content: space-between; line-height: 1.1; }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -366,16 +368,16 @@ function printIpd(ans) {
   const list = IPD.filter(x => ans.includes(x.an));
   if (!list.length) return;
   const pa = document.getElementById('print-area');
-  pa.innerHTML = list.flatMap(x => Array(copies).fill(x)).map(x => `<div class="ipdstk">
+  pa.innerHTML = list.flatMap(x => Array(copies).fill(x)).map(x => `<div class="ipdstk"><div class="box">
       <div class="top"><div><span class="bedl">เตียง</span><span class="bedv">${escHtml(x.bed || '-')}</span></div><div class="ward">${escHtml(x.wardName || '')}</div></div>
-      <div class="nm fit" style="font-size:34pt">${escHtml(x.name || '')}</div>
+      <div class="nm fit" style="font-size:21pt">${escHtml(x.name || '')}</div>
       <div class="hn">HN<b>${escHtml(x.hn)}</b></div>
       <div class="ft"><span>AN ${escHtml(x.an)}</span><span>admit ${escHtml(thIso(x.regdate))}</span></div>
-    </div>`).join('');
+    </div></div>`).join('');
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
   pa.querySelectorAll('.fit').forEach(el => {
     let fs = parseFloat(el.style.fontSize);
-    while (el.scrollWidth > el.clientWidth + 1 && fs > 12) { fs -= 1; el.style.fontSize = fs + 'pt'; }
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 11) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
   pa.style.cssText = '';
   document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
