@@ -10,7 +10,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261013b"></script>
+<script src="lib/hosxp-db.js?v=20261013c"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -256,9 +256,11 @@ function stickerHtml(v, it, idx, total, now) {
     `<div style="left:10.58mm;top:16.4mm;width:76.73mm;border-top:.27mm solid #000"></div>` +
     s(pos(10.58, 17.2, 67.2, 5.3, 11), 'th b fit', drugName(it)) +
     s(pos(78, 17.2, 10.9, 4.5, 10), 'th r', '#' + fmtQty(it.qty)) +
-    s(pos(10.58, 22.49, 77.93, 6.88, 15), 'bw c b fit', L[0]) +
-    s(pos(10.58, 28.31, 77.93, 6.88, 15), 'bw c b fit', L[1]) +
-    s(pos(10.58, 34.13, 77.93, 6.88, 15), 'bw c b fit', L[2]) +
+    // วิธีใช้: HOSxP ใช้ BrowalliaUPC 15pt ซึ่งตัวเล็กเมื่อพิมพ์จริง — ขยายเป็น 19pt เต็มพื้นที่ 23–40 มม. (บรรทัดละ 5.7 มม.)
+    // บรรทัดที่ยาวเกินช่องจะย่อลงเอง (fit)
+    s(pos(10.58, 23.2, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[0]) +
+    s(pos(10.58, 28.9, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[1]) +
+    s(pos(10.58, 34.6, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[2]) +
     s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
     s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '') +
     `<div class="th" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
