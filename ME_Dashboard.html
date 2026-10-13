@@ -2327,6 +2327,19 @@ document.addEventListener('click', e => {
 function save() {
   localStorage.setItem('me_records_v2', JSON.stringify(records));
 }
+// จำนวนใบสั่งยา ER ต่อวัน { date: n } — ค่าที่เภสัชกรอกเองชนะค่าที่โปรแกรมเติมให้ (rxAuto: ไม่ได้กรอกภายใน 24 ชม.
+// hosxp-sync นับผู้ป่วย ER 19:30 คืนก่อน → 08:00 วันนั้นจาก HOSxP แล้วเติมให้)
+function rxPerDate(recs) {
+  const manual = {}, auto = {};
+  recs.forEach(r => {
+    const m = r.rxAuto ? auto : manual;
+    if ((r.rxDaily || 0) > (m[r.date] || 0)) m[r.date] = r.rxDaily;
+  });
+  return Object.assign(auto, manual);
+}
+function rxCell(r) {
+  return r.rxAuto ? `<span title="${escHtml(r.rxAutoNote || 'เติมอัตโนมัติจาก HOSxP')}">🗄 ${escHtml(r.rxDaily)}</span>` : (escHtml(r.rxDaily) || '—');
+}
 
 // ======= TIME FORMAT =======
 function formatTimeThai(timeStr) {
@@ -2725,7 +2738,7 @@ function renderTable() {
           <td colspan="7" style="color:var(--text-light); font-style:italic">
             <span style="background:#e5e7eb; color:#374151; padding:2px 10px; border-radius:12px; font-size:15px; font-weight:600">ไม่พบ ME</span>
           </td>
-          <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
+          <td style="text-align:center">${rxCell(r)}</td>
           <td>—</td>
           <td>
             <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
@@ -2751,7 +2764,7 @@ function renderTable() {
           }).join('<br>');
         })()}</td>
         <td>${escHtml(r.ward) || '—'}</td>
-        <td style="text-align:center">${escHtml(r.rxDaily) || '—'}</td>
+        <td style="text-align:center">${rxCell(r)}</td>
         <td><span class="badge sev-${escHtml(r.severity)}">${escHtml(r.severity)}</span></td>
         <td>
           <button class="btn btn-secondary" style="padding:4px 12px;font-size:14px" onclick="editRecord(${r.id})">แก้ไข</button>
@@ -2814,9 +2827,8 @@ function renderDashboard() {
   const rxWithData = records.filter(r => r.rxDaily > 0 &&
     (!selFY || getFiscalYear(r.date) === selFY) &&
     (!selMonth || (r.date || '').startsWith(selMonth)));
-  // sum unique dates (take max rxDaily per date to avoid double-counting)
-  const rxByDate = {};
-  rxWithData.forEach(r => { if ((r.rxDaily||0) > (rxByDate[r.date]||0)) rxByDate[r.date] = r.rxDaily; });
+  // sum unique dates (take max rxDaily per date to avoid double-counting; ค่าที่เภสัชกรอกเองชนะค่าอัตโนมัติ)
+  const rxByDate = rxPerDate(rxWithData);
   const totalRx = Object.values(rxByDate).reduce((s,v) => s+v, 0);
   const rateVal = (totalRx > 0) ? (total / totalRx * 1000).toFixed(2) : '—';
 
@@ -2943,9 +2955,7 @@ function renderDashboard() {
   for (let i = 5; i >= 0; i--) {
     const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    const rxMapM = {};
-    records.filter(r => r.date.startsWith(key) && r.rxDaily > 0)
-      .forEach(r => { if ((r.rxDaily||0) > (rxMapM[r.date]||0)) rxMapM[r.date] = r.rxDaily; });
+    const rxMapM = rxPerDate(records.filter(r => r.date.startsWith(key) && r.rxDaily > 0));
     const rxMonth = Object.values(rxMapM).reduce((s,v) => s+v, 0);
     if (rxMonth === 0) { ohMonthPct.push(null); continue; }
     const ohCount = meRecs.filter(r => r.date.startsWith(key) && r.time && r.time.includes(':') && isOffHours(r.time)).length;
@@ -3167,7 +3177,8 @@ function buildRxGrid() {
     const dateStr = year + '-' + String(mon).padStart(2,'0') + '-' + String(d).padStart(2,'0');
     const dow = new Date(year, mon-1, d).getDay();
     const isWE = (dow === 0 || dow === 6);
-    const existing = records.find(r => r.date === dateStr && (r.rxDaily||0) > 0);
+    const existing = records.find(r => r.date === dateStr && (r.rxDaily||0) > 0 && !r.rxAuto)
+      || records.find(r => r.date === dateStr && (r.rxDaily||0) > 0);
     const rxVal = existing ? existing.rxDaily : '';
     const thDate = `${d}/${String(mon).padStart(2,'0')}/${year+543}`;
     html += `<tr style="${isWE ? 'background:#fef9c3' : ''}">
@@ -3177,7 +3188,7 @@ function buildRxGrid() {
       <td><input type="number" min="0" class="rxm-inp" data-date="${dateStr}"
           value="${rxVal}" style="width:90px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:16px;font-family:inherit"
           onkeydown="if(event.key==='Tab'){event.preventDefault();const all=document.querySelectorAll('.rxm-inp');const idx=Array.from(all).indexOf(this);if(all[idx+1])all[idx+1].focus();}"></td>
-      <td style="font-size:14px;color:var(--text-light)">${rxVal ? '✓ มีข้อมูล' : ''}</td>
+      <td style="font-size:14px;color:var(--text-light)">${rxVal ? (existing.rxAuto ? '🗄 เติมอัตโนมัติจาก HOSxP' : '✓ มีข้อมูล') : ''}</td>
     </tr>`;
   }
   tbody.innerHTML = html;
@@ -3202,7 +3213,11 @@ function saveRxMonthly() {
     const rx   = parseInt(inp.value);
     if (!date || isNaN(rx) || rx < 0) return;
     const existing = records.find(r => r.date === date && r.hasME === false);
-    if (existing) { existing.rxDaily = rx; updated++; }
+    if (existing) {
+      // ไม่เปลี่ยนตัวเลขจากที่เติมอัตโนมัติ → ยังเป็นค่าอัตโนมัติ; แก้แล้ว → เป็นค่าที่กรอกเอง
+      if (existing.rxAuto && existing.rxDaily === rx) return;
+      existing.rxDaily = rx; delete existing.rxAuto; delete existing.rxAutoNote; updated++;
+    }
     else {
       const meRec = records.find(r => r.date === date && r.hasME !== false);
       if (meRec) { meRec.rxDaily = rx; updated++; }

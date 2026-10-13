@@ -9,6 +9,10 @@
 ตัวหารของเดือนตั้งแต่ 2026-10 เป็นของ HOSxP (เขียนทับเสมอ — หน้าเว็บไม่ให้กรอกเองแล้ว)
 วันที่ 1–7 ของเดือนดึงเดือนก่อนซ้ำทุกวัน เผื่อมีคนลงรายงานย้อนหลัง; เครื่องปิดวันที่ 1 ก็ตามเก็บเดือนที่ยังไม่ได้ดึงให้เอง
 
+ทุกรอบ (ทุกวัน): ใบสั่งยา ER ประจำวัน (er_records.rxDaily) — เภสัชกรอกเองเป็นหลัก วันไหนไม่ได้กรอกภายใน 24 ชม.
+(เกิน 08:00 ของวันถัดไป) โปรแกรมนับผู้ป่วย ER ทุกคน 19:30 คืนก่อน → 08:00 วันนั้น (รวมคนที่ไม่มียา) แล้วเติมให้
+เป็นแถว hasME=false + rxAuto=true (หน้าเว็บแสดง 🗄 และถ้าเภสัชกรอกเองทีหลัง ค่าที่กรอกเองชนะ)
+
 ใช้: python hosxp_monthly_sync.py [--month YYYY-MM] [--dry-run]
 ฐานข้อมูล: %LOCALAPPDATA%\\HOSxPBridge\\db.json (SELECT อย่างเดียว) · log/state อยู่โฟลเดอร์เดียวกัน
 """
@@ -28,6 +32,7 @@ import urllib.request
 import pymysql
 
 START_MONTH = '2026-10'
+ER_RX_START = '2026-10-01'  # วันแรกที่เติมใบสั่งยา ER ให้อัตโนมัติ (เปลี่ยนด้วย --er-from)
 FS = 'https://firestore.googleapis.com/v1/projects/pharmacy-tph/databases/(default)/documents/pharmacy_tph/'
 FS_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE'
 CLASSIFY_URL = 'https://admin-error-classify.oatsudster.workers.dev'
@@ -434,6 +439,58 @@ def sync_month(db, m, dry):
         + (' [dry-run ไม่ได้เขียน]' if dry else ''))
 
 
+def er_rx_counts(db, d_from, d_to):
+    """{ 'YYYY-MM-DD': จำนวนผู้ป่วย ER ช่วง 19:30 คืนก่อน → 08:00 วันนั้น } ตามที่เภสัชนับใบสั่งยาเวรบ่าย-ดึก"""
+    a = (dt.date.fromisoformat(d_from) - dt.timedelta(days=1)).isoformat()
+    rows = q(db, "SELECT o.vstdate, o.vsttime FROM ovst o JOIN er_regist e ON e.vn=o.vn "
+                 "WHERE o.vstdate>=%s AND o.vstdate<=%s", (a, d_to))
+    out = {}
+    for r in rows:
+        t = dt.datetime.combine(r['vstdate'], dt.time()) + r['vsttime']
+        if t.time() >= dt.time(19, 30):
+            day = (t.date() + dt.timedelta(days=1)).isoformat()
+        elif t.time() < dt.time(8, 0):
+            day = t.date().isoformat()
+        else:
+            continue
+        if d_from <= day <= d_to:
+            out[day] = out.get(day, 0) + 1
+    return out
+
+
+def fill_er_rx(db, d_from, dry):
+    # ครบ 24 ชม. หลังจบเวร (08:00 วันถัดไป) แล้วยังไม่มีใครกรอก จึงเติม
+    now = dt.datetime.now()
+    last = (now.date() - dt.timedelta(days=1 if now.time() >= dt.time(8, 0) else 2)).isoformat()
+    if last < d_from:
+        return
+    counts = er_rx_counts(db, d_from, last)
+
+    def mut(f):
+        recs = f.setdefault('records', [])
+        have = {r.get('date') for r in recs if (r.get('rxDaily') or 0) > 0}
+        added = []
+        base = int(time.time() * 1000)
+        seq = max([r.get('seq') or 0 for r in recs] + [len(recs)])
+        day = dt.date.fromisoformat(d_from)
+        while day.isoformat() <= last:
+            k = day.isoformat()
+            n = counts.get(k, 0)
+            if k not in have and n > 0:
+                seq += 1
+                recs.append({'id': base + len(added), 'seq': seq, 'date': k, 'time': '', 'hasME': False, 'rxType': 'ER',
+                             'rxDaily': n, 'stage': '', 'meType': '', 'severity': '', 'drugs': [], 'drug': '', 'drugForm': '',
+                             'ward': '', 'reporter': '', 'detail': '', 'intervention': '', 'source': 'hosxp_auto', 'rxAuto': True,
+                             'rxAutoNote': f'เติมอัตโนมัติ {now:%Y-%m-%d %H:%M} — ไม่ได้กรอกภายใน 24 ชม.; ผู้ป่วย ER 19:30 คืนก่อน → 08:00 จาก HOSxP'})
+                added.append(f'{k}={n}')
+            day += dt.timedelta(days=1)
+        return {'changed': bool(added), 'added': added}
+
+    r = update_doc('er_records', mut, dry)
+    if r['added']:
+        log('ใบสั่งยา ER ไม่ได้กรอกใน 24 ชม. → เติมให้ ' + ', '.join(r['added']) + (' [dry-run ไม่ได้เขียน]' if dry else ''))
+
+
 def months_between(a, b):
     y, mo = map(int, a.split('-'))
     out = []
@@ -451,6 +508,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--month', help='ดึงเฉพาะเดือนนี้ (YYYY-MM)')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--er-from', default=ER_RX_START, help='เติมใบสั่งยา ER ที่ขาดตั้งแต่วันนี้ (YYYY-MM-DD)')
     args = ap.parse_args()
 
     today = dt.date.today()
@@ -467,8 +525,6 @@ def main():
         months = [m for m in months_between(START_MONTH, prev) if m not in done]
         if today.day <= 7 and prev >= START_MONTH and prev not in months:
             months.append(prev)
-    if not months:
-        return
 
     try:  # กันรันซ้อน (ตอน logon กับรอบเช้าชนกัน)
         if os.path.exists(LOCK_FILE) and time.time() - os.path.getmtime(LOCK_FILE) < 3600:
@@ -479,6 +535,10 @@ def main():
         pass
     try:
         db = db_connect()
+        try:
+            fill_er_rx(db, args.er_from, args.dry_run)
+        except Exception as e:  # noqa: BLE001 — ไม่ให้ขวางการดึงรายเดือน
+            log(f'ใบสั่งยา ER ผิดพลาด: {type(e).__name__}: {e}')
         for m in months:
             sync_month(db, m, args.dry_run)
             if not args.dry_run:
