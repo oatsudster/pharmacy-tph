@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ติดตามรายได้ประกันสุขภาพ — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/esc-html.js"></script>
+<script src="lib/chart.min.js"></script>
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<style>
+:root {
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
+  --gold: #C49A22; --gold-light: #FBF3DC;
+  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+  --danger: #b91c1c; --danger-light: #fdecec; --ok: #15803d;
+  --peer: #9DB8A6; --muted: #D3DDD6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; font-variant-numeric: tabular-nums; }
+.topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.topbar a { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar .sub { font-size: 12px; opacity: .8; }
+.topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.topbar select { font: inherit; font-size: 13px; border-radius: 8px; border: 0; padding: 5px 8px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.card h2 { font-size: 16px; margin: 0 0 2px; color: var(--primary-dark); }
+.note { font-size: 12.5px; color: var(--text-light); margin: 0 0 10px; }
+.hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+.hero-main { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: #fff; border-radius: 12px; padding: 18px 20px; display: grid; gap: 6px; align-content: center; }
+.hero-main .k { font-size: 13px; opacity: .85; }
+.hero-main .v { font-size: 38px; font-weight: 800; line-height: 1.1; }
+.hero-main .s { font-size: 13px; opacity: .9; line-height: 1.6; }
+.src-cards { display: grid; gap: 8px; }
+.src { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.src .nm { font-size: 13px; color: var(--text-mid); }
+.src .amt { font-size: 20px; font-weight: 800; color: var(--primary); }
+.src .rk { grid-row: span 2; font-size: 12px; font-weight: 700; color: var(--danger); background: var(--danger-light); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.src .meter { grid-column: 1 / -1; height: 7px; background: var(--muted); border-radius: 4px; overflow: hidden; }
+.src .meter i { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+.src .pm { grid-column: 1 / -1; font-size: 12px; color: var(--text-light); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.kpi .l { font-size: 12.5px; color: var(--text-mid); }
+.kpi .n { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+.kpi .s { font-size: 12px; color: var(--text-light); }
+.kpi.warn .n { color: var(--danger); }
+.kpi .tgt { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 8px; width: max-content; }
+.kpi .tgt.ok { background: var(--primary-light); color: var(--ok); }
+.kpi .tgt.bad { background: var(--danger-light); color: var(--danger); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; }
+.chartbox { position: relative; height: 260px; }
+.chartbox.tall { height: 560px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.controls select { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; max-width: 100%; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 640px; }
+th, td { padding: 8px; border-bottom: 1px solid #eef3ef; text-align: left; vertical-align: top; }
+th { background: var(--primary-light); font-size: 12.5px; color: var(--primary-dark); }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td small { display: block; color: var(--text-light); }
+.grp td { background: #fafcfb; font-weight: 700; color: var(--text-mid); }
+.bar { height: 6px; border-radius: 3px; background: var(--gold); margin: 4px 0 0 auto; }
+.status { font-size: 13px; color: var(--text-light); }
+.status.err { color: var(--danger); }
+@media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 32px; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← หน้าหลัก</a>
+  <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
+  <div class="right">
+    <label for="fy" class="sub">ปีงบประมาณ</label>
+    <select id="fy"></select>
+    <span id="status" class="status" style="color:#fff;opacity:.85">กำลังโหลด…</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-main">
+      <span class="k">ประมาณการรายได้ที่เพิ่มได้ต่อปี (จากการวิเคราะห์ปีงบ 69)</span>
+      <span class="v">~1.2 ล้านบาท</span>
+      <span class="s">ส่งข้อมูลเคลมตรงเวลาดีแล้ว ช่องว่างอยู่ที่ 3 เรื่อง: บริการที่ทำแล้วแต่เคลมไม่ครบ, บริการส่งเสริมป้องกันที่ทำน้อยกว่า รพ.ขนาดเท่ากัน และค่า RW ผู้ป่วยในต่ำ ตัวชี้วัดด้านล่างอัปเดตจาก HOSxP ทุกเดือน</span>
+    </div>
+    <div class="src-cards" id="src-cards"></div>
+  </section>
+
+  <section>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card"><h2>ผู้ป่วยใน UC/WEL รายเดือน</h2><p class="note">แท่ง = จำนวนราย · เส้น = RW เฉลี่ยต่อราย (ยิ่งสูงยิ่งได้เงินมาก)</p><div class="chartbox"><canvas id="c-ipd"></canvas></div></div>
+    <div class="card"><h2>คุณภาพข้อมูลผู้ป่วยใน</h2><p class="note">% ไม่มีการวินิจฉัยรอง และ % นอนไม่เกิน 1 วัน (ควรลดลง)</p><div class="chartbox"><canvas id="c-coding"></canvas></div></div>
+    <div class="card"><h2>ผู้ป่วย UC นอกเขต</h2><p class="note">จำนวน visit ที่มีค่าใช้จ่าย และยอดค่าใช้จ่าย (ต้องเคลม OP_AE / WALKIN ให้ครบ)</p><div class="chartbox"><canvas id="c-ooa"></canvas></div></div>
+    <div class="card"><h2>สั่งยาสมุนไพรในโรคพื้นฐาน</h2><p class="note">% visit หวัด/ไอ ปวดกล้ามเนื้อ ท้องอืด ท้องผูก (UC/WEL) ที่ได้ยาสมุนไพร · เส้นประ = เป้า 50%</p><div class="chartbox"><canvas id="c-herb"></canvas></div></div>
+    <div class="card"><h2>แพทย์แผนไทย: ยอดเรียกเก็บ</h2><p class="note">เบิกได้รายครั้ง (OFC/LGO/จ่ายเอง) เทียบกับสิทธิในงบเหมาจ่าย (UC/WEL/SSS)</p><div class="chartbox"><canvas id="c-tm"></canvas></div></div>
+    <div class="card"><h2>บริการที่เคลมแยกได้</h2><p class="note">HbA1c (UC/WEL), refer พร้อมรถ (UC/WEL), วัคซีนไข้หวัดใหญ่, วัคซีน dT/TT</p><div class="chartbox"><canvas id="c-svc"></canvas></div></div>
+  </section>
+
+  <section class="card">
+    <h2 id="prov-title">เทียบผลงานเคลมทั้งจังหวัด</h2>
+    <p class="note" id="prov-note">เลือกช่องทางและรายการ · สีเข้ม = ถ้ำพรรณรา · สีกลาง = รพช.ขนาดเล็ก 10 แห่งที่ใช้เทียบ · เส้นประ = ค่ามัธยฐานกลุ่ม</p>
+    <div class="controls">
+      <select id="p-src" aria-label="ช่องทาง"></select>
+      <select id="p-item" aria-label="รายการ"></select>
+    </div>
+    <div class="chartbox tall"><canvas id="c-prov"></canvas></div>
+  </section>
+
+  <section class="card">
+    <h2>รายการที่ได้ต่ำกว่ากลุ่มเทียบเคียง</h2>
+    <p class="note">ส่วนต่างจากค่ามัธยฐานของ รพช.ขนาดเล็ก 10 แห่ง เรียงจากมากไปน้อย (คำนวณจากไฟล์ผลงานเคลมจังหวัดล่าสุด)</p>
+    <div class="controls" id="gap-chips"></div>
+    <div class="tbl"><table id="gap-table"><thead><tr><th>รายการ</th><th>ช่องทาง</th><th class="num">ถ้ำพรรณรา</th><th class="num">มัธยฐานกลุ่ม</th><th class="num">ส่วนต่าง</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>แนวทางเพิ่มรายได้</h2>
+    <p class="note">ประมาณการจากการวิเคราะห์ปีงบ 69 (อนุรักษ์นิยม ยังไม่ได้ตรวจกับอัตราจ่าย สปสช. รายรายการ)</p>
+    <div class="tbl"><table id="opp-table"><thead><tr><th>แนวทาง</th><th>ตัวชี้วัดที่ติดตามในหน้านี้</th><th class="num">เพิ่มได้/ปี</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <p class="note" id="foot"></p>
+</div>
+
+<script>
+(function () {
+  const config = {
+    apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+    authDomain: "pharmacy-tph.firebaseapp.com",
+    projectId: "pharmacy-tph",
+    storageBucket: "pharmacy-tph.firebasestorage.app",
+    messagingSenderId: "617328257113",
+    appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+  };
+  const COL = 'pharmacy_tph';
+  const C = { primary: '#1A5E38', gold: '#C49A22', peer: '#9DB8A6', muted: '#D3DDD6', danger: '#b91c1c', blue: '#2563eb', mid: '#3D5A47' };
+  const TH_M = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const fmt = (n) => Math.round(n || 0).toLocaleString('th-TH');
+  const pct = (n) => (isFinite(n) ? (n * 100).toFixed(1) : '0.0') + '%';
+  const esc = window.escHtml || ((s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+  const fyOf = (m) => { const [y, mo] = m.split('-').map(Number); return (mo >= 10 ? y + 1 : y) + 543; };
+  const mLabel = (m) => { const [y, mo] = m.split('-').map(Number); return TH_M[mo] + ' ' + String(y + 543).slice(2); };
+  const median = (a) => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
+  Chart.defaults.font.family = "'Noto Sans Thai', 'Sarabun', sans-serif";
+  Chart.defaults.color = C.mid;
+
+  const LABEL = { DENTURE: 'ฟันเทียม', OP_AE: 'OP นอกเขต (อุบัติเหตุ/ฉุกเฉิน)', WALKIN: 'OP Walk-in นอกเขต', LGO: 'อปท. (LGO)', OFC: 'ข้าราชการ (OFC)',
+    IP_DRG: 'ผู้ป่วยใน (IP_DRG)', ANC: 'ฝากครรภ์ ANC', FP: 'วางแผนครอบครัว', Palliative_care: 'Palliative care', 'ยาClopidogrel': 'ยา Clopidogrel',
+    INST: 'อุปกรณ์/อวัยวะเทียม', HERB32: 'ยาสมุนไพร 32 รายการ', HERB9: 'ยาสมุนไพร 9 รายการ', CAR_REFER: 'ค่ารถ Refer', Fit_Test: 'FIT test', Fit_test: 'FIT test',
+    STROKE_STEMI: 'Stroke/STEMI', ANC_DENT: 'ANC ทันตกรรม', IRON: 'ยาเสริมธาตุเหล็ก', PNC: 'หลังคลอด PNC', UPT: 'ทดสอบการตั้งครรภ์', ANC_ULTRA: 'ANC อัลตราซาวด์',
+    HEP_B: 'คัดกรองไวรัสตับอักเสบ B', HEP_C: 'คัดกรองไวรัสตับอักเสบ C', FLU_VC: 'วัคซีนไข้หวัดใหญ่', HPV: 'HPV DNA test', HbA1C: 'HbA1c เบาหวาน', EPI: 'วัคซีน EPI',
+    'Cr.+K.': 'Cr + K', dT: 'วัคซีน dT', Fluoride: 'ฟลูออไรด์', HOMEWARD: 'Home ward', TELEMED: 'Telemedicine', DRUG_DELIVERY: 'ส่งยาที่บ้าน' };
+  const lbl = (k) => LABEL[k] || k;
+
+  const OPP = [
+    ['ก. เคลมบริการที่ทำแล้วให้ครบ'],
+    ['ผู้ป่วย UC นอกเขต (OP_AE/WALKIN)', 'กราฟผู้ป่วย UC นอกเขต', 100000, 'งานประกัน, ER, OPD'],
+    ['ค่ารถ refer', 'refer พร้อมรถ (บริการที่เคลมแยกได้)', 40000, 'ER, งานประกัน'],
+    ['กระทบยอด HbA1c กับ MOPH Claim', 'HbA1c UC/WEL', 60000, 'Lab, คลินิก NCD'],
+    ['วัคซีน dT/EPI ใน MOPH Claim', 'วัคซีน dT/TT', 15000, 'งานวัคซีน, PCU'],
+    ['ติดตาม LGO ที่ถูกปฏิเสธ', 'ยอดเรียกเก็บ LGO (การ์ดด้านบน)', 60000, 'งานประกัน'],
+    ['ยา Clopidogrel ที่มีสิทธิเคลม', '—', 40000, 'ห้องยา'],
+    ['Palliative care', 'ผู้ป่วย Z51.5 (การ์ดด้านบน)', 50000, 'ทีม PC'],
+    ['ผู้ป่วยในที่ยังไม่ส่งสำเร็จ', 'AN ที่ไม่พบการส่ง FDH (การ์ดด้านบน)', 45000, 'งานประกัน'],
+    ['ข. เพิ่มบริการที่ สปสช. จ่ายแยก'],
+    ['คัดกรองไวรัสตับอักเสบ B/C', 'ตาราง "ได้ต่ำกว่ากลุ่ม" (HEP_B/HEP_C)', 190000, 'Lab, PCU, อสม.'],
+    ['งานแม่และเด็ก (ANC/PNC/FP/Iron/UPT)', 'ตาราง "ได้ต่ำกว่ากลุ่ม"', 150000, 'งาน MCH'],
+    ['ฟันเทียม', 'ตาราง "ได้ต่ำกว่ากลุ่ม" (DENTURE)', 140000, 'ทันตกรรม'],
+    ['ยาสมุนไพรแทนยาแผนปัจจุบัน', 'กราฟสั่งยาสมุนไพร (เป้า 50%)', 60000, 'ห้องยา, แพทย์แผนไทย'],
+    ['วัคซีนไข้หวัดใหญ่กลุ่มเสี่ยง', 'วัคซีนไข้หวัดใหญ่', 40000, 'คลินิก NCD'],
+    ['ค. ผู้ป่วยใน'],
+    ['Coding audit / บันทึกโรคร่วม', 'กราฟคุณภาพข้อมูลผู้ป่วยใน + RW เฉลี่ย', 220000, 'เวชระเบียน, แพทย์'],
+  ];
+
+  let monthly = null, province = null, fy = null;
+  const charts = {};
+  const status = document.getElementById('status');
+  const fySel = document.getElementById('fy');
+  fySel.addEventListener('change', () => { fy = +fySel.value; drawMonthly(); });
+
+  function chart(id, cfg) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), cfg);
+  }
+  const baseOpts = (extra) => Object.assign({ responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }, extra || {});
+
+  function drawMonthly() {
+    if (!monthly) return;
+    const all = Object.keys(monthly.months || {}).sort();
+    const fys = [...new Set(all.map(fyOf))].sort();
+    if (!fy) fy = fys[fys.length - 1];
+    fySel.innerHTML = fys.map((y) => `<option value="${y}"${y === fy ? ' selected' : ''}>${y}</option>`).join('');
+    const ms = all.filter((m) => fyOf(m) === fy);
+    const R = ms.map((m) => monthly.months[m]);
+    const L = ms.map(mLabel);
+    const sum = (f) => R.reduce((s, r) => s + (f(r) || 0), 0);
+    const ipdN = sum((r) => r.ipd_ucwel.n), ipdRw = sum((r) => r.ipd_ucwel.rw);
+    const sent7 = sum((r) => r.ipd_ucwel.sent7), unsent = sum((r) => r.ipd_ucwel.unsent), noSdx = sum((r) => r.ipd_ucwel.no_sdx);
+    const herbT = sum((r) => r.herb.target), herbH = sum((r) => r.herb.with_herb);
+    const k = [
+      { l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
+      { l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN', tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
+      { l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
+      { l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
+      { l: 'สั่งยาสมุนไพรในโรคพื้นฐาน', n: pct(herbT ? herbH / herbT : 0), s: fmt(herbH) + ' จาก ' + fmt(herbT) + ' visit', tgt: [herbT && herbH / herbT >= 0.5, 'เป้า 50%'] },
+      { l: 'OFC / LGO เรียกเก็บ', n: (sum((r) => r.ofc_opd + r.ofc_ipd) / 1e6).toFixed(2) + ' / ' + (sum((r) => r.lgo_opd + r.lgo_ipd) / 1e6).toFixed(2) + ' ล้าน', s: 'OPD + IPD ตามราคาใน HOSxP' },
+      { l: 'แพทย์แผนไทย เบิกได้รายครั้ง', n: fmt(sum((r) => r.thaimed.billable)) + ' บาท', s: fmt(sum((r) => r.thaimed.sessions)) + ' ครั้งบริการ · ในงบเหมาจ่าย ' + fmt(sum((r) => r.thaimed.capitation)) },
+      { l: 'Palliative (Z51.5) รวมรายเดือน', n: fmt(sum((r) => r.palliative_pts)) + ' คน-เดือน', s: 'ผู้ป่วยที่ควรลงทะเบียนและเคลมชุดสิทธิ' },
+    ];
+    document.getElementById('kpis').innerHTML = k.map((x) => `<div class="kpi${x.warn ? ' warn' : ''}"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.tgt ? `<span class="tgt ${x.tgt[0] ? 'ok' : 'bad'}">${x.tgt[0] ? '✓ ' : '✗ '}${esc(x.tgt[1])}</span>` : ''}</div>`).join('');
+
+    chart('c-ipd', { data: { labels: L, datasets: [
+      { type: 'bar', label: 'จำนวนราย', data: R.map((r) => r.ipd_ucwel.n), backgroundColor: C.primary, borderRadius: 4, yAxisID: 'y' },
+      { type: 'line', label: 'RW เฉลี่ย', data: R.map((r) => r.ipd_ucwel.n ? +(r.ipd_ucwel.rw / r.ipd_ucwel.n).toFixed(3) : null), borderColor: C.gold, backgroundColor: C.gold, yAxisID: 'y1', tension: 0 },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true, title: { display: true, text: 'ราย' } }, y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'RW' } } } }) });
+    chart('c-coding', { type: 'line', data: { labels: L, datasets: [
+      { label: '% ไม่มีการวินิจฉัยรอง', data: R.map((r) => r.ipd_ucwel.n ? +(100 * r.ipd_ucwel.no_sdx / r.ipd_ucwel.n).toFixed(1) : null), borderColor: C.danger, backgroundColor: C.danger, tension: 0 },
+      { label: '% นอน ≤ 1 วัน', data: R.map((r) => r.ipd_ucwel.n ? +(100 * r.ipd_ucwel.los01 / r.ipd_ucwel.n).toFixed(1) : null), borderColor: C.gold, backgroundColor: C.gold, tension: 0 },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true, ticks: { callback: (v) => v + '%' } } } }) });
+    chart('c-ooa', { data: { labels: L, datasets: [
+      { type: 'bar', label: 'visit', data: R.map((r) => r.out_of_area.visits), backgroundColor: C.primary, borderRadius: 4, yAxisID: 'y' },
+      { type: 'bar', label: 'ในจำนวนนี้เป็น ER', data: R.map((r) => r.out_of_area.er), backgroundColor: C.peer, borderRadius: 4, yAxisID: 'y' },
+      { type: 'line', label: 'ค่าใช้จ่าย (บาท)', data: R.map((r) => r.out_of_area.charge), borderColor: C.gold, backgroundColor: C.gold, yAxisID: 'y1', tension: 0 },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true }, y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { callback: (v) => fmt(v) } } } }) });
+    chart('c-herb', { type: 'line', data: { labels: L, datasets: [
+      { label: '% ได้ยาสมุนไพร', data: R.map((r) => r.herb.target ? +(100 * r.herb.with_herb / r.herb.target).toFixed(1) : null), borderColor: C.primary, backgroundColor: C.primary, tension: 0 },
+      { label: 'เป้า 50%', data: R.map(() => 50), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0 },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } } } }) });
+    chart('c-tm', { type: 'bar', data: { labels: L, datasets: [
+      { label: 'เบิกได้รายครั้ง', data: R.map((r) => r.thaimed.billable), backgroundColor: C.primary, borderRadius: 4, stack: 's' },
+      { label: 'ในงบเหมาจ่าย', data: R.map((r) => r.thaimed.capitation), backgroundColor: C.muted, borderRadius: 4, stack: 's' },
+    ] }, options: baseOpts({ scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: (v) => fmt(v) } } } }) });
+    chart('c-svc', { type: 'line', data: { labels: L, datasets: [
+      { label: 'HbA1c', data: R.map((r) => r.hba1c_ucwel), borderColor: C.primary, backgroundColor: C.primary, tension: 0 },
+      { label: 'refer พร้อมรถ', data: R.map((r) => r.refer_amb_ucwel), borderColor: C.danger, backgroundColor: C.danger, tension: 0 },
+      { label: 'วัคซีนไข้หวัดใหญ่', data: R.map((r) => r.vaccine.flu), borderColor: C.blue, backgroundColor: C.blue, tension: 0 },
+      { label: 'วัคซีน dT/TT', data: R.map((r) => r.vaccine.dt), borderColor: C.gold, backgroundColor: C.gold, tension: 0 },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true } } }) });
+    const upd = monthly.updated ? new Date(monthly.updated).toLocaleString('th-TH') : '-';
+    document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
+  }
+
+  // ---------- province ----------
+  const pSrc = document.getElementById('p-src'), pItem = document.getElementById('p-item');
+  pSrc.addEventListener('change', () => { fillItems(); drawProvince(); });
+  pItem.addEventListener('change', drawProvince);
+  let gapSrc = 'all';
+
+  function fillItems() {
+    const s = province.sources[pSrc.value];
+    const tot = s.items.map((it, i) => [it, Object.values(s.hospitals).reduce((a, v) => a + (v[i] || 0), 0)]).sort((a, b) => b[1] - a[1]);
+    pItem.innerHTML = '<option value="__total">ยอดรวมทั้งช่องทาง</option>' + tot.map(([it]) => `<option value="${esc(it)}">${esc(lbl(it) === it ? it : lbl(it) + ' (' + it + ')')}</option>`).join('');
+  }
+
+  function drawProvince() {
+    if (!province) return;
+    const s = province.sources[pSrc.value], it = pItem.value;
+    const idx = s.items.indexOf(it);
+    const rows = Object.keys(s.hospitals).map((h) => ({ h, v: it === '__total' ? s.totals[h] : s.hospitals[h][idx] || 0 })).sort((a, b) => b.v - a.v);
+    const peers = province.peers || [];
+    const med = median(rows.filter((r) => peers.includes(r.h)).map((r) => r.v));
+    const rank = rows.findIndex((r) => r.h === province.me) + 1;
+    document.getElementById('prov-title').textContent = `${it === '__total' ? 'ยอดรวม ' + pSrc.value : lbl(it)}: ถ้ำพรรณราอันดับ ${rank} จาก ${rows.length} รพ.`;
+    chart('c-prov', { type: 'bar', data: { labels: rows.map((r) => r.h), datasets: [
+      { label: 'บาท', data: rows.map((r) => r.v), borderRadius: 3,
+        backgroundColor: rows.map((r) => r.h === province.me ? C.primary : peers.includes(r.h) ? C.peer : C.muted) },
+      { type: 'line', label: 'มัธยฐานกลุ่ม ' + fmt(med), data: rows.map(() => med), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0 },
+    ] }, options: baseOpts({ indexAxis: 'y', interaction: { mode: 'nearest', axis: 'y', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.dataset.label === 'บาท' ? fmt(c.raw) + ' บาท' : c.dataset.label } } },
+      scales: { x: { ticks: { callback: (v) => fmt(v) } }, y: { ticks: { autoSkip: false, font: { size: 11 } } } } }) });
+  }
+
+  function drawGap() {
+    if (!province) return;
+    const srcs = Object.keys(province.sources);
+    document.getElementById('gap-chips').innerHTML = ['all', ...srcs].map((x) => `<button class="chip${x === gapSrc ? ' active' : ''}" data-s="${esc(x)}">${x === 'all' ? 'ทุกช่องทาง' : esc(x)}</button>`).join('');
+    const peers = province.peers || [];
+    const rows = [];
+    srcs.filter((x) => gapSrc === 'all' || x === gapSrc).forEach((x) => {
+      const s = province.sources[x];
+      s.items.forEach((it, i) => {
+        const me = (s.hospitals[province.me] || [])[i] || 0;
+        const med = median(peers.filter((p) => s.hospitals[p]).map((p) => s.hospitals[p][i] || 0));
+        if (med - me > 0) rows.push({ it, x, me, med, gap: med - me });
+      });
+    });
+    rows.sort((a, b) => b.gap - a.gap);
+    const max = rows.length ? rows[0].gap : 1;
+    document.querySelector('#gap-table tbody').innerHTML = rows.slice(0, 25).map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}</small></td><td>${esc(r.x)}</td><td class="num">${fmt(r.me)}</td><td class="num">${fmt(r.med)}</td><td class="num">${fmt(r.gap)}<div class="bar" style="width:${(r.gap / max * 100).toFixed(1)}%"></div></td></tr>`).join('');
+  }
+  document.getElementById('gap-chips').addEventListener('click', (e) => { const b = e.target.closest('button[data-s]'); if (b) { gapSrc = b.dataset.s; drawGap(); } });
+
+  function drawSrcCards() {
+    const peers = province.peers || [];
+    const order = ['e-Claim', 'KTB', 'MOPH Claim'].filter((x) => province.sources[x]);
+    document.getElementById('src-cards').innerHTML = order.map((x) => {
+      const t = province.sources[x].totals;
+      const list = Object.entries(t).sort((a, b) => b[1] - a[1]);
+      const me = t[province.me] || 0, med = median(peers.filter((p) => p in t).map((p) => t[p]));
+      const rank = list.findIndex(([h]) => h === province.me) + 1;
+      return `<div class="src"><span class="nm">${esc(x)}</span><span class="rk">อันดับ ${rank}/${list.length}</span><span class="amt">${fmt(me)} บาท</span>
+        <div class="meter"><i style="width:${Math.min(100, med ? me / med * 100 : 0).toFixed(1)}%"></i></div>
+        <span class="pm">มัธยฐานกลุ่มเทียบเคียง ${fmt(med)} บาท · ไฟล์: ${esc(province.sources[x].file)}</span></div>`;
+    }).join('');
+  }
+
+  function drawOpp() {
+    document.querySelector('#opp-table tbody').innerHTML = OPP.map((r) => r.length === 1
+      ? `<tr class="grp"><td colspan="4">${esc(r[0])}</td></tr>`
+      : `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${fmt(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')
+      + `<tr class="grp"><td colspan="2">รวมประมาณการ</td><td class="num">${fmt(OPP.reduce((s, r) => s + (r[2] || 0), 0))}</td><td></td></tr>`;
+  }
+  drawOpp();
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    const db = firebase.firestore();
+    db.collection(COL).doc('insurance_monthly').onSnapshot((snap) => {
+      monthly = snap.exists ? snap.data() : null;
+      status.textContent = monthly ? 'เชื่อมต่อแล้ว' : 'ยังไม่มีข้อมูลรายเดือน';
+      drawMonthly();
+    }, (e) => { status.textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; });
+    db.collection(COL).doc('insurance_province').onSnapshot((snap) => {
+      province = snap.exists ? snap.data() : null;
+      if (!province) return;
+      const keep = pSrc.value;
+      pSrc.innerHTML = Object.keys(province.sources).sort().map((x) => `<option${x === (keep || 'e-Claim') ? ' selected' : ''}>${esc(x)}</option>`).join('');
+      fillItems(); drawProvince(); drawGap(); drawSrcCards();
+    });
+  } catch (e) {
+    status.textContent = 'เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message;
+  }
+})();
+</script>
+</body>
+</html>
