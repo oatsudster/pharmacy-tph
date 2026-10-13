@@ -64,7 +64,7 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
 /* ── สติกเกอร์ยา 101.6 × 59.9 มม. (ZDesigner ZD230) — ตำแหน่งตาม StickerDetailReport.rtm ของ HOSxP ── */
 .stk { position: relative; width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; }
 .stk:last-child { page-break-after: auto; break-after: auto; }
-.stk > div { position: absolute; white-space: nowrap; overflow: hidden; line-height: 1.15; }
+.stk > div { position: absolute; white-space: nowrap; overflow: visible; line-height: 1.15; }  /* ไม่ตัดวรรณยุกต์ — ข้อความยาวย่อด้วย .fit */
 .stk .bw { font-family: 'BrowalliaUPC', 'Browallia New', 'Sarabun', sans-serif; }
 .stk .th { font-family: Tahoma, 'Noto Sans Thai', sans-serif; }
 .stk .c { text-align: center; } .stk .r { text-align: right; } .stk .b { font-weight: 700; }
@@ -200,6 +200,13 @@ async function loadHn(hn) {
 function drugName(it) {
   return (it.namePrint || [it.name, it.strength, it.units].filter(Boolean).join(' ')).replace(/\s+/g, ' ').trim();
 }
+// ชื่อยาบนสติกเกอร์: ชื่อเต็มยาวเกินช่องจะถูกย่อตัวอักษรจนเล็ก — ลองตัดขนาดบรรจุในวงเล็บของหน่วย ("ขวด (60 ml.)" → "ขวด")
+// แล้วตัดหน่วยทิ้งก่อน ค่อยย่อตัวอักษร (name_print ที่ตั้งไว้ใน HOSxP ใช้ตามนั้น)
+function drugNameAlts(it) {
+  const j = a => a.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (it.namePrint) return [drugName(it)];
+  return [...new Set([j([it.name, it.strength, it.units]), j([it.name, it.strength, String(it.units || '').replace(/\s*\(.*\)\s*$/, '')]), j([it.name, it.strength])])];
+}
 // บรรทัดวิธีใช้ 3 บรรทัด + (pq) ตาม StickerDetailReport.rtm: ยาที่ตั้ง print_sticker_pq = Y และจำนวน > 1
 // ต่อท้ายบรรทัด 3 ด้วยข้อความในวงเล็บก่อน "/" ของบรรทัด 3
 function usageLines(it) {
@@ -251,10 +258,10 @@ function stickerHtml(v, it, idx, total, now) {
     s(pos(10.58, 5.03, 60, 6.1, 14), 'bw c', `วันที่ ${thShort(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`) +
     s(pos(71.7, 5.82, 17.2, 6.1, 14), 'bw r', `คิว : ${v.queue || ''}`) +
     s(pos(10.58, 10.85, 4.6, 6.6, 14), 'bw b', 'ชื่อ') +
-    s(pos(15.35, 10.85, 41.5, 6.1, 14), 'bw b fit', v.name || '') +
+    s(pos(15.35, 10.85, 41.5, 6.1, 14), 'bw b fit', v.name || '')  +
     `<div class="th b" style="${pos(57.15, 11.9, 31.75, 4.9, 11)}display:flex;justify-content:space-between"><span>HN</span><span>${escHtml(CUR.hn)}</span></div>` +
     `<div style="left:10.58mm;top:16.4mm;width:76.73mm;border-top:.27mm solid #000"></div>` +
-    s(pos(10.58, 17.2, 67.2, 5.3, 11), 'th b fit', drugName(it)) +
+    `<div class="th b fit" data-alts="${escHtml(JSON.stringify(drugNameAlts(it)))}" style="${pos(10.58, 17.2, 67.2, 5.3, 11)}">${escHtml(drugName(it))}</div>` +
     s(pos(78, 17.2, 10.9, 4.5, 10), 'th r', '#' + fmtQty(it.qty)) +
     // วิธีใช้: HOSxP ใช้ BrowalliaUPC 15pt ซึ่งตัวเล็กเมื่อพิมพ์จริง — ขยายเป็น 19pt เต็มพื้นที่ 23–40 มม. (บรรทัดละ 5.7 มม.)
     // บรรทัดที่ยาวเกินช่องจะย่อลงเอง (fit)
@@ -263,7 +270,7 @@ function stickerHtml(v, it, idx, total, now) {
     s(pos(10.58, 34.6, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[2]) +
     s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
     s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '') +
-    `<div class="th" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
+    `<div class="th fit" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
     s(pos(55.3, 53.45, 9.8, 3.5, 8), 'th b r', it.pregnancy || '');
   if (it.light === 'Y') h += s(pos(67.47, 27.7, 21.43, 3.8, 9), 'th r', '[ เก็บพ้นแสง ]');
   if (it.antibiotic === 'Y') h += s(pos(67.47, 31.44, 21.43, 3.8, 9), 'th r', '[ ยาปฏิชีวนะ ]');
@@ -283,6 +290,7 @@ function printItems(guids) {
   // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
   pa.querySelectorAll('.fit').forEach(el => {
+    if (el.dataset.alts) for (const t of JSON.parse(el.dataset.alts)) { el.textContent = t; if (el.scrollWidth <= el.clientWidth + 1) break; }
     let fs = parseFloat(el.style.fontSize);
     while (el.scrollWidth > el.clientWidth + 1 && fs > 6) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
