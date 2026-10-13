@@ -18,6 +18,7 @@ foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $here 'in
   [IO.File]::WriteAllText((Join-Path $stage (Split-Path $f -Leaf)), [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8), $bom)
 }
 Copy-Item (Join-Path $bridgeDir 'start-bridge.bat') $stage
+Copy-Item (Join-Path $bridgeDir 'stop-bridge.bat') $stage
 Copy-Item (Join-Path $bridgeDir 'hxdb.cs') $stage
 Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint.bat') $stage
 Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint-setup.bat') $stage

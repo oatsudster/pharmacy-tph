@@ -915,7 +915,7 @@ function Respond($client) {
 
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $PORT)
 try { $listener.Start() } catch { Write-Host "เปิดพอร์ต $PORT ไม่ได้ — อาจมี HOSxP Bridge เปิดอยู่แล้ว"; exit 1 }
-Write-Host "HOSxP Bridge ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (ปิดหน้าต่างนี้เพื่อหยุด)"
+Write-Host "HOSxP Bridge ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (หยุด: stop-bridge.bat)"
 if ($db) { try { [void](DbQuery 'SELECT 1'); Write-Host "เชื่อมฐานข้อมูล HOSxP แล้ว" } catch { Write-Host "ยังเชื่อมฐานข้อมูลไม่ได้: $_ (ใช้ OCR แทน)" } }
 else { Write-Host "ไม่ได้ตั้งฐานข้อมูล ($($state.dbErr)) — ใช้ OCR" }
 $nextPoll = [DateTime]::MinValue

@@ -10,6 +10,9 @@
 ถ้า install.cmd ใช้ไม่ได้: คลิกขวา install.ps1 > Run with PowerShell
 หรือไม่ติดตั้งเลย: คัดลอก hosxp-bridge.ps1, hxdb.cs, db.json กับ start-bridge.bat ไปไว้ในโฟลเดอร์เดียวกัน แล้วดับเบิลคลิก start-bridge.bat
 
+Bridge ทำงานเบื้องหลัง ไม่มีหน้าต่างบน taskbar
+  ปิด: ดับเบิลคลิก stop-bridge.bat / เปิดใหม่หรือรีสตาร์ท: ดับเบิลคลิก start-bridge.bat (ในโฟลเดอร์ %LOCALAPPDATA%\HOSxPBridge)
+
 ถอนการติดตั้ง: ดับเบิลคลิก uninstall.cmd ในโฟลเดอร์ %LOCALAPPDATA%\HOSxPBridge
 
 ฐานข้อมูล HOSxP

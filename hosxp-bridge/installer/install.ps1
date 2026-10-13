@@ -26,7 +26,7 @@ try {
   Start-Sleep -Milliseconds 500
 
   New-Item -ItemType Directory -Force $Target | Out-Null
-  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'start-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
+  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'start-bridge.bat', 'stop-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
   # หน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ (ใช้เฉพาะเครื่องห้องยาที่ต่อเครื่องพิมพ์สติกเกอร์)
@@ -60,7 +60,7 @@ try {
     $sc.TargetPath = Join-Path $Target 'start-bridge.bat'
     $sc.Arguments = 'auto'   # start-bridge.bat ตรวจวันใน autostart-days.txt ก่อนเปิด
     $sc.WorkingDirectory = $Target
-    $sc.WindowStyle = 7   # ย่อหน้าต่าง
+    $sc.WindowStyle = 7   # ย่อหน้าต่าง cmd ที่เปิดแวบเดียว (bridge เองไม่มีหน้าต่าง)
     $sc.Description = 'HOSxP Bridge — ส่ง HN/วันนัด/ใบสั่งยา ให้หน้าต่างลอยยาคงเหลือ'
     $sc.Save()
   }
@@ -74,7 +74,7 @@ try {
     $notes += '⚠️ Bridge ยังไม่ตอบ — ลองรีสตาร์ทเครื่อง ถ้ายังไม่ได้ อาจถูก IT ปิดการใช้ PowerShell ไว้'
   } elseif ($null -eq $state.PSObject.Properties['active']) {
     # ตัวเก่าที่เปิดด้วยสิทธิ์ admin ยังค้างอยู่ ตัวใหม่จึงเปิดพอร์ตไม่ได้
-    $notes += '⚠️ ยังมี HOSxP Bridge ตัวเก่าเปิดอยู่ — ปิดหน้าต่าง "HOSxP Bridge" ที่ taskbar แล้วรันตัวติดตั้งนี้อีกครั้ง'
+    $notes += '⚠️ ยังมี HOSxP Bridge ตัวเก่าเปิดอยู่ — รีสตาร์ทเครื่องแล้วรันตัวติดตั้งนี้อีกครั้ง'
   } elseif (Test-Path (Join-Path $Target 'db.json')) {
     # รอให้ bridge ลองต่อฐานข้อมูลก่อน (ครั้งแรกใช้เวลา ~1 วินาที)
     for ($i = 0; $i -lt 10 -and -not $state.db; $i++) { Start-Sleep -Milliseconds 500; $s2 = BridgeState; if ($s2) { $state = $s2 } }
