@@ -54,6 +54,12 @@
   .hx-table th { background:#F4F7F5; white-space:nowrap; }
   .hx-badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:6px; background:#e0f2fe; color:#0e7490; }
   .card-header.hx-ok { background:#dcfce7; color:#166534; }
+  .hx-fold > summary { list-style:none; }
+  .hx-fold > summary::-webkit-details-marker { display:none; }
+  .hx-fold > summary::before { content:'▸ '; }
+  .hx-fold[open] > summary::before { content:'▾ '; }
+  .hx-fold[open] .hx-fold-hint { display:none; }
+  .hx-fold-hint { font-size:12px; font-weight:400; }
   .card-header.hx-wait { background:#e0f2fe; color:#0e7490; }
   .card-header.hx-near { background:#FBF3DC; color:#7c5a00; }
   .rep-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; }
@@ -3790,7 +3796,7 @@ function resExportPDF() {
 </script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/hosxp-db.js"></script>
-<script src="lib/dm-hosxp.js?v=20261013"></script>
+<script src="lib/dm-hosxp.js?v=20261013b"></script>
 <script src="lib/dm-infographic.js"></script>
 <script src="lib/ai-assistant.js"></script>
 <script>
