@@ -29,6 +29,7 @@
 #   /db/rxqueue     — visit วันนี้/เมื่อคืนที่มียา (ล่าสุด 40 visit) + ใครล็อก VN อยู่ (vn_lock) — หน้า rx-sticker.html
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
+#   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน)
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -457,6 +458,15 @@ function DbRxQueue {
       lockStaff = $_['lock_staff']; lockComputer = $_['lock_computer']; lockTime = $_['lock_time'] } })
   [ordered]@{ ok = $true; items = $items; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 }
+function DbIpdList {
+  $rows = DbQuery ("SELECT i.an, i.hn, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, i.ward, w.name AS ward_name, " +
+    "a.bedno, a.roomno, CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname " +
+    "FROM ipt i LEFT JOIN iptadm a ON a.an=i.an LEFT JOIN ward w ON w.ward=i.ward LEFT JOIN patient p ON p.hn=i.hn " +
+    "WHERE i.dchdate IS NULL AND i.regdate>=CURDATE() - INTERVAL 1 YEAR ORDER BY i.ward, a.bedno LIMIT 300")
+  [ordered]@{ ok = $true; items = @($rows | ForEach-Object {
+    [ordered]@{ an = $_['an']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
+      bed = $_['bedno']; room = $_['roomno']; name = $_['ptname'] } }) }
+}
 function DbRxSticker($hn) {
   $vis = DbQuery ("SELECT o.vn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, v.age_y, " +
@@ -514,11 +524,11 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }

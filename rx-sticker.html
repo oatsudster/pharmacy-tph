@@ -10,7 +10,8 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261013"></script>
+<script src="lib/hosxp-db.js?v=20261013b"></script>
+<style id="page-size"></style>
 <style>
 :root {
   --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
@@ -73,8 +74,30 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
   body { background: #fff; }
   body > *:not(#print-area) { display: none !important; }
   #print-area { display: block; }
-  @page { size: 101.6mm 59.9mm; margin: 0; }
 }
+.tabbar { max-width: 1100px; margin: 0 auto; padding: 14px 16px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.tabbar .tab { font: inherit; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+.tabbar .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.wrap1 { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.ipd-row { display: grid; grid-template-columns: 34px 90px 1fr auto; gap: 4px 12px; align-items: center; padding: 9px 4px; border-top: 1px solid #eef3ef; }
+.ipd-row .bed { font-size: 22px; font-weight: 800; color: var(--primary-dark); }
+.ipd-row .nm { font-weight: 600; }
+.ipd-row .mt { font-size: 12.5px; color: var(--text-mid); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip.on { background: var(--gold-light); border-color: var(--gold); }
+/* ── หัวสติกเกอร์ผู้ป่วยใน 9 × 6 ซม. (แบบ CUSTOM- stickerผู้ป่วยใน ของ HOSxP: เตียง / ชื่อ / HN) ── */
+.ipdstk { width: 90mm; height: 60mm; padding: 3mm 4mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
+  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; display: flex; flex-direction: column; }
+.ipdstk:last-child { page-break-after: auto; break-after: auto; }
+.ipdstk .top { display: flex; justify-content: space-between; align-items: baseline; border-bottom: .3mm solid #000; padding-bottom: 1mm; }
+.ipdstk .bedl { font-size: 24pt; font-weight: 700; }
+.ipdstk .bedv { font-size: 44pt; font-weight: 700; line-height: 1; margin-left: 3mm; }
+.ipdstk .ward { font-size: 16pt; text-align: right; }
+.ipdstk .nm { font-size: 34pt; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; margin-top: 2mm; line-height: 1.15; }
+.ipdstk .hn { font-size: 26pt; font-weight: 700; text-align: center; line-height: 1.1; }
+.ipdstk .hn b { font-size: 44pt; margin-left: 3mm; }
+.ipdstk .ft { margin-top: auto; font-size: 15pt; display: flex; justify-content: space-between; }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -83,11 +106,31 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
   <a href="index.html">🏠 หน้าหลัก</a>
   <div>
     <h1>🏷️ พิมพ์สติกเกอร์ยา (จาก HOSxP)</h1>
-    <div class="sub">ใช้ตอนใบสั่งยาถูกล็อกใน HOSxP (พยาบาลยังเปิดค้าง) · แบบเดียวกับสติกเกอร์ HOSxP 10.16 × 6 ซม.</div>
+    <div class="sub">สติกเกอร์ยาเมื่อใบสั่งถูกล็อกใน HOSxP · หัวสติกเกอร์ผู้ป่วยในแปะรถยา — พิมพ์จากฐานข้อมูล HOSxP ได้ในคลิกเดียว</div>
   </div>
 </div>
 
-<div class="wrap">
+<div class="tabbar">
+  <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
+  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา)</button>
+</div>
+
+<div class="wrap1" id="view-ipd" style="display:none">
+  <div class="card">
+    <h2>🛏️ ผู้ป่วยในที่ยังไม่จำหน่าย <span class="hint" id="ipd-meta" style="margin:0;font-weight:400"></span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="loadIpd()">🔄</button></h2>
+    <div class="chips" id="ipd-wards"></div>
+    <div class="actions" style="margin:0 0 6px">
+      <button class="btn btn-gold" id="ipd-print-sel" onclick="printIpd(ipdSelected())" disabled>🖨 พิมพ์ที่เลือก</button>
+      <button class="btn" onclick="printIpd(ipdShown().map(x => x.an))">🖨 พิมพ์ทุกคนในรายการ</button>
+      <label class="hint" style="margin:0">ดวงละคน × <input class="cp" type="number" id="ipd-copies" min="1" max="9" value="1"></label>
+      <span class="hint" style="margin:0">กด 🖨 ท้ายชื่อ = พิมพ์คนนั้นทันที · เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
+    </div>
+    <div id="ipd-list"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+</div>
+
+<div class="wrap" id="view-rx">
   <div>
     <div class="card">
       <h2>🔎 ใส่ / สแกน HN</h2>
@@ -234,6 +277,7 @@ function printItems(guids) {
   if (!list.length) return;
   const pa = document.getElementById('print-area');
   pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now)).join('');
+  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
   pa.querySelectorAll('.fit').forEach(el => {
@@ -244,11 +288,70 @@ function printItems(guids) {
   setTimeout(() => window.print(), 50);
 }
 
+// ── หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา) ──
+let IPD = [], IPD_WARD = '';
+const IPD_SEL = new Set();
+const bedKey = b => String(b || '').replace(/\d+/g, d => d.padStart(4, '0'));
+function ipdShown() { return IPD.filter(x => !IPD_WARD || x.ward === IPD_WARD); }
+function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x => x.an); }
+async function loadIpd() {
+  const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
+  if (!r) { document.getElementById('ipd-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
+  IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
+  document.getElementById('ipd-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+  renderIpd();
+}
+function renderIpd() {
+  const wards = [...new Map(IPD.map(x => [x.ward, x.wardName || x.ward])).entries()];
+  if (IPD_WARD && !wards.some(([w]) => w === IPD_WARD)) IPD_WARD = '';
+  document.getElementById('ipd-wards').innerHTML = wards.length > 1
+    ? [['', 'ทุกหอ']].concat(wards).map(([w, n]) => `<button class="chip${w === IPD_WARD ? ' on' : ''}" onclick="IPD_WARD='${escHtml(w)}';renderIpd()">${escHtml(n)}${w ? ` (${IPD.filter(x => x.ward === w).length})` : ''}</button>`).join('') : '';
+  const list = ipdShown();
+  document.getElementById('ipd-list').innerHTML = list.map(x => `<div class="ipd-row">
+      <input type="checkbox" ${IPD_SEL.has(x.an) ? 'checked' : ''} onchange="this.checked?IPD_SEL.add('${escHtml(x.an)}'):IPD_SEL.delete('${escHtml(x.an)}');renderIpd()">
+      <div class="bed">${escHtml(x.bed || '-')}</div>
+      <div><div class="nm">${escHtml(x.name || '-')}</div>
+        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
+      <button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
+    </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
+  const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
+  b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
+}
+function printIpd(ans) {
+  const copies = Math.max(1, Math.min(9, +document.getElementById('ipd-copies').value || 1));
+  const list = IPD.filter(x => ans.includes(x.an));
+  if (!list.length) return;
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = list.flatMap(x => Array(copies).fill(x)).map(x => `<div class="ipdstk">
+      <div class="top"><div><span class="bedl">เตียง</span><span class="bedv">${escHtml(x.bed || '-')}</span></div><div class="ward">${escHtml(x.wardName || '')}</div></div>
+      <div class="nm fit" style="font-size:34pt">${escHtml(x.name || '')}</div>
+      <div class="hn">HN<b>${escHtml(x.hn)}</b></div>
+      <div class="ft"><span>AN ${escHtml(x.an)}</span><span>admit ${escHtml(thIso(x.regdate))}</span></div>
+    </div>`).join('');
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  pa.querySelectorAll('.fit').forEach(el => {
+    let fs = parseFloat(el.style.fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 12) { fs -= 1; el.style.fontSize = fs + 'pt'; }
+  });
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
+  setTimeout(() => window.print(), 50);
+}
+function setView(v) {
+  document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
+  document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
+  document.getElementById('view-ipd').style.display = v === 'ipd' ? '' : 'none';
+  try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
+  if (v === 'ipd') loadIpd(); else document.getElementById('f-hn').focus();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('f-hn');
   el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadHn(el.value); el.select(); } });
-  el.focus();
   loadQueue();
+  let v = 'rx';
+  try { v = localStorage.getItem('rx_sticker_view') || 'rx'; } catch (e) {}
+  setView(v === 'ipd' ? 'ipd' : 'rx');
   // รายการล่าสุดอัปเดตเองทุก 1 นาที (เฉพาะตอนหน้าเปิดอยู่บนจอ)
   setInterval(() => { if (!document.hidden) loadQueue(); }, 60000);
 });
