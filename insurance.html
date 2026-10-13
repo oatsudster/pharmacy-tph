@@ -79,6 +79,19 @@ td small { display: block; color: var(--text-light); }
 .bar { height: 6px; border-radius: 3px; background: var(--gold); margin: 4px 0 0 auto; }
 .status { font-size: 13px; color: var(--text-light); }
 .status.err { color: var(--danger); }
+.chip-row { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.tgt.flat, #hc-table .tgt.flat { background: #eef1ef; color: var(--text-mid); }
+#hc-table .tgt { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 0 7px; }
+#hc-table .tgt.ok { background: var(--primary-light); color: var(--ok); }
+#hc-table .tgt.bad { background: var(--danger-light); color: var(--danger); }
+#hc-table small { margin-top: 2px; }
+#hc-table tbody tr { cursor: pointer; }
+#hc-table tbody tr:hover, #hc-table tbody tr.sel { background: var(--primary-light); }
+#hc-table tfoot td { font-weight: 700; }
+.hc-tag { font-size: 11px; color: var(--danger); background: var(--danger-light); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.hc-detail { margin-top: 12px; font-size: 13px; color: var(--text-mid); }
+.hc-detail summary { cursor: pointer; color: var(--primary-dark); font-weight: 600; }
+.hc-detail ul { margin: 6px 0 10px; padding-left: 18px; }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -121,6 +134,26 @@ td small { display: block; color: var(--text-light); }
     <div class="card"><h2>สั่งยาสมุนไพรในโรคพื้นฐาน</h2><p class="note">% visit หวัด/ไอ ปวดกล้ามเนื้อ ท้องอืด ท้องผูก (UC/WEL) ที่ได้ยาสมุนไพร · เส้นประ = เป้า 50%</p><div class="chartbox"><canvas id="c-herb"></canvas></div></div>
     <div class="card"><h2>แพทย์แผนไทย: ยอดเรียกเก็บ</h2><p class="note">เบิกได้รายครั้ง (OFC/LGO/จ่ายเอง) เทียบกับสิทธิในงบเหมาจ่าย (UC/WEL/SSS)</p><div class="chartbox"><canvas id="c-tm"></canvas></div></div>
     <div class="card"><h2>บริการที่เคลมแยกได้</h2><p class="note">HbA1c (UC/WEL), refer พร้อมรถ (UC/WEL), วัคซีนไข้หวัดใหญ่, วัคซีน dT/TT</p><div class="chartbox"><canvas id="c-svc"></canvas></div></div>
+  </section>
+
+  <section class="card" id="herbcd">
+    <h2>ยาสมุนไพรในกลุ่มโรค Common Diseases and Symptoms</h2>
+    <p class="note">ตัวชี้วัดแผนไทยฯ ข้อ 14: ร้อยละผู้ป่วยนอก (ทุกสิทธิ) ที่วินิจฉัยตาม 10 กลุ่มอาการ แล้วได้ยาสมุนไพรตามรายการของกลุ่มนั้น · นับเป็น visit · เป้าคือ "เพิ่มขึ้น" เทียบช่วงก่อนหน้า</p>
+    <div class="controls">
+      <span class="chip-row" id="hc-gran"></span>
+      <select id="hc-period" aria-label="งวด"></select>
+      <span class="chip-row" id="hc-mode"></span>
+    </div>
+    <div class="kpis" id="hc-kpis" style="margin-bottom:12px"></div>
+    <div class="grid2">
+      <div style="min-width:0">
+        <div class="controls"><select id="hc-group" aria-label="กลุ่มอาการในกราฟ"></select></div>
+        <div class="chartbox"><canvas id="c-herbcd"></canvas></div>
+      </div>
+      <div class="tbl"><table id="hc-table" style="min-width:500px"></table></div>
+    </div>
+    <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม</summary><div id="hc-criteria"></div></details>
+    <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
   </section>
 
   <section class="card">
@@ -265,8 +298,79 @@ td small { display: block; color: var(--text-light); }
       { label: 'วัคซีน dT/TT', data: R.map((r) => r.vaccine.dt), borderColor: C.gold, backgroundColor: C.gold, tension: 0 },
     ] }, options: baseOpts({ scales: { y: { beginAtZero: true } } }) });
     const upd = monthly.updated ? new Date(monthly.updated).toLocaleString('th-TH') : '-';
+    drawHerbCd();
     document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
   }
+
+  // ---------- ยาสมุนไพร Common Diseases (herb_cd จาก insurance-sync) ----------
+  const FY_MO = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const hc = { gran: 'fy', mode: 'p', period: null, group: 'total' };
+  const hcKey = (m, g) => { const f = fyOf(m); return g === 'month' ? m : g === 'quarter' ? f + '-Q' + (Math.floor(FY_MO.indexOf(+m.split('-')[1]) / 3) + 1) : String(f); };
+  const hcLabel = (k, g) => g === 'month' ? mLabel(k) : g === 'quarter' ? 'ไตรมาส ' + k.split('-Q')[1] + '/' + k.split('-')[0] : 'ทั้งปีงบ ' + k;
+  const hcLastYear = (k, g) => g === 'month' ? (+k.slice(0, 4) - 1) + k.slice(4) : g === 'quarter' ? (+k.slice(0, 4) - 1) + k.slice(4) : String(+k - 1);
+  function hcSum(H, g, k, sel) {
+    let d = 0, n = 0;
+    Object.keys(H.months).forEach((m) => { if (hcKey(m, g) === k) { const v = (H.months[m][hc.mode] || {})[sel] || [0, 0]; d += v[0]; n += v[1]; } });
+    return [d, n];
+  }
+  const hcPct = (v) => v && v[0] ? (100 * v[1] / v[0]).toFixed(1) + '%' : '–';
+  function hcCmp(cur, ref) {
+    if (!cur[0] || !ref || !ref[0]) return { cls: 'flat', txt: 'ไม่มีข้อมูลเทียบ' };
+    const pp = 100 * cur[1] / cur[0] - 100 * ref[1] / ref[0];
+    if (Math.abs(pp) < 0.05) return { cls: 'flat', txt: '■ เท่าเดิม' };
+    return pp > 0 ? { cls: 'ok', txt: '▲ +' + pp.toFixed(1) + ' pp' } : { cls: 'bad', txt: '▼ ' + pp.toFixed(1) + ' pp' };
+  }
+  function drawHerbCd() {
+    const H = monthly && monthly.herb_cd;
+    const box = document.getElementById('herbcd');
+    if (!H) { box.hidden = true; return; }
+    box.hidden = false;
+    const all = Object.keys(H.months).sort();
+    const keysAll = [...new Set(all.map((m) => hcKey(m, hc.gran)))];
+    const keys = keysAll.filter((k) => all.some((m) => fyOf(m) === fy && hcKey(m, hc.gran) === k));
+    if (!keys.includes(hc.period)) hc.period = keys[keys.length - 1] || null;
+    document.getElementById('hc-gran').innerHTML = [['month', 'รายเดือน'], ['quarter', 'รายไตรมาส'], ['fy', 'ทั้งปีงบ']].map(([v, t]) => `<button class="chip${hc.gran === v ? ' active' : ''}" data-v="${v}">${t}</button>`).join('');
+    document.getElementById('hc-mode').innerHTML = [['p', 'เฉพาะโรคหลัก'], ['a', 'ทุกตำแหน่งการวินิจฉัย']].map(([v, t]) => `<button class="chip${hc.mode === v ? ' active' : ''}" data-v="${v}">${t}</button>`).join('');
+    document.getElementById('hc-period').innerHTML = keys.slice().reverse().map((k) => `<option value="${esc(k)}"${k === hc.period ? ' selected' : ''}>${esc(hcLabel(k, hc.gran))}</option>`).join('');
+    if (!hc.period) { document.getElementById('hc-kpis').innerHTML = '<p class="note">ไม่มีข้อมูลในปีงบนี้</p>'; return; }
+    const i = keysAll.indexOf(hc.period), prevK = i > 0 ? keysAll[i - 1] : null, lyK = hcLastYear(hc.period, hc.gran);
+    const ctx = (sel) => ({ cur: hcSum(H, hc.gran, hc.period, sel), prev: prevK ? hcSum(H, hc.gran, prevK, sel) : null, ly: keysAll.includes(lyK) ? hcSum(H, hc.gran, lyK, sel) : null });
+    const T = ctx('total'), a = hcCmp(T.cur, T.prev), b = hcCmp(T.cur, T.ly);
+    document.getElementById('hc-kpis').innerHTML = [
+      { l: 'ร้อยละรวม 10 กลุ่ม · ' + hcLabel(hc.period, hc.gran), n: hcPct(T.cur), s: fmt(T.cur[1]) + ' จาก ' + fmt(T.cur[0]) + ' visit' },
+      { l: 'เทียบงวดก่อนหน้า', n: hcPct(T.prev), s: prevK ? hcLabel(prevK, hc.gran) : '-', t: a },
+      { l: 'เทียบงวดเดียวกันปีงบก่อน', n: hcPct(T.ly), s: keysAll.includes(lyK) ? hcLabel(lyK, hc.gran) : 'ไม่มีข้อมูล', t: b },
+    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.t ? `<span class="tgt ${x.t.cls}">${esc(x.t.txt)}</span>` : ''}</div>`).join('');
+
+    const row = (id, name, extra) => {
+      const c = ctx(id), p = hcCmp(c.cur, c.prev), y = hcCmp(c.cur, c.ly);
+      return `<tr data-g="${id}"${id === hc.group ? ' class="sel"' : ''}><td>${name}${extra || ''}</td><td class="num">${fmt(c.cur[0])}</td><td class="num">${fmt(c.cur[1])}</td><td class="num"><b>${hcPct(c.cur)}</b></td>
+        <td class="num">${hcPct(c.prev)}<small><span class="tgt ${p.cls}">${esc(p.txt)}</span></small></td><td class="num">${hcPct(c.ly)}<small><span class="tgt ${y.cls}">${esc(y.txt)}</span></small></td></tr>`;
+    };
+    document.getElementById('hc-table').innerHTML = `<thead><tr><th>กลุ่มอาการ</th><th class="num">วินิจฉัย</th><th class="num">ได้ยา</th><th class="num">ร้อยละ</th><th class="num">งวดก่อน</th><th class="num">ปีงบก่อน</th></tr></thead>
+      <tbody>${H.groups.map((g) => row(String(g.id), esc(g.id + '. ' + g.name), g.drugs.length ? '' : ' <span class="hc-tag">ไม่มียาในบัญชี รพ.</span>')).join('')}</tbody>
+      <tfoot>${row('total', 'รวม 10 กลุ่ม (visit ไม่ซ้ำ)')}</tfoot>`;
+
+    const gs = [['total', 'รวม 10 กลุ่มอาการ'], ...H.groups.map((g) => [String(g.id), g.id + '. ' + g.name])];
+    document.getElementById('hc-group').innerHTML = gs.map(([v, t]) => `<option value="${v}"${v === hc.group ? ' selected' : ''}>กราฟ: ${esc(t)}</option>`).join('');
+    const series = (f) => FY_MO.map((mo) => { const m = (mo >= 10 ? f - 544 : f - 543) + '-' + String(mo).padStart(2, '0'); const v = H.months[m] && H.months[m][hc.mode][hc.group]; return v && v[0] ? +(100 * v[1] / v[0]).toFixed(1) : null; });
+    const raw = (f) => FY_MO.map((mo) => { const m = (mo >= 10 ? f - 544 : f - 543) + '-' + String(mo).padStart(2, '0'); return H.months[m] && H.months[m][hc.mode][hc.group]; });
+    const rc = raw(fy), rp = raw(fy - 1);
+    chart('c-herbcd', { type: 'line', data: { labels: FY_MO.map((m) => TH_M[m]), datasets: [
+      { label: 'ปีงบ ' + fy, data: series(fy), r: rc, borderColor: C.primary, backgroundColor: C.primary, tension: 0 },
+      { label: 'ปีงบ ' + (fy - 1), data: series(fy - 1), r: rp, borderColor: C.peer, backgroundColor: C.peer, borderDash: [6, 4], pointRadius: 2, tension: 0 },
+    ] }, options: baseOpts({ plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: {
+      label: (c) => { const v = c.dataset.r[c.dataIndex]; return v && v[0] ? ` ${c.dataset.label}: ${c.formattedValue}% (${fmt(v[1])}/${fmt(v[0])})` : ` ${c.dataset.label}: ไม่มีผู้ป่วย`; } } } },
+      scales: { y: { beginAtZero: true, suggestedMax: 30, ticks: { callback: (v) => v + '%' } } } }) });
+
+    document.getElementById('hc-criteria').innerHTML = H.groups.map((g) => `<div><b>${esc(g.id + '. ' + g.name)}</b> — ICD-10: ${esc(g.icd10.join(', '))}
+      <ul>${g.drugs.length ? g.drugs.map((d) => `<li>${esc(d.name)} <small style="display:inline">(${esc(d.icode)})</small></li>`).join('') : '<li>ยังไม่มียาในบัญชี รพ.</li>'}${g.missing.length ? `<li style="color:var(--danger)">ยังไม่มีรหัส: ${esc(g.missing.join(', '))}</li>` : ''}</ul></div>`).join('');
+  }
+  document.getElementById('hc-gran').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { hc.gran = b.dataset.v; hc.period = null; drawHerbCd(); } });
+  document.getElementById('hc-mode').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { hc.mode = b.dataset.v; drawHerbCd(); } });
+  document.getElementById('hc-period').addEventListener('change', (e) => { hc.period = e.target.value; drawHerbCd(); });
+  document.getElementById('hc-group').addEventListener('change', (e) => { hc.group = e.target.value; drawHerbCd(); });
+  document.getElementById('hc-table').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-g]'); if (tr) { hc.group = tr.dataset.g; drawHerbCd(); } });
 
   // ---------- province ----------
   const pSrc = document.getElementById('p-src'), pItem = document.getElementById('p-item');
