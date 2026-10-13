@@ -1992,8 +1992,8 @@ const DashUX = {
         <thead>
           <tr>
             <th>#</th>
-            <th>วันที่</th>
-            <th>เวลา</th>
+            <th>วันที่บันทึก</th>
+            <th>เวลาสั่งยา</th>
             <th>HN</th>
             <th>ชื่อผู้ป่วย</th>
             <th>อายุ</th>
@@ -2713,7 +2713,8 @@ function renderTable() {
   const sev    = document.getElementById('filter-sev').value;
   const month  = document.getElementById('filter-month').value;
 
-  let filtered = erStatsRecords().filter(r => {
+  // ตารางเรียง/แสดงตามวันที่บันทึก (r.date = วันเดียวกับ Rx/วัน) — วัน-เวลาสั่งยาของ ME แสดงในช่องเวลา
+  let filtered = records.filter(r => {
     if (search && !JSON.stringify(r).toLowerCase().includes(search)) return false;
     if (stage && !(r.stage||'').includes(stage)) return false;
     if (sev && r.severity !== sev) return false;
@@ -2734,7 +2735,8 @@ function renderTable() {
   empty.style.display = 'none';
   countEl.textContent = `แสดง ${filtered.length} รายการ (ทั้งหมด ${records.length} รายการ)`;
 
-  tbody.innerHTML = filtered.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+  const tKey = r => (r.orderDate || r.date || '') + ' ' + String(r.orderTime || r.time || '').padStart(5, '0');
+  tbody.innerHTML = filtered.sort((a,b) => b.date.localeCompare(a.date) || tKey(b).localeCompare(tKey(a)))
     .map((r, i) => {
       const isME = r.hasME !== false;
       if (!isME) {
@@ -2756,7 +2758,8 @@ function renderTable() {
       return `<tr>
         <td style="color:var(--text-light)">${i+1}</td>
         <td class="nw">${formatDateThai(r.date)}</td>
-        <td class="nw">${formatTimeThai(r.time)}</td>
+        <td class="nw">${formatTimeThai(r.orderTime || r.time)}${r.orderDate && r.orderDate !== r.date
+          ? `<br><span style="font-size:12px;color:var(--text-light)">สั่ง ${formatDateThai(r.orderDate)}</span>` : ''}</td>
         <td>${escHtml(r.hn) || '—'}</td>
         <td>${escHtml(r.patient) || '—'}</td>
         <td style="text-align:center">${escHtml(r.age) || '—'}</td>
