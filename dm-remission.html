@@ -1621,6 +1621,11 @@ function savePatientModal() {
     // Add new
     patientData.id = 'pt_' + Date.now();
     PATIENTS.push(patientData);
+    // เคยลบ HN นี้ไว้ → เพิ่มกลับเองแล้ว ให้ซิงค์จาก HOSxP ได้อีก
+    const hx = String(patientData.hn || '').trim();
+    if (/^\d+$/.test(hx) && _patientsDoc())
+      _patientsDoc().set({ excludedHns: firebase.firestore.FieldValue.arrayRemove(hx.padStart(7, '0')) }, { merge: true })
+        .catch(e => console.warn('excludedHns:', e));
     showToast('✅ เพิ่มคนไข้ใหม่เรียบร้อย');
   }
   savePatients(PATIENTS);
@@ -1640,6 +1645,11 @@ function deletePatient(patientId) {
   if (!confirm(msg)) return;
   PATIENTS = PATIENTS.filter(x => x.id !== patientId);
   savePatients(PATIENTS);
+  // จำ HN ที่ลบไว้ (dm_patients.excludedHns) — ซิงค์จาก HOSxP จะไม่ดึงคนนี้กลับมาอีก (เพิ่มคนไข้ HN นี้เองทีหลังได้)
+  const hx = String(p.hn || '').trim();
+  if (/^\d+$/.test(hx) && _patientsDoc())
+    _patientsDoc().set({ excludedHns: firebase.firestore.FieldValue.arrayUnion(hx.padStart(7, '0')) }, { merge: true })
+      .catch(e => console.warn('excludedHns:', e));
   if (visits.length) {
     deleteVisitsByPatient(patientId);
   }
