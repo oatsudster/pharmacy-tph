@@ -462,12 +462,14 @@ def fill_er_rx(db, d_from, dry):
     # ครบ 24 ชม. หลังจบเวร (08:00 วันถัดไป) แล้วยังไม่มีใครกรอก จึงเติม
     now = dt.datetime.now()
     last = (now.date() - dt.timedelta(days=1 if now.time() >= dt.time(8, 0) else 2)).isoformat()
-    if last < d_from:
-        return
-    counts = er_rx_counts(db, d_from, last)
+    counts = er_rx_counts(db, d_from, last) if last >= d_from else {}
 
     def mut(f):
         recs = f.setdefault('records', [])
+        # วันที่เภสัชกรอกเองแล้ว → ลบแถวที่เคยเติมอัตโนมัติของวันนั้น (ใช้ค่าที่เภสัชกรอกเป็นหลัก)
+        manual = {r.get('date') for r in recs if (r.get('rxDaily') or 0) > 0 and not r.get('rxAuto')}
+        removed = [f"{r['date']}={r.get('rxDaily')}" for r in recs if r.get('rxAuto') and r.get('date') in manual]
+        recs[:] = [r for r in recs if not (r.get('rxAuto') and r.get('date') in manual)]
         have = {r.get('date') for r in recs if (r.get('rxDaily') or 0) > 0}
         added = []
         base = int(time.time() * 1000)
@@ -484,9 +486,11 @@ def fill_er_rx(db, d_from, dry):
                              'rxAutoNote': f'เติมอัตโนมัติ {now:%Y-%m-%d %H:%M} — ไม่ได้กรอกภายใน 24 ชม.; ผู้ป่วย ER 19:30 คืนก่อน → 08:00 จาก HOSxP'})
                 added.append(f'{k}={n}')
             day += dt.timedelta(days=1)
-        return {'changed': bool(added), 'added': added}
+        return {'changed': bool(added or removed), 'added': added, 'removed': removed}
 
     r = update_doc('er_records', mut, dry)
+    if r['removed']:
+        log('ใบสั่งยา ER เภสัชกรอกเองแล้ว → ลบค่าที่เติมอัตโนมัติ ' + ', '.join(r['removed']) + (' [dry-run ไม่ได้เขียน]' if dry else ''))
     if r['added']:
         log('ใบสั่งยา ER ไม่ได้กรอกใน 24 ชม. → เติมให้ ' + ', '.join(r['added']) + (' [dry-run ไม่ได้เขียน]' if dry else ''))
 

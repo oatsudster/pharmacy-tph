@@ -2167,7 +2167,13 @@ Chart.register({
 });
 
 // ======= DATA =======
-let records = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
+// วันที่เภสัชกรอกใบสั่งยาเองแล้ว → ตัดแถวที่โปรแกรมเติมให้อัตโนมัติ (rxAuto) ของวันนั้นทิ้ง ใช้ค่าที่เภสัชกรอกเป็นหลัก
+// ทำทุกครั้งที่โหลด/รับข้อมูลจาก Firebase/บันทึก — เครื่องอื่นที่ยังมีแถวเก่าส่งกลับมาก็ถูกตัดซ้ำได้เสมอ
+function dropAutoRxDup(list) {
+  const manual = new Set(list.filter(r => (r.rxDaily || 0) > 0 && !r.rxAuto).map(r => r.date));
+  return list.filter(r => !(r.rxAuto && manual.has(r.date)));
+}
+let records = dropAutoRxDup(JSON.parse(localStorage.getItem('me_records_v2') || '[]'));
 let chartInstances = {};
 let editingRecordId = null;
 
@@ -2325,6 +2331,7 @@ document.addEventListener('click', e => {
 });
 
 function save() {
+  records = dropAutoRxDup(records);
   localStorage.setItem('me_records_v2', JSON.stringify(records));
 }
 // จำนวนใบสั่งยา ER ต่อวัน { date: n } — ค่าที่เภสัชกรอกเองชนะค่าที่โปรแกรมเติมให้ (rxAuto: ไม่ได้กรอกภายใน 24 ชม.
@@ -2338,7 +2345,7 @@ function rxPerDate(recs) {
   return Object.assign(auto, manual);
 }
 function rxCell(r) {
-  return r.rxAuto ? `<span title="${escHtml(r.rxAutoNote || 'เติมอัตโนมัติจาก HOSxP')}">🗄 ${escHtml(r.rxDaily)}</span>` : (escHtml(r.rxDaily) || '—');
+  return r.rxAuto ? `${escHtml(r.rxDaily)} <span title="${escHtml(r.rxAutoNote || 'เติมอัตโนมัติจาก HOSxP')}" style="font-size:11px;background:#e0f2fe;color:#075985;padding:1px 6px;border-radius:8px;white-space:nowrap">อัตโนมัติ</span>` : (escHtml(r.rxDaily) || '—');
 }
 
 // ======= TIME FORMAT =======
@@ -3188,7 +3195,7 @@ function buildRxGrid() {
       <td><input type="number" min="0" class="rxm-inp" data-date="${dateStr}"
           value="${rxVal}" style="width:90px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:16px;font-family:inherit"
           onkeydown="if(event.key==='Tab'){event.preventDefault();const all=document.querySelectorAll('.rxm-inp');const idx=Array.from(all).indexOf(this);if(all[idx+1])all[idx+1].focus();}"></td>
-      <td style="font-size:14px;color:var(--text-light)">${rxVal ? (existing.rxAuto ? '🗄 เติมอัตโนมัติจาก HOSxP' : '✓ มีข้อมูล') : ''}</td>
+      <td style="font-size:14px;color:var(--text-light)">${rxVal ? (existing.rxAuto ? 'เติมอัตโนมัติจาก HOSxP (เภสัชไม่ได้กรอกใน 24 ชม.)' : '✓ มีข้อมูล') : ''}</td>
     </tr>`;
   }
   tbody.innerHTML = html;
@@ -4864,7 +4871,7 @@ function renderOverview() {
       if (snap.exists) {
         const fbER = snap.data().records || [];
         if (fbER.length) {
-          records = mergeById(records, fbER, 'id');
+          records = dropAutoRxDup(mergeById(records, fbER, 'id'));
           localStorage.setItem('me_records_v2', JSON.stringify(records));
           if (typeof renderTable === 'function') renderTable();
           if (typeof renderDashboard === 'function') renderDashboard();
