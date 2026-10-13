@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8765; img-src 'self' data:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สติกเกอร์ยา — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/esc-html.js"></script>
+<script src="lib/hosxp-db.js?v=20261013"></script>
+<style>
+:root {
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
+  --gold: #C49A22; --gold-light: #FBF3DC;
+  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; }
+.topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.topbar a { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar .sub { font-size: 12px; opacity: .8; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 360px 1fr; gap: 14px; align-items: start; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.card h2 { font-size: 15px; margin: 0 0 8px; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; }
+.btn { font: inherit; border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-gold { background: var(--gold); color: #fff; border-color: var(--gold); }
+.btn-sm { padding: 3px 9px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+#f-hn { font: inherit; font-size: 20px; padding: 8px 12px; border: 2px solid var(--gold); border-radius: 8px; width: 100%; }
+.hint { font-size: 12.5px; color: var(--text-light); margin-top: 6px; line-height: 1.5; }
+.q-list { max-height: 70vh; overflow: auto; margin: 0 -14px -14px; }
+.q-row { padding: 8px 14px; border-top: 1px solid #eef3ef; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+.q-row:hover { background: var(--primary-light); }
+.q-row.sel { background: var(--gold-light); }
+.q-row .nm { font-weight: 600; font-size: 14px; }
+.q-row .mt { font-size: 12px; color: var(--text-mid); }
+.q-row .tm { font-size: 12px; color: var(--text-light); text-align: right; }
+.lock { display: inline-block; font-size: 11.5px; background: #fee2e2; color: #991b1b; border-radius: 999px; padding: 1px 8px; margin-top: 2px; }
+.status { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--gold-light); margin-bottom: 14px; display: none; }
+.v-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; margin-bottom: 6px; }
+.v-head .nm { font-size: 17px; font-weight: 700; }
+.v-head .mt { font-size: 13px; color: var(--text-mid); }
+.warnbox { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 8px; padding: 8px 10px; font-size: 13.5px; margin: 6px 0 10px; line-height: 1.5; }
+.lockbox { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 6px 7px; border-bottom: 1px solid #eef3ef; text-align: left; vertical-align: top; font-size: 14px; }
+th { background: var(--primary-light); font-size: 12.5px; color: var(--primary-dark); }
+td.use { font-size: 12.5px; color: var(--text-mid); line-height: 1.45; }
+td.num { text-align: right; white-space: nowrap; }
+tr.off td { color: #9aa9a0; }
+input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; text-align: center; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.empty { text-align: center; color: var(--text-light); padding: 24px; }
+#print-area { display: none; }
+
+/* ── สติกเกอร์ยา 101.6 × 59.9 มม. (ZDesigner ZD230) — ตำแหน่งตาม StickerDetailReport.rtm ของ HOSxP ── */
+.stk { position: relative; width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; }
+.stk:last-child { page-break-after: auto; break-after: auto; }
+.stk > div { position: absolute; white-space: nowrap; overflow: hidden; line-height: 1.15; }
+.stk .bw { font-family: 'BrowalliaUPC', 'Browallia New', 'Sarabun', sans-serif; }
+.stk .th { font-family: Tahoma, 'Noto Sans Thai', sans-serif; }
+.stk .c { text-align: center; } .stk .r { text-align: right; } .stk .b { font-weight: 700; }
+.stk .wrap2 { white-space: normal; }
+
+@media print {
+  body { background: #fff; }
+  body > *:not(#print-area) { display: none !important; }
+  #print-area { display: block; }
+  @page { size: 101.6mm 59.9mm; margin: 0; }
+}
+</style>
+</head>
+<body data-suite-page="rx-sticker">
+
+<div class="topbar">
+  <a href="index.html">🏠 หน้าหลัก</a>
+  <div>
+    <h1>🏷️ พิมพ์สติกเกอร์ยา (จาก HOSxP)</h1>
+    <div class="sub">ใช้ตอนใบสั่งยาถูกล็อกใน HOSxP (พยาบาลยังเปิดค้าง) · แบบเดียวกับสติกเกอร์ HOSxP 10.16 × 6 ซม.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div>
+    <div class="card">
+      <h2>🔎 ใส่ / สแกน HN</h2>
+      <input type="text" id="f-hn" inputmode="numeric" placeholder="HN แล้วกด Enter" autocomplete="off">
+      <div class="hint">ดึงใบสั่งยา visit วันนี้และเมื่อวานของ HN นี้จากฐานข้อมูล HOSxP</div>
+    </div>
+    <div class="card">
+      <h2>🕘 ใบสั่งยาล่าสุด <button class="btn btn-sm" style="margin-left:auto" onclick="loadQueue()">🔄</button></h2>
+      <div class="hint" id="q-meta" style="margin-top:-4px">กำลังโหลด…</div>
+      <div class="q-list" id="q-list"></div>
+    </div>
+  </div>
+  <div>
+    <div class="status" id="status"></div>
+    <div class="card" id="detail"><div class="empty">เลือกผู้ป่วยจากรายการ หรือใส่ HN</div></div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+
+<script>
+const TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const thShort = d => `${d.getDate()} ${TH_M[d.getMonth()]} ${String(d.getFullYear() + 543).slice(-2)}`;
+const thIso = iso => { const [y, m, d] = String(iso || '').split('-').map(Number); return y ? `${d} ${TH_M[m - 1]} ${String(y + 543).slice(-2)}` : ''; };
+const fmtQty = q => { const n = +q; return Number.isInteger(n) ? String(n) : String(n); };
+function showStatus(msg) { const el = document.getElementById('status'); el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+const NOBRIDGE = '⚠️ ต่อ HOSxP ไม่ได้ — ใช้ได้เฉพาะเครื่องใน รพ. ที่เปิด HOSxP Bridge ตัวใหม่ (มีไฟล์ db.json)';
+
+let QUEUE = [], CUR = null, SEL_HN = '';
+const CHECK = {}, COPIES = {};   // guid → เลือกพิมพ์ / จำนวนดวง
+
+function lockText(x) {
+  return x.lockStaff || x.lockComputer ? `🔒 ล็อกโดย ${x.lockStaff || '-'}${x.lockComputer ? ' (' + x.lockComputer + ')' : ''}${x.lockTime ? ' ตั้งแต่ ' + x.lockTime + ' น.' : ''}` : '';
+}
+
+async function loadQueue() {
+  const r = window.tphHosxp && tphHosxp.rxQueue ? await tphHosxp.rxQueue() : null;
+  const meta = document.getElementById('q-meta'), list = document.getElementById('q-list');
+  if (!r) { meta.textContent = NOBRIDGE; list.innerHTML = ''; return; }
+  QUEUE = r.items || [];
+  meta.textContent = `visit ที่มียา วันนี้/เมื่อวาน ${QUEUE.length} รายการล่าสุด · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+  list.innerHTML = QUEUE.map(x => `<div class="q-row${String(x.hn) === SEL_HN ? ' sel' : ''}" onclick="loadHn('${escHtml(x.hn)}')">
+      <div class="nm">${escHtml(x.name || '-')}</div><div class="tm">${escHtml(x.date !== r.now.slice(0, 10) ? thIso(x.date) + ' ' : '')}${escHtml(x.time)} น.</div>
+      <div class="mt">HN ${escHtml(x.hn)} · คิว ${escHtml(x.queue || '-')} · ยา ${x.ndrug} รายการ · ${escHtml(x.dep || '')}</div><div class="tm">แก้ล่าสุด ${escHtml(x.lastmod || '-')}</div>
+      ${lockText(x) ? `<div><span class="lock">${escHtml(lockText(x))}</span></div>` : ''}
+    </div>`).join('') || '<div class="empty">ยังไม่มีใบสั่งยา</div>';
+}
+
+async function loadHn(hn) {
+  hn = String(hn || '').replace(/\D/g, '');
+  if (!hn) return;
+  SEL_HN = hn;
+  document.querySelectorAll('.q-row').forEach(el => el.classList.toggle('sel', el.getAttribute('onclick').includes(`'${hn}'`)));
+  const det = document.getElementById('detail');
+  det.innerHTML = '<div class="empty">⏳ กำลังดึงจาก HOSxP…</div>';
+  showStatus('');
+  const r = window.tphHosxp && tphHosxp.rxSticker ? await tphHosxp.rxSticker(hn) : null;
+  if (!r) { det.innerHTML = '<div class="empty">ดึงข้อมูลไม่ได้</div>'; showStatus(NOBRIDGE); return; }
+  CUR = r;
+  (r.visits || []).forEach(v => v.items.forEach(it => {
+    if (!(it.guid in CHECK)) CHECK[it.guid] = it.lockprint !== 'Y';
+    if (!(it.guid in COPIES)) COPIES[it.guid] = 1;
+  }));
+  render();
+}
+
+function drugName(it) {
+  return (it.namePrint || [it.name, it.strength, it.units].filter(Boolean).join(' ')).replace(/\s+/g, ' ').trim();
+}
+// บรรทัดวิธีใช้ 3 บรรทัด + (pq) ตาม StickerDetailReport.rtm: ยาที่ตั้ง print_sticker_pq = Y และจำนวน > 1
+// ต่อท้ายบรรทัด 3 ด้วยข้อความในวงเล็บก่อน "/" ของบรรทัด 3
+function usageLines(it) {
+  const l = [it.line1, it.line2, it.line3].map(x => String(x || '').trim());
+  if (it.pq === 'Y' && +it.qty > 1) {
+    const a = l[2].indexOf('('), b = l[2].indexOf('/');
+    if (a >= 0 && b > a) l[2] += ' (' + l[2].slice(a + 1, b) + ') ';
+  }
+  return l;
+}
+
+function render() {
+  const det = document.getElementById('detail');
+  const vs = (CUR && CUR.visits) || [];
+  if (!vs.length) { det.innerHTML = `<div class="empty">ไม่พบ visit วันนี้/เมื่อวานของ HN ${escHtml(CUR ? CUR.hn : '')}</div>`; return; }
+  const at = CUR.now.slice(11, 16);
+  det.innerHTML = vs.map(v => {
+    const lk = lockText(v);
+    return `<div style="margin-bottom:18px">
+      <div class="v-head"><span class="nm">${escHtml(v.name || '-')}</span><span class="mt">HN ${escHtml(CUR.hn)} · VN ${escHtml(v.vn)} · ${escHtml(thIso(v.date))} ${escHtml(v.time)} น. · คิว ${escHtml(v.queue || '-')}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span></div>
+      ${lk ? `<div class="warnbox lockbox">${escHtml(lk)} — พยาบาลอาจยังแก้ใบสั่งอยู่ ตรวจรายการยากับใบสั่งก่อนจ่ายทุกครั้ง</div>` : ''}
+      <div class="warnbox">ข้อมูลจากฐานข้อมูล HOSxP เมื่อ ${escHtml(at)} น. — ถ้าใบสั่งถูกแก้หลังจากนี้ กด "ดึงใหม่" ก่อนพิมพ์</div>
+      ${v.items.length ? `<table><thead><tr><th style="width:28px"></th><th>ยา</th><th class="num">จำนวน</th><th>วิธีใช้</th><th class="num">ดวง</th><th></th></tr></thead><tbody>` +
+        v.items.map(it => `<tr class="${CHECK[it.guid] ? '' : 'off'}">
+          <td><input type="checkbox" ${CHECK[it.guid] ? 'checked' : ''} onchange="CHECK['${it.guid}']=this.checked;render()"></td>
+          <td>${escHtml(drugName(it))}${it.lockprint === 'Y' ? '<div class="hint" style="margin:0">HOSxP ตั้งไม่พิมพ์สติกเกอร์</div>' : ''}${it.advice ? '<div class="hint" style="margin:0">+ ดวงคำแนะนำการใช้</div>' : ''}</td>
+          <td class="num">${escHtml(fmtQty(it.qty))} ${escHtml(String(it.units || '').replace(/\s*\(.*\)\s*$/, ''))}</td>
+          <td class="use">${usageLines(it).filter(Boolean).map(escHtml).join('<br>')}</td>
+          <td class="num"><input class="cp" type="number" min="1" max="9" value="${COPIES[it.guid]}" onchange="COPIES['${it.guid}']=Math.max(1,Math.min(9,+this.value||1))"></td>
+          <td><button class="btn btn-sm" onclick="printItems(['${it.guid}'])">🖨</button></td>
+        </tr>`).join('') + '</tbody></table>' : '<div class="empty">ไม่มียาใน visit นี้</div>'}
+      <div class="actions">
+        <button class="btn btn-gold" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))})" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'}>🖨 พิมพ์ที่เลือก (${v.items.filter(it => CHECK[it.guid]).reduce((s, it) => s + COPIES[it.guid], 0)} ดวง)</button>
+        <button class="btn" onclick="loadHn('${escHtml(CUR.hn)}')">🔄 ดึงใหม่</button>
+        <span class="hint" style="margin:0">เลือกเครื่องพิมพ์ ZDesigner ZD230 · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── พิมพ์ ──
+function stickerHtml(v, it, idx, total, now) {
+  const L = usageLines(it);
+  const s = (st, cls, txt) => `<div class="${cls}" style="${st}">${escHtml(txt)}</div>`;
+  const pos = (l, t, w, h, fs) => `left:${l}mm;top:${t}mm;width:${w}mm;height:${h}mm;font-size:${fs}pt;`;
+  let h = `<div class="stk">` +
+    s(pos(10.58, 1.32, 78.3, 4.4, 11), 'bw c', 'กลุ่มงานเภสัชกรรม โทร. 075-306239  ต่อ 112') +
+    s(pos(78, 1.32, 10.9, 4.4, 10), 'th r', `${idx}/${total}`) +
+    s(pos(10.58, 5.03, 60, 6.1, 14), 'bw c', `วันที่ ${thShort(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`) +
+    s(pos(71.7, 5.82, 17.2, 6.1, 14), 'bw r', `คิว : ${v.queue || ''}`) +
+    s(pos(10.58, 10.85, 4.6, 6.6, 14), 'bw b', 'ชื่อ') +
+    s(pos(15.35, 10.85, 41.5, 6.1, 14), 'bw b fit', v.name || '') +
+    `<div class="th b" style="${pos(57.15, 11.9, 31.75, 4.9, 11)}display:flex;justify-content:space-between"><span>HN</span><span>${escHtml(CUR.hn)}</span></div>` +
+    `<div style="left:10.58mm;top:16.4mm;width:76.73mm;border-top:.27mm solid #000"></div>` +
+    s(pos(10.58, 17.2, 67.2, 5.3, 11), 'th b fit', drugName(it)) +
+    s(pos(78, 17.2, 10.9, 4.5, 10), 'th r', '#' + fmtQty(it.qty)) +
+    s(pos(10.58, 22.49, 77.93, 6.88, 15), 'bw c b fit', L[0]) +
+    s(pos(10.58, 28.31, 77.93, 6.88, 15), 'bw c b fit', L[1]) +
+    s(pos(10.58, 34.13, 77.93, 6.88, 15), 'bw c b fit', L[2]) +
+    s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
+    s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '') +
+    `<div class="th" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
+    s(pos(55.3, 53.45, 9.8, 3.5, 8), 'th b r', it.pregnancy || '');
+  if (it.light === 'Y') h += s(pos(67.47, 27.7, 21.43, 3.8, 9), 'th r', '[ เก็บพ้นแสง ]');
+  if (it.antibiotic === 'Y') h += s(pos(67.47, 31.44, 21.43, 3.8, 9), 'th r', '[ ยาปฏิชีวนะ ]');
+  h += '</div>';
+  // ดวงคำแนะนำ (special/precaution advice เช่น วิธีใช้ยาพ่น) — HOSxP พิมพ์เป็นดวงถัดไป
+  if (it.advice) h += `<div class="stk"><div class="th wrap2" style="${pos(10.85, 3, 78, 54, 8)}line-height:1.3">${escHtml(it.advice).replace(/\n/g, '<br>')}</div></div>`;
+  return h;
+}
+function printItems(guids) {
+  if (!CUR || !guids.length) return;
+  const now = new Date(), list = [];
+  (CUR.visits || []).forEach(v => v.items.forEach(it => { if (guids.includes(it.guid)) for (let c = 0; c < (COPIES[it.guid] || 1); c++) list.push([v, it]); }));
+  if (!list.length) return;
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now)).join('');
+  // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  pa.querySelectorAll('.fit').forEach(el => {
+    let fs = parseFloat(el.style.fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 6) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  pa.style.cssText = '';
+  setTimeout(() => window.print(), 50);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('f-hn');
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadHn(el.value); el.select(); } });
+  el.focus();
+  loadQueue();
+  // รายการล่าสุดอัปเดตเองทุก 1 นาที (เฉพาะตอนหน้าเปิดอยู่บนจอ)
+  setInterval(() => { if (!document.hidden) loadQueue(); }, 60000);
+});
+</script>
+</body>
+</html>

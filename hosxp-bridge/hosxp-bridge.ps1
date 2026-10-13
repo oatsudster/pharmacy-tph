@@ -26,6 +26,9 @@
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
 #   /db/dmscreen    — คัดกรองคนไข้คลินิกเบาหวาน (023 นัด LAB, 001 DM) ใน 1 ปี: HbA1c 2 ปี + การจ่ายยาลดน้ำตาล 2 ปี
+#   /db/rxqueue     — visit วันนี้/เมื่อคืนที่มียา (ล่าสุด 40 visit) + ใครล็อก VN อยู่ (vn_lock) — หน้า rx-sticker.html
+#   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
+#                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -439,6 +442,56 @@ function DbDmScreen {
   [ordered]@{ ok = $true; patients = @($byHn.Values) }
 }
 
+# ── สติกเกอร์ยา (พิมพ์เองเมื่อ VN ถูกพยาบาลล็อกอยู่ใน HOSxP) ──
+function DbRxQueue {
+  $rows = DbQuery ("SELECT o.vn, o.hn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, k.department, " +
+    "(SELECT COUNT(*) FROM opitemrece r JOIN drugitems d ON d.icode=r.icode WHERE r.vn=o.vn) AS ndrug, " +
+    "(SELECT DATE_FORMAT(MAX(r.last_modified),'%H:%i') FROM opitemrece r WHERE r.vn=o.vn) AS lastmod, " +
+    "l.lock_staff, l.lock_computer, DATE_FORMAT(l.lock_date_time,'%H:%i') AS lock_time " +
+    "FROM ovst o LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN kskdepartment k ON k.depcode=o.cur_dep LEFT JOIN vn_lock l ON l.vn=o.vn " +
+    "WHERE o.vstdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 150")
+  $items = @($rows | Where-Object { [int]$_['ndrug'] -gt 0 } | Select-Object -First 40 | ForEach-Object {
+    [ordered]@{ vn = $_['vn']; hn = $_['hn']; date = $_['vstdate']; time = $_['vsttime']; queue = $_['oqueue']; name = $_['ptname']
+      dep = $_['department']; ndrug = [int]$_['ndrug']; lastmod = $_['lastmod']
+      lockStaff = $_['lock_staff']; lockComputer = $_['lock_computer']; lockTime = $_['lock_time'] } })
+  [ordered]@{ ok = $true; items = $items; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
+}
+function DbRxSticker($hn) {
+  $vis = DbQuery ("SELECT o.vn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, v.age_y, " +
+    "l.lock_staff, l.lock_computer, DATE_FORMAT(l.lock_date_time,'%H:%i') AS lock_time " +
+    "FROM ovst o LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN vn_stat v ON v.vn=o.vn LEFT JOIN vn_lock l ON l.vn=o.vn " +
+    "WHERE o.hn='$hn' AND o.vstdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY o.vstdate DESC, o.vsttime DESC")
+  $visits = @()
+  if ($vis.Count) {
+    $vns = ($vis | ForEach-Object { "'" + [HxDb]::Digits($_['vn']) + "'" }) -join ','
+    # ตาม StickerDetailReport.rtm: วิธีใช้ = opi_dispense.usage_line1-3 ถ้า usage_lock='Y' ไม่งั้น drugusage.name1-3
+    $items = DbQuery ("SELECT o.vn, o.hos_guid, o.icode, o.qty, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, DATE_FORMAT(o.last_modified,'%H:%i') AS lastmod, k.department, " +
+      "d.name, d.strength, d.units, d.dosageform, TRIM(IFNULL(d.name_print,'')) AS name_print, d.thai_name, d.therapeutic, d.pregnancy, " +
+      "d.light_protect, d.antibiotic, d.print_sticker_pq, d.lockprint, d.special_advice_text, d.precaution_advice_text, h.hinttext, " +
+      "IF(od.usage_lock='Y', od.usage_line1, IF(o.sp_use<>'', sp.name1, u.name1)) AS line1, " +
+      "IF(od.usage_lock='Y', od.usage_line2, IF(o.sp_use<>'', sp.name2, u.name2)) AS line2, " +
+      "IF(od.usage_lock='Y', od.usage_line3, IF(o.sp_use<>'', sp.name3, u.name3)) AS line3 " +
+      "FROM opitemrece o JOIN drugitems d ON d.icode=o.icode LEFT JOIN drughint h ON h.hc=d.hintcode AND IFNULL(d.hintcode,'')<>'' " +
+      "LEFT JOIN drugusage u ON u.drugusage=o.drugusage LEFT JOIN sp_use sp ON sp.sp_use=o.sp_use " +
+      "LEFT JOIN opi_dispense od ON od.hos_guid=o.hos_guid LEFT JOIN kskdepartment k ON k.depcode=o.dep_code " +
+      "WHERE o.vn IN ($vns) ORDER BY o.vn, o.item_no")
+    $visits = @($vis | ForEach-Object {
+      $vn = $_['vn']
+      [ordered]@{ vn = $vn; date = $_['vstdate']; time = $_['vsttime']; queue = $_['oqueue']; name = $_['ptname']; ageY = $_['age_y']
+        lockStaff = $_['lock_staff']; lockComputer = $_['lock_computer']; lockTime = $_['lock_time']
+        items = @($items | Where-Object { $_['vn'] -eq $vn } | ForEach-Object {
+          [ordered]@{ guid = $_['hos_guid']; icode = $_['icode']; qty = $_['qty']; rxtime = $_['rxtime']; lastmod = $_['lastmod']; dep = $_['department']
+            name = $_['name']; strength = $_['strength']; units = $_['units']; form = $_['dosageform']; namePrint = $_['name_print']
+            thaiName = $_['thai_name']; therapeutic = $_['therapeutic']; pregnancy = $_['pregnancy']; light = $_['light_protect']
+            antibiotic = $_['antibiotic']; pq = $_['print_sticker_pq']; lockprint = $_['lockprint']; hint = $_['hinttext']
+            advice = (@($_['special_advice_text'], $_['precaution_advice_text']) | Where-Object { $_ -and $_.Trim() }) -join "`n"
+            line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3'] } }) } })
+  }
+  [ordered]@{ ok = $true; hn = $hn; visits = $visits; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
+}
+
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -461,11 +514,11 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }
@@ -476,6 +529,7 @@ function DbEndpoint($path) {
     $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
       elseif ($path -like '/db/meds*') { DbMeds $hn }
       elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
+      elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)
