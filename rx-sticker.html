@@ -10,7 +10,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261013c"></script>
+<script src="lib/hosxp-db.js?v=20261013d"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -86,6 +86,25 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .chip.on { background: var(--gold-light); border-color: var(--gold); }
+/* ── สรุปยากลับบ้าน: ทุกรายการในดวงเดียว ตัวอักษรย่อตามจำนวนยา ── */
+.hmestk { overflow: hidden; color: #000; page-break-after: always; break-after: page; padding: 1.8mm 2.5mm 1.5mm 3mm;
+  font-family: Tahoma, 'Noto Sans Thai', sans-serif; display: flex; flex-direction: column; }
+.hmestk:last-child { page-break-after: auto; break-after: auto; }
+.hmestk .hd { display: flex; justify-content: space-between; gap: 2mm; font-size: 8.5pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+.hmestk .hd2 { display: flex; justify-content: space-between; gap: 2mm; font-size: 6.5pt; line-height: 1.3; border-bottom: .3mm solid #000; padding-bottom: .5mm; margin-bottom: .4mm; white-space: nowrap; }
+.hmestk .bd { flex: 1; overflow: hidden; }
+.hmestk table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.hmestk td { padding: .3mm .6mm; border: 0; border-bottom: .15mm solid #bbb; vertical-align: top; line-height: 1.25; font-size: inherit; }
+.hmestk td.n { width: 3.4mm; padding-left: 0; }
+.hmestk td.dn { width: 38%; font-weight: 700; }
+.hmestk td.q { width: 10mm; text-align: right; white-space: nowrap; font-weight: 700; }
+.hme-row { border-top: 1px solid #eef3ef; padding: 9px 4px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+.hme-row .nm { font-weight: 600; }
+.hme-row .mt { font-size: 12.5px; color: var(--text-mid); }
+.hme-row .ds { font-size: 12.5px; color: var(--text-mid); grid-column: 1 / -1; line-height: 1.5; }
+.badge-ok { font-size: 12px; background: #dcfce7; color: #166534; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
+.badge-wait { font-size: 12px; background: var(--gold-light); color: #92400e; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
+
 /* ── หัวสติกเกอร์ผู้ป่วยใน 9 × 6 ซม. (แบบ CUSTOM- stickerผู้ป่วยใน ของ HOSxP: เตียง / ชื่อ / HN) ── */
 .ipdstk { width: 90mm; height: 60mm; padding: 3mm 4mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
   font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; display: flex; flex-direction: column; }
@@ -113,6 +132,25 @@ input.cp { width: 46px; font: inherit; padding: 2px 4px; border: 1px solid var(-
 <div class="tabbar">
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา)</button>
+  <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
+</div>
+
+<div class="wrap1" id="view-hme" style="display:none">
+  <div class="card">
+    <h2>🏠 ใบสั่งยากลับบ้าน (HMe) วันนี้/เมื่อวาน <span class="hint" id="hme-meta" style="margin:0;font-weight:400"></span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="loadHme()">🔄</button></h2>
+    <div class="actions" style="margin:0 0 8px">
+      <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="hme-auto" onchange="saveHmeOpts()"> 🤖 พิมพ์อัตโนมัติเมื่อมีใบสั่งยากลับบ้านใหม่</label>
+      <label class="hint" style="margin:0">ขนาดสติกเกอร์
+        <select id="hme-size" onchange="saveHmeOpts()" style="font:inherit;font-size:13px;padding:2px 6px;border:1px solid var(--border);border-radius:6px">
+          <option value="101.6x59.9">10.16 × 6 ซม. (Zebra สติกเกอร์ยา)</option>
+          <option value="90x60">9 × 6 ซม.</option>
+        </select></label>
+    </div>
+    <div class="hint" style="margin:-2px 0 10px">ตรวจ HOSxP ทุก 30 วินาที · พิมพ์เมื่อใบสั่งนั้นไม่ถูกแก้มา 2 นาที (กันพิมพ์ตอนยังคีย์ไม่เสร็จ) · แก้รายการหลังพิมพ์ → พิมพ์ใหม่ให้ ·
+      ยาทั้งหมดรวมในดวงเดียว (ยาเยอะตัวอักษรเล็กลง เกิน ~20 รายการจึงต่อดวงถัดไป) · พิมพ์ทันทีไม่ต้องกดยืนยัน: เปิดหน้านี้ด้วย HME-AutoPrint.bat ในโฟลเดอร์ HOSxP Bridge</div>
+    <div id="hme-list"><div class="empty">กำลังโหลด…</div></div>
+  </div>
 </div>
 
 <div class="wrap1" id="view-ipd" style="display:none">
@@ -347,12 +385,125 @@ function printIpd(ans) {
   document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
+// ── สรุปยากลับบ้าน (HMe) — ตรวจทุก 30 วินาที พิมพ์อัตโนมัติเมื่อใบสั่งไม่ถูกแก้มา 2 นาที ──
+let HME = [], HME_NOW = null, hmeFirst = true;
+const HME_STABLE_MS = 120000, HME_FRESH_MS = 30 * 60000;
+const toDate = t => new Date(String(t || '').replace(' ', 'T'));
+function hmeKey(o) { return o.an + '|' + o.orderNo; }
+function hmeSig(o) { return o.items.map(i => i.icode + ':' + i.qty + ':' + [i.line1, i.line2, i.line3].join('/')).join(','); }
+function hmeChanged(o) { return toDate(o.lastmod || o.date + ' ' + o.time); }
+// พิมพ์แล้ว (ต่อเครื่อง) { "AN|order_no": { sig, at } } — แก้รายการหลังพิมพ์ sig เปลี่ยน → พิมพ์ใหม่
+function hmePrinted() { try { return JSON.parse(localStorage.getItem('hme_printed') || '{}'); } catch (e) { return {}; } }
+function hmeMark(o, skipped) {
+  const m = hmePrinted();
+  m[hmeKey(o)] = { sig: hmeSig(o), at: Date.now(), skipped: !!skipped };
+  Object.keys(m).forEach(k => { if (Date.now() - (m[k].at || 0) > 3 * 86400000) delete m[k]; });
+  try { localStorage.setItem('hme_printed', JSON.stringify(m)); } catch (e) {}
+}
+function saveHmeOpts() {
+  try { localStorage.setItem('hme_opts', JSON.stringify({ auto: document.getElementById('hme-auto').checked, size: document.getElementById('hme-size').value })); } catch (e) {}
+  if (document.getElementById('hme-auto').checked) loadHme();
+}
+function loadHmeOpts() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem('hme_opts') || '{}'); } catch (e) {}
+  document.getElementById('hme-auto').checked = !!o.auto;
+  if (o.size) document.getElementById('hme-size').value = o.size;
+}
+const dotLine = t => !String(t || '').replace(/[.\s…_-]/g, '');
+function hmeDrug(i) {
+  const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
+  // "ยาเดิม......" = ยาที่ผู้ป่วยนำมาเอง: ชื่อยาจริงอยู่บรรทัดแรกของวิธีใช้
+  if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) return { name: 'ยาเดิม: ' + lines[0], use: lines.slice(1).join(' ') };
+  const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
+  return { name, use: lines.join(' ') };
+}
+function hmeUnit(u) { return String(u || '').replace(/\s*\(.*\)\s*$/, '').trim(); }
+async function loadHme() {
+  const r = window.tphHosxp && tphHosxp.hme ? await tphHosxp.hme() : null;
+  if (!r) { document.getElementById('hme-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
+  HME = r.orders || []; HME_NOW = toDate(r.now);
+  // เปิดหน้าครั้งแรก: ใบสั่งที่ไม่ได้แก้มาเกิน 30 นาทีถือว่าจัดการไปแล้ว ไม่พิมพ์ย้อนหลังทั้งวัน (กดพิมพ์เองได้)
+  if (hmeFirst) {
+    hmeFirst = false;
+    const p0 = hmePrinted();
+    HME.forEach(o => { if (!p0[hmeKey(o)] && HME_NOW - hmeChanged(o) > HME_FRESH_MS) hmeMark(o, true); });
+  }
+  document.getElementById('hme-meta').textContent = `${HME.length} ใบ · ตรวจล่าสุด ${r.now.slice(11, 16)} น.`;
+  renderHme();
+  if (document.getElementById('hme-auto').checked) {
+    const p = hmePrinted();
+    const due = HME.filter(o => o.items.length && (!p[hmeKey(o)] || p[hmeKey(o)].sig !== hmeSig(o)) && HME_NOW - hmeChanged(o) >= HME_STABLE_MS);
+    if (due.length) printHme(due.map(hmeKey));
+  }
+}
+function renderHme() {
+  const printed = hmePrinted();
+  document.getElementById('hme-list').innerHTML = HME.map(o => {
+    const p = printed[hmeKey(o)];
+    const st = !p ? '<span class="badge-wait">ยังไม่พิมพ์</span>'
+      : p.sig !== hmeSig(o) ? '<span class="badge-wait">แก้รายการหลังพิมพ์</span>'
+      : p.skipped ? '<span class="badge-wait" title="มีอยู่ก่อนเปิดหน้านี้ จึงไม่พิมพ์อัตโนมัติ">ข้าม (ก่อนเปิดหน้า)</span>'
+      : `<span class="badge-ok">พิมพ์แล้ว ${new Date(p.at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>`;
+    return `<div class="hme-row">
+      <div><div class="nm">${escHtml(o.name || '-')} ${st}</div>
+        <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')} · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ</div></div>
+      <button class="btn btn-gold btn-sm" onclick="printHme(['${escHtml(hmeKey(o))}'])" ${o.items.length ? '' : 'disabled'}>🖨 พิมพ์</button>
+      <div class="ds">${o.items.map(hmeDrug).map(d => escHtml(d.name)).join(' · ')}</div>
+    </div>`;
+  }).join('') || '<div class="empty">ยังไม่มีใบสั่งยากลับบ้าน</div>';
+}
+function hmeStickerHtml(o, rows, pi, pn, w, h, fs) {
+  return `<div class="hmestk" style="width:${w}mm;height:${h}mm"><div class="hd"><span>ยากลับบ้าน · ${escHtml(o.name || '')}</span><span>HN ${escHtml(o.hn)}</span></div>
+    <div class="hd2"><span>AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}</span>
+      <span>${escHtml(thIso(o.dchdate || o.date))} · ${o.items.length} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
+    <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
+      <td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td><td>${escHtml(d.use)}</td></tr>`).join('')}</table></div></div>`;
+}
+function printHme(keys) {
+  const [w, h] = document.getElementById('hme-size').value.split('x').map(Number);
+  const orders = HME.filter(o => keys.includes(hmeKey(o)) && o.items.length);
+  if (!orders.length) return;
+  const pa = document.getElementById('print-area');
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  const fits = (o, rs, fs) => {
+    pa.innerHTML = hmeStickerHtml(o, rs, 1, 1, w, h, fs);
+    const bd = pa.querySelector('.bd');
+    return bd.scrollHeight <= bd.clientHeight + 1;
+  };
+  const out = [];
+  orders.forEach(o => {
+    const rows = o.items.map((i, k) => [hmeDrug(i), i, k + 1]);
+    // ย่อตัวอักษรจาก 8pt ลงทีละ 0.25 จนทุกรายการพอดีดวงเดียว (ต่ำสุด 5.25pt) — ยังไม่พอจึงแบ่งดวง
+    let fs = 8;
+    while (fs > 5.25 && !fits(o, rows, fs)) fs -= 0.25;
+    const pages = [];
+    if (fits(o, rows, fs)) pages.push(rows);
+    else {
+      let rest = rows.slice();
+      while (rest.length) {
+        let n = rest.length;
+        while (n > 1 && !fits(o, rest.slice(0, n), fs)) n--;
+        pages.push(rest.slice(0, n)); rest = rest.slice(n);
+      }
+    }
+    pages.forEach((rs, pi) => out.push(hmeStickerHtml(o, rs, pi + 1, pages.length, w, h, fs)));
+    hmeMark(o);
+  });
+  pa.innerHTML = out.join('');
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = `@page { size: ${w}mm ${h}mm; margin: 0; }`;
+  renderHme();
+  setTimeout(() => window.print(), 50);
+}
+
 function setView(v) {
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
   document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
   document.getElementById('view-ipd').style.display = v === 'ipd' ? '' : 'none';
+  document.getElementById('view-hme').style.display = v === 'hme' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
-  if (v === 'ipd') loadIpd(); else document.getElementById('f-hn').focus();
+  if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -361,7 +512,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadQueue();
   let v = 'rx';
   try { v = localStorage.getItem('rx_sticker_view') || 'rx'; } catch (e) {}
-  setView(v === 'ipd' ? 'ipd' : 'rx');
+  if (location.hash === '#hme') v = 'hme';
+  loadHmeOpts();
+  setView(['ipd', 'hme'].includes(v) ? v : 'rx');
+  if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
+  // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
+  setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);
   // รายการล่าสุดอัปเดตเองทุก 1 นาที (เฉพาะตอนหน้าเปิดอยู่บนจอ)
   setInterval(() => { if (!document.hidden) loadQueue(); }, 60000);
 });

@@ -29,6 +29,10 @@ try {
   foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'start-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
+  # หน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ (ใช้เฉพาะเครื่องห้องยาที่ต่อเครื่องพิมพ์สติกเกอร์)
+  foreach ($f in 'HME-AutoPrint.bat', 'HME-AutoPrint-setup.bat') {
+    if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $Target -Force }
+  }
   if (Test-Path (Join-Path $src 'db.json')) { Copy-Item (Join-Path $src 'db.json') $Target -Force }
 
   # วันที่ให้เปิดเองตอน login — เครื่องลงคลินิกใช้แค่พุธ-พฤหัส เครื่องห้องจ่ายยาใช้หน้าต่างยาคงเหลือทุกวัน

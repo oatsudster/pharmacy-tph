@@ -30,6 +30,7 @@
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน)
+#   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -467,6 +468,38 @@ function DbIpdList {
     [ordered]@{ an = $_['an']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
       bed = $_['bedno']; room = $_['roomno']; name = $_['ptname'] } }) }
 }
+function DbHme {
+  $ords = DbQuery ("SELECT n.an, n.order_no, DATE_FORMAT(n.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(n.rxtime,'%H:%i') AS rxtime, n.entry_staff, " +
+    "i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, w.name AS ward_name, a.bedno, " +
+    "CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, s.age_y " +
+    "FROM ipt_order_no n JOIN ipt i ON i.an=n.an LEFT JOIN iptadm a ON a.an=n.an LEFT JOIN ward w ON w.ward=i.ward " +
+    "LEFT JOIN patient p ON p.hn=i.hn LEFT JOIN an_stat s ON s.an=n.an " +
+    "WHERE n.order_type='HMe' AND n.rxdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY n.rxdate DESC, n.rxtime DESC LIMIT 60")
+  $out = @()
+  if ($ords.Count) {
+    $ans = ($ords | ForEach-Object { "'" + [HxDb]::Digits($_['an']) + "'" } | Select-Object -Unique) -join ','
+    $nos = ($ords | ForEach-Object { [HxDb]::Digits($_['order_no']) } | Where-Object { $_ } | Select-Object -Unique) -join ','
+    # วิธีใช้ตามแบบสติกเกอร์ HOSxP: opi_dispense.usage_line1-3 ถ้า usage_lock='Y' ไม่งั้น drugusage.name1-3
+    $items = DbQuery ("SELECT r.an, r.order_no, r.icode, r.qty, DATE_FORMAT(r.last_modified,'%Y-%m-%d %H:%i:%s') AS lastmod, " +
+      "d.name, d.strength, d.units, d.dosageform, TRIM(IFNULL(d.name_print,'')) AS name_print, " +
+      "IF(od.usage_lock='Y', od.usage_line1, IF(r.sp_use<>'', sp.name1, u.name1)) AS line1, " +
+      "IF(od.usage_lock='Y', od.usage_line2, IF(r.sp_use<>'', sp.name2, u.name2)) AS line2, " +
+      "IF(od.usage_lock='Y', od.usage_line3, IF(r.sp_use<>'', sp.name3, u.name3)) AS line3 " +
+      "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode LEFT JOIN drugusage u ON u.drugusage=r.drugusage " +
+      "LEFT JOIN sp_use sp ON sp.sp_use=r.sp_use LEFT JOIN opi_dispense od ON od.hos_guid=r.hos_guid " +
+      "WHERE r.an IN ($ans) AND r.order_no IN ($nos) ORDER BY r.an, r.order_no, r.item_no")
+    $out = @($ords | ForEach-Object {
+      $an = $_['an']; $no = $_['order_no']
+      $its = @($items | Where-Object { $_['an'] -eq $an -and $_['order_no'] -eq $no })
+      [ordered]@{ an = $an; orderNo = $no; date = $_['rxdate']; time = $_['rxtime']; staff = $_['entry_staff']; hn = $_['hn']
+        dchdate = $_['dchdate']; ward = $_['ward_name']; bed = $_['bedno']; name = $_['ptname']; ageY = $_['age_y']
+        lastmod = (@($its | ForEach-Object { $_['lastmod'] }) | Sort-Object | Select-Object -Last 1)
+        items = @($its | ForEach-Object {
+          [ordered]@{ icode = $_['icode']; qty = $_['qty']; name = $_['name']; strength = $_['strength']; units = $_['units']
+            form = $_['dosageform']; namePrint = $_['name_print']; line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3'] } }) } })
+  }
+  [ordered]@{ ok = $true; orders = $out; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
+}
 function DbRxSticker($hn) {
   $vis = DbQuery ("SELECT o.vn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, v.age_y, " +
@@ -524,11 +557,11 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }

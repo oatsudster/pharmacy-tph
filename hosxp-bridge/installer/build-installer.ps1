@@ -19,6 +19,8 @@ foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $here 'in
 }
 Copy-Item (Join-Path $bridgeDir 'start-bridge.bat') $stage
 Copy-Item (Join-Path $bridgeDir 'hxdb.cs') $stage
+Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint.bat') $stage
+Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint-setup.bat') $stage
 [IO.File]::WriteAllText((Join-Path $stage 'install.cmd'),
   "@powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0install.ps1`"`r`n", [Text.Encoding]::ASCII)
 [IO.File]::WriteAllText((Join-Path $stage 'uninstall.cmd'),
