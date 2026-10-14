@@ -20,6 +20,8 @@
 <script src="lib/esc-html.js"></script>
 <script src="lib/clinic-store.js"></script>
 <script src="lib/hosxp-db.js"></script>
+<script src="lib/rx-check.js"></script>
+<script src="lib/smart-rx.js"></script>
 <style>
 :root {
   --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
@@ -525,7 +527,8 @@ const DashUX = {
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
     <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — วาง DRP ที่พิมพ์ใน HOSxP แล้วบันทึกได้เลย ไม่ต้องสลับหน้า">🩺 บันทึกคลินิก (ลอย)</button>
-    <button class="tbtn" onclick="openFloatLeftover()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — ดูยาคงเหลือและคำนวณจำนวนจ่ายจนถึงวันนัด">🪟 ยาคงเหลือ (ลอย)</button>
+    <button class="tbtn" onclick="openFloatLeftover('tech')" title="สำหรับ จพ. — หน้าต่างเล็กลอยอยู่เหนือ HosXP ดูยาคงเหลือและคำนวณจำนวนเม็ดที่ต้อง key จนถึงวันนัด">🪟 ยาคงเหลือ จพ. (ลอย)</button>
+    <button class="tbtn" onclick="openFloatLeftover('rph')" title="สำหรับเภสัชกรตอนจ่ายยา — จำนวนที่ต้องจ่ายแยกเป็นซอง/แผง (prepack) + Smart Pharmacy: แจ้งยาที่แพทย์ปรับจาก visit ก่อน และตรวจความเหมาะสมกับค่า lab">💊 จ่ายยา เภสัชกร (ลอย)</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
     <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
@@ -2182,6 +2185,8 @@ let floatWin = null;
 // hosxp-bridge/hosxp-bridge.ps1 ที่รันในเครื่องห้องจ่ายยา บอก HN + จำนวนวันถึงนัด ของคนไข้ที่เปิดหน้าจ่ายยาใน HOSxP
 const HOSXP_BRIDGE_URL = 'http://127.0.0.1:8765/current';
 let floatPollTimer = null, bridgeKey = '';
+// 'tech' = หน้าต่าง จพ. (จำนวนเม็ดสำหรับ key ใน HOSxP), 'rph' = หน้าต่างจ่ายยาของเภสัชกร (แยกซอง/แผง prepack + Smart Pharmacy)
+let floatMode = 'tech';
 const FLOAT_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Noto Sans Thai','Sarabun',sans-serif;background:#F4F7F5;color:#1C2B22;padding:10px;font-size:13px}
@@ -2224,18 +2229,23 @@ function isoLocal(dt) {
   return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
-async function openFloatLeftover() {
-  if (floatWin && !floatWin.closed) { floatWin.focus(); return; }
+async function openFloatLeftover(mode = 'tech') {
+  if (floatWin && !floatWin.closed) {
+    if (floatMode === mode) { floatWin.focus(); return; }
+    floatWin.close(); floatWin = null;   // Chrome เปิดหน้าต่างลอยได้ทีละบาน — สลับโหมดให้
+  }
+  floatMode = mode;
+  const rph = mode === 'rph';
   if ('documentPictureInPicture' in window) {
-    try { floatWin = await documentPictureInPicture.requestWindow({ width: 440, height: 620 }); }
+    try { floatWin = await documentPictureInPicture.requestWindow({ width: rph ? 480 : 440, height: rph ? 820 : 620 }); }
     catch (e) { floatWin = null; }
   }
   if (!floatWin) {
-    floatWin = window.open('', 'float-leftover', 'width=460,height=660');
+    floatWin = window.open('', rph ? 'float-dispense' : 'float-leftover', rph ? 'width=500,height=860' : 'width=460,height=660');
     if (!floatWin) { showToast('⚠️ เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup สำหรับหน้านี้'); return; }
   }
   const d = floatWin.document;
-  d.head.innerHTML = `<meta charset="utf-8"><title>📦 ยาคงเหลือ</title><style>${FLOAT_CSS}</style>`;
+  d.head.innerHTML = `<meta charset="utf-8"><title>${rph ? '💊 จ่ายยา (เภสัชกร)' : '📦 ยาคงเหลือ (จพ.)'}</title><style>${FLOAT_CSS}${rph ? SMART_CSS : ''}</style>`;
   const days0 = floatRecentDays()[0];
   d.body.innerHTML = `
     <div class="row">
@@ -2250,10 +2260,12 @@ async function openFloatLeftover() {
     </div>
     <div class="row" id="fl-chips"></div>
     <div id="fl-link">⏳ กำลังเชื่อม HOSxP…</div>
-    <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>`;
+    ${rph ? '<div id="fl-alert"></div>' : ''}
+    <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>
+    ${rph ? '<div id="fl-smart"></div>' : ''}`;
 
   const hnEl = d.getElementById('fl-hn');
-  hnEl.addEventListener('input', renderFloatLeftover);
+  hnEl.addEventListener('input', () => { renderFloatLeftover(); if (rph) smartRefresh(); });
   // จำนวนวันกับวันนัดผูกกันสองทาง พิมพ์ช่องไหนก็ได้ (HosXP บางทีบอกเป็นวัน บางทีเป็นวันที่)
   const daysEl = d.getElementById('fl-days'), apptEl = d.getElementById('fl-appt');
   daysEl.addEventListener('input', () => {
@@ -2298,7 +2310,15 @@ async function openFloatLeftover() {
     e.target.dataset.user = '1'; e.target.classList.remove('auto');
     updateFloatNeed(e.target.closest('tr'));
   });
-  floatWin.addEventListener('pagehide', () => { floatWin = null; bridgeKey = ''; });
+  // ปิดหน้าต่างเดิมตอนสลับโหมด pagehide ของบานเดิมมาทีหลัง — อย่าไปล้างบานใหม่
+  const thisWin = floatWin;
+  thisWin.addEventListener('pagehide', () => { if (floatWin === thisWin) { floatWin = null; bridgeKey = ''; } });
+  if (rph) {
+    d.getElementById('fl-smart').addEventListener('click', onSmartClick);
+    d.getElementById('fl-smart').addEventListener('change', onSmartChange);
+    d.getElementById('fl-alert').addEventListener('click', () => d.getElementById('fl-smart').scrollIntoView({ behavior: 'smooth' }));
+    floatWin.setInterval(smartRefresh, 3000);
+  }
   if (window.tphSessionWatch) tphSessionWatch(d);
   // ตั้ง timer บนหน้าต่างลอย (มองเห็นอยู่ตลอด) ไม่ใช่แท็บหลักที่ซ่อนอยู่ ซึ่ง Chrome จะชะลอ timer จนแทบไม่ทำงาน
   bridgeKey = '';
@@ -2310,6 +2330,7 @@ async function openFloatLeftover() {
   if (formHn.trim()) hnEl.value = formHn.trim();
   hnEl.focus();
   renderFloatLeftover();
+  if (rph) smartRefresh();
 }
 
 // ทำงานผ่าน HOSxP อย่างเดียว (หน้าต่างลอยอัปเดตเอง ไม่ได้แตะเว็บเลย) ก็นับเป็นการใช้งาน
@@ -2357,6 +2378,7 @@ async function pollHosxpBridge() {
   if (!s.hn || key === bridgeKey) return;
   bridgeKey = key;
   d.getElementById('fl-hn').value = s.hn;
+  if (floatMode === 'rph') smartRefresh();
   if (s.apptDays != null) {
     d.getElementById('fl-days').value = s.apptDays;
     d.getElementById('fl-appt').value = isoLocal(floatDateAfter(s.apptDays));
@@ -3319,16 +3341,17 @@ function isTablet(unit) { return /เม็ด|แค[ป็บ]|tab|cap/i.test(
 // ชื่อยาใน HOSxP ลงท้ายด้วยรูปแบบยา เช่น "GEMFIBROZIL(Lopid) 300 mg. แค็บซูล" — ใช้ตัดสินเมื่อหน่วยอ่านไม่ได้
 function nameIsTablet(name) { return /เม็ด|แค[ป็บ]/.test(String(name || '')); }
 
-// ── ยา prepack: จ่ายเป็นซอง (เม็ดต่อซอง) แสดงผลเป็น "N ซอง + M เม็ด" ──
-// key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches) ค่า = จำนวนเม็ดต่อซอง — เพิ่มยาอื่นที่นี่
-const PREPACK_DRUGS = { FERROUS: 30 };
-function prepackSize(...texts) {
+// ── ยา prepack: จ่ายเป็นซอง/แผง แสดงผลเป็น "N ซอง + M เม็ด" ──
+// แสดงเฉพาะหน้าต่างจ่ายยาของเภสัชกร (นับซองที่จัดมาได้ง่าย) — หน้าต่าง จพ. ใช้แค่จำนวนเม็ดไป key ใน HOSxP
+// key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches) ค่า = [เม็ดต่อหน่วย, หน่วย] — เพิ่มยาอื่นที่นี่
+const PREPACK_DRUGS = { FERROUS: [30, 'ซอง'], LOSARTAN: [15, 'แผง'] };
+function prepackOf(...texts) {
   for (const t of texts) {
     const toks = drugTokens(String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O'));
-    for (const [k, size] of Object.entries(PREPACK_DRUGS))
-      if (toks.some(x => x === k || (x.length >= 6 && k.length >= 6 && editDist(x, k) <= 2))) return size;
+    for (const [k, [size, unit]] of Object.entries(PREPACK_DRUGS))
+      if (toks.some(x => x === k || (x.length >= 6 && k.length >= 6 && editDist(x, k) <= 2))) return { size, unit };
   }
-  return 0;
+  return null;
 }
 
 // ── อินซูลิน: คิดเป็น vial (1 vial = 1,000 ยูนิต) ─────────────
@@ -3409,12 +3432,12 @@ function updateFloatNeed(tr) {
     return;
   }
   const need = Math.max(0, Math.ceil(days * perDay - lo));
-  const pack = +tr.dataset.pack || 0;
+  const pack = +tr.dataset.pack || 0, packUnit = tr.dataset.packUnit || 'ซอง';
   if (pack && need > 0) {
-    // ยา prepack: แยกเป็นซองเต็ม + เม็ดที่เหลือ
+    // ยา prepack: แยกเป็นซอง/แผงเต็ม + เม็ดที่เหลือ
     const packs = Math.floor(need / pack), rem = need % pack;
-    cell.innerHTML = `${packs ? packs + ' ซอง' : ''}${packs && rem ? ' + ' : ''}${rem ? rem + ' ' + escHtml(unit || 'เม็ด') : ''}`
-      + `<div class="muted">รวม ${need} ${escHtml(unit || 'เม็ด')} (${pack} เม็ด/ซอง)</div>`;
+    cell.innerHTML = `${packs ? packs + ' ' + escHtml(packUnit) : ''}${packs && rem ? ' + ' : ''}${rem ? rem + ' ' + escHtml(unit || 'เม็ด') : ''}`
+      + `<div class="muted">รวม ${need} ${escHtml(unit || 'เม็ด')} (${pack} เม็ด/${escHtml(packUnit)})</div>`;
     cell.className = 'need';
     return;
   }
@@ -3520,9 +3543,11 @@ function renderFloatLeftover() {
       <tbody>${rows.map(r => {
         const insulin = r.kind === 'insulin';
         const adjust = (r.kind === 'tablet' || insulin) && !r.userNoAdj;
-        const pack = r.kind === 'tablet' ? prepackSize(r.name, r.use && r.use.name) : 0;
-        // ยาเหลือที่บันทึกเป็นซอง → เม็ด
-        const loTabs = pack && /ซอง/.test(r.loUnit || '') ? r.lo * pack : r.lo;
+        const pk = floatMode === 'rph' && r.kind === 'tablet' ? prepackOf(r.name, r.use && r.use.name) : null;
+        const pack = pk ? pk.size : 0;
+        // ยาเหลือที่บันทึกเป็นซอง/แผง → เม็ด (หน้าต่าง จพ. ก็แปลง เพื่อให้จำนวนเม็ดที่ต้องจ่ายถูก)
+        const pkLo = r.kind === 'tablet' && /ซอง|แผง/.test(r.loUnit || '') ? prepackOf(r.name, r.use && r.use.name) : null;
+        const loTabs = pkLo ? r.lo * pkLo.size : r.lo;
         const pendingMark = r.userNoAdj && Object.keys(noAdjPending).some(k => noAdjPending[k] && drugMatches(k, r.cname)) ? ' — ยังไม่บันทึก' : '';
         const tag = r.userNoAdj ? `<span class="tag info">🚫 ไม่ต้องปรับตามนัด${pendingMark}</span>`
           : insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
@@ -3536,7 +3561,7 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr${r.userNoAdj ? ' class="noadj"' : ''} data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}"` : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr${r.userNoAdj ? ' class="noadj"' : ''} data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}" data-pack-unit="${escHtml(pk.unit)}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
@@ -3555,6 +3580,126 @@ function renderFloatLeftover() {
   renderFloatOcrStatus();
 }
 
+// ── Smart Pharmacy (หน้าต่างจ่ายยาของเภสัชกร) ─────────────────
+// แจ้งเตือนยาที่แพทย์ปรับจาก visit ก่อน (ยาใหม่/หยุด/เปลี่ยนความแรง/ขนาด/วิธีใช้) + ตรวจความเหมาะสมกับ lab/สัญญาณชีพ
+// (lib/smart-rx.js) ข้อมูลจาก HOSxP Bridge ที่มี db.json — ใบสั่งยาอ่านใหม่ทุก 15 วินาที, ยาเดิม/lab ทุก 5 นาที
+// ปุ่ม "ให้ AI วิเคราะห์" ส่งข้อมูลที่ไม่มีชื่อ/HN ไปให้ AI ทบทวน (กดเองทีละคน — โควตา AI รายวันใช้ร่วมกันทุกหน้า)
+const SMART_CSS = `
+  #fl-alert .sm-bar{cursor:pointer;margin:-2px 0 8px;padding:7px 10px;border-radius:9px;font-weight:700;font-size:13px;display:flex;gap:6px;align-items:center}
+  #fl-alert .sm-bar span{margin-left:auto;font-size:11px;font-weight:600;opacity:.8}
+  .sm-bar.ok{background:#EAF4EE;color:#1A5E38;border:1.5px solid #bfdcc9}
+  .sm-bar.wa{background:#FFFBEB;color:#92400e;border:1.5px solid #E9D8A6}
+  .sm-bar.hi{background:#fee2e2;color:#b91c1c;border:1.5px solid #fca5a5}
+  #fl-smart{margin-top:10px;background:#fff;border-radius:9px;padding:9px 10px;border-top:4px solid #C49A22}
+  .sm-h{font-weight:800;color:#124228;font-size:14px;display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .sm-h button{margin-left:auto;font-size:11px;padding:2px 7px}
+  .sm-sec{font-weight:700;font-size:12px;color:#124228;margin:9px 0 4px}
+  .sm-sec select{font:inherit;font-size:11px;font-weight:400;padding:2px 4px;border:1.5px solid #D6E4DA;border-radius:6px;max-width:100%}
+  .sm-it{font-size:12px;padding:5px 7px;border-radius:7px;margin-bottom:4px;line-height:1.45}
+  .sm-it .dt{font-size:11px;color:#3D5A47;font-weight:400}
+  .sm-it.new{background:#e0f2fe}.sm-it.stop{background:#f3f4f6}.sm-it.strength,.sm-it.up,.sm-it.down{background:#FBF3DC}.sm-it.usage{background:#f5f3ff}
+  .sm-it.high{background:#fee2e2;color:#991b1b;font-weight:600}.sm-it.warn{background:#FFFBEB;color:#92400e}.sm-it.info{background:#f0f9ff;color:#0c4a6e}
+  .chip{display:inline-block;padding:2px 7px;border-radius:6px;background:#EAF4EE;color:#124228;margin:0 3px 4px 0;font-size:11px}
+  .chip.bad{background:#fee2e2;color:#b91c1c;font-weight:700}
+  .chip small{opacity:.75;font-weight:400}
+  .sm-ai{margin-top:6px;font-size:12px;line-height:1.55;background:#F4F7F5;border-radius:8px;padding:8px 9px}
+  button.ai{background:#1A5E38;color:#fff;border-color:#1A5E38;width:100%;margin-top:6px}
+  button.ai:disabled{opacity:.6;cursor:wait}
+`;
+const SMART_ORDER_MS = 15000, SMART_INFO_MS = 5 * 60000;
+const smartCache = new Map();   // HN → { order, visits, info, orderAt, infoAt, prevVn, sig, res, ai }
+let smartBusy = false, smartShownHn = '';
+function smartHnNow() { return floatWin && !floatWin.closed ? floatWin.document.getElementById('fl-hn').value.trim() : ''; }
+async function smartRefresh(force) {
+  if (floatMode !== 'rph' || !floatWin || floatWin.closed) return;
+  const hn = smartHnNow();
+  if (!/^\d{5,10}$/.test(hn) || !window.tphHosxp || !window.tphSmartRx) { if (hn !== smartShownHn) renderSmart(); return; }
+  let c = smartCache.get(hn);
+  if (!c) { c = {}; smartCache.set(hn, c); if (smartCache.size > 30) smartCache.delete(smartCache.keys().next().value); }
+  const now = Date.now();
+  const needOrder = force === true || !c.orderAt || now - c.orderAt > SMART_ORDER_MS;
+  const needInfo = force === true || !c.infoAt || now - c.infoAt > SMART_INFO_MS;
+  if (smartBusy || (!needOrder && !needInfo)) { if (hn !== smartShownHn) renderSmart(); return; }
+  smartBusy = true;
+  if (hn !== smartShownHn) renderSmart();   // แสดง "กำลังโหลด" ของคนใหม่ทันที
+  try {
+    const [o, v, i] = await Promise.all([needOrder ? tphHosxp.order(hn) : null,
+      needInfo ? tphHosxp.visits(hn) : null, needInfo ? tphHosxp.smartRx(hn) : null]);
+    if (needOrder) { c.orderAt = now; if (o) c.order = o; }
+    if (needInfo) { c.infoAt = now; if (v) c.visits = v.visits || []; if (i) c.info = i; c.failed = !v && !i && !c.info; }
+  } finally { smartBusy = false; }
+  const sig = JSON.stringify([c.order && c.order.drugs, c.visits && c.visits.map(v => v.vn), c.info && c.info.labs, c.failed]);
+  if (sig !== c.sig || hn !== smartShownHn) { c.sig = sig; renderSmart(); }
+}
+function smartAiKey(c) {
+  return JSON.stringify([((c.order && c.order.drugs) || []).map(d => [d.icode, d.usage, d.qty]), c.res && c.res.prev && c.res.prev.vn]);
+}
+// คำตอบ AI เป็น markdown ง่ายๆ → HTML (escape ก่อนเสมอ)
+function smartMd(t) {
+  return escHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^#{1,6}\s*(.+)$/gm, '<b>$1</b>')
+    .replace(/^\s*[-*]\s+/gm, '• ').replace(/\n/g, '<br>');
+}
+function renderSmart() {
+  if (floatMode !== 'rph' || !floatWin || floatWin.closed) return;
+  const d = floatWin.document, box = d.getElementById('fl-smart'), bar = d.getElementById('fl-alert');
+  if (!box) return;
+  const hn = smartHnNow(); smartShownHn = hn;
+  const head = '<div class="sm-h">🧠 Smart Pharmacy <button type="button" data-sm-reload="1" title="อ่านใบสั่งยา/lab จาก HOSxP ใหม่">🔄</button></div>';
+  const c = smartCache.get(hn);
+  if (!/^\d{5,10}$/.test(hn)) { box.innerHTML = head + '<div class="muted">รอ HN ผู้ป่วยจาก HOSxP</div>'; bar.innerHTML = ''; return; }
+  if (!window.tphHosxp || !window.tphSmartRx || (c && c.failed)) {
+    box.innerHTML = head + '<div class="warn">ต่อฐานข้อมูล HOSxP ไม่ได้ — Smart Pharmacy ต้องใช้ HOSxP Bridge ที่มี db.json (เวอร์ชันล่าสุด)</div>'; bar.innerHTML = ''; return;
+  }
+  if (!c || (!c.order && !c.info)) { box.innerHTML = head + '<div class="muted">⏳ กำลังอ่านใบสั่งยา ยาเดิม และผล lab…</div>'; bar.innerHTML = ''; return; }
+  const today = (c.order && c.order.drugs) || [], info = c.info || {};
+  const res = tphSmartRx.analyze({ today, visits: c.visits || [], info, prevVn: c.prevVn });
+  c.res = res;
+  const hi = res.alerts.filter(a => a.level === 'high').length, wa = res.alerts.filter(a => a.level === 'warn').length;
+  const nC = res.changes.length;
+  bar.innerHTML = !today.length ? '' : `<div class="sm-bar ${hi ? 'hi' : nC || wa ? 'wa' : 'ok'}">${!res.prev ? '🆕 ไม่มี visit ก่อนให้เทียบ'
+    : nC ? `🔔 แพทย์ปรับยาจาก visit ก่อน ${nC} รายการ` : '✅ ยาเหมือน visit ก่อน'}${hi ? ` · 🔴 ${hi}` : ''}${wa ? ` · 🟠 ${wa}` : ''}<span>ดูรายละเอียด ▾</span></div>`;
+
+  const ICON = { new: '🆕', stop: '⛔', strength: '💊', up: '⬆️', down: '⬇️', usage: '🔁' };
+  const LV = { high: '🔴', warn: '🟠', info: '🟢' };
+  const visits = c.visits || [];
+  const sel = visits.length ? `<select data-sm-prev="1">${visits.map(v => `<option value="${escHtml(v.vn)}"${res.prev && v.vn === res.prev.vn ? ' selected' : ''}>${escHtml(tphHosxp.thDate(v.date))} ${escHtml(v.dep || '')} (${v.drugs.length} รายการ)</option>`).join('')}</select>` : '';
+  const labs = tphSmartRx.labSummary(info);
+  const ai = c.ai && c.ai.key === smartAiKey(c) ? c.ai : null;
+  const short = iso => tphHosxp.thDate(iso).replace(/ \d{4}$/, '');
+  box.innerHTML = head
+    + (!today.length ? `<div class="warn">ยังไม่มีใบสั่งยา visit วันนี้ในฐานข้อมูล HOSxP${c.order ? '' : ' (กำลังอ่าน…)'}</div>` : '')
+    + (today.length ? `<div class="sm-sec">การเปลี่ยนแปลงยา — เทียบกับ ${sel || 'ไม่มี visit ก่อน'}</div>`
+      + (res.prev ? (nC ? res.changes.map(x => `<div class="sm-it ${x.type}">${ICON[x.type]} ${escHtml(x.text)}${x.detail ? `<div class="dt">${escHtml(x.detail)}</div>` : ''}</div>`).join('')
+        : '<div class="sm-it info">✅ รายการยาและวิธีใช้เหมือน visit ก่อนทุกตัว</div>') : '') : '')
+    + (today.length ? `<div class="sm-sec">ความเหมาะสมของยา (lab / สัญญาณชีพ / ยาตีกัน / แพ้ยา)</div>`
+      + (res.alerts.length ? res.alerts.map(a => `<div class="sm-it ${a.level}">${LV[a.level]} ${escHtml(a.text)}</div>`).join('')
+        : '<div class="sm-it info">🟢 ไม่พบปัญหาจากกฎที่ตรวจ</div>') : '')
+    + `<div class="sm-sec">Lab ล่าสุด <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
+    + (labs.length ? labs.map(l => `<span class="chip${l.bad ? ' bad' : ''}" title="${escHtml(l.raw)} · ${escHtml(tphHosxp.thDate(l.date))}${l.prev != null ? ` · ครั้งก่อน ${l.prev} (${escHtml(tphHosxp.thDate(l.prevDate))})` : ''}">${escHtml(l.label)} ${l.value}${l.prev != null ? ` <small>(${l.prev})</small>` : ''} <small>${escHtml(short(l.date))}</small></span>`).join('')
+      : '<div class="muted">ไม่มีผล lab ใน 1 ปี</div>')
+    + ((info.allergy || []).length ? `<div class="sm-it high" style="margin-top:4px">⚠️ แพ้ยา: ${escHtml(info.allergy.map(a => a.agent).join(', '))}</div>` : '')
+    + (today.length ? `<button type="button" class="ai" data-sm-ai="1"${ai && ai.busy ? ' disabled' : ''}>${ai && ai.busy ? '⏳ AI กำลังวิเคราะห์…' : ai && ai.text ? '🤖 วิเคราะห์ใหม่' : '🤖 ให้ AI ช่วยวิเคราะห์ใบสั่งยานี้'}</button>` : '')
+    + (ai && ai.err ? `<div class="warn" style="margin-top:4px">AI ไม่ตอบ: ${escHtml(ai.err)}</div>` : '')
+    + (ai && ai.text ? `<div class="sm-ai">${smartMd(ai.text)}</div>` : '')
+    + '<div class="muted" style="margin-top:6px;font-size:10.5px">ผลจากระบบ/AI เป็นตัวช่วยคัดกรอง เภสัชกรต้องพิจารณาเองทุกครั้ง · AI ได้รับเฉพาะอายุ เพศ โรค lab และรายการยา (ไม่มีชื่อ/HN)</div>';
+}
+function onSmartChange(e) {
+  if (!e.target.matches('select[data-sm-prev]')) return;
+  const c = smartCache.get(smartHnNow());
+  if (c) { c.prevVn = e.target.value; renderSmart(); }
+}
+async function onSmartClick(e) {
+  if (e.target.closest('button[data-sm-reload]')) { smartRefresh(true); return; }
+  if (!e.target.closest('button[data-sm-ai]')) return;
+  const c = smartCache.get(smartHnNow());
+  if (!c || !c.res || (c.ai && c.ai.busy)) return;
+  const ai = c.ai = { key: smartAiKey(c), busy: true };
+  renderSmart();
+  try { ai.text = await tphSmartRx.aiReview(c.order.drugs, c.res.prev, c.info || {}, c.res); }
+  catch (err) { ai.err = err.message; }
+  ai.busy = false;
+  renderSmart();
+}
 // คำนวณเฉพาะตอนหน้าบันทึกจ่ายยาของ HOSxP อยู่บนจอ — ไปหน้าอื่น (เช่นเปรียบเทียบประวัติ) ก็ซ่อนตารางไว้
 // แค่ซ่อนด้วย CSS ไม่ลบทิ้ง "ใช้/วัน" ที่แก้ไว้จะยังอยู่เมื่อกลับมา (พิมพ์ HN เองโดยไม่ใช้ bridge ก็ไม่ถูกซ่อน)
 function applyFloatPaused() {

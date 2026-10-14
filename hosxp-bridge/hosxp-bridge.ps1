@@ -31,6 +31,7 @@
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน)
 #   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
+#   /db/smartrx?hn= — Smart Pharmacy: อายุ เพศ สัญญาณชีพ lab แพ้ยา วินิจฉัย ตารางยาตีกัน — หน้าต่างลอยจ่ายยาของเภสัชกร
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
@@ -548,6 +549,43 @@ function DbPatient($hn) {
   [ordered]@{ ok = $true; hn = $hn; pname = $p['pname']; fname = $p['fname']; lname = $p['lname']; birthday = $p['birthday']; sex = $p['sex'] }
 }
 
+# Smart Pharmacy (หน้าต่างลอยจ่ายยาของเภสัชกร): ข้อมูลประกอบการตรวจความเหมาะสมของยา visit วันนี้
+# อายุ/เพศ, สัญญาณชีพ 4 visit ล่าสุดใน 1 ปี (วันนี้อยู่บนสุดถ้ามี), lab 3 ครั้งล่าสุดต่อรายการใน 400 วัน,
+# ประวัติแพ้ยา, วินิจฉัย visit วันนี้ + โรคประจำตัว (ICD10 3 หลักใน 2 ปี), ตารางยาตีกันของ รพ.
+$RX_LABS = [ordered]@{ cr = '3036,3003,3118'; egfr = '3189'; k = '3181,3042,3018'; na = '3179,3041'; hba1c = '3119'; fbs = '3117'
+  ldl = '3191,3008,3122'; tg = '3006,3039,3123'; tc = '3038,3005,3120'; alt = '3055,3015'; ast = '3054'; hb = '1002'; hct = '1003,3127'
+  plt = '3062'; uric = '3004,3037'; tsh = '3026'; ft4 = '3164'; uacr = '3138'; pt = '1009'; bun = '3124' }
+function DbSmartRx($hn) {
+  $p = DbQuery "SELECT sex, TIMESTAMPDIFF(MONTH, birthday, CURDATE()) AS age_m FROM patient WHERE hn='$hn' LIMIT 1"
+  $vit = DbQuery ("SELECT DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS d, s.bps, s.bpd, s.pulse, s.bw, s.height, s.pregnancy, s.egfr " +
+    "FROM ovst o JOIN opdscreen s ON s.vn=o.vn WHERE o.hn='$hn' AND o.vstdate>=CURDATE()-INTERVAL 1 YEAR AND (s.bps>0 OR s.bw>0) " +
+    "ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 4")
+  $codes = ($RX_LABS.Values -join ',')
+  $lr = DbQuery ("SELECT DATE_FORMAT(h.order_date,'%Y-%m-%d') AS d, o.lab_items_code AS c, o.lab_order_result AS v FROM lab_head h " +
+    "JOIN lab_order o ON o.lab_order_number=h.lab_order_number WHERE h.hn='$hn' AND h.order_date>=CURDATE()-INTERVAL 400 DAY " +
+    "AND o.lab_items_code IN ($codes) AND o.lab_order_result IS NOT NULL AND o.lab_order_result<>'' ORDER BY h.order_date DESC, h.order_time DESC LIMIT 400")
+  $labs = [ordered]@{}
+  foreach ($k in $RX_LABS.Keys) {
+    $set = $RX_LABS[$k] -split ','
+    $hits = @($lr | Where-Object { $set -contains "$($_['c'])" } | Select-Object -First 3 | ForEach-Object { [ordered]@{ date = $_['d']; value = "$($_['v'])".Trim() } })
+    if ($hits.Count) { $labs[$k] = $hits }
+  }
+  $al = DbQuery ("SELECT agent, symptom, DATE_FORMAT(report_date,'%Y-%m-%d') AS d FROM opd_allergy WHERE hn='$hn' AND IFNULL(allergy_cancel_status,'')<>'Y'")
+  $dxT = DbQuery ("SELECT g.icd10, i.name FROM ovstdiag g LEFT JOIN icd101 i ON i.code=g.icd10 WHERE g.hn='$hn' AND g.vstdate=CURDATE() ORDER BY g.diagtype")
+  $dxH = DbQuery ("SELECT LEFT(g.icd10,3) AS c, MAX(i.name) AS name, COUNT(*) AS n FROM ovstdiag g LEFT JOIN icd101 i ON i.code=LEFT(g.icd10,3) " +
+    "WHERE g.hn='$hn' AND g.vstdate>=CURDATE()-INTERVAL 2 YEAR AND g.icd10 REGEXP '^[A-Z]' GROUP BY LEFT(g.icd10,3) HAVING n>=2 ORDER BY n DESC LIMIT 15")
+  $dr = DbQuery "SELECT drugname1, drugname2, severity, not_allow, note FROM drug_interaction WHERE IFNULL(drug_interaction_type,1)=1"
+  [ordered]@{ ok = $true; hn = $hn
+    sex = $(if ($p.Count) { $p[0]['sex'] }); ageM = $(if ($p.Count) { $p[0]['age_m'] })
+    vitals = @($vit | ForEach-Object { [ordered]@{ date = $_['d']; bps = $_['bps']; bpd = $_['bpd']; pulse = $_['pulse']; bw = $_['bw']
+      height = $_['height']; pregnancy = $_['pregnancy']; egfr = $_['egfr'] } })
+    labs = $labs
+    allergy = @($al | ForEach-Object { [ordered]@{ hn = $hn; agent = $_['agent']; symptom = $_['symptom']; date = $_['d'] } })
+    dxToday = @($dxT | ForEach-Object { [ordered]@{ code = $_['icd10']; name = $_['name'] } })
+    dxHistory = @($dxH | ForEach-Object { [ordered]@{ code = $_['c']; name = $_['name']; n = $_['n'] } })
+    ddi = @($dr | ForEach-Object { [ordered]@{ a = $_['drugname1']; b = $_['drugname2']; severity = $_['severity']; notAllow = $_['not_allow']; note = $_['note'] } }) }
+}
+
 # วันนัดจาก DB แทน OCR: อ่านเมื่อเปลี่ยนคนไข้ แล้วทุก 20 วินาที (เผื่อเพิ่งลงนัดใน HOSxP) — DB ใช้ไม่ได้ค่อยกลับไป OCR
 function ApptFromDb($hn) {
   if (-not $db -or -not $hn) { return $false }
@@ -579,6 +617,7 @@ function DbEndpoint($path) {
       elseif ($path -like '/db/meds*') { DbMeds $hn }
       elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
       elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
+      elseif ($path -like '/db/smartrx*') { DbSmartRx $hn }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)
