@@ -556,8 +556,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadQueue();
   let v = 'rx';
   try { v = localStorage.getItem('rx_sticker_view') || 'rx'; } catch (e) {}
-  if (location.hash === '#hme') v = 'hme';
+  if (location.hash === '#hme' || location.hash === '#hme-auto') v = 'hme';
   loadHmeOpts();
+  // เปิดจาก HME-AutoPrint.bat (#hme-auto) = เครื่องนี้มีไว้พิมพ์ยากลับบ้าน → เปิดพิมพ์อัตโนมัติให้เลย ไม่ต้องติ๊กเอง
+  if (location.hash === '#hme-auto' && !document.getElementById('hme-auto').checked) {
+    document.getElementById('hme-auto').checked = true;
+    try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
+  }
   setView(['ipd', 'hme'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
