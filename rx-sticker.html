@@ -150,6 +150,7 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <button class="btn btn-sm" style="margin-left:auto" onclick="loadHme()">🔄</button></h2>
     <div class="actions" style="margin:0 0 8px">
       <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="hme-auto" onchange="saveHmeOpts()"> 🤖 พิมพ์อัตโนมัติเมื่อมีใบสั่งยากลับบ้านใหม่</label>
+      <span class="hint" id="hme-station-note" style="display:none;margin:0">พิมพ์อัตโนมัติได้เฉพาะเครื่องห้องยาที่ตั้งไว้ — เครื่องนี้กด 🖨 พิมพ์ทีละใบ</span>
       <span class="hint" style="margin:0">สติกเกอร์ 9 × 6 ซม. · ดวงละไม่เกิน 6 รายการ</span>
     </div>
     <div class="hint" style="margin:-2px 0 10px">ตรวจ HOSxP ทุก 30 วินาที · พิมพ์เมื่อใบสั่งนั้นไม่ถูกแก้มา 2 นาที (กันพิมพ์ตอนยังคีย์ไม่เสร็จ) · แก้รายการหลังพิมพ์ → พิมพ์ใหม่ให้ ·
@@ -476,6 +477,12 @@ async function loadHme() {
   if (!r) { document.getElementById('hme-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
   HME = (r.orders || []).map(o => ({ ...o, items: (o.items || []).filter(i => !HME_SKIP.test(i.name || '')) }));
   HME_NOW = toDate(r.now);
+  // พิมพ์อัตโนมัติเฉพาะเครื่องที่ bridge บอกว่าเป็นเครื่องพิมพ์ยากลับบ้าน (hme-station.txt) — bridge รุ่นเก่าไม่ส่ง station = ไม่ใช่
+  const station = r.station === true, cb = document.getElementById('hme-auto');
+  if (station && cb.disabled) loadHmeOpts();   // กลับมาเป็นเครื่องพิมพ์ — คืนค่าที่บันทึกไว้ (ไม่ได้ลบตอนปิดปุ่ม)
+  cb.disabled = !station;
+  if (!station) cb.checked = false;
+  document.getElementById('hme-station-note').style.display = station ? 'none' : '';
   // ใบที่พิมพ์ไว้ก่อนตัดแอลกอฮอล์ออก (sig เดิมมีแอลกอฮอล์) — ถือว่าพิมพ์แล้ว ไม่ต้องพิมพ์ซ้ำ
   const pm = hmePrinted(); let mig = false;
   (r.orders || []).forEach((o, k) => {

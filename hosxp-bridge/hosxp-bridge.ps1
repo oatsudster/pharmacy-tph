@@ -475,6 +475,13 @@ function DbIpdList {
     [ordered]@{ an = $_['an']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
       bed = $_['bedno']; room = $_['roomno']; name = $_['ptname'] } }) }
 }
+# เครื่องที่ให้พิมพ์สรุปยากลับบ้านอัตโนมัติ: ชื่อเครื่อง (COMPUTERNAME) อยู่ใน hme-station.txt ในโฟลเดอร์ bridge
+# ไฟล์นี้ไม่อยู่ในตัวติดตั้ง — เครื่องอื่นจึงไม่พิมพ์อัตโนมัติจนกว่าจะเพิ่มชื่อเครื่องเอง (หน้าเว็บปิดปุ่มพิมพ์อัตโนมัติให้ด้วย)
+function HmeStation {
+  $f = Join-Path $PSScriptRoot 'hme-station.txt'
+  if (-not (Test-Path $f)) { return $false }
+  return [bool](@(Get-Content $f -Encoding UTF8 | ForEach-Object { $_.Trim() }) -contains $env:COMPUTERNAME)
+}
 function DbHme {
   $ords = DbQuery ("SELECT n.an, n.order_no, DATE_FORMAT(n.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(n.rxtime,'%H:%i') AS rxtime, n.entry_staff, " +
     "i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, w.name AS ward_name, a.bedno, " +
@@ -505,7 +512,7 @@ function DbHme {
           [ordered]@{ icode = $_['icode']; qty = $_['qty']; name = $_['name']; strength = $_['strength']; units = $_['units']
             form = $_['dosageform']; namePrint = $_['name_print']; line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3'] } }) } })
   }
-  [ordered]@{ ok = $true; orders = $out; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
+  [ordered]@{ ok = $true; orders = $out; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); station = (HmeStation) }
 }
 function DbRxSticker($hn) {
   $vis = DbQuery ("SELECT o.vn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
@@ -957,9 +964,20 @@ try { $listener.Start() } catch { Write-Host "เปิดพอร์ต $PORT 
 Write-Host "HOSxP Bridge ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (หยุด: stop-bridge.bat)"
 if ($db) { try { [void](DbQuery 'SELECT 1'); Write-Host "เชื่อมฐานข้อมูล HOSxP แล้ว" } catch { Write-Host "ยังเชื่อมฐานข้อมูลไม่ได้: $_ (ใช้ OCR แทน)" } }
 else { Write-Host "ไม่ได้ตั้งฐานข้อมูล ($($state.dbErr)) — ใช้ OCR" }
-$nextPoll = [DateTime]::MinValue
+# เครื่องพิมพ์สรุปยากลับบ้าน — bridge เปิดหน้าต่างพิมพ์อัตโนมัติให้เอง (ย่อไว้) และเปิดใหม่ถ้าถูกปิด เปิดแค่ bridge ตัวเดียวก็พิมพ์ได้
+$hmeProf = Join-Path $env:LOCALAPPDATA 'TPH-AutoPrint'
+$hmeBat = Join-Path $PSScriptRoot 'HME-AutoPrint.bat'
+function HmeWatch {
+  if (-not (HmeStation) -or -not (Test-Path $hmeBat)) { return }
+  $up = Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='msedge.exe'" | Where-Object { $_.CommandLine -like "*$hmeProf*" } | Select-Object -First 1
+  if ($up) { return }
+  Write-Host "เปิดหน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ $(Get-Date -Format 'HH:mm')"
+  Start-Process cmd.exe -ArgumentList '/c', "`"$hmeBat`" bridge" -WindowStyle Hidden
+}
+$nextPoll = [DateTime]::MinValue; $nextHme = (Get-Date).AddSeconds(3)
 while ($true) {
   if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
+  if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
   while ($listener.Pending()) { try { Respond $listener.AcceptTcpClient() } catch {} }
   Start-Sleep -Milliseconds 100
 }

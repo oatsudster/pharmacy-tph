@@ -12,4 +12,8 @@ set "KIOSK=--kiosk-printing"
 if /i "%~1"=="setup" set "KIOSK="
 rem Silent printing goes to the sticker printer (Zebra/ZDesigner, or the name in %PROF%\printer.txt), not the Windows default A4 printer
 if not "%~1"=="setup" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0hme-printer.ps1" -Prof "%PROF%"
-start "" "%B%" --user-data-dir="%PROF%" %KIOSK% --app="%URL%"
+rem "bridge" = opened by hosxp-bridge.ps1 itself (minimized); keep timers running while minimized so the 30-second check still runs
+set "BG=--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
+set "MIN="
+if /i "%~1"=="bridge" set "MIN=/min"
+start "" %MIN% "%B%" --user-data-dir="%PROF%" %KIOSK% %BG% --app="%URL%"
