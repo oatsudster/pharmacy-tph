@@ -468,11 +468,21 @@ function hmeDrug(i) {
   const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
   return { name, use: lines.join(' ') };
 }
+// แอลกอฮอล์ (เช็ดแผล/ล้างมือ) ไม่นับเป็นยากลับบ้าน — ไม่แสดง ไม่นับจำนวนรายการ ไม่พิมพ์ (ใบที่มีแต่แอลกอฮอล์ = ไม่มีรายการ)
+const HME_SKIP = /^\s*(ETHYL\s+)?ALCOHOL\b|แอลกอฮอล์/i;
 function hmeUnit(u) { return String(u || '').replace(/\s*\(.*\)\s*$/, '').trim(); }
 async function loadHme() {
   const r = window.tphHosxp && tphHosxp.hme ? await tphHosxp.hme() : null;
   if (!r) { document.getElementById('hme-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
-  HME = r.orders || []; HME_NOW = toDate(r.now);
+  HME = (r.orders || []).map(o => ({ ...o, items: (o.items || []).filter(i => !HME_SKIP.test(i.name || '')) }));
+  HME_NOW = toDate(r.now);
+  // ใบที่พิมพ์ไว้ก่อนตัดแอลกอฮอล์ออก (sig เดิมมีแอลกอฮอล์) — ถือว่าพิมพ์แล้ว ไม่ต้องพิมพ์ซ้ำ
+  const pm = hmePrinted(); let mig = false;
+  (r.orders || []).forEach((o, k) => {
+    const e = pm[hmeKey(o)];
+    if (e && e.sig === hmeSig(o) && e.sig !== hmeSig(HME[k])) { e.sig = hmeSig(HME[k]); mig = true; }
+  });
+  if (mig) try { localStorage.setItem('hme_printed', JSON.stringify(pm)); } catch (e) {}
   // เปิดหน้าครั้งแรก: ใบสั่งที่ไม่ได้แก้มาเกิน 30 นาทีถือว่าจัดการไปแล้ว ไม่พิมพ์ย้อนหลังทั้งวัน (กดพิมพ์เองได้)
   if (hmeFirst) {
     hmeFirst = false;
