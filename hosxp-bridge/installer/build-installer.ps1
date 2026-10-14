@@ -14,7 +14,7 @@ New-Item -ItemType Directory $stage | Out-Null
 
 # PowerShell 5.1 อ่าน .ps1 ที่ไม่มี BOM เป็น ANSI ภาษาไทยจะเพี้ยน — เขียนเป็น UTF-8 มี BOM ทุกไฟล์
 $bom = New-Object System.Text.UTF8Encoding $true
-foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $here 'install.ps1'), (Join-Path $here 'uninstall.ps1'))) {
+foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $bridgeDir 'hme-printer.ps1'), (Join-Path $here 'install.ps1'), (Join-Path $here 'uninstall.ps1'))) {
   [IO.File]::WriteAllText((Join-Path $stage (Split-Path $f -Leaf)), [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8), $bom)
 }
 Copy-Item (Join-Path $bridgeDir 'start-bridge.bat') $stage

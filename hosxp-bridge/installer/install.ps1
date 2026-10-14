@@ -30,7 +30,7 @@ try {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
   # หน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ (ใช้เฉพาะเครื่องห้องยาที่ต่อเครื่องพิมพ์สติกเกอร์)
-  foreach ($f in 'HME-AutoPrint.bat', 'HME-AutoPrint-setup.bat') {
+  foreach ($f in 'HME-AutoPrint.bat', 'HME-AutoPrint-setup.bat', 'hme-printer.ps1') {
     if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $Target -Force }
   }
   if (Test-Path (Join-Path $src 'db.json')) { Copy-Item (Join-Path $src 'db.json') $Target -Force }
