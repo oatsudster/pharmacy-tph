@@ -3620,6 +3620,8 @@ async function smartRefresh(force) {
   const needOrder = force === true || !c.orderAt || now - c.orderAt > SMART_ORDER_MS;
   const needInfo = force === true || !c.infoAt || now - c.infoAt > SMART_INFO_MS;
   if (smartBusy || (!needOrder && !needInfo)) { if (hn !== smartShownHn) renderSmart(); return; }
+  // เบราว์เซอร์ยังใช้ lib/hosxp-db.js ตัวเก่าจาก cache (ไม่มี smartRx) — ให้กดโหลดหน้าใหม่
+  if (typeof tphHosxp.smartRx !== 'function') { c.failed = 'old'; renderSmart(); return; }
   smartBusy = true;
   if (hn !== smartShownHn) renderSmart();   // แสดง "กำลังโหลด" ของคนใหม่ทันที
   try {
@@ -3648,7 +3650,7 @@ function renderSmart() {
   const c = smartCache.get(hn);
   if (!/^\d{5,10}$/.test(hn)) { box.innerHTML = head + '<div class="muted">รอ HN ผู้ป่วยจาก HOSxP</div>'; bar.innerHTML = ''; return; }
   if (!window.tphHosxp || !window.tphSmartRx || (c && c.failed)) {
-    box.innerHTML = head + '<div class="warn">ต่อฐานข้อมูล HOSxP ไม่ได้ — Smart Pharmacy ต้องใช้ HOSxP Bridge ที่มี db.json (เวอร์ชันล่าสุด)</div>'; bar.innerHTML = ''; return;
+    box.innerHTML = head + (c && c.failed === 'old' ? '<div class="warn">หน้าเว็บยังเป็นเวอร์ชันเก่าจาก cache — ปิดหน้าต่างนี้ แล้วกด Ctrl+F5 ที่หน้าหลักก่อนเปิดใหม่</div>' : '<div class="warn">ต่อฐานข้อมูล HOSxP ไม่ได้ — Smart Pharmacy ต้องใช้ HOSxP Bridge ที่มี db.json (เวอร์ชันล่าสุด)</div>'); bar.innerHTML = ''; return;
   }
   if (!c || (!c.order && !c.info)) { box.innerHTML = head + '<div class="muted">⏳ กำลังอ่านใบสั่งยา ยาเดิม และผล lab…</div>'; bar.innerHTML = ''; return; }
   const today = (c.order && c.order.drugs) || [], info = c.info || {};
