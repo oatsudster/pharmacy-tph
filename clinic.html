@@ -2379,10 +2379,9 @@ async function pollHosxpBridge() {
   bridgeKey = key;
   d.getElementById('fl-hn').value = s.hn;
   if (floatMode === 'rph') smartRefresh();
-  if (s.apptDays != null) {
-    d.getElementById('fl-days').value = s.apptDays;
-    d.getElementById('fl-appt').value = isoLocal(floatDateAfter(s.apptDays));
-  }
+  // ไม่มีวันนัด (เช่น ส่งรับยาต่อ รพ.สต.) ล้างช่องวันนัด — ไม่งั้นค้างวันนัดของคนไข้คนก่อน
+  d.getElementById('fl-days').value = s.apptDays != null ? s.apptDays : '';
+  d.getElementById('fl-appt').value = s.apptDays != null ? isoLocal(floatDateAfter(s.apptDays)) : '';
   renderFloatLeftover();
 }
 
@@ -3428,6 +3427,7 @@ function updateFloatNeed(tr) {
   const cell = tr.querySelector('.need');
   const lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
   if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
+  if (!days) { cell.innerHTML = '<span class="muted">ไม่มีวันนัด</span>'; cell.className = 'need zero'; return; }
   if (tr.dataset.kind === 'insulin') {
     // lo = ยูนิตที่เหลือ, perDay = ยูนิต/วัน → vial = (วัน × ยูนิต/วัน − ยูนิตที่เหลือ) ÷ 1,000 ปัดขึ้น
     const units = Math.max(0, days * perDay - lo);
