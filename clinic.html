@@ -3597,7 +3597,7 @@ const SMART_CSS = `
   .sm-sec select{font:inherit;font-size:11px;font-weight:400;padding:2px 4px;border:1.5px solid #D6E4DA;border-radius:6px;max-width:100%}
   .sm-it{font-size:12px;padding:5px 7px;border-radius:7px;margin-bottom:4px;line-height:1.45}
   .sm-it .dt{font-size:11px;color:#3D5A47;font-weight:400}
-  .sm-it.new{background:#e0f2fe}.sm-it.stop{background:#f3f4f6}.sm-it.strength,.sm-it.up,.sm-it.down{background:#FBF3DC}.sm-it.usage{background:#f5f3ff}
+  .sm-it.new{background:#e0f2fe}.sm-it.switch{background:#ede9fe}.sm-it.stop{background:#f3f4f6}.sm-it.strength,.sm-it.up,.sm-it.down{background:#FBF3DC}.sm-it.usage{background:#f5f3ff}
   .sm-it.high{background:#fee2e2;color:#991b1b;font-weight:600}.sm-it.warn{background:#FFFBEB;color:#92400e}.sm-it.info{background:#f0f9ff;color:#0c4a6e}
   .chip{display:inline-block;padding:2px 7px;border-radius:6px;background:#EAF4EE;color:#124228;margin:0 3px 4px 0;font-size:11px}
   .chip.bad{background:#fee2e2;color:#b91c1c;font-weight:700}
@@ -3661,7 +3661,7 @@ function renderSmart() {
   bar.innerHTML = !today.length ? '' : `<div class="sm-bar ${hi ? 'hi' : nC || wa ? 'wa' : 'ok'}">${!res.prev ? '🆕 ไม่มี visit ก่อนให้เทียบ'
     : nC ? `🔔 แพทย์ปรับยาจาก visit ก่อน ${nC} รายการ` : '✅ ยาเหมือน visit ก่อน'}${hi ? ` · 🔴 ${hi}` : ''}${wa ? ` · 🟠 ${wa}` : ''}<span>ดูรายละเอียด ▾</span></div>`;
 
-  const ICON = { new: '🆕', stop: '⛔', strength: '💊', up: '⬆️', down: '⬇️', usage: '🔁' };
+  const ICON = { switch: '🔀', new: '🆕', stop: '⛔', strength: '💊', up: '⬆️', down: '⬇️', usage: '🔁' };
   const LV = { high: '🔴', warn: '🟠', info: '🟢' };
   const visits = c.visits || [];
   const sel = visits.length ? `<select data-sm-prev="1">${visits.map(v => `<option value="${escHtml(v.vn)}"${res.prev && v.vn === res.prev.vn ? ' selected' : ''}>${escHtml(tphHosxp.thDate(v.date))} ${escHtml(v.dep || '')} (${v.drugs.length} รายการ)</option>`).join('')}</select>` : '';
