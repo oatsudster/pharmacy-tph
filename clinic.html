@@ -3325,9 +3325,20 @@ function drugWordNear(x, y) {
   const d = editDist(x, y);
   return d <= 1 || (d === 2 && Math.min(x.length, y.length) >= 8 && x.slice(0, 3) === y.slice(0, 3));
 }
+// ชื่อยาที่ไม่มีคำภาษาอังกฤษ ≥ 4 ตัว (ยาสมุนไพรชื่อไทย เช่น ขมิ้นชัน, ASA 81 mg) — เทียบทั้งชื่อหลังตัดขนาด/รูปแบบยา/เครื่องหมาย
+function drugNameKey(s) {
+  return String(s || '').toUpperCase()
+    .replace(/\d+(?:\.\d+)?\s*(?:MG|MCG|G|ML|IU|UNITS?|ยูนิต|%)?/g, ' ')
+    .replace(/เม็ด|แค[ป็บ]ซูล|แค[ป็บ]|\b(?:TABLETS?|TAB|CAPSULES?|CAP)\b/g, ' ')
+    .replace(/[^A-Z฀-๿]/g, '');
+}
 function drugMatches(a, b) {
   const A = drugCoreTokens(a), B = drugCoreTokens(b);
   if (A.some(x => B.some(y => drugWordNear(x, y)))) return true;
+  if (!A.length || !B.length) {
+    const ka = drugNameKey(a), kb = drugNameKey(b);
+    if (ka && kb && (ka === kb || (Math.min(ka.length, kb.length) >= 4 && (ka.includes(kb) || kb.includes(ka))))) return true;
+  }
   // ชื่อที่มีแต่ชื่อเกลือ ("Sodium bicarbonate") กับชื่อการค้า ("Sodamint (Sodium bicarbonate)") — ตรงกันตั้งแต่ 2 คำขึ้นไป
   const FA = drugTokens(a), FB = drugTokens(b);
   return FA.filter(x => FB.includes(x)).length >= 2;
@@ -3561,7 +3572,7 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr${r.userNoAdj ? ' class="noadj"' : ''} data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}" data-pack-unit="${escHtml(pk.unit)}"` : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}" data-pack-unit="${escHtml(pk.unit)}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
