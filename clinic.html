@@ -3670,9 +3670,9 @@ function renderSmart() {
   const short = iso => tphHosxp.thDate(iso).replace(/ \d{4}$/, '');
   box.innerHTML = head
     + (!today.length ? `<div class="warn">ยังไม่มีใบสั่งยา visit วันนี้ในฐานข้อมูล HOSxP${c.order ? '' : ' (กำลังอ่าน…)'}</div>` : '')
-    + (today.length ? `<div class="sm-sec">การเปลี่ยนแปลงยา — เทียบกับ ${sel || 'ไม่มี visit ก่อน'}</div>`
+    + (today.length ? `<div class="sm-sec">การเปลี่ยนแปลงยาโรคเรื้อรัง — เทียบกับ ${sel || 'ไม่มี visit ก่อน'} <span class="muted" style="font-weight:400">(ไม่นับยา stat/ยาฉีด ER/ยาบรรเทาอาการ/ยาปฏิชีวนะ)</span></div>`
       + (res.prev ? (nC ? res.changes.map(x => `<div class="sm-it ${x.type}">${ICON[x.type]} ${escHtml(x.text)}${x.detail ? `<div class="dt">${escHtml(x.detail)}</div>` : ''}</div>`).join('')
-        : '<div class="sm-it info">✅ รายการยาและวิธีใช้เหมือน visit ก่อนทุกตัว</div>') : '') : '')
+        : '<div class="sm-it info">✅ ยาโรคเรื้อรังและวิธีใช้เหมือน visit ก่อนทุกตัว</div>') : '') : '')
     + (today.length ? `<div class="sm-sec">ความเหมาะสมของยา (lab / สัญญาณชีพ / ยาตีกัน / แพ้ยา)</div>`
       + (res.alerts.length ? res.alerts.map(a => `<div class="sm-it ${a.level}">${LV[a.level]} ${escHtml(a.text)}</div>`).join('')
         : '<div class="sm-it info">🟢 ไม่พบปัญหาจากกฎที่ตรวจ</div>') : '')
