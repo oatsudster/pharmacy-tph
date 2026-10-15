@@ -161,6 +161,18 @@ function DbVisits($hn) {
     }
     [void]$cur.drugs.Add((DrugRow $r))
   }
+  # ยากลับบ้าน (HMe) ของการนอน รพ. ที่จำหน่ายแล้ว นับเป็น visit หนึ่ง ณ วันจำหน่าย — ไม่งั้นคนที่เพิ่งออกจาก รพ.
+  # จะถูกเทียบกับ visit OPD ก่อน admit (vn = "AN" + an ไม่ซ้ำกับ vn จริง)
+  $ipts = DbQuery "SELECT an, dchdate, dchtime FROM ipt WHERE hn='$hn' AND dchdate IS NOT NULL AND dchdate<CURDATE() AND dchdate>=CURDATE()-INTERVAL 2 YEAR ORDER BY dchdate DESC, dchtime DESC LIMIT 6"
+  foreach ($i in $ipts) {
+    $an = [HxDb]::Digits($i['an'])
+    $hme = DbQuery ("SELECT $DRUG_COLS $DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no " +
+      "WHERE r.an='$an' AND n.order_type='HMe' ORDER BY r.item_no")
+    if (-not $hme.Count) { continue }
+    [void]$visits.Add([ordered]@{ vn = "AN$an"; date = $i['dchdate']; time = $i['dchtime']; dep = 'ยากลับบ้าน (admit)'
+      drugs = @($hme | ForEach-Object { DrugRow $_ }) })
+  }
+  $visits = @($visits | Sort-Object -Property @{ Expression = { "$($_.date) $($_.time)" }; Descending = $true } | Select-Object -First 6)
   [ordered]@{ ok = $true; hn = $hn; visits = $visits }
 }
 
