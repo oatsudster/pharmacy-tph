@@ -92,16 +92,26 @@ td small { display: block; color: var(--text-light); }
 .hc-detail { margin-top: 12px; font-size: 13px; color: var(--text-mid); }
 .hc-detail summary { cursor: pointer; color: var(--primary-dark); font-weight: 600; }
 .hc-detail ul { margin: 6px 0 10px; padding-left: 18px; }
+.runbtn { font: inherit; font-size: 13px; border: 0; border-radius: 8px; padding: 6px 12px; background: #F6D77B; color: #124228; font-weight: 700; cursor: pointer; }
+.runbtn:disabled { opacity: .6; cursor: default; }
+.rx-box { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
+.rx-box h3 { font-size: 15px; margin: 0 0 4px; color: var(--primary-dark); }
+.rx-tag { font-size: 11px; border-radius: 6px; padding: 0 6px; background: var(--primary-light); color: var(--ok); white-space: nowrap; }
+.rx-tag.rx-kpi { background: var(--gold-light); color: #7A5700; }
+.done-tag { font-size: 11px; border-radius: 6px; padding: 0 6px; background: #eef1ef; color: var(--text-mid); white-space: nowrap; }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="topbar">
   <a href="index.html">← หน้าหลัก</a>
-  <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
+  <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
   <div class="right">
     <label for="fy" class="sub">ปีงบประมาณ</label>
     <select id="fy"></select>
+    <select id="qtr" aria-label="ช่วงเวลา"><option value="0">ทั้งปีงบ</option><option value="1">ไตรมาส 1 (ต.ค.–ธ.ค.)</option><option value="2">ไตรมาส 2 (ม.ค.–มี.ค.)</option><option value="3">ไตรมาส 3 (เม.ย.–มิ.ย.)</option><option value="4">ไตรมาส 4 (ก.ค.–ก.ย.)</option></select>
+    <button id="run-btn" class="runbtn" type="button" title="สั่งให้เครื่องที่ติดตั้งสคริปต์ดึงข้อมูลจาก HOSxP ใหม่ทั้งหมด (รวมเดือนปัจจุบัน) — เริ่มภายใน 5 นาที">⟳ ประมวลผลจาก HOSxP ตอนนี้</button>
+    <span id="run-status" class="sub"></span>
     <span id="status" class="status" style="color:#fff;opacity:.85">กำลังโหลด…</span>
   </div>
 </div>
@@ -115,8 +125,8 @@ td small { display: block; color: var(--text-light); }
         <div class="s">ส่งข้อมูลเคลมตรงเวลาดีแล้ว เงินที่ยังขาดมาจาก 3 เรื่องนี้ ตัวชี้วัดด้านล่างอัปเดตจาก HOSxP ทุกเดือน</div>
       </div>
       <div class="gaps">
-        <div class="gap"><span class="t">ก. เคลมบริการที่ทำแล้วให้ครบ</span><span class="d">นอกเขต, ค่ารถ refer, HbA1c, วัคซีน, LGO, Palliative</span><span class="a" id="gap-A">—</span></div>
-        <div class="gap"><span class="t">ข. เพิ่มบริการที่ สปสช. จ่ายแยก</span><span class="d">คัดกรองไวรัสตับ, แม่และเด็ก, ฟันเทียม, สมุนไพร</span><span class="a" id="gap-B">—</span></div>
+        <div class="gap"><span class="t">ก. เคลมบริการที่ทำแล้วให้ครบ</span><span class="d">นอกเขต, ค่ารถ refer, HbA1c, วัคซีน, LGO, Palliative, Clopidogrel</span><span class="a" id="gap-A">—</span></div>
+        <div class="gap"><span class="t">ข. เพิ่มบริการที่ สปสช. จ่ายแยก</span><span class="d">คัดกรองไวรัสตับ, แม่และเด็ก, สมุนไพร, วัคซีนไข้หวัดใหญ่</span><span class="a" id="gap-B">—</span></div>
         <div class="gap"><span class="t">ค. ผู้ป่วยใน</span><span class="d">ลงรหัสโรคร่วมให้ครบ เพิ่มค่า RW</span><span class="a" id="gap-C">—</span></div>
       </div>
     </div>
@@ -125,6 +135,13 @@ td small { display: block; color: var(--text-light); }
 
   <section>
     <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="card" id="beds">
+    <h2>อัตราการครองเตียง (ward ผู้ป่วยใน)</h2>
+    <p class="note">วันนอนรวมในเดือน × 100 ÷ (จำนวนเตียง × จำนวนวัน) · ทุกสิทธิ · ไม่รวมห้องคลอด · จำนวนเตียงตาม HOSxP (ward.bedcount)</p>
+    <div class="kpis" id="beds-kpis" style="margin-bottom:12px"></div>
+    <div class="chartbox"><canvas id="c-beds"></canvas></div>
   </section>
 
   <section class="grid2">
@@ -152,13 +169,19 @@ td small { display: block; color: var(--text-light); }
       </div>
       <div class="tbl"><table id="hc-table" style="min-width:500px"></table></div>
     </div>
+    <div class="rx-box" id="rx-box">
+      <h3 id="rx-title">ยาที่จ่ายในกลุ่มอาการ</h3>
+      <p class="note" id="rx-note">คลิกชื่อกลุ่มอาการในตารางด้านบนเพื่อดูว่าจ่ายยาอะไรไปบ้าง</p>
+      <div class="controls"><span class="chip-row" id="rx-filter"></span></div>
+      <div class="tbl"><table id="rx-table"></table></div>
+    </div>
     <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม</summary><div id="hc-criteria"></div></details>
-    <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
+    <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · นับเฉพาะรหัสยาที่เปิดใช้งาน (แพทย์สั่งได้) ใน HOSxP ปัจจุบัน · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
   </section>
 
   <section class="card">
     <h2 id="prov-title">เทียบผลงานเคลมทั้งจังหวัด</h2>
-    <p class="note" id="prov-note">เลือกช่องทางและรายการ · สีเข้ม = ถ้ำพรรณรา · สีกลาง = รพช.ขนาดเล็ก 10 แห่งที่ใช้เทียบ · เส้นประ = ค่ามัธยฐานกลุ่ม</p>
+    <p class="note" id="prov-note">เลือกช่องทางและรายการ · สีเข้ม = ถ้ำพรรณรา · สีกลาง = รพช.ขนาดเล็ก 10 แห่งที่ใช้เทียบ · เส้นประ = ค่ามัธยฐานกลุ่ม · ไม่แสดงอันดับ เพราะจำนวนประชากรแต่ละพื้นที่ไม่เท่ากัน</p>
     <div class="controls">
       <select id="p-src" aria-label="ช่องทาง"></select>
       <select id="p-item" aria-label="รายการ"></select>
@@ -168,14 +191,14 @@ td small { display: block; color: var(--text-light); }
 
   <section class="card">
     <h2>รายการที่ได้ต่ำกว่ากลุ่มเทียบเคียง</h2>
-    <p class="note">ส่วนต่างจากค่ามัธยฐานของ รพช.ขนาดเล็ก 10 แห่ง เรียงจากมากไปน้อย (คำนวณจากไฟล์ผลงานเคลมจังหวัดล่าสุด)</p>
+    <p class="note">ส่วนต่างจากค่ามัธยฐานของ รพช.ขนาดเล็ก 10 แห่ง เรียงจากมากไปน้อย (คำนวณจากไฟล์ผลงานเคลมจังหวัดล่าสุด) · ไม่ได้ปรับตามจำนวนประชากร · รายการสีจางท้ายตาราง = ทีมยืนยันว่าเพิ่มไม่ได้</p>
     <div class="controls" id="gap-chips"></div>
     <div class="tbl"><table id="gap-table"><thead><tr><th>รายการ</th><th>ช่องทาง</th><th class="num">ถ้ำพรรณรา</th><th class="num">มัธยฐานกลุ่ม</th><th class="num">ส่วนต่าง</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
     <h2>แนวทางเพิ่มรายได้</h2>
-    <p class="note">ประมาณการจากการวิเคราะห์ปีงบ 69 (อนุรักษ์นิยม ยังไม่ได้ตรวจกับอัตราจ่าย สปสช. รายรายการ)</p>
+    <p class="note">ประมาณการจากการวิเคราะห์ปีงบ 69 (อนุรักษ์นิยม ยังไม่ได้ตรวจกับอัตราจ่าย สปสช. รายรายการ) · ปรับตามข้อมูลจากทีมงาน 16 ต.ค. 69</p>
     <div class="tbl"><table id="opp-table"><thead><tr><th>แนวทาง</th><th>ตัวชี้วัดที่ติดตามในหน้านี้</th><th class="num">เพิ่มได้/ปี</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody></tbody></table></div>
   </section>
 
@@ -219,24 +242,37 @@ td small { display: block; color: var(--text-light); }
     ['กระทบยอด HbA1c กับ MOPH Claim', 'HbA1c UC/WEL', 60000, 'Lab, คลินิก NCD'],
     ['วัคซีน dT/EPI ใน MOPH Claim', 'วัคซีน dT/TT', 15000, 'งานวัคซีน, PCU'],
     ['ติดตาม LGO ที่ถูกปฏิเสธ', 'ยอดเรียกเก็บ LGO (การ์ดด้านบน)', 60000, 'งานประกัน'],
-    ['ยา Clopidogrel ที่มีสิทธิเคลม', '—', 40000, 'ห้องยา'],
+    ['ยา Clopidogrel ที่มีสิทธิเคลม', 'เบิกได้เม็ดละ 3 บาท = ราคาทุน (เท่าทุน) · ต.ค.–ส.ค. จ่าย UC/WEL OPD 9,933 เม็ด เบิกได้ 8,488 เม็ด — เพิ่มได้เฉพาะเม็ดที่ยังไม่ได้เบิก', 5000, 'ห้องยา, งานประกัน'],
     ['Palliative care', 'ผู้ป่วย Z51.5 (การ์ดด้านบน)', 50000, 'ทีม PC'],
-    ['ผู้ป่วยในที่ยังไม่ส่งสำเร็จ', 'AN ที่ไม่พบการส่ง FDH (การ์ดด้านบน)', 45000, 'งานประกัน'],
     ['ข. เพิ่มบริการที่ สปสช. จ่ายแยก'],
     ['คัดกรองไวรัสตับอักเสบ B/C', 'ตาราง "ได้ต่ำกว่ากลุ่ม" (HEP_B/HEP_C)', 190000, 'Lab, PCU, อสม.'],
-    ['งานแม่และเด็ก (ANC/PNC/FP/Iron/UPT)', 'ตาราง "ได้ต่ำกว่ากลุ่ม"', 150000, 'งาน MCH'],
-    ['ฟันเทียม', 'ตาราง "ได้ต่ำกว่ากลุ่ม" (DENTURE)', 140000, 'ทันตกรรม'],
+    ['งานแม่และเด็ก (ANC/PNC/FP/UPT/Fluoride)', 'ตาราง "ได้ต่ำกว่ากลุ่ม" · ยาเสริมธาตุเหล็กเด็ก (IRON) เบิกได้เฉพาะที่จ่ายยาจริง ผู้ปกครองบางรายไม่รับยา จึงไม่นับส่วนนี้', 135000, 'งาน MCH'],
     ['ยาสมุนไพรแทนยาแผนปัจจุบัน', 'กราฟสั่งยาสมุนไพร (เป้า 50%)', 60000, 'ห้องยา, แพทย์แผนไทย'],
     ['วัคซีนไข้หวัดใหญ่กลุ่มเสี่ยง', 'วัคซีนไข้หวัดใหญ่', 40000, 'คลินิก NCD'],
+    ['FIT test คัดกรองมะเร็งลำไส้ (เบิกผ่าน e-Claim)', 'HOSxP 3002872: ต.ค.–ส.ค. ตรวจ UC/WEL 86 ครั้ง แต่ e-Claim จ่าย 2,460 บาท (≈41 ครั้ง) · ปีงบ 68 ตรวจ 254 ครั้ง ปีงบ 69 เหลือ 91', 12000, 'PCU, Lab, งานประกัน'],
     ['ค. ผู้ป่วยใน'],
     ['Coding audit / บันทึกโรคร่วม', 'กราฟคุณภาพข้อมูลผู้ป่วยใน + RW เฉลี่ย', 220000, 'เวชระเบียน, แพทย์'],
   ];
+  // ตรวจแล้วเพิ่มไม่ได้ — แสดงท้ายตาราง ไม่นับในประมาณการ
+  const OPP_DONE = [
+    ['ฟันเทียม (DENTURE)', 'ทีมทันตกรรมยืนยัน: ผู้ป่วยที่เข้าเกณฑ์มีเท่าที่เบิกอยู่ ยอดปัจจุบันคือสูงสุดที่ทำได้', 'ทันตกรรม'],
+    ['ผู้ป่วยในส่ง FDH', 'AN ที่ HOSxP ได้ 409 "มีข้อมูลใน FDH แล้ว" นับเป็นส่งสำเร็จ — ไม่มีเคสค้าง (ตรวจ 16 ต.ค. 69)', 'งานประกัน'],
+  ];
+  // รายการในตาราง "ได้ต่ำกว่ากลุ่ม" ที่ทีมยืนยันว่าเพิ่มไม่ได้ — แสดงแต่ไม่ถือเป็นโอกาส
+  const CAPPED = { DENTURE: 'ทำได้เต็มที่แล้ว (ทันตกรรมยืนยัน)', IRON: 'เบิกได้เมื่อจ่ายยาจริง — ผู้ปกครองบางรายไม่รับยา', 'ยาClopidogrel': 'เบิก 3 บาท/เม็ด = ทุน · ส่วนต่างมาจากจำนวนผู้ป่วย' };
 
   let monthly = null, province = null, fy = null;
   const charts = {};
   const status = document.getElementById('status');
   const fySel = document.getElementById('fy');
   fySel.addEventListener('change', () => { fy = +fySel.value; drawMonthly(); });
+  let qtr = 0; // 0 = ทั้งปีงบ, 1–4 = ไตรมาสปีงบ
+  const qOf = (m) => Math.floor(((+m.split('-')[1] + 2) % 12) / 3) + 1;
+  document.getElementById('qtr').addEventListener('change', (e) => {
+    qtr = +e.target.value;
+    if (qtr) { hc.gran = 'quarter'; hc.period = fy + '-Q' + qtr; } else { hc.gran = 'fy'; hc.period = null; }
+    drawMonthly();
+  });
 
   function chart(id, cfg) {
     if (charts[id]) charts[id].destroy();
@@ -249,18 +285,19 @@ td small { display: block; color: var(--text-light); }
     if (!monthly) return;
     const all = Object.keys(monthly.months || {}).sort();
     const fys = [...new Set(all.map(fyOf))].sort();
-    if (!fy) fy = fys[fys.length - 1];
+    if (!fy) { const full = all.filter((m) => !monthly.months[m].partial); fy = full.length ? fyOf(full[full.length - 1]) : fys[fys.length - 1]; }
     fySel.innerHTML = fys.map((y) => `<option value="${y}"${y === fy ? ' selected' : ''}>${y}</option>`).join('');
-    const ms = all.filter((m) => fyOf(m) === fy);
+    const ms = all.filter((m) => fyOf(m) === fy && (!qtr || qOf(m) === qtr));
     const R = ms.map((m) => monthly.months[m]);
-    const L = ms.map(mLabel);
+    const L = ms.map((m) => mLabel(m) + (monthly.months[m].partial ? '*' : ''));
     const sum = (f) => R.reduce((s, r) => s + (f(r) || 0), 0);
     const ipdN = sum((r) => r.ipd_ucwel.n), ipdRw = sum((r) => r.ipd_ucwel.rw);
     const sent7 = sum((r) => r.ipd_ucwel.sent7), unsent = sum((r) => r.ipd_ucwel.unsent), noSdx = sum((r) => r.ipd_ucwel.no_sdx);
-    const herbT = sum((r) => r.herb.target), herbH = sum((r) => r.herb.with_herb);
+    const herbT = sum((r) => r.herb.target), herbH = sum((r) => r.herb.with_herb), dup = sum((r) => r.ipd_ucwel.dup409);
+    drawBeds(ms, R, L);
     const k = [
       { l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
-      { l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN', tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
+      { l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: (unsent ? 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN' : 'ไม่มี AN ค้างส่ง') + (dup ? ' · ' + fmt(dup) + ' AN มีใน FDH แล้ว (ตอบ 409)' : ''), tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
       { l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
       { l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
       { l: 'สั่งยาสมุนไพรในโรคพื้นฐาน', n: pct(herbT ? herbH / herbT : 0), s: fmt(herbH) + ' จาก ' + fmt(herbT) + ' visit', tgt: [herbT && herbH / herbT >= 0.5, 'เป้า 50%'] },
@@ -299,7 +336,30 @@ td small { display: block; color: var(--text-light); }
     ] }, options: baseOpts({ scales: { y: { beginAtZero: true } } }) });
     const upd = monthly.updated ? new Date(monthly.updated).toLocaleString('th-TH') : '-';
     drawHerbCd();
-    document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
+    const part = ms.some((m) => monthly.months[m].partial) ? ' · * = เดือนปัจจุบัน ยังไม่ครบเดือน' : '';
+    document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'}${part} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
+  }
+
+  // ---------- อัตราครองเตียง (beds จาก insurance-sync) ----------
+  function drawBeds(ms, R, L) {
+    const B = R.map((r) => r.beds), ok = B.filter(Boolean);
+    document.getElementById('beds').hidden = !ok.length;
+    if (!ok.length) return;
+    const pd = ok.reduce((s, b) => s + b.patient_days, 0), cap = ok.reduce((s, b) => s + b.beds * b.days, 0);
+    const days = ok.reduce((s, b) => s + b.days, 0), dch = ok.reduce((s, b) => s + b.dch, 0);
+    const beds = ok[ok.length - 1].beds, rate = cap ? pd / cap : 0;
+    document.getElementById('beds-kpis').innerHTML = [
+      { l: 'อัตราครองเตียง', n: pct(rate), s: (qtr ? 'ไตรมาส ' + qtr + ' ' : 'ปีงบ ') + fy + ' · ' + beds + ' เตียง' },
+      { l: 'วันนอนรวม', n: fmt(pd) + ' วัน', s: 'เฉลี่ยผู้ป่วยนอนวันละ ' + (days ? (pd / days).toFixed(1) : '-') + ' คน' },
+      { l: 'จำหน่าย', n: fmt(dch) + ' ราย', s: 'วันนอนเฉลี่ยต่อราย ' + (dch ? (pd / dch).toFixed(1) : '-') + ' วัน (โดยประมาณ)' },
+      { l: 'ผู้ป่วยสูงสุดในวันเดียว', n: fmt(Math.max(...ok.map((b) => b.census_max))) + ' คน', s: 'เทียบเตียงที่มี ' + beds + ' เตียง' },
+    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
+    chart('c-beds', { data: { labels: L, datasets: [
+      { type: 'line', label: 'อัตราครองเตียง %', data: B.map((b) => b && b.rate), borderColor: C.primary, backgroundColor: C.primary, yAxisID: 'y', tension: 0 },
+      { type: 'line', label: 'เป้า 80%', data: B.map(() => 80), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' },
+      { type: 'bar', label: 'ผู้ป่วยสูงสุดในวันเดียว (คน)', data: B.map((b) => b && b.census_max), backgroundColor: C.muted, borderRadius: 4, yAxisID: 'y1' },
+    ] }, options: baseOpts({ scales: { y: { beginAtZero: true, suggestedMax: 100, ticks: { callback: (v) => v + '%' } },
+      y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'คน' } } } }) });
   }
 
   // ---------- ยาสมุนไพร Common Diseases (herb_cd จาก insurance-sync) ----------
@@ -364,8 +424,44 @@ td small { display: block; color: var(--text-light); }
       scales: { y: { beginAtZero: true, suggestedMax: 30, ticks: { callback: (v) => v + '%' } } } }) });
 
     document.getElementById('hc-criteria').innerHTML = H.groups.map((g) => `<div><b>${esc(g.id + '. ' + g.name)}</b> — ICD-10: ${esc(g.icd10.join(', '))}
-      <ul>${g.drugs.length ? g.drugs.map((d) => `<li>${esc(d.name)} <small style="display:inline">(${esc(d.icode)})</small></li>`).join('') : '<li>ยังไม่มียาในบัญชี รพ.</li>'}${g.missing.length ? `<li style="color:var(--danger)">ยังไม่มีรหัส: ${esc(g.missing.join(', '))}</li>` : ''}</ul></div>`).join('');
+      <ul>${g.drugs.length ? g.drugs.map((d) => `<li>${esc(d.name)} <small style="display:inline">(${esc(d.icode)})</small></li>`).join('') : '<li>ยังไม่มียาในบัญชี รพ.</li>'}${(g.inactive || []).length ? `<li style="color:var(--text-light)">ไม่นับ (ปิดใช้งานใน HOSxP): ${esc(g.inactive.map((d) => d.name + ' (' + d.icode + ')').join(', '))}</li>` : ''}${g.missing.length ? `<li style="color:var(--danger)">ยังไม่มีรหัส: ${esc(g.missing.join(', '))}</li>` : ''}</ul></div>`).join('');
+    drawRx();
   }
+
+  // ---------- ยาที่จ่ายในแต่ละกลุ่มอาการ (insurance_herb_rx) ----------
+  let herbRx = null, rxFilter = 'all';
+  function drawRx() {
+    const H = monthly && monthly.herb_cd, title = document.getElementById('rx-title'), note = document.getElementById('rx-note'), tbl = document.getElementById('rx-table');
+    document.getElementById('rx-filter').innerHTML = [['all', 'ยาทั้งหมด'], ['herb', 'เฉพาะยาสมุนไพร'], ['modern', 'เฉพาะยาแผนปัจจุบัน']].map(([v, t]) => `<button class="chip${rxFilter === v ? ' active' : ''}" data-v="${v}">${t}</button>`).join('');
+    if (!H || !herbRx || !hc.period) { title.textContent = 'ยาที่จ่ายในกลุ่มอาการ'; note.textContent = herbRx ? 'ไม่มีข้อมูลในช่วงนี้' : 'กำลังโหลดรายละเอียดยา… (ถ้าไม่ขึ้น ให้กดประมวลผลจาก HOSxP)'; tbl.innerHTML = ''; return; }
+    const g = H.groups.find((x) => String(x.id) === hc.group);
+    if (!g) { title.textContent = 'ยาที่จ่ายในกลุ่มอาการ'; note.textContent = 'คลิกชื่อกลุ่มอาการในตารางด้านบน เพื่อดูว่าจ่ายยาอะไรไปบ้าง และใช้ไปกี่ %'; tbl.innerHTML = ''; return; }
+    // ข้อมูลยาเก็บรายไตรมาส: ทั้งปีงบ = รวม 4 ไตรมาส · รายเดือน = ใช้ไตรมาสที่เดือนนั้นอยู่
+    const qs = hc.gran === 'fy' ? [1, 2, 3, 4].map((i) => hc.period + '-Q' + i) : hc.gran === 'quarter' ? [hc.period] : [hcKey(hc.period, 'quarter')];
+    const label = hc.gran === 'month' ? hcLabel(qs[0], 'quarter') + ' (ข้อมูลยาเก็บรายไตรมาส)' : hcLabel(hc.period, hc.gran);
+    const kpiDrugs = new Set(g.drugs.map((d) => d.icode));
+    let n = 0; const use = {}, tot = {};
+    qs.forEach((k) => {
+      const Q = herbRx.q && herbRx.q[k]; if (!Q) return;
+      const x = (Q[hc.mode] || {})[hc.group]; if (!x) return;
+      n += x.n;
+      Object.entries(x.d || {}).forEach(([ic, v]) => { const u = use[ic] || (use[ic] = [0, 0]); u[0] += v[0]; u[1] += v[1]; tot[ic] = (tot[ic] || 0) + ((Q.tot || {})[ic] || 0); });
+    });
+    const D = herbRx.drugs || {};
+    let rows = Object.entries(use).map(([ic, [v, qty]]) => ({ ic, v, qty, t: tot[ic], nm: (D[ic] || [ic])[0], st: (D[ic] || [])[1] || '', herb: !!(D[ic] || [])[2] || kpiDrugs.has(ic) }));
+    const given = rows.reduce((s, r) => s + r.v, 0);
+    if (rxFilter !== 'all') rows = rows.filter((r) => (rxFilter === 'herb') === r.herb);
+    rows.sort((a, b) => b.v - a.v);
+    title.textContent = `ยาที่จ่ายใน "${g.id}. ${g.name}" · ${label}`;
+    note.textContent = `${fmt(n)} visit ในกลุ่มนี้ (${hc.mode === 'p' ? 'เฉพาะโรคหลัก' : 'ทุกตำแหน่งการวินิจฉัย'}) · ผู้ป่วยนอก · % ของ visit = visit ที่ได้ยานี้ ÷ visit ทั้งหมดในกลุ่ม · % ของรายการยา = สัดส่วนในยาทุกรายการที่จ่ายในกลุ่มนี้ · % ของการใช้ยานี้ทั้ง รพ. = visit ในกลุ่มนี้ ÷ visit ผู้ป่วยนอกทั้งหมดที่ได้ยานี้`;
+    const max = rows.length ? rows[0].v : 1;
+    tbl.innerHTML = `<thead><tr><th>ยา</th><th class="num">visit ที่ได้ยา</th><th class="num">% ของ visit</th><th class="num">% ของรายการยา</th><th class="num">จำนวนที่จ่าย</th><th class="num">% ของการใช้ยานี้ทั้ง รพ.</th></tr></thead><tbody>`
+      + (rows.length ? rows.map((r) => `<tr><td>${esc(r.nm)} <small style="display:inline">${esc(r.st)}</small>${r.herb ? ' <span class="rx-tag">สมุนไพร</span>' : ''}${kpiDrugs.has(r.ic) ? ' <span class="rx-tag rx-kpi">นับในตัวชี้วัด</span>' : ''}<small>${esc(r.ic)}</small></td>
+        <td class="num">${fmt(r.v)}</td><td class="num"><b>${n ? (100 * r.v / n).toFixed(1) : '0.0'}%</b><div class="bar" style="width:${(r.v / max * 100).toFixed(1)}%;background:${r.herb ? 'var(--primary)' : 'var(--gold)'}"></div></td>
+        <td class="num">${given ? (100 * r.v / given).toFixed(1) : '0.0'}%</td><td class="num">${fmt(r.qty)}</td><td class="num">${r.t ? (100 * r.v / r.t).toFixed(1) + '%' : '–'}<small>จาก ${fmt(r.t)} visit</small></td></tr>`).join('')
+        : '<tr><td colspan="6">ไม่มีการจ่ายยาในกลุ่มนี้</td></tr>') + '</tbody>';
+  }
+  document.getElementById('rx-filter').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { rxFilter = b.dataset.v; drawRx(); } });
   document.getElementById('hc-gran').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { hc.gran = b.dataset.v; hc.period = null; drawHerbCd(); } });
   document.getElementById('hc-mode').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { hc.mode = b.dataset.v; drawHerbCd(); } });
   document.getElementById('hc-period').addEventListener('change', (e) => { hc.period = e.target.value; drawHerbCd(); });
@@ -391,8 +487,7 @@ td small { display: block; color: var(--text-light); }
     const rows = Object.keys(s.hospitals).map((h) => ({ h, v: it === '__total' ? s.totals[h] : s.hospitals[h][idx] || 0 })).sort((a, b) => b.v - a.v);
     const peers = province.peers || [];
     const med = median(rows.filter((r) => peers.includes(r.h)).map((r) => r.v));
-    const rank = rows.findIndex((r) => r.h === province.me) + 1;
-    document.getElementById('prov-title').textContent = `${it === '__total' ? 'ยอดรวม ' + pSrc.value : lbl(it)}: ถ้ำพรรณราอันดับ ${rank} จาก ${rows.length} รพ.`;
+    document.getElementById('prov-title').textContent = `เทียบผลงานเคลมทั้งจังหวัด: ${it === '__total' ? 'ยอดรวม ' + pSrc.value : lbl(it)}`;
     chart('c-prov', { type: 'bar', data: { labels: rows.map((r) => r.h), datasets: [
       { label: 'บาท', data: rows.map((r) => r.v), borderRadius: 3,
         backgroundColor: rows.map((r) => r.h === province.me ? C.primary : peers.includes(r.h) ? C.peer : C.muted) },
@@ -413,12 +508,12 @@ td small { display: block; color: var(--text-light); }
       s.items.forEach((it, i) => {
         const me = (s.hospitals[province.me] || [])[i] || 0;
         const med = median(peers.filter((p) => s.hospitals[p]).map((p) => s.hospitals[p][i] || 0));
-        if (med - me > 0) rows.push({ it, x, me, med, gap: med - me });
+        if (med - me > 0) rows.push({ it, x, me, med, gap: med - me, cap: CAPPED[it] });
       });
     });
-    rows.sort((a, b) => b.gap - a.gap);
-    const max = rows.length ? rows[0].gap : 1;
-    document.querySelector('#gap-table tbody').innerHTML = rows.slice(0, 25).map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}</small></td><td>${esc(r.x)}</td><td class="num">${fmt(r.me)}</td><td class="num">${fmt(r.med)}</td><td class="num">${fmt(r.gap)}<div class="bar" style="width:${(r.gap / max * 100).toFixed(1)}%"></div></td></tr>`).join('');
+    rows.sort((a, b) => !a.cap - !b.cap || b.gap - a.gap);
+    const max = Math.max(1, ...rows.filter((r) => !r.cap).map((r) => r.gap));
+    document.querySelector('#gap-table tbody').innerHTML = rows.slice(0, 25).map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}${r.cap ? ' · <span class="done-tag">' + esc(r.cap) + '</span>' : ''}</small></td><td>${esc(r.x)}</td><td class="num">${fmt(r.me)}</td><td class="num">${fmt(r.med)}</td><td class="num">${r.cap ? '<span style="color:var(--text-light)">' + fmt(r.gap) + '</span>' : fmt(r.gap) + `<div class="bar" style="width:${(r.gap / max * 100).toFixed(1)}%"></div>`}</td></tr>`).join('');
   }
   document.getElementById('gap-chips').addEventListener('click', (e) => { const b = e.target.closest('button[data-s]'); if (b) { gapSrc = b.dataset.s; drawGap(); } });
 
@@ -427,10 +522,8 @@ td small { display: block; color: var(--text-light); }
     const order = ['e-Claim', 'KTB', 'MOPH Claim'].filter((x) => province.sources[x]);
     document.getElementById('src-cards').innerHTML = order.map((x) => {
       const t = province.sources[x].totals;
-      const list = Object.entries(t).sort((a, b) => b[1] - a[1]);
       const me = t[province.me] || 0, med = median(peers.filter((p) => p in t).map((p) => t[p]));
-      const rank = list.findIndex(([h]) => h === province.me) + 1;
-      return `<div class="src"><span class="nm">${esc(x)}</span><span class="rk">อันดับ ${rank}/${list.length}</span><span class="amt">${fmt(me)} บาท</span>
+      return `<div class="src"><span class="nm">${esc(x)}</span><span class="rk" style="background:var(--primary-light);color:var(--primary-dark)">${med ? Math.round(me / med * 100) + '% ของมัธยฐาน' : '-'}</span><span class="amt">${fmt(me)} บาท</span>
         <div class="meter"><i style="width:${Math.min(100, med ? me / med * 100 : 0).toFixed(1)}%"></i></div>
         <span class="pm">มัธยฐานกลุ่มเทียบเคียง ${fmt(med)} บาท · ไฟล์: ${esc(province.sources[x].file)}</span></div>`;
     }).join('');
@@ -440,7 +533,9 @@ td small { display: block; color: var(--text-light); }
     document.querySelector('#opp-table tbody').innerHTML = OPP.map((r) => r.length === 1
       ? `<tr class="grp"><td colspan="4">${esc(r[0])}</td></tr>`
       : `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${fmt(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')
-      + `<tr class="grp"><td colspan="2">รวมประมาณการ</td><td class="num">${fmt(OPP.reduce((s, r) => s + (r[2] || 0), 0))}</td><td></td></tr>`;
+      + `<tr class="grp"><td colspan="2">รวมประมาณการ</td><td class="num">${fmt(OPP.reduce((s, r) => s + (r[2] || 0), 0))}</td><td></td></tr>`
+      + `<tr class="grp"><td colspan="4">ตรวจแล้ว ทำได้เต็มที่ / ไม่มีค้าง (ไม่นับในประมาณการ)</td></tr>`
+      + OPP_DONE.map((r) => `<tr style="color:var(--text-light)"><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">–</td><td>${esc(r[2])}</td></tr>`).join('');
   }
   drawOpp();
   (function heroGaps() {
@@ -458,7 +553,32 @@ td small { display: block; color: var(--text-light); }
       monthly = snap.exists ? snap.data() : null;
       status.textContent = monthly ? 'เชื่อมต่อแล้ว' : 'ยังไม่มีข้อมูลรายเดือน';
       drawMonthly();
+      drawRun();
     }, (e) => { status.textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; });
+    db.collection(COL).doc('insurance_herb_rx').onSnapshot((snap) => { try { herbRx = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { herbRx = null; } drawRx(); }, () => {});
+
+    // ปุ่มประมวลผลทันที: เขียน run_request แล้วสคริปต์ insurance-sync (เช็คทุก 5 นาที) จะดึงจาก HOSxP ใหม่ทั้งหมด
+    const runBtn = document.getElementById('run-btn'), runSt = document.getElementById('run-status');
+    const tTh = (s) => s ? new Date(s).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    function drawRun() {
+      const rq = (monthly && monthly.run_request) || {}, rs = (monthly && monthly.run_status) || {};
+      const pending = rq.at && rs.request_at !== rq.at;
+      if (pending && Date.now() - new Date(rq.at).getTime() < 3 * 3600e3) {
+        runBtn.disabled = true; runSt.textContent = 'ส่งคำขอแล้ว ' + tTh(rq.at) + ' · รอเครื่องประมวลผล (ไม่เกิน 5 นาที)';
+      } else if (rs.state === 'running') {
+        runBtn.disabled = true; runSt.textContent = 'กำลังประมวลผลจาก HOSxP… เริ่ม ' + tTh(rs.started);
+      } else {
+        runBtn.disabled = false;
+        runSt.textContent = pending ? 'คำขอเมื่อ ' + tTh(rq.at) + ' ยังไม่ถูกประมวลผล (เครื่องที่ติดตั้งสคริปต์อาจปิดอยู่)'
+          : rs.state === 'error' ? 'ประมวลผลล้มเหลว ' + tTh(rs.finished) + ': ' + (rs.msg || '')
+          : rs.finished ? 'ประมวลผลล่าสุด ' + tTh(rs.finished) + (rs.why ? ' (' + rs.why + ')' : '') : '';
+      }
+    }
+    runBtn.addEventListener('click', () => {
+      runBtn.disabled = true;
+      db.collection(COL).doc('insurance_monthly').update({ run_request: { at: new Date().toISOString(), by: 'หน้าเว็บ insurance.html' } })
+        .catch((e) => { runBtn.disabled = false; runSt.textContent = 'ส่งคำขอไม่สำเร็จ: ' + e.message; });
+    });
     db.collection(COL).doc('insurance_province').onSnapshot({ includeMetadataChanges: true }, (snap) => {
       if (!snap.exists && snap.metadata.fromCache) return;
       province = snap.exists ? snap.data() : null;
