@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าสู่ระบบ — ติดตามรายได้ประกันสุขภาพ</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<style>
+:root { --primary: #1A5E38; --primary-dark: #124228; --border: #D6E4DA; --danger: #b91c1c; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--primary-dark); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px; padding: 16px; }
+.brand { text-align: center; color: #fff; }
+.brand .ic { font-size: 52px; margin-bottom: 8px; }
+.brand .t { font-size: 20px; font-weight: 800; }
+.brand .s { font-size: 14px; opacity: .7; margin-top: 4px; }
+.box { background: #fff; border-radius: 16px; padding: 32px; width: min(340px, 100%); box-shadow: 0 8px 40px rgba(0,0,0,.3); text-align: center; }
+.box h1 { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0 0 20px; }
+input { width: 100%; padding: 12px 16px; font-size: 18px; font-family: inherit; border: 2px solid var(--border); border-radius: 10px; outline: none; text-align: center; letter-spacing: .1em; margin-bottom: 12px; }
+input:focus { border-color: var(--primary); }
+.err { color: var(--danger); font-size: 13px; font-weight: 600; margin-bottom: 14px; min-height: 18px; }
+button { width: 100%; padding: 13px; background: var(--primary); color: #fff; border: 0; border-radius: 10px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.note { color: #7A9A85; font-size: 12px; margin-top: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="brand">
+  <div class="ic">📊</div>
+  <div class="t">ติดตามรายได้ประกันสุขภาพ</div>
+  <div class="s">รพ.ถ้ำพรรณรา · สำหรับทีมงานประกันและผู้รับผิดชอบแต่ละงาน</div>
+</div>
+<form class="box" id="f" autocomplete="off">
+  <h1>🔒 กรอก PIN งานประกันเพื่อเข้าใช้งาน</h1>
+  <input id="pin" type="password" inputmode="numeric" placeholder="PIN" aria-label="PIN" autofocus>
+  <div class="err" id="err"></div>
+  <button>เข้าสู่ระบบ</button>
+  <div class="note">PIN นี้แยกจากระบบห้องยา · เปิดได้เฉพาะหน้าติดตามรายได้และหน้าตรวจที่มาตัวเลข</div>
+</form>
+<script>
+(function () {
+  // PIN ทีมประกัน (เก็บเฉพาะ SHA-256) — คนละชุดกับ PIN ห้องยาใน index.html
+  const PIN_HASH = '85119038592828d9585f62906ad0a613f1a817cba0dec8a973423c16affca7b1';
+  const AUTH_KEY = 'tph_ins_auth_v1', FAIL_KEY = 'tph_ins_fail_v1', MAX_TRIES = 5, LOCK_MS = 5 * 60 * 1000;
+  const ALLOWED = ['insurance.html', 'insurance-audit.html'];
+  const nextUrl = () => {
+    const n = new URLSearchParams(location.search).get('next') || 'insurance.html';
+    return ALLOWED.includes(n.split('#')[0]) ? n : 'insurance.html';
+  };
+  const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } };
+  if (LS('tph_auth_v1') || LS(AUTH_KEY)) { location.replace(nextUrl()); return; }
+
+  const pin = document.getElementById('pin'), err = document.getElementById('err');
+  const fail = () => { try { return JSON.parse(LS(FAIL_KEY)) || { count: 0, lockUntil: 0 }; } catch (e) { return { count: 0, lockUntil: 0 }; } };
+  const show = (m) => { err.textContent = m; pin.value = ''; pin.focus(); };
+  async function sha256(m) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m));
+    return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  const st0 = fail();
+  if (st0.lockUntil > Date.now()) err.textContent = `🔒 ล็อกชั่วคราว กรุณารอ ${Math.ceil((st0.lockUntil - Date.now()) / 60000)} นาที`;
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = fail(), now = Date.now();
+    if (st.lockUntil > now) { show(`🔒 ล็อกชั่วคราว กรุณารอ ${Math.ceil((st.lockUntil - now) / 60000)} นาที`); return; }
+    if (await sha256(pin.value.trim()) === PIN_HASH) {
+      LS(FAIL_KEY, null); LS(AUTH_KEY, '1');
+      location.replace(nextUrl());
+      return;
+    }
+    const c = (st.count || 0) + 1;
+    LS(FAIL_KEY, JSON.stringify({ count: c, lockUntil: c >= MAX_TRIES ? now + LOCK_MS : 0 }));
+    show(c >= MAX_TRIES ? `🔒 ล็อก 5 นาที (กรอกผิดเกิน ${MAX_TRIES} ครั้ง)` : `❌ PIN ไม่ถูกต้อง (เหลืออีก ${MAX_TRIES - c} ครั้ง)`);
+  });
+})();
+</script>
+</body>
+</html>

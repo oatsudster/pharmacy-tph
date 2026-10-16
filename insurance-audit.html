@@ -2,7 +2,8 @@
 <html lang="th">
 <head>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<script>if(!localStorage.getItem('tph_auth_v1')&&!localStorage.getItem('tph_ins_auth_v1'))location.replace('insurance-login.html?next='+encodeURIComponent(location.pathname.split('/').pop()+location.hash));if(localStorage.getItem('tph_auth_v1'))document.documentElement.classList.add('pharm');</script>
+<meta name="tph-logout" content="insurance-login.html">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
 <script src="lib/firebase-app-compat-10.js"></script>
 <script src="lib/firebase-firestore-compat-10.js"></script>
 <style>
+html.pharm .ins-only { display: none !important; }
 :root {
   --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
   --gold: #C49A22; --gold-light: #FBF3DC; --gold-dark: #7A5700;
@@ -104,6 +106,7 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 <body>
 <div class="topbar">
   <a href="insurance.html">← ติดตามรายได้ประกัน</a>
+  <a href="#" class="ins-only" onclick="localStorage.removeItem('tph_ins_auth_v1');location.replace('insurance-login.html');return false">🔒 ออก</a>
   <div><h1>ตรวจสอบที่มาตัวเลข</h1><div class="sub" id="sub">ตัวเลขที่คำนวณจาก HOSxP · ให้แต่ละงานตรวจว่าคิดถูกตามจริง</div></div>
   <div class="right">
     <input id="me" placeholder="ชื่อผู้ตรวจ" aria-label="ชื่อผู้ตรวจ" autocomplete="name">
