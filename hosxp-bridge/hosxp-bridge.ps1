@@ -79,7 +79,19 @@ public static class HxWin {
   [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
   public static int PollHotkey() { MSG m; return PeekMessage(out m, IntPtr.Zero, 0x0312, 0x0312, 1) ? (int)m.wParam : 0; }
-  public static void Focus(IntPtr h) { if (IsIconic(h)) ShowWindow(h, 9); SetForegroundWindow(h); }
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  // Windows ไม่ให้โปรแกรมเบื้องหลังดึงหน้าต่างขึ้นมาข้างหน้าเฉยๆ — ผูก input กับหน้าต่างที่อยู่ข้างหน้าตอนนี้ (HOSxP) ชั่วคราวก่อน
+  public static void Focus(IntPtr h) {
+    if (IsIconic(h)) ShowWindow(h, 9);
+    uint me = GetCurrentThreadId(), fg = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+    bool att = fg != 0 && fg != me && AttachThreadInput(me, fg, true);
+    BringWindowToTop(h); SetForegroundWindow(h);
+    if (att) AttachThreadInput(me, fg, false);
+  }
 }
 "@
 # ใช้พิกัดจอจริง เครื่องที่ตั้งขนาดหน้าจอ 125%/150% ตำแหน่งจาก UI Automation จะได้ตรงกับภาพที่จับ
