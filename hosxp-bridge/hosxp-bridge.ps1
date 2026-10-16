@@ -36,6 +36,11 @@
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
 #   ทุกตัวคืน { ok:false, error } ถ้าไม่มี db.json หรือต่อฐานข้อมูลไม่ได้ — หน้าเว็บกลับไปใช้ OCR เอง
 #   /current มี db (ต่อฐานข้อมูลได้) / dbErr และถ้า DB ใช้ได้ apptDays มาจากตาราง oapp ไม่ใช่ OCR
+#   /current มี hotkey/hotkeySeq/hotkeyTs = ปุ่มลัดที่กดล่าสุด ('rph' Ctrl+Alt+P, 'tech' Ctrl+Alt+J)
+#
+# ปุ่มลัดทั้งเครื่อง (กดได้ขณะอยู่ใน HOSxP): Ctrl+Alt+P = หน้าต่างลอยจ่ายยาเภสัชกร, Ctrl+Alt+J = ยาคงเหลือ จพ.
+#   เปิดหน้าต่างลอยอยู่แล้ว → ดึงขึ้นมาข้างหน้า, ไม่งั้นสลับไปแท็บ clinic.html (หรือเปิดแท็บใหม่ถ้าไม่มี)
+#   Chrome ให้เปิดหน้าต่างลอยได้เฉพาะตอนผู้ใช้กดปุ่มบนหน้านั้น หน้าเว็บจึงขึ้น "กด Enter เพื่อเปิด" ให้กดอีกครั้ง
 #
 # ตำแหน่งข้อมูลในหน้าจ่ายยา (THOSxPDiepensingDispenseEntryFrame) ของ HOSxP XE 4:
 #   HN / ชื่อ     — TcxDBTextEdit ที่อยู่ทางขวาของป้าย "HN" / "ชื่อ"
@@ -66,6 +71,15 @@ public static class HxWin {
     IntPtr h = WindowFromPoint(p);
     return h == target || IsChild(target, h);
   }
+  // ปุ่มลัดทั้งเครื่อง (Ctrl+Alt+P / Ctrl+Alt+J) — WM_HOTKEY เข้าคิวของ thread ที่ลงทะเบียน ดึงออกในลูปหลัก
+  [StructLayout(LayoutKind.Sequential)] public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam; public IntPtr lParam; public uint time; public POINT pt; }
+  [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);
+  [DllImport("user32.dll")] static extern bool PeekMessage(out MSG m, IntPtr h, uint min, uint max, uint remove);
+  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+  public static int PollHotkey() { MSG m; return PeekMessage(out m, IntPtr.Zero, 0x0312, 0x0312, 1) ? (int)m.wParam : 0; }
+  public static void Focus(IntPtr h) { if (IsIconic(h)) ShowWindow(h, 9); SetForegroundWindow(h); }
 }
 "@
 # ใช้พิกัดจอจริง เครื่องที่ตั้งขนาดหน้าจอ 125%/150% ตำแหน่งจาก UI Automation จะได้ตรงกับภาพที่จับ
@@ -85,7 +99,7 @@ $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; db = $false; dbErr = ''; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; db = $false; dbErr = ''; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; hotkey = ''; hotkeySeq = 0; hotkeyTs = 0; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
@@ -986,8 +1000,39 @@ function HmeWatch {
   Write-Host "เปิดหน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ $(Get-Date -Format 'HH:mm')"
   Start-Process cmd.exe -ArgumentList '/c', "`"$hmeBat`" bridge" -WindowStyle Hidden
 }
+# ── ปุ่มลัดเปิดหน้าต่างลอย ─────────────────────────
+$CLINIC_URL = 'https://oatsudster.github.io/pharmacy-tph/clinic.html'
+$CLINIC_TITLE = 'งานเภสัชกรรมคลินิก'                                    # <title> ของ clinic.html
+$FLOAT_TITLES = @{ rph = 'จ่ายยา (เภสัชกร)'; tech = 'ยาคงเหลือ (จพ.)' }   # <title> ของหน้าต่างลอยแต่ละแบบ
+$HOTKEYS = @{ 1 = 'rph'; 2 = 'tech' }
+# 0x4003 = Ctrl+Alt (+ ไม่ยิงซ้ำตอนกดค้าง), 0x50 = P, 0x4A = J
+foreach ($hk in @(@(1, 0x50, 'Ctrl+Alt+P'), @(2, 0x4A, 'Ctrl+Alt+J'))) {
+  if (-not [HxWin]::RegisterHotKey([IntPtr]::Zero, $hk[0], 0x4003, $hk[1])) { Write-Host "ลงทะเบียนปุ่มลัด $($hk[2]) ไม่ได้ (โปรแกรมอื่นใช้อยู่)" }
+}
+$tabCond = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::TabItem)
+function OnHotkey($mode) {
+  $state.hotkey = $mode; $state.hotkeySeq++; $state.hotkeyTs = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
+  # Chrome และ Edge ใช้คลาสหน้าต่างเดียวกัน (รวมถึงหน้าต่างลอย Picture-in-Picture และ popup)
+  $wins = @($AE::RootElement.FindAll($TS::Children, (ClassCond 'Chrome_WidgetWin_1')))
+  foreach ($w in $wins) {
+    if ($w.Current.Name -like "*$($FLOAT_TITLES[$mode])*") { [HxWin]::Focus([IntPtr]$w.Current.NativeWindowHandle); return }
+  }
+  # แท็บที่เปิดอยู่ = ชื่อหน้าต่าง, แท็บอื่นหาจากแถบแท็บ (UI Automation) แล้วสลับไป
+  foreach ($w in $wins) { if ($w.Current.Name -like "$CLINIC_TITLE*") { [HxWin]::Focus([IntPtr]$w.Current.NativeWindowHandle); return } }
+  foreach ($w in $wins) {
+    foreach ($t in $w.FindAll($TS::Descendants, $tabCond)) {
+      if ($t.Current.Name -like "$CLINIC_TITLE*") {
+        try { $t.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select() } catch {}
+        [HxWin]::Focus([IntPtr]$w.Current.NativeWindowHandle); return
+      }
+    }
+  }
+  Start-Process "$CLINIC_URL#float=$mode"
+}
+
 $nextPoll = [DateTime]::MinValue; $nextHme = (Get-Date).AddSeconds(3)
 while ($true) {
+  while (($hk = [HxWin]::PollHotkey())) { if ($HOTKEYS.ContainsKey($hk)) { try { OnHotkey $HOTKEYS[$hk] } catch { Write-Host "ปุ่มลัด: $_" } } }
   if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
   if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
   while ($listener.Pending()) { try { Respond $listener.AcceptTcpClient() } catch {} }
