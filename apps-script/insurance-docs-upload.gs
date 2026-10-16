@@ -10,6 +10,10 @@
  *   (ไม่บังคับ) Project Settings → Script properties: TELEGRAM_TOKEN = token ของบอต, TELEGRAM_CHAT_ID = id กลุ่ม
  *
  * ถ้าแก้โค้ดภายหลัง: Deploy → Manage deployments → ✎ → Version: New version → Deploy (URL เดิม)
+ *
+ * ติดตั้งแล้ว 16 ต.ค. 69: โปรเจกต์ "TPH insurance docs upload" (บัญชี oatsudster@gmail.com)
+ *   Web app URL: https://script.google.com/macros/s/AKfycby2B61x1fFa-dnLGTp6-wfI-QIvkKCdLSWvgaC0QLMnZm_vgOsAbPPom1Cgl6RUpLvl/exec
+ *   (ตั้งไว้ใน Firestore pharmacy_tph/insurance_audit_docs.config.upload_url)
  */
 const ROOT_FOLDER_ID = '1uEP8MvtPHtjNlQgjH8ks1RWpJqGedV9P'; // เอกสารแนวทางเคลม (อัปโหลดที่นี่)
 const TOKEN = 'l8414Q4jaSghbJsM5_xvFMkh';                  // ต้องตรงกับ insurance_audit_docs.config.token ใน Firestore
@@ -58,6 +62,12 @@ function notify(d) {
     payload: JSON.stringify({ chat_id: chat, text: String(d.text || '').slice(0, 3500), disable_web_page_preview: true }),
   });
   return out({ ok: true });
+}
+
+// รันฟังก์ชันนี้ครั้งแรกในตัวแก้ไข เพื่ออนุญาตสิทธิ์ Drive / UrlFetch
+function authorize() {
+  DriveApp.getFolderById(ROOT_FOLDER_ID).getName();
+  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
 }
 
 function out(o) {
