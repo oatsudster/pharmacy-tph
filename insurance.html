@@ -59,6 +59,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto 
 .kpi .n { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1.2; }
 .kpi .s { font-size: 12px; color: var(--text-light); }
 .kpi.warn .n { color: var(--danger); }
+.kpi .src { font-size: 11.5px; color: var(--text-light); text-decoration: none; width: max-content; }
+.kpi .src:hover { color: var(--primary); text-decoration: underline; }
 .kpi .tgt { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 8px; width: max-content; }
 .kpi .tgt.ok { background: var(--primary-light); color: var(--ok); }
 .kpi .tgt.bad { background: var(--danger-light); color: var(--danger); }
@@ -105,6 +107,7 @@ td small { display: block; color: var(--text-light); }
 <body>
 <div class="topbar">
   <a href="index.html">← หน้าหลัก</a>
+  <a href="insurance-audit.html" title="ดูว่าตัวเลขแต่ละตัวคิดจากอะไร และให้แต่ละงานตรวจ/แนบเอกสารแนวทางเคลม">🔎 ตรวจสอบที่มาตัวเลข</a>
   <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
   <div class="right">
     <label for="fy" class="sub">ปีงบประมาณ</label>
@@ -138,8 +141,9 @@ td small { display: block; color: var(--text-light); }
   </section>
 
   <section class="card" id="beds">
-    <h2>อัตราการครองเตียง (ward ผู้ป่วยใน)</h2>
-    <p class="note">วันนอนรวมในเดือน × 100 ÷ (จำนวนเตียง × จำนวนวัน) · ทุกสิทธิ · ไม่รวมห้องคลอด · จำนวนเตียงตาม HOSxP (ward.bedcount)</p>
+    <h2>อัตราการครองเตียง</h2>
+    <p class="note">วันนอนรวมในเดือน × 100 ÷ (จำนวนเตียง × จำนวนวัน) · ทุกสิทธิ · เลือกดู รวม 17 เตียง / ผู้ป่วยใน 15 เตียง / ห้องคลอด 2 เตียง (ตาม ward.bedcount ใน HOSxP)</p>
+    <div class="controls"><span class="chip-row" id="beds-ward"></span></div>
     <div class="kpis" id="beds-kpis" style="margin-bottom:12px"></div>
     <div class="chartbox"><canvas id="c-beds"></canvas></div>
   </section>
@@ -175,7 +179,7 @@ td small { display: block; color: var(--text-light); }
       <div class="controls"><span class="chip-row" id="rx-filter"></span></div>
       <div class="tbl"><table id="rx-table"></table></div>
     </div>
-    <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม</summary><div id="hc-criteria"></div></details>
+    <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม · <a href="insurance-audit.html#HERB-03">ⓘ ตรวจสอบที่มา</a></summary><div id="hc-criteria"></div></details>
     <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · นับเฉพาะรหัสยาที่เปิดใช้งาน (แพทย์สั่งได้) ใน HOSxP ปัจจุบัน · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
   </section>
 
@@ -274,6 +278,7 @@ td small { display: block; color: var(--text-light); }
     drawMonthly();
   });
 
+  const srcLink = (a) => a ? `<a class="src" href="insurance-audit.html#${a}" title="ดูวิธีคิดและผลตรวจของทีม">ⓘ ที่มาตัวเลข</a>` : '';
   function chart(id, cfg) {
     if (charts[id]) charts[id].destroy();
     charts[id] = new Chart(document.getElementById(id), cfg);
@@ -296,16 +301,16 @@ td small { display: block; color: var(--text-light); }
     const herbT = sum((r) => r.herb.target), herbH = sum((r) => r.herb.with_herb), dup = sum((r) => r.ipd_ucwel.dup409);
     drawBeds(ms, R, L);
     const k = [
-      { l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
-      { l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: (unsent ? 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN' : 'ไม่มี AN ค้างส่ง') + (dup ? ' · ' + fmt(dup) + ' AN มีใน FDH แล้ว (ตอบ 409)' : ''), tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
-      { l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
-      { l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
-      { l: 'สั่งยาสมุนไพรในโรคพื้นฐาน', n: pct(herbT ? herbH / herbT : 0), s: fmt(herbH) + ' จาก ' + fmt(herbT) + ' visit', tgt: [herbT && herbH / herbT >= 0.5, 'เป้า 50%'] },
-      { l: 'OFC / LGO เรียกเก็บ', n: (sum((r) => r.ofc_opd + r.ofc_ipd) / 1e6).toFixed(2) + ' / ' + (sum((r) => r.lgo_opd + r.lgo_ipd) / 1e6).toFixed(2) + ' ล้าน', s: 'OPD + IPD ตามราคาใน HOSxP' },
-      { l: 'แพทย์แผนไทย เบิกได้รายครั้ง', n: fmt(sum((r) => r.thaimed.billable)) + ' บาท', s: fmt(sum((r) => r.thaimed.sessions)) + ' ครั้งบริการ · ในงบเหมาจ่าย ' + fmt(sum((r) => r.thaimed.capitation)) },
-      { l: 'Palliative (Z51.5) รวมรายเดือน', n: fmt(sum((r) => r.palliative_pts)) + ' คน-เดือน', s: 'ผู้ป่วยที่ควรลงทะเบียนและเคลมชุดสิทธิ' },
+      { a: 'IPD-01', l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
+      { a: 'IPD-06', l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: (unsent ? 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN' : 'ไม่มี AN ค้างส่ง') + (dup ? ' · ' + fmt(dup) + ' AN มีใน FDH แล้ว (ตอบ 409)' : ''), tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
+      { a: 'IPD-04', l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
+      { a: 'CLM-01', l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
+      { a: 'HERB-01', l: 'สั่งยาสมุนไพรในโรคพื้นฐาน', n: pct(herbT ? herbH / herbT : 0), s: fmt(herbH) + ' จาก ' + fmt(herbT) + ' visit', tgt: [herbT && herbH / herbT >= 0.5, 'เป้า 50%'] },
+      { a: 'BILL-OFC', l: 'OFC / LGO เรียกเก็บ', n: (sum((r) => r.ofc_opd + r.ofc_ipd) / 1e6).toFixed(2) + ' / ' + (sum((r) => r.lgo_opd + r.lgo_ipd) / 1e6).toFixed(2) + ' ล้าน', s: 'OPD + IPD ตามราคาใน HOSxP' },
+      { a: 'TTM-01', l: 'แพทย์แผนไทย เบิกได้รายครั้ง', n: fmt(sum((r) => r.thaimed.billable)) + ' บาท', s: fmt(sum((r) => r.thaimed.sessions)) + ' ครั้งบริการ · ในงบเหมาจ่าย ' + fmt(sum((r) => r.thaimed.capitation)) },
+      { a: 'PC-01', l: 'Palliative (Z51.5) รวมรายเดือน', n: fmt(sum((r) => r.palliative_pts)) + ' คน-เดือน', s: 'ผู้ป่วยที่ควรลงทะเบียนและเคลมชุดสิทธิ' },
     ];
-    document.getElementById('kpis').innerHTML = k.map((x) => `<div class="kpi${x.warn ? ' warn' : ''}"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.tgt ? `<span class="tgt ${x.tgt[0] ? 'ok' : 'bad'}">${x.tgt[0] ? '✓ ' : '✗ '}${esc(x.tgt[1])}</span>` : ''}</div>`).join('');
+    document.getElementById('kpis').innerHTML = k.map((x) => `<div class="kpi${x.warn ? ' warn' : ''}"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.tgt ? `<span class="tgt ${x.tgt[0] ? 'ok' : 'bad'}">${x.tgt[0] ? '✓ ' : '✗ '}${esc(x.tgt[1])}</span>` : ''}${srcLink(x.a)}</div>`).join('');
 
     chart('c-ipd', { data: { labels: L, datasets: [
       { type: 'bar', label: 'จำนวนราย', data: R.map((r) => r.ipd_ucwel.n), backgroundColor: C.primary, borderRadius: 4, yAxisID: 'y' },
@@ -341,19 +346,29 @@ td small { display: block; color: var(--text-light); }
   }
 
   // ---------- อัตราครองเตียง (beds จาก insurance-sync) ----------
+  let bedWard = '', bedArgs = null;
+  document.getElementById('beds-ward').addEventListener('click', (e) => { const b = e.target.closest('[data-w]'); if (b) { bedWard = b.dataset.w; if (bedArgs) drawBeds(...bedArgs); } });
   function drawBeds(ms, R, L) {
-    const B = R.map((r) => r.beds), ok = B.filter(Boolean);
+    bedArgs = [ms, R, L];
+    // bedWard: '' = รวม, '11' = ผู้ป่วยใน, '33' = ห้องคลอด (ข้อมูลแยก ward มีหลังประมวลผล 16 ต.ค. 69)
+    const pick = (b) => !b ? null : !bedWard ? b : (b.by || {})[bedWard] || null;
+    const W = [['', 'รวม'], ['11', 'ผู้ป่วยใน'], ['33', 'ห้องคลอด']];
+    document.getElementById('beds-ward').innerHTML = W.map(([v, t]) => {
+      const b = R.map((r) => r.beds && (v ? (r.beds.by || {})[v] : r.beds)).find(Boolean);
+      return `<button class="chip${v === bedWard ? ' active' : ''}" data-w="${v}">${t}${b ? ' ' + b.beds + ' เตียง' : ''}</button>`;
+    }).join('');
+    const B = R.map((r) => pick(r.beds)), ok = B.filter(Boolean);
     document.getElementById('beds').hidden = !ok.length;
     if (!ok.length) return;
     const pd = ok.reduce((s, b) => s + b.patient_days, 0), cap = ok.reduce((s, b) => s + b.beds * b.days, 0);
     const days = ok.reduce((s, b) => s + b.days, 0), dch = ok.reduce((s, b) => s + b.dch, 0);
     const beds = ok[ok.length - 1].beds, rate = cap ? pd / cap : 0;
     document.getElementById('beds-kpis').innerHTML = [
-      { l: 'อัตราครองเตียง', n: pct(rate), s: (qtr ? 'ไตรมาส ' + qtr + ' ' : 'ปีงบ ') + fy + ' · ' + beds + ' เตียง' },
+      { a: 'IPD-09', l: 'อัตราครองเตียง · ' + W.find((w) => w[0] === bedWard)[1], n: pct(rate), s: (qtr ? 'ไตรมาส ' + qtr + ' ' : 'ปีงบ ') + fy + ' · ' + beds + ' เตียง' },
       { l: 'วันนอนรวม', n: fmt(pd) + ' วัน', s: 'เฉลี่ยผู้ป่วยนอนวันละ ' + (days ? (pd / days).toFixed(1) : '-') + ' คน' },
       { l: 'จำหน่าย', n: fmt(dch) + ' ราย', s: 'วันนอนเฉลี่ยต่อราย ' + (dch ? (pd / dch).toFixed(1) : '-') + ' วัน (โดยประมาณ)' },
       { l: 'ผู้ป่วยสูงสุดในวันเดียว', n: fmt(Math.max(...ok.map((b) => b.census_max))) + ' คน', s: 'เทียบเตียงที่มี ' + beds + ' เตียง' },
-    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
+    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${srcLink(x.a)}</div>`).join('');
     chart('c-beds', { data: { labels: L, datasets: [
       { type: 'line', label: 'อัตราครองเตียง %', data: B.map((b) => b && b.rate), borderColor: C.primary, backgroundColor: C.primary, yAxisID: 'y', tension: 0 },
       { type: 'line', label: 'เป้า 80%', data: B.map(() => 80), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' },

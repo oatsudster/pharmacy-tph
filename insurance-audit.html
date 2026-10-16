@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตรวจสอบที่มาตัวเลข — งานประกัน รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/esc-html.js"></script>
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<style>
+:root {
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
+  --gold: #C49A22; --gold-light: #FBF3DC; --gold-dark: #7A5700;
+  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+  --danger: #b91c1c; --danger-light: #fdecec; --ok: #15803d;
+  --warn: #b45309; --warn-light: #fef3c7; --info: #2563eb; --info-light: #e8effd;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; }
+button, input, select, textarea { font: inherit; }
+.topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+.topbar a { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar .sub { font-size: 12px; opacity: .8; }
+.topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.topbar input, .topbar select { border: 0; border-radius: 8px; padding: 6px 10px; font-size: 13px; min-width: 0; }
+.topbar input { width: 150px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
+.tab { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--text-mid); border-bottom: 3px solid transparent; cursor: pointer; }
+.tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.note { font-size: 12.5px; color: var(--text-light); margin: 4px 0 0; }
+.progress { display: grid; gap: 10px; }
+.bar { height: 10px; border-radius: 6px; background: #e7ede9; overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar .ok { background: var(--ok); } .bar .bad { background: var(--danger); } .bar .unsure { background: var(--warn); } .bar .na { background: #9aa9a0; } .bar .stale { background: var(--info); }
+.owners { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.chip .cnt { font-size: 11.5px; opacity: .8; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.controls input[type=search] { flex: 1 1 220px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+.cat { font-size: 13px; font-weight: 700; color: var(--text-mid); margin: 8px 2px -4px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 12px; padding: 14px 16px; display: grid; gap: 8px; scroll-margin-top: 80px; }
+.card.s-ok { border-left-color: var(--ok); } .card.s-bad { border-left-color: var(--danger); } .card.s-unsure { border-left-color: var(--warn); }
+.card.s-stale { border-left-color: var(--info); } .card.s-na { border-left-color: #9aa9a0; }
+.card.flash { box-shadow: 0 0 0 3px var(--gold); }
+.card-head { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.mid { font-size: 11.5px; font-weight: 700; color: var(--text-light); letter-spacing: .3px; }
+.card h3 { margin: 0; font-size: 16px; color: var(--primary-dark); line-height: 1.4; }
+.pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.pill.todo { background: #eef1ef; color: var(--text-mid); } .pill.ok { background: var(--primary-light); color: var(--ok); }
+.pill.bad { background: var(--danger-light); color: var(--danger); } .pill.unsure { background: var(--warn-light); color: var(--warn); }
+.pill.na { background: #eef1ef; color: #5f6f66; } .pill.stale { background: var(--info-light); color: var(--info); }
+.value { font-size: 20px; font-weight: 800; color: var(--primary); line-height: 1.35; overflow-wrap: anywhere; }
+.how { font-size: 14px; color: var(--text); line-height: 1.6; }
+.meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: 11.5px; background: #f1f5f2; color: var(--text-mid); border-radius: 6px; padding: 2px 8px; }
+.tag.owner { background: var(--gold-light); color: var(--gold-dark); }
+details.tech { font-size: 13px; color: var(--text-mid); }
+details.tech summary { cursor: pointer; color: var(--primary-dark); font-weight: 600; }
+details.tech dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0 0; }
+details.tech dt { color: var(--text-light); }
+details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.review { background: #fafcfb; border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.rbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.rbtn { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; }
+.rbtn[data-s=ok].on { background: var(--ok); color: #fff; border-color: var(--ok); }
+.rbtn[data-s=bad].on { background: var(--danger); color: #fff; border-color: var(--danger); }
+.rbtn[data-s=unsure].on { background: var(--warn); color: #fff; border-color: var(--warn); }
+.rbtn[data-s=na].on { background: #6b7a72; color: #fff; border-color: #6b7a72; }
+.rgrid { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.rgrid input, .rgrid textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13.5px; }
+.rgrid textarea { min-height: 38px; resize: vertical; }
+.ractions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--text-light); }
+.save { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 7px 16px; font-weight: 700; cursor: pointer; }
+.save:disabled { opacity: .5; cursor: default; }
+.link { background: none; border: 0; color: var(--primary); cursor: pointer; padding: 0; font-size: 12.5px; text-decoration: underline; }
+.docs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+.doc { background: var(--info-light); color: var(--info); border-radius: 8px; padding: 3px 10px; text-decoration: none; max-width: 100%; overflow-wrap: anywhere; }
+.attach { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; color: var(--text-mid); }
+.hist { font-size: 12.5px; color: var(--text-mid); margin: 0; padding-left: 18px; }
+.topic { display: grid; gap: 8px; }
+.topic h3 { margin: 0; font-size: 15px; color: var(--primary-dark); }
+.dlist { display: grid; gap: 6px; }
+.drow { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #eef3ef; border-radius: 8px; padding: 8px 10px; flex-wrap: wrap; }
+.drow .info { font-size: 12px; color: var(--text-light); }
+.status { font-size: 13px; }
+.status.err { color: #ffd2d2; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--primary-dark); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+.linkform { display: flex; gap: 6px; flex-wrap: wrap; }
+.linkform input { flex: 1 1 200px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.empty { text-align: center; color: var(--text-light); padding: 30px; }
+@media (max-width: 640px) { .rgrid { grid-template-columns: 1fr; } .topbar input { width: 120px; } .value { font-size: 17px; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="insurance.html">← ติดตามรายได้ประกัน</a>
+  <div><h1>ตรวจสอบที่มาตัวเลข</h1><div class="sub" id="sub">ตัวเลขที่คำนวณจาก HOSxP · ให้แต่ละงานตรวจว่าคิดถูกตามจริง</div></div>
+  <div class="right">
+    <input id="me" placeholder="ชื่อผู้ตรวจ" aria-label="ชื่อผู้ตรวจ" autocomplete="name">
+    <select id="mine" aria-label="งานของฉัน"><option value="">ทุกงาน</option></select>
+    <span id="status" class="status">กำลังโหลด…</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="metrics" role="tab">ตรวจสอบตัวชี้วัด</button>
+    <button class="tab" data-tab="docs" role="tab">เอกสารแนวทางเคลม</button>
+    <span style="margin-left:auto;align-self:center"><button class="link" id="export">⬇ ส่งออก Excel</button></span>
+  </div>
+
+  <section id="tab-metrics" style="display:grid;gap:14px">
+    <div class="panel progress">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b id="prog-title">ความคืบหน้า</b><span class="note" id="prog-legend"></span></div>
+      <div class="bar" id="prog-bar"></div>
+      <div class="owners" id="owners"></div>
+      <p class="note">เลือก "งานของฉัน" ที่มุมขวาบน ระบบจะจำไว้ · กดเลือกผลตรวจ แล้วกด "บันทึก" · ถ้าวิธีคิดผิด เขียนวิธีที่ถูกไว้ Claude จะแก้และคำนวณใหม่ (สถานะจะกลับเป็น "รอตรวจใหม่")</p>
+    </div>
+    <div class="controls">
+      <span class="owners" id="sfilter"></span>
+      <input type="search" id="q" placeholder="ค้นหา เช่น FDH, HbA1c, ฟลูออไรด์, รหัสยา">
+    </div>
+    <div id="list" style="display:grid;gap:12px"></div>
+  </section>
+
+  <section id="tab-docs" style="display:none;gap:14px">
+    <div class="panel">
+      <b>เอกสารแนวทางเคลม</b>
+      <p class="note" id="docs-note">แนบหนังสือสั่งการ คู่มือ สปสช./กรมบัญชีกลาง แนวทางการเคลม ฯลฯ แยกตามเรื่อง ไฟล์จะเก็บในโฟลเดอร์ Google Drive ของ รพ. · ห้ามแนบเอกสารที่มีข้อมูลผู้ป่วย</p>
+    </div>
+    <div id="topics" style="display:grid;gap:12px"></div>
+  </section>
+  <p class="note" id="foot"></p>
+</div>
+<input type="file" id="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.txt,.csv">
+
+<script>
+(function () {
+  const config = {
+    apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+    authDomain: "pharmacy-tph.firebaseapp.com",
+    projectId: "pharmacy-tph",
+    storageBucket: "pharmacy-tph.firebasestorage.app",
+    messagingSenderId: "617328257113",
+    appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+  };
+  const COL = 'pharmacy_tph';
+  const esc = window.escHtml || ((s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+  const ST = { todo: 'ยังไม่ตรวจ', ok: '✓ ถูกต้อง', bad: '✗ ไม่ถูกต้อง', unsure: '? ไม่แน่ใจ', na: '— ไม่เกี่ยวข้อง', stale: '↻ รอตรวจใหม่' };
+  const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch (e) { return ''; } };
+  const tTh = (s) => s ? new Date(s).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+  let audit = null, reviews = {}, logArr = [], files = {}, cfg = {};
+  let fStatus = 'all', fText = '', drafts = {}, openHist = {};
+  const meIn = document.getElementById('me'), mineSel = document.getElementById('mine');
+  meIn.value = LS('tph_audit_name');
+  meIn.addEventListener('change', () => LS('tph_audit_name', meIn.value.trim()));
+
+  function toast(t) {
+    const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
+    setTimeout(() => d.remove(), 3500);
+  }
+
+  // ---------- รวมรายการ: ตัวชี้วัด + ยาสมุนไพร 10 กลุ่ม ----------
+  function items() {
+    if (!audit) return [];
+    const herbFolder = (audit.docs || []).find((d) => d.prefix.includes('HERB')) || {};
+    const pct = (x) => x[1].toLocaleString() + '/' + x[0].toLocaleString() + ' = ' + (x[0] ? (100 * x[1] / x[0]).toFixed(1) : '0.0') + '%';
+    const herb = (audit.herb_groups || []).map((g) => ({
+      id: g.id, cat: 'ยาสมุนไพร 10 กลุ่ม (ตัวชี้วัดแผนไทยข้อ 14)', name: 'กลุ่ม ' + g.gid + '. ' + g.name, used: 'ตัวชี้วัดยาสมุนไพร (แผนไทยข้อ 14)',
+      owner: 'ห้องยา, แพทย์แผนไทย', per: 'ตามวันรับบริการ', value: 'โรคหลัก ' + pct(g.p) + ' · ทุกตำแหน่ง ' + pct(g.a),
+      how: 'visit ผู้ป่วยนอกที่มีรหัส ICD-10 ของกลุ่มนี้ = ตัวหาร; ถ้าใน visit เดียวกันได้ยาในรายการของกลุ่ม อย่างน้อย 1 รายการ = ตัวตั้ง',
+      tbl: 'ovstdiag, opitemrece, drugitems',
+      cond: 'ICD-10: ' + g.icd10.join(', ') + '\nยาที่นับ: ' + (g.drugs.length ? g.drugs.join(' · ') : '(ไม่มีในบัญชี รพ.)'),
+      note: [g.inactive.length ? 'ไม่นับ (ปิดใช้งานใน HOSxP): ' + g.inactive.join(' · ') : '', g.missing.length ? 'ยาตามเกณฑ์ที่ รพ. ยังไม่มีรหัส: ' + g.missing.join(' · ') : ''].filter(Boolean).join('\n'),
+      folder: herbFolder.name, folder_url: herbFolder.id ? 'https://drive.google.com/drive/folders/' + herbFolder.id : audit.doc_root, folder_id: herbFolder.id,
+      sig: g.sig || '',
+    }));
+    return audit.metrics.map((m) => Object.assign({}, m, { folder_id: (m.folder_url || '').split('/').pop() })).concat(herb);
+  }
+  const owners = (m) => m.owner.split(',').map((s) => s.trim()).filter(Boolean);
+  function status(m) {
+    const r = reviews[m.id];
+    if (!r || !r.s) return 'todo';
+    if (r.sig && m.sig && r.sig !== m.sig) return 'stale';
+    return r.s;
+  }
+
+  // ---------- หน้าตรวจสอบ ----------
+  function drawFilters(all) {
+    const mine = mineSel.value;
+    const scope = all.filter((m) => !mine || owners(m).includes(mine));
+    const cnt = { todo: 0, ok: 0, bad: 0, unsure: 0, na: 0, stale: 0 };
+    scope.forEach((m) => cnt[status(m)]++);
+    const done = scope.length - cnt.todo - cnt.stale;
+    document.getElementById('prog-title').textContent = `ความคืบหน้า${mine ? ' · ' + mine : ' · ทุกงาน'}: ตรวจแล้ว ${done}/${scope.length}`;
+    document.getElementById('prog-bar').innerHTML = ['ok', 'bad', 'unsure', 'na', 'stale'].map((k) => cnt[k] ? `<i class="${k}" style="width:${100 * cnt[k] / scope.length}%" title="${ST[k]} ${cnt[k]}"></i>` : '').join('');
+    document.getElementById('prog-legend').textContent = ['ok', 'bad', 'unsure', 'na', 'stale', 'todo'].filter((k) => cnt[k]).map((k) => ST[k] + ' ' + cnt[k]).join(' · ');
+    const os = [...new Set(all.flatMap(owners))].sort((a, b) => a.localeCompare(b, 'th'));
+    document.getElementById('owners').innerHTML = os.map((o) => {
+      const s = all.filter((m) => owners(m).includes(o)), d = s.filter((m) => !['todo', 'stale'].includes(status(m))).length;
+      return `<button class="chip${o === mine ? ' active' : ''}" data-o="${esc(o)}">${esc(o)} <span class="cnt">${d}/${s.length}</span></button>`;
+    }).join('');
+    document.getElementById('sfilter').innerHTML = [['all', 'ทั้งหมด'], ['todo', 'ยังไม่ตรวจ'], ['bad', '✗ ไม่ถูกต้อง'], ['unsure', '? ไม่แน่ใจ'], ['stale', '↻ รอตรวจใหม่'], ['ok', '✓ ถูกต้อง']]
+      .map(([k, t]) => `<button class="chip${k === fStatus ? ' active' : ''}" data-s="${k}">${t}${k !== 'all' && cnt[k] ? ' <span class="cnt">' + cnt[k] + '</span>' : ''}</button>`).join('');
+  }
+
+  function docsFor(m) {
+    return Object.entries(files).filter(([, f]) => (f.metrics || []).includes(m.id)).sort((a, b) => (b[1].at || '').localeCompare(a[1].at || ''));
+  }
+
+  function card(m) {
+    const st = status(m), r = reviews[m.id] || {}, d = drafts[m.id] || {};
+    const sel = d.s !== undefined ? d.s : (st === 'stale' ? '' : r.s || '');
+    const hist = logArr.filter((x) => x.id === m.id).sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+    const docs = docsFor(m);
+    return `<article class="card s-${st}" id="${esc(m.id)}">
+      <div class="card-head"><div><div class="mid">${esc(m.id)} · ${esc(m.cat)}</div><h3>${esc(m.name)}</h3></div><span class="pill ${st}">${ST[st]}</span></div>
+      <div class="value">${esc(m.value)}</div>
+      <div class="how">${esc(m.how)}</div>
+      <div class="meta">${owners(m).map((o) => `<span class="tag owner">${esc(o)}</span>`).join('')}<span class="tag">${esc(m.per)}</span><span class="tag">ใช้ใน: ${esc(m.used)}</span></div>
+      <details class="tech"><summary>รายละเอียดทางเทคนิค (ตาราง / รหัส / ข้อสังเกต)</summary><dl>
+        <dt>ตาราง HOSxP</dt><dd>${esc(m.tbl)}</dd><dt>เงื่อนไข / รหัส</dt><dd>${esc(m.cond)}</dd>${m.note ? `<dt>ข้อสังเกต</dt><dd>${esc(m.note)}</dd>` : ''}</dl></details>
+      <div class="review" data-id="${esc(m.id)}">
+        <div class="rbtns">${['ok', 'bad', 'unsure', 'na'].map((k) => `<button class="rbtn${sel === k ? ' on' : ''}" data-s="${k}">${ST[k]}</button>`).join('')}</div>
+        <div class="rgrid">
+          <input data-f="v" placeholder="ค่าที่ถูกต้อง (ถ้ามี)" value="${esc(d.v !== undefined ? d.v : r.v || '')}">
+          <textarea data-f="m" placeholder="วิธีคิด / รหัสที่ควรใช้ / ความเห็น">${esc(d.m !== undefined ? d.m : r.m || '')}</textarea>
+        </div>
+        <div class="ractions"><button class="save" data-act="save"${sel ? '' : ' disabled'}>บันทึก</button>
+          <span>${r.by ? 'ล่าสุด: ' + esc(r.by) + ' · ' + esc(tTh(r.at)) + (st === 'stale' ? ' (ก่อนแก้วิธีคิด)' : '') : 'ยังไม่มีผลตรวจ'}</span>
+          ${hist.length > 1 ? `<button class="link" data-act="hist">ประวัติ ${hist.length} ครั้ง</button>` : ''}</div>
+        ${openHist[m.id] ? `<ul class="hist">${hist.map((h) => `<li>${esc(tTh(h.at))} · ${esc(h.by)} · ${ST[h.s] || ''}${h.v ? ' · ค่า: ' + esc(h.v) : ''}${h.m ? ' · ' + esc(h.m) : ''}</li>`).join('')}</ul>` : ''}
+      </div>
+      <div class="docs">📎 ${docs.length ? docs.map(([, f]) => `<a class="doc" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>`).join('') : '<span class="note" style="margin:0">ยังไม่มีเอกสารแนบ</span>'}
+        <button class="attach" data-act="attach" data-id="${esc(m.id)}" data-folder="${esc(m.folder_id || '')}">+ แนบเอกสาร</button>
+        <a class="link" href="${esc(m.folder_url)}" target="_blank" rel="noopener">เปิดโฟลเดอร์</a></div>
+    </article>`;
+  }
+
+  function drawMetrics() {
+    const all = items();
+    drawFilters(all);
+    const mine = mineSel.value, t = fText.toLowerCase();
+    const list = all.filter((m) => (!mine || owners(m).includes(mine)) && (fStatus === 'all' || status(m) === fStatus)
+      && (!t || [m.id, m.name, m.how, m.cond, m.note, m.value, m.owner].join(' ').toLowerCase().includes(t)));
+    let cat = null, html = '';
+    list.forEach((m) => { if (m.cat !== cat) { cat = m.cat; html += `<div class="cat">${esc(cat)}</div>`; } html += card(m); });
+    document.getElementById('list').innerHTML = html || '<div class="empty">ไม่มีรายการตามตัวกรองนี้</div>';
+  }
+
+  // ---------- เอกสารแนวทางเคลม ----------
+  function drawDocs() {
+    if (!audit) return;
+    const up = !!cfg.upload_url;
+    document.getElementById('topics').innerHTML = (audit.docs || []).map((t) => {
+      const fs = Object.entries(files).filter(([, f]) => f.folder === t.id).sort((a, b) => (b[1].at || '').localeCompare(a[1].at || ''));
+      return `<div class="panel topic"><div class="card-head"><h3>📁 ${esc(t.name)}</h3>
+        <span class="docs"><button class="attach" data-act="attach" data-id="" data-folder="${esc(t.id)}">+ แนบเอกสาร</button>
+        <a class="link" href="https://drive.google.com/drive/folders/${esc(t.id)}" target="_blank" rel="noopener">เปิดโฟลเดอร์</a></span></div>
+        <div class="dlist">${fs.length ? fs.map(([id, f]) => `<div class="drow"><div><a class="doc" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>
+          <div class="info">${esc(f.by || '-')} · ${esc(tTh(f.at))}${f.size ? ' · ' + fmtSize(f.size) : ''}${(f.metrics || []).length ? ' · ตัวชี้วัด ' + esc(f.metrics.join(', ')) : ''}${f.note ? ' · ' + esc(f.note) : ''}</div></div>
+          <button class="link" data-act="unlist" data-fid="${esc(id)}">เอาออกจากรายการ</button></div>`).join('') : '<span class="note">ยังไม่มีเอกสาร</span>'}</div>
+        ${up ? '' : `<form class="linkform" data-folder="${esc(t.id)}"><input name="name" placeholder="ชื่อเอกสาร" required><input name="url" type="url" placeholder="วางลิงก์ไฟล์ใน Google Drive" required><button class="attach">เพิ่มลิงก์</button></form>`}
+      </div>`;
+    }).join('');
+    document.getElementById('docs-note').textContent = up
+      ? 'กด "+ แนบเอกสาร" เลือกไฟล์ (ไม่เกิน 20 MB) ระบบจะเก็บลงโฟลเดอร์ Google Drive ของเรื่องนั้นให้ · ห้ามแนบเอกสารที่มีข้อมูลผู้ป่วย'
+      : 'ยังไม่ได้ตั้งค่าการอัปโหลดอัตโนมัติ — อัปโหลดไฟล์ลงโฟลเดอร์ใน Drive เอง แล้ววางลิงก์ในช่องด้านล่างของแต่ละเรื่อง · ห้ามแนบเอกสารที่มีข้อมูลผู้ป่วย';
+  }
+
+  function draw() { drawMetrics(); drawDocs(); }
+
+  // ---------- Firestore ----------
+  if (!firebase.apps.length) firebase.initializeApp(config);
+  const db = firebase.firestore();
+  const refRev = db.collection(COL).doc('insurance_audit_reviews'), refDocs = db.collection(COL).doc('insurance_audit_docs');
+  const st = document.getElementById('status');
+  db.collection(COL).doc('insurance_audit').onSnapshot((s) => {
+    try { audit = s.exists ? JSON.parse(s.data().json) : null; } catch (e) { audit = null; }
+    if (!audit) { st.textContent = 'ยังไม่มีข้อมูล'; return; }
+    st.textContent = 'เชื่อมต่อแล้ว';
+    document.getElementById('sub').textContent = `ปีงบ ${audit.fy} · คำนวณจาก HOSxP ${tTh(audit.generated)} · ให้แต่ละงานตรวจว่าคิดถูกตามจริง`;
+    document.getElementById('foot').textContent = 'ตัวเลขคำนวณใหม่ทุกครั้งที่ประมวลผลจาก HOSxP (ทุก 3 เดือน หรือกดปุ่มในหน้าติดตามรายได้) · เก็บเฉพาะยอดรวม ไม่มีข้อมูลรายผู้ป่วย';
+    const os = [...new Set(items().flatMap(owners))].sort((a, b) => a.localeCompare(b, 'th'));
+    const keep = mineSel.value || LS('tph_audit_owner');
+    mineSel.innerHTML = '<option value="">ทุกงาน</option>' + os.map((o) => `<option${o === keep ? ' selected' : ''}>${esc(o)}</option>`).join('');
+    draw();
+    if (location.hash && !draw.jumped) {
+      draw.jumped = true;
+      const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2500); }
+    }
+  }, (e) => { st.textContent = 'โหลดไม่สำเร็จ: ' + e.message; st.classList.add('err'); });
+  refRev.onSnapshot((s) => { const d = s.exists ? s.data() : {}; reviews = d.r || {}; logArr = d.log || []; if (audit) drawMetrics(); });
+  refDocs.onSnapshot((s) => { const d = s.exists ? s.data() : {}; files = d.files || {}; cfg = d.config || {}; if (audit) draw(); });
+
+  // ---------- events ----------
+  mineSel.addEventListener('change', () => { LS('tph_audit_owner', mineSel.value); drawMetrics(); });
+  document.getElementById('owners').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-o]'); if (!b) return;
+    mineSel.value = mineSel.value === b.dataset.o ? '' : b.dataset.o; LS('tph_audit_owner', mineSel.value); drawMetrics();
+  });
+  document.getElementById('sfilter').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (b) { fStatus = b.dataset.s; drawMetrics(); } });
+  document.getElementById('q').addEventListener('input', (e) => { fText = e.target.value.trim(); drawMetrics(); });
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+    document.getElementById('tab-metrics').style.display = t.dataset.tab === 'metrics' ? 'grid' : 'none';
+    document.getElementById('tab-docs').style.display = t.dataset.tab === 'docs' ? 'grid' : 'none';
+  }));
+
+  const list = document.getElementById('list');
+  list.addEventListener('input', (e) => {
+    const box = e.target.closest('.review'); if (!box || !e.target.dataset.f) return;
+    (drafts[box.dataset.id] = drafts[box.dataset.id] || {})[e.target.dataset.f] = e.target.value;
+  });
+  list.addEventListener('click', (e) => {
+    const box = e.target.closest('.review');
+    const rb = e.target.closest('.rbtn');
+    if (rb && box) {
+      (drafts[box.dataset.id] = drafts[box.dataset.id] || {}).s = rb.dataset.s;
+      box.querySelectorAll('.rbtn').forEach((x) => x.classList.toggle('on', x === rb));
+      box.querySelector('.save').disabled = false;
+      return;
+    }
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    if (act.dataset.act === 'hist') { openHist[box.dataset.id] = !openHist[box.dataset.id]; drawMetrics(); }
+    if (act.dataset.act === 'save') saveReview(box.dataset.id, act);
+  });
+
+  function saveReview(id, btn) {
+    const by = meIn.value.trim();
+    if (!by) { meIn.focus(); toast('ใส่ชื่อผู้ตรวจที่มุมขวาบนก่อน'); return; }
+    LS('tph_audit_name', by);
+    const m = items().find((x) => x.id === id), r = reviews[id] || {}, d = drafts[id] || {};
+    const entry = { id, s: d.s || r.s, v: (d.v !== undefined ? d.v : r.v || '').trim(), m: (d.m !== undefined ? d.m : r.m || '').trim(), by, at: new Date().toISOString(), sig: m.sig || '' };
+    if (!entry.s) return;
+    if ((entry.s === 'bad') && !entry.v && !entry.m) { toast('ถ้าไม่ถูกต้อง ช่วยใส่ค่าที่ถูกหรือวิธีคิดที่ควรใช้'); return; }
+    btn.disabled = true;
+    refRev.set({ r: { [id]: entry }, log: firebase.firestore.FieldValue.arrayUnion(entry), updated: entry.at }, { merge: true })
+      .then(() => {
+        delete drafts[id]; toast('บันทึกแล้ว: ' + id + ' ' + ST[entry.s]);
+        if ((entry.s === 'bad' || entry.s === 'unsure') && cfg.upload_url) {
+          callScript({ action: 'notify', text: `🔎 ตรวจสอบที่มาตัวเลข\n${id} ${m.name}\n${ST[entry.s]} โดย ${by}${entry.v ? '\nค่าที่ถูก: ' + entry.v : ''}${entry.m ? '\n' + entry.m : ''}` }).catch(() => {});
+        }
+      })
+      .catch((err) => { btn.disabled = false; toast('บันทึกไม่สำเร็จ: ' + err.message); });
+  }
+
+  // ---------- แนบเอกสาร ----------
+  const fileIn = document.getElementById('file');
+  let target = null;
+  function callScript(body) {
+    return fetch(cfg.upload_url, { method: 'POST', body: JSON.stringify(Object.assign({ token: cfg.token }, body)) }).then((r) => r.json());
+  }
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-act=attach]');
+    if (a) {
+      e.preventDefault();
+      if (!cfg.upload_url) {
+        toast('ยังไม่ได้ตั้งค่าการอัปโหลด — ใช้แท็บ "เอกสารแนวทางเคลม" วางลิงก์แทน');
+        document.querySelector('.tab[data-tab=docs]').click(); return;
+      }
+      if (!meIn.value.trim()) { meIn.focus(); toast('ใส่ชื่อผู้ตรวจที่มุมขวาบนก่อน'); return; }
+      target = { id: a.dataset.id, folder: a.dataset.folder, btn: a };
+      fileIn.value = ''; fileIn.click();
+    }
+    const u = e.target.closest('[data-act=unlist]');
+    if (u && confirm('เอาเอกสารนี้ออกจากรายการ? (ไฟล์ใน Google Drive ยังอยู่)')) {
+      refDocs.update(new firebase.firestore.FieldPath('files', u.dataset.fid), firebase.firestore.FieldValue.delete()).catch((err) => toast(err.message));
+    }
+  });
+  fileIn.addEventListener('change', () => {
+    const f = fileIn.files[0]; if (!f || !target) return;
+    if (f.size > 20 * 1048576) { toast('ไฟล์ใหญ่เกิน 20 MB'); return; }
+    const t = target, by = meIn.value.trim();
+    t.btn.disabled = true; t.btn.textContent = 'กำลังอัปโหลด…';
+    const rd = new FileReader();
+    rd.onload = () => {
+      callScript({ action: 'upload', folderId: t.folder || audit.doc_root.split('/').pop(), name: f.name, mime: f.type, data: String(rd.result).split(',')[1], by, note: t.id })
+        .then((res) => {
+          if (!res.ok) throw new Error(res.error || 'อัปโหลดไม่สำเร็จ');
+          return refDocs.set({ files: { [res.id]: { name: res.name, url: res.url, folder: t.folder, size: res.size, by, at: new Date().toISOString(), metrics: t.id ? [t.id] : [] } } }, { merge: true });
+        })
+        .then(() => toast('อัปโหลดแล้ว: ' + f.name))
+        .catch((err) => { toast('อัปโหลดไม่สำเร็จ: ' + err.message); t.btn.disabled = false; t.btn.textContent = '+ แนบเอกสาร'; });
+    };
+    rd.readAsDataURL(f);
+  });
+  document.getElementById('topics').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fm = e.target, name = fm.name.value.trim(), url = fm.url.value.trim();
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) { toast('ใช้ลิงก์ Google Drive / Docs เท่านั้น'); return; }
+    const id = 'l' + Date.now().toString(36);
+    refDocs.set({ files: { [id]: { name, url, folder: fm.dataset.folder, by: meIn.value.trim() || '-', at: new Date().toISOString(), metrics: [] } } }, { merge: true })
+      .then(() => { fm.reset(); toast('เพิ่มลิงก์แล้ว'); }).catch((err) => toast(err.message));
+  });
+
+  // ---------- ส่งออก Excel ----------
+  document.getElementById('export').addEventListener('click', () => {
+    const load = window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'lib/xlsx.full.min.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+    load.then(() => {
+      const rows = items().map((m) => { const r = reviews[m.id] || {}; return { 'รหัส': m.id, 'หมวด': m.cat, 'ตัวชี้วัด': m.name, 'ค่าที่คำนวณ': m.value, 'วิธีคิด': m.how, 'ตาราง HOSxP': m.tbl,
+        'เงื่อนไข/รหัส': m.cond, 'ข้อสังเกต': m.note, 'ผู้รับผิดชอบ': m.owner, 'ผลตรวจ': ST[status(m)], 'ค่าที่ถูกต้อง': r.v || '', 'วิธีคิดที่ควรใช้/ความเห็น': r.m || '', 'ผู้ตรวจ': r.by || '', 'วันที่ตรวจ': r.at ? tTh(r.at) : '',
+        'เอกสาร': docsFor(m).map(([, f]) => f.name + ' ' + f.url).join('\n') }; });
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'ตรวจสอบตัวชี้วัด');
+      XLSX.writeFile(wb, `ตรวจสอบที่มาตัวเลข HOSxP ปีงบ${String(audit.fy).slice(2)}.xlsx`);
+    }).catch(() => toast('โหลดตัวส่งออก Excel ไม่สำเร็จ'));
+  });
+})();
+</script>
+</body>
+</html>
