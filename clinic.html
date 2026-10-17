@@ -770,6 +770,7 @@ const DashUX = {
   <div class="entry-full" style="margin-top:10px">
     <div class="session-panel open" style="border-color:#ddd6fe;background:#f5f3ff">
       <div class="table-title" style="margin-bottom:4px;color:#6d28d9">🫀 จำนวนคนไข้ HT บ่าย (เภสัชไม่ได้ดู)</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:8px">🗄 ระบบเติมให้อัตโนมัติทุกเช้าจาก HOSxP (นัด HT ที่คีย์จ่ายยาหลัง 12:00 และไม่มีบันทึกคลินิกวันนั้น) — กรอกเองเฉพาะเมื่อต้องการแก้ ค่าที่กรอกเองจะใช้แทน</div>
       <div class="session-grid session-grid-3col">
         <div class="form-group">
           <label>วันที่</label>
@@ -4298,7 +4299,7 @@ function renderSessionTab(main) {
         <tbody>${all.map(r=>`<tr class="${!r.pmOnly&&!r.attended?' session-miss':''}">
           <td>${escHtml(thDate(r.date))}</td>
           <td><span class="badge badge-${escHtml(String(r.clinic||'').toLowerCase())}">${escHtml(r.clinic)}</span></td>
-          <td>${r.pmOnly?'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>':r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${escHtml(r.reason||'')}</div>`}</td>
+          <td>${r.pmOnly?(r.htPmAuto?'<span style="color:#6d28d9">🗄 จำนวนบ่าย (HOSxP)</span>':'<span style="color:#6d28d9">📝 บันทึกจำนวนบ่าย</span>'):r.attended?'<span class="tag-attended">✅ ลงคลินิก</span>':`<span class="tag-missed">❌ ไม่ได้ลง</span><div style="font-size:10px;color:var(--danger)">${escHtml(r.reason||'')}</div>`}</td>
           <td style="font-size:12px">${escHtml(r.pharmacist||'')}</td>
           <td style="text-align:center">${r.htPmCount>0?escHtml(r.htPmCount):''}</td>
           <td style="font-size:11px;color:var(--text-mid)">${escHtml(r.notes||'')}</td>

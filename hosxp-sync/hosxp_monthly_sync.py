@@ -13,6 +13,9 @@
 (เกิน 08:00 ของวันถัดไป) โปรแกรมนับผู้ป่วย ER ทุกคน 19:30 คืนก่อน → 08:00 วันนั้น (รวมคนที่ไม่มียา) แล้วเติมให้
 เป็นแถว hasME=false + rxAuto=true (หน้าเว็บแสดง 🗄 และถ้าเภสัชกรอกเองทีหลัง ค่าที่กรอกเองชนะ)
 
+ทุกรอบ (ทุกวัน): จำนวนคนไข้ HT บ่าย (clinic_data.sessionRecords pmOnly) — ผู้ป่วยนัดคลินิก HT ที่คีย์จ่ายยาหลัง 12:00
+และไม่มีบันทึกในหน้าคลินิกวันนั้น (= ไม่ได้พบเภสัช) เติมเป็นแถว htPmAuto=true; คิดใหม่ย้อนหลัง 14 วัน; ถ้ากรอกเอง ค่าที่กรอกเองชนะ
+
 ใช้: python hosxp_monthly_sync.py [--month YYYY-MM] [--dry-run]
 ฐานข้อมูล: %LOCALAPPDATA%\\HOSxPBridge\\db.json (SELECT อย่างเดียว) · log/state อยู่โฟลเดอร์เดียวกัน
 """
@@ -33,6 +36,7 @@ import pymysql
 
 START_MONTH = '2026-10'
 ER_RX_START = '2026-10-01'  # วันแรกที่เติมใบสั่งยา ER ให้อัตโนมัติ (เปลี่ยนด้วย --er-from)
+HT_PM_START = '2026-10-01'  # วันแรกที่เติมจำนวนคนไข้ HT บ่ายให้อัตโนมัติ (เปลี่ยนด้วย --ht-from)
 FS = 'https://firestore.googleapis.com/v1/projects/pharmacy-tph/databases/(default)/documents/pharmacy_tph/'
 FS_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE'
 CLASSIFY_URL = 'https://admin-error-classify.oatsudster.workers.dev'
@@ -108,8 +112,9 @@ def http(method, url, body=None):
         return json.loads(r.read().decode('utf-8'))
 
 
-def update_doc(doc, mutate, dry):
-    """อ่าน doc → mutate(fields) → เขียนกลับแบบมีเงื่อนไข updateTime (มีคนเขียนแทรกก็อ่านใหม่แล้วทำซ้ำ)"""
+def update_doc(doc, mutate, dry, mask=None):
+    """อ่าน doc → mutate(fields) → เขียนกลับแบบมีเงื่อนไข updateTime (มีคนเขียนแทรกก็อ่านใหม่แล้วทำซ้ำ)
+    mask = เขียนเฉพาะ field เหล่านี้ (ไม่แตะ field อื่นของ doc และไม่เติม updated ให้)"""
     for attempt in range(4):
         try:
             d = http('GET', f'{FS}{doc}?key={FS_KEY}')
@@ -122,7 +127,11 @@ def update_doc(doc, mutate, dry):
         result = mutate(fields)
         if not result.get('changed') or dry:
             return result
-        fields['updated'] = dt.datetime.now(dt.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+        if mask:
+            pre += ''.join('&updateMask.fieldPaths=' + k for k in mask)
+            fields = {k: fields[k] for k in mask if k in fields}
+        else:
+            fields['updated'] = dt.datetime.now(dt.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
         try:
             http('PATCH', f'{FS}{doc}?key={FS_KEY}{pre}', {'fields': {k: to_fs(v) for k, v in fields.items()}})
             return result
@@ -495,6 +504,77 @@ def fill_er_rx(db, d_from, dry):
         log('ใบสั่งยา ER ไม่ได้กรอกใน 24 ชม. → เติมให้ ' + ', '.join(r['added']) + (' [dry-run ไม่ได้เขียน]' if dry else ''))
 
 
+def norm_hn(v):
+    return str(v or '').strip().lstrip('0')
+
+
+def ht_pm_counts(db, d_from, d_to):
+    """{ 'YYYY-MM-DD': จำนวนผู้ป่วยนัดคลินิก HT (002 / 024 นัด LAB) ที่เภสัชกรคีย์จ่ายยา (ผู้จ่ายยา) ครั้งแรกหลัง 12:00
+    และไม่มีบันทึกในหน้าคลินิก (clinic_YYYY-MM) วันนั้น } — นับเฉพาะวันที่มีคลินิก HT จริง (≥ 10 ราย)"""
+    rows = q(db, """SELECT o.vstdate, o.hn, MIN(d.rx_dispenser_datetime) t FROM ovst o
+      JOIN oapp a ON a.visit_vn=o.vn AND a.clinic IN ('002','024')
+      JOIN rx_dispenser_detail d ON d.vn=o.vn AND d.rx_dispenser_type_id=4
+      WHERE o.vstdate>=%s AND o.vstdate<=%s GROUP BY o.vstdate, o.hn""", (d_from, d_to))
+    seen = {}  # วันที่ → HN ที่เภสัชบันทึกในหน้าคลินิกแล้ว (ได้พบเภสัช)
+    for m in months_between(d_from[:7], d_to[:7]):
+        try:
+            d = http('GET', f'{FS}clinic_{m}?key={FS_KEY}')
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            continue
+        for r in from_fs(d.get('fields', {}).get('list', {'arrayValue': {}})):
+            seen.setdefault(r.get('date'), set()).add(norm_hn(r.get('hn')))
+    total, out = {}, {}
+    for r in rows:
+        k = s(r['vstdate'])
+        total[k] = total.get(k, 0) + 1
+        if r['t'].time() >= dt.time(12, 0) and norm_hn(r['hn']) not in seen.get(k, set()):
+            out[k] = out.get(k, 0) + 1
+    return {k: n for k, n in out.items() if total[k] >= 10}
+
+
+def fill_ht_pm(db, d_from, dry):
+    # คิดใหม่ย้อนหลัง 14 วันทุกรอบ เผื่อเภสัชบันทึกคลินิกตามทีหลัง (ค่าที่เติมอัตโนมัติปรับตาม; ค่าที่กรอกเองไม่แตะ)
+    now = dt.datetime.now()
+    last = (now.date() - dt.timedelta(days=1)).isoformat()
+    first = max(d_from, (now.date() - dt.timedelta(days=14)).isoformat())
+    if last < first:
+        return
+    counts = ht_pm_counts(db, first, last)
+
+    def mut(f):
+        recs = f.setdefault('sessionRecords', [])
+        manual = {r.get('date') for r in recs if r.get('clinic') == 'HT' and r.get('pmOnly') and not r.get('htPmAuto')}
+        removed = [r['date'] for r in recs if r.get('htPmAuto') and r.get('date') in manual]
+        recs[:] = [r for r in recs if not (r.get('htPmAuto') and r.get('date') in manual)]
+        auto = {r.get('date'): r for r in recs if r.get('htPmAuto')}
+        added, changed = [], []
+        for k in sorted(counts):
+            n = counts[k]
+            if k < first or k in manual:
+                continue
+            note = f'🗄 อัตโนมัติจาก HOSxP — นัด HT ที่จ่ายยาหลัง 12:00 และไม่มีบันทึกคลินิก ({now:%Y-%m-%d %H:%M})'
+            if k in auto:
+                if auto[k].get('htPmCount') != n:
+                    changed.append(f"{k}={auto[k].get('htPmCount')}→{n}")
+                    auto[k].update(htPmCount=n, notes=note)
+                continue
+            recs.append({'id': f'htpm-auto-{k}', 'date': k, 'clinic': 'HT', 'attended': None, 'pharmacist': '', 'reason': '',
+                         'htPmCount': n, 'notes': note, 'pmOnly': True, 'htPmAuto': True, 'created': int(time.time() * 1000)})
+            added.append(f'{k}={n}')
+        if added or changed or removed:
+            f['updated'] = int(time.time() * 1000)
+        return {'changed': bool(added or changed or removed), 'added': added, 'ch': changed, 'removed': removed}
+
+    r = update_doc('clinic_data', mut, dry, mask=['sessionRecords', 'updated'])
+    tag = ' [dry-run ไม่ได้เขียน]' if dry else ''
+    if r['removed']:
+        log('HT บ่าย กรอกเองแล้ว → ลบค่าที่เติมอัตโนมัติ ' + ', '.join(r['removed']) + tag)
+    if r['added'] or r['ch']:
+        log('HT บ่าย เติมอัตโนมัติ ' + ', '.join(r['added'] + r['ch']) + tag)
+
+
 def months_between(a, b):
     y, mo = map(int, a.split('-'))
     out = []
@@ -513,6 +593,7 @@ def main():
     ap.add_argument('--month', help='ดึงเฉพาะเดือนนี้ (YYYY-MM)')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--er-from', default=ER_RX_START, help='เติมใบสั่งยา ER ที่ขาดตั้งแต่วันนี้ (YYYY-MM-DD)')
+    ap.add_argument('--ht-from', default=HT_PM_START, help='เติมจำนวนคนไข้ HT บ่ายตั้งแต่วันนี้ (YYYY-MM-DD; คิดย้อนหลังสูงสุด 14 วัน)')
     args = ap.parse_args()
 
     today = dt.date.today()
@@ -543,6 +624,10 @@ def main():
             fill_er_rx(db, args.er_from, args.dry_run)
         except Exception as e:  # noqa: BLE001 — ไม่ให้ขวางการดึงรายเดือน
             log(f'ใบสั่งยา ER ผิดพลาด: {type(e).__name__}: {e}')
+        try:
+            fill_ht_pm(db, args.ht_from, args.dry_run)
+        except Exception as e:  # noqa: BLE001
+            log(f'HT บ่าย ผิดพลาด: {type(e).__name__}: {e}')
         for m in months:
             sync_month(db, m, args.dry_run)
             if not args.dry_run:
