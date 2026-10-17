@@ -12,6 +12,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/chart.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
 <script src="lib/firebase-app-compat-10.js"></script>
 <script src="lib/firebase-firestore-compat-10.js"></script>
 <style>
@@ -103,6 +104,16 @@ td small { display: block; color: var(--text-light); }
 .rx-tag { font-size: 11px; border-radius: 6px; padding: 0 6px; background: var(--primary-light); color: var(--ok); white-space: nowrap; }
 .rx-tag.rx-kpi { background: var(--gold-light); color: #7A5700; }
 .done-tag { font-size: 11px; border-radius: 6px; padding: 0 6px; background: #eef1ef; color: var(--text-mid); white-space: nowrap; }
+.upbtn { font: inherit; font-size: 14px; font-weight: 700; border: 0; border-radius: 8px; padding: 7px 14px; background: var(--primary); color: #fff; cursor: pointer; }
+.upbtn.sec { background: #fff; color: var(--text-mid); border: 1px solid var(--border); font-weight: 400; }
+.upbtn:disabled { opacity: .6; cursor: default; }
+.upbox { border: 1px solid var(--gold); background: var(--gold-light); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: grid; gap: 8px; }
+.upbox .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+.upbox label { display: inline-flex; gap: 6px; align-items: center; }
+.upbox input, .upbox select { font: inherit; font-size: 14px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.upbox .warn { color: var(--danger); font-weight: 700; }
+#up-msg.ok { color: var(--ok); font-weight: 700; }
+#up-msg.err { color: var(--danger); font-weight: 700; }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -142,6 +153,12 @@ td small { display: block; color: var(--text-light); }
   <section class="card" id="rev" hidden>
     <h2 id="rev-title">รายได้เบิกคืนจากเคลม: ยืนยันแล้ว + ประมาณการ</h2>
     <p class="note" id="rev-note"></p>
+    <div class="controls">
+      <button id="up-btn" class="upbtn" type="button" title="ไฟล์ Excel ผลงานเคลมจังหวัด (KTB / e-Claim / MOPH Claim) ที่ได้รับจาก สสจ.">📤 ส่งไฟล์ผลงานเคลมฉบับใหม่</button>
+      <input type="file" id="up-file" accept=".xlsx,.xls" hidden>
+      <span id="up-msg" class="sub"></span>
+    </div>
+    <div id="up-box" class="upbox" hidden></div>
     <div class="kpis" id="rev-kpis" style="margin-bottom:12px"></div>
     <div class="chartbox"><canvas id="c-rev"></canvas></div>
     <div class="tbl" style="margin-top:12px"><table id="rev-table" style="min-width:760px"></table></div>
@@ -640,6 +657,44 @@ td small { display: block; color: var(--text-light); }
     document.getElementById('rev-hist').innerHTML = `<thead><tr><th>ช่องทาง</th><th>ข้อมูล ณ</th><th class="num">ยอดสะสม</th><th class="num">ได้รับเพิ่ม</th><th class="num">เฉลี่ยต่อ 30 วัน</th><th>ไฟล์</th></tr></thead><tbody>${hr.reverse().join('')}</tbody>`;
   }
 
+  // ---------- ส่งไฟล์ผลงานเคลมจากหน้าเว็บ: อ่าน Excel ในเบราว์เซอร์ แล้วเขียน insurance_province (sources + history) ตรง ----------
+  // แปลงเหมือน read_claim_file() ใน Hospital Tasks/insurance-sync — ไม่ต้องเปิดเครื่องที่ติดตั้งสคริปต์
+  const CLAIM_TOTAL = { KTB: 'sum(ชดเชย)', 'e-Claim': 'รวม', 'MOPH Claim': 'รวม' };
+  const TH_MON = { 'มค': 1, 'กพ': 2, 'มีค': 3, 'เมย': 4, 'พค': 5, 'มิย': 6, 'กค': 7, 'สค': 8, 'กย': 9, 'ตค': 10, 'พย': 11, 'ธค': 12 };
+  const fyOfDate = (iso) => { const [y, m] = iso.split('-').map(Number); return y + 543 + (m >= 10 ? 1 : 0); };
+  function claimAsof(name) {
+    let d = null, m = name.match(/(\d{1,2})\s+(\d{1,2})\s+(25\d\d)/);
+    const iso = (y, mo, dd) => y + '-' + String(mo).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+    if (m) d = iso(+m[3] - 543, +m[2], +m[1]);
+    else if ((m = name.replace(/\./g, '').match(new RegExp('(\\d{1,2})\\s*(' + Object.keys(TH_MON).join('|') + ')\\s*(\\d{2,4})')))) {
+      const y = +m[3]; d = iso((y > 100 ? y : 2500 + y) - 543, TH_MON[m[2]], +m[1]);
+    }
+    const f = name.match(/ปีงบ\S*\s*(?:25)?(\d\d)(?!\d)/);
+    return { asof: d && !isNaN(Date.parse(d)) ? d : '', fy: f ? 2500 + +f[1] : d ? fyOfDate(d) : 0 };
+  }
+  function parseClaim(buf, name) {
+    const wb = XLSX.read(buf, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null, raw: true });
+    const hi = rows.findIndex((r) => r.some((c) => String(c || '').trim() === 'หน่วยบริการ'));
+    if (hi < 0) throw new Error('ไม่พบคอลัมน์ "หน่วยบริการ" — ไม่ใช่ไฟล์ผลงานเคลมจังหวัดรูปแบบเดิม');
+    const h = rows[hi].map((c) => c == null ? '' : String(c).trim());
+    const n = name.toLowerCase();
+    const src = /ktb/.test(n) || h.includes('sum(ชดเชย)') ? 'KTB' : /moph/.test(n) || (h.includes('HbA1C') && h.includes('EPI')) ? 'MOPH Claim'
+      : /e-?claim/.test(n) || h.includes('IP_DRG') ? 'e-Claim' : '';
+    const col = (c) => h.indexOf(c);
+    const data = rows.slice(hi + 1).filter((r) => r[col('หน่วยบริการ')]);
+    const num = (v) => +String(v == null ? 0 : v).replace(/,/g, '') || 0;
+    const parse = (s) => {
+      const tc = col(CLAIM_TOTAL[s]);
+      if (tc < 0) throw new Error(`ไม่พบคอลัมน์ยอดรวม "${CLAIM_TOTAL[s]}" ของ ${s}`);
+      const items = h.filter((c, i) => c && !['หน่วยบริการ', 'HCODE', 'Province21', CLAIM_TOTAL[s]].includes(c) && data.reduce((a, r) => a + num(r[i]), 0) > 0);
+      const hosp = {}, totals = {};
+      data.forEach((r) => { const k = String(r[col('หน่วยบริการ')]).split(',')[0].trim(); hosp[k] = items.map((c) => Math.round(num(r[col(c)]))); totals[k] = Math.round(num(r[tc])); });
+      return { items, hospitals: hosp, totals };
+    };
+    return Object.assign({ src, name, parse }, claimAsof(name));
+  }
+
   // ---------- province ----------
   const pSrc = document.getElementById('p-src'), pItem = document.getElementById('p-item');
   pSrc.addEventListener('change', () => { fillItems(); drawProvince(); });
@@ -759,6 +814,66 @@ td small { display: block; color: var(--text-light); }
       pSrc.innerHTML = Object.keys(province.sources).sort().map((x) => `<option${x === (keep || 'e-Claim') ? ' selected' : ''}>${esc(x)}</option>`).join('');
       fillItems(); drawProvince(); drawGap(); drawSrcCards(); drawRevenue();
     });
+
+    // ส่งไฟล์ผลงานเคลม: เลือกไฟล์ → ตรวจ/แก้ช่องทางและวันที่ข้อมูล → บันทึก
+    const upBtn = document.getElementById('up-btn'), upFile = document.getElementById('up-file'), upBox = document.getElementById('up-box'), upMsg = document.getElementById('up-msg');
+    let up = null;
+    const msg = (t, cls) => { upMsg.textContent = t; upMsg.className = 'sub ' + (cls || ''); };
+    upBtn.addEventListener('click', () => { upFile.value = ''; upFile.click(); });
+    upFile.addEventListener('change', async () => {
+      const f = upFile.files[0]; if (!f) return;
+      try { up = parseClaim(await f.arrayBuffer(), f.name); msg(''); drawUp(); }
+      catch (e) { up = null; upBox.hidden = true; msg('อ่านไฟล์ไม่ได้: ' + e.message, 'err'); }
+    });
+    function drawUp() {
+      let p = null, err = '';
+      try { if (up.src) p = up.parse(up.src); } catch (e) { err = e.message; }
+      const me = province && province.me || 'ถ้ำพรรณรา';
+      const prev = up.src && Object.entries((province && province.history || {})[up.src] || {}).filter(([d, s]) => s.fy === up.fy && d < up.asof).sort().pop();
+      const meTot = p && p.totals[me];
+      const warn = !up.src ? 'เลือกช่องทาง' : err ? err : !up.asof ? 'ใส่วันที่ข้อมูล (ดูจากชื่อไฟล์หรือหัวรายงาน)' : meTot == null ? `ไม่พบ ${me} ในไฟล์` : '';
+      const n = Object.keys(p ? p.totals : {}).length;
+      upBox.hidden = false;
+      upBox.innerHTML = `<div class="row"><b>ไฟล์:</b> ${esc(up.name)}</div>
+        <div class="row"><label>ช่องทาง <select id="up-src"><option value="">— เลือก —</option>${REV_SRC.map((x) => `<option${x === up.src ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+          <label>ข้อมูล ณ วันที่ <input type="date" id="up-asof" value="${up.asof}"></label>
+          <label>ปีงบ <input type="number" id="up-fy" value="${up.fy || ''}" style="width:90px"></label>
+          <label>ผู้ส่ง <input id="up-by" placeholder="ชื่อ" style="width:140px" value="${esc((() => { try { return localStorage.getItem('tph_ins_uploader') || ''; } catch (e) { return ''; } })())}"></label></div>
+        ${p && meTot != null ? `<div class="row">${n} หน่วยบริการ · ${p.items.length} รายการ · <b>ยอดสะสมของ ${esc(me)} ${fmt(meTot)} บาท</b>
+          ${prev ? ` · ฉบับก่อน (${thDate(prev[0])}) ${fmt(prev[1].total)} บาท → เพิ่ม ${fmt(meTot - prev[1].total)} บาท` : ''}
+          ${prev && meTot < prev[1].total ? ' <span class="warn">ยอดน้อยกว่าฉบับก่อน — ตรวจวันที่/ปีงบ</span>' : ''}</div>` : ''}
+        ${warn ? `<div class="row warn">${esc(warn)}</div>` : ''}
+        <div class="row"><button class="upbtn" id="up-save" type="button"${warn ? ' disabled' : ''}>บันทึกเข้าระบบ</button><button class="upbtn sec" id="up-cancel" type="button">ยกเลิก</button>
+          <span class="sub">บันทึกแล้วหน้าเว็บคำนวณใหม่ทันที ตัวเลขประมาณการของช่องทางนี้จะเปลี่ยนเป็นยอดจริง</span></div>`;
+      document.getElementById('up-src').onchange = (e) => { up.src = e.target.value; drawUp(); };
+      document.getElementById('up-asof').onchange = (e) => { up.asof = e.target.value; if (up.asof && !/ปีงบ/.test(up.name)) up.fy = fyOfDate(up.asof); drawUp(); };
+      document.getElementById('up-fy').onchange = (e) => { up.fy = +e.target.value; drawUp(); };
+      document.getElementById('up-cancel').onclick = () => { up = null; upBox.hidden = true; };
+      document.getElementById('up-save').onclick = () => saveUp(p, me);
+    }
+    async function saveUp(p, me) {
+      const by = document.getElementById('up-by').value.trim();
+      try { localStorage.setItem('tph_ins_uploader', by); } catch (e) { /* ไม่บังคับ */ }
+      const btn = document.getElementById('up-save'); btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+      const snapIt = {}; p.items.forEach((it, i) => { const v = (p.hospitals[me] || [])[i]; if (v) snapIt[it] = v; });
+      const FP = firebase.firestore.FieldPath, ref = db.collection(COL).doc('insurance_province');
+      try {
+        let older = false;
+        await db.runTransaction(async (t) => {
+          const cur = ((await t.get(ref)).data() || {}).sources || {};
+          older = !!(cur[up.src] && cur[up.src].asof && cur[up.src].asof > up.asof);
+          const args = [new FP('history', up.src, up.asof), { file: up.name, fy: up.fy, total: p.totals[me], items: snapIt, by: by || 'หน้าเว็บ', at: new Date().toISOString() }];
+          if (!older) args.push(new FP('sources', up.src), { file: up.name, asof: up.asof, fy: up.fy, items: p.items, hospitals: p.hospitals, totals: p.totals });
+          args.push('updated', new Date().toISOString());
+          t.update(ref, ...args);
+        });
+        up = null; upBox.hidden = true;
+        msg(older ? '✓ บันทึกเป็นประวัติแล้ว (ไฟล์นี้เก่ากว่าฉบับที่ใช้อยู่ จึงไม่แทนที่ข้อมูลเทียบจังหวัด)' : '✓ บันทึกแล้ว — ตัวเลขด้านล่างอัปเดตแล้ว', 'ok');
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'บันทึกเข้าระบบ';
+        msg('บันทึกไม่สำเร็จ: ' + e.message, 'err');
+      }
+    }
   } catch (e) {
     status.textContent = 'เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message;
   }
