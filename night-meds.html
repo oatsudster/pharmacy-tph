@@ -194,7 +194,11 @@ const NO_STICKER = {};    // key ผู้ป่วยที่ไม่ต้�
 function todayISO() { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }); }
 function drugLabel(it) {
   const n = String(it.drug || '').trim(), s = String(it.strength || '').trim();
-  return s && s !== '.' && s !== 'mg.' && !n.toLowerCase().includes(s.toLowerCase()) ? `${n} ${s}` : n;
+  const base = s && s !== '.' && s !== 'mg.' && !n.toLowerCase().includes(s.toLowerCase()) ? `${n} ${s}` : n;
+  // สารน้ำ: ใส่ขนาดขวด/ถุงจาก units เช่น "ขวด (1,000 ml.)" → "1000 ml" (shortUnit ตัดวงเล็บทิ้งตอนพิมพ์)
+  const v = /INJECT|INTRAVENOUS|SOLUTION/i.test(String(it.form || '')) && String(it.units || '').match(/\(\s*([\d,]+)\s*[^)\d]*\)/);
+  const ml = v ? +v[1].replace(/,/g, '') : 0;
+  return ml >= 50 && !new RegExp(`\\b${ml}\\s*ml`, 'i').test(base) ? `${base} ${ml} ml` : base;
 }
 function formGroup(it) {
   const f = String(it.form || '').toUpperCase(), u = String(it.units || ''), t = f + ' ' + String(it.drug || '');
