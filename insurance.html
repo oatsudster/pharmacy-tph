@@ -114,6 +114,23 @@ td small { display: block; color: var(--text-light); }
 .upbox .warn { color: var(--danger); font-weight: 700; }
 #up-msg.ok { color: var(--ok); font-weight: 700; }
 #up-msg.err { color: var(--danger); font-weight: 700; }
+.term { font: inherit; color: inherit; background: none; border: 0; padding: 0; border-bottom: 1px dashed var(--primary); cursor: help; text-align: left; }
+.term:hover { color: var(--primary); }
+.term.q { border: 1px solid var(--border); border-radius: 999px; width: 18px; height: 18px; font-size: 11px; line-height: 16px; text-align: center; color: var(--text-mid); background: #fff; margin-left: 4px; vertical-align: 1px; }
+.gl-pop { position: absolute; z-index: 50; width: min(340px, calc(100vw - 32px)); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 10px 12px; font-size: 13.5px; line-height: 1.5; display: grid; gap: 4px; }
+.gl-pop b { color: var(--primary-dark); font-size: 14.5px; }
+.gl-pop .k { font-size: 12px; color: var(--text-light); }
+.gl-pop .who { font-size: 12.5px; color: var(--text-mid); }
+.gl-pop .unv, .gl-item .unv { font-size: 12px; color: #7A5700; background: var(--gold-light); border-radius: 6px; padding: 1px 6px; width: max-content; max-width: 100%; }
+#sum-list { margin: 6px 0 4px; padding: 0; list-style: none; display: grid; gap: 6px; }
+#sum-list li { display: grid; grid-template-columns: 24px 1fr; gap: 4px; font-size: 15px; line-height: 1.55; }
+.sum-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+#gl-q { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; width: min(320px, 100%); margin: 6px 0 10px; }
+#gl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.gl-item { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; font-size: 13.5px; }
+.gl-item .ab { font-size: 12px; color: var(--text-light); }
+.gl-item b { color: var(--primary-dark); }
+.gl-item .who { font-size: 12.5px; color: var(--text-mid); }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -121,6 +138,7 @@ td small { display: block; color: var(--text-light); }
 <div class="topbar">
   <a href="index.html" class="pharm-only">← หน้าหลัก</a>
   <a href="#" class="ins-only" onclick="localStorage.removeItem('tph_ins_auth_v1');location.replace('insurance-login.html');return false">🔒 ออกจากระบบ</a>
+  <a href="#glossary" title="ความหมายของตัวย่อและคำศัพท์ในหน้านี้">📖 คำศัพท์</a>
   <a href="insurance-audit.html" title="ดูว่าตัวเลขแต่ละตัวคิดจากอะไร และให้แต่ละงานตรวจ/แนบเอกสารแนวทางเคลม">🔎 ตรวจสอบที่มาตัวเลข</a>
   <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
   <div class="right">
@@ -134,6 +152,12 @@ td small { display: block; color: var(--text-light); }
 </div>
 
 <div class="wrap">
+  <section class="card" id="sum">
+    <div class="sum-head"><h2 id="sum-title">สรุปสั้นๆ</h2><button id="sum-copy" class="upbtn sec" type="button">📋 คัดลอกข้อความสรุป</button></div>
+    <ul id="sum-list"><li><span>⏳</span><span>กำลังโหลดข้อมูล…</span></li></ul>
+    <p class="note" style="margin:0">สร้างจากข้อมูลในหน้านี้อัตโนมัติ · คำที่มีเส้นประใต้ กดเพื่อดูความหมาย · ✅ ดี/ตามเป้า · ⚠️ ควรติดตาม · ℹ️ ข้อมูล</p>
+  </section>
+
   <section class="hero">
     <div class="hero-main">
       <div>
@@ -235,8 +259,16 @@ td small { display: block; color: var(--text-light); }
     <div class="tbl"><table id="opp-table"><thead><tr><th>แนวทาง</th><th>ตัวชี้วัดที่ติดตามในหน้านี้</th><th class="num">เพิ่มได้/ปี</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody></tbody></table></div>
   </section>
 
+  <section class="card" id="glossary">
+    <h2>📖 คำศัพท์และตัวย่อ</h2>
+    <p class="note">ความหมายของตัวย่อที่ใช้ในหน้านี้ · ป้าย "ยังไม่ยืนยัน" = ยังไม่ได้ตรวจกับทีมประกัน ถ้าผิดแจ้งให้แก้ได้</p>
+    <input id="gl-q" type="search" placeholder="ค้นหา เช่น RW, ฝากครรภ์, OFC" aria-label="ค้นหาคำศัพท์">
+    <div id="gl-list"></div>
+  </section>
+
   <p class="note" id="foot"></p>
 </div>
+<div id="gl-pop" class="gl-pop" hidden></div>
 
 <script>
 (function () {
@@ -267,6 +299,92 @@ td small { display: block; color: var(--text-light); }
     HEP_B: 'คัดกรองไวรัสตับอักเสบ B', HEP_C: 'คัดกรองไวรัสตับอักเสบ C', FLU_VC: 'วัคซีนไข้หวัดใหญ่', HPV: 'HPV DNA test', HbA1C: 'HbA1c เบาหวาน', EPI: 'วัคซีน EPI',
     'Cr.+K.': 'Cr + K', dT: 'วัคซีน dT', Fluoride: 'ฟลูออไรด์', HOMEWARD: 'Home ward', TELEMED: 'Telemedicine', DRUG_DELIVERY: 'ส่งยาที่บ้าน' };
   const lbl = (k) => LABEL[k] || k;
+
+  // ---------- คำศัพท์/ตัวย่อ: [ชื่อเต็ม, ความหมายภาษาคน, เงินมาจากไหน/ใครเกี่ยวข้อง, ยังไม่ยืนยัน?] ----------
+  // ข้อที่ 4 = true → คำอธิบายยังไม่ได้ยืนยันกับทีมประกัน (หน้าเว็บจะบอกผู้อ่าน) — แก้ได้ที่นี่ที่เดียว
+  const GLOSS = {
+    // สิทธิ/กองทุน
+    UC: ['บัตรทอง (หลักประกันสุขภาพถ้วนหน้า)', 'สิทธิรักษาของคนไทยที่ไม่มีสิทธิอื่น ผู้ป่วยส่วนใหญ่ของ รพ. อยู่ในสิทธินี้', 'สปสช. จ่าย: เหมาจ่ายรายหัว + ผู้ป่วยในตาม RW + รายการที่จ่ายแยก'],
+    WEL: ['บัตรทองประเภทยกเว้นค่าธรรมเนียม', 'บัตรทองกลุ่มที่ไม่ต้องจ่าย 30 บาท เช่น ผู้สูงอายุ เด็ก ผู้พิการ — ในหน้านี้นับรวมกับ UC', 'สปสช.'],
+    'UC/WEL': ['บัตรทองทั้งหมด', 'UC + WEL รวมกัน', 'สปสช.'],
+    OFC: ['สิทธิข้าราชการ', 'ข้าราชการและครอบครัว เบิกค่ารักษาตามที่ใช้จริง', 'กรมบัญชีกลาง ส่งเบิกผ่าน e-Claim — ได้คืนเกือบเต็มยอดที่เรียกเก็บ'],
+    LGO: ['สิทธิพนักงานส่วนท้องถิ่น (อปท.)', 'พนักงาน อบต./เทศบาลและครอบครัว เบิกตามที่ใช้จริงคล้ายข้าราชการ', 'กรมส่งเสริมการปกครองท้องถิ่น ส่งเบิกผ่าน e-Claim'],
+    SSS: ['ประกันสังคม', 'ลูกจ้างที่ส่งเงินสมทบประกันสังคม', 'สำนักงานประกันสังคม'],
+    // ช่องทางเบิก
+    'e-Claim': ['โปรแกรม e-Claim ของ สปสช.', 'ช่องทางส่งเบิกหลัก: ผู้ป่วยใน (IP_DRG), ข้าราชการ (OFC), อปท. (LGO) และบริการที่จ่ายแยกหลายรายการ', 'ยอดในไฟล์ = เงินที่ สปสช. คำนวณจ่ายให้ รพ. สะสมตั้งแต่ต้นปีงบ'],
+    KTB: ['ระบบเบิกผ่านกรุงไทย (Krungthai Digital Health Platform)', 'ใช้เบิกบริการส่งเสริมสุขภาพ/ป้องกันโรคบางรายการ เช่น คัดกรองไวรัสตับ วัคซีนไข้หวัดใหญ่', 'สปสช. จ่ายผ่านธนาคารกรุงไทย'],
+    'MOPH Claim': ['ระบบเคลมของกระทรวงสาธารณสุข', 'ใช้เบิกบางรายการ เช่น ตรวจ HbA1c เบาหวาน วัคซีน', 'ส่งข้อมูลจาก HOSxP เข้าระบบของกระทรวง'],
+    FDH: ['Financial Data Hub', 'ระบบกลางรับข้อมูลเบิกจ่ายผู้ป่วยใน ต้องส่งให้สำเร็จและเร็ว (เป้า: ภายใน 7 วันหลังจำหน่าย) ไม่อย่างนั้นอาจได้เงินช้าหรือถูกลด', 'งานประกันเป็นผู้ส่ง'],
+    // ผู้ป่วยใน
+    RW: ['ค่าน้ำหนักสัมพัทธ์ (Relative Weight)', 'คะแนนความหนักของผู้ป่วยในแต่ละราย คิดจากรหัสโรคและหัตถการ ยิ่งป่วยซับซ้อนยิ่งสูง เงินที่ได้ = RW × อัตราจ่ายต่อ RW', 'บันทึกรหัสโรคครบ → RW สูงขึ้น → ได้เงินมากขึ้น'],
+    IP_DRG: ['ค่ารักษาผู้ป่วยในบัตรทอง (จ่ายตาม DRG)', 'เงินที่ สปสช. จ่ายค่ารักษาผู้ป่วยใน คิดจาก RW ของแต่ละราย', 'ส่งข้อมูลผ่าน FDH/e-Claim · ขึ้นกับการลงรหัสโรคของแพทย์/coder'],
+    DRG: ['กลุ่มวินิจฉัยโรคร่วม', 'วิธีจัดกลุ่มผู้ป่วยในตามโรคและความซับซ้อน เพื่อคำนวณ RW', ''],
+    SDX: ['การวินิจฉัยรอง (โรคร่วม/โรคแทรก)', 'โรคอื่นที่ผู้ป่วยมีร่วมด้วย เช่น เบาหวาน ความดัน ถ้าไม่บันทึก RW จะต่ำกว่าความจริง', 'แพทย์/เวชระเบียน'],
+    BED: ['อัตราครองเตียง', 'ร้อยละของเตียงที่มีผู้ป่วยนอนจริง (วันนอนรวม ÷ เตียง × วัน) — ต่ำ = เตียงว่างมาก', 'หอผู้ป่วยใน, ห้องคลอด'],
+    // รายการที่จ่ายแยก
+    OP_AE: ['ผู้ป่วยนอกบัตรทองนอกเขต: อุบัติเหตุ/ฉุกเฉิน', 'คนที่มีสิทธิบัตรทองที่ รพ. อื่น มารักษาที่นี่เพราะฉุกเฉิน — เบิกเงินคืนได้', 'ER, งานประกัน'],
+    WALKIN: ['ผู้ป่วยนอกบัตรทองนอกเขต: มาเอง', 'คนสิทธิบัตรทองที่อื่น มารักษาเองโดยไม่ฉุกเฉิน — เบิกได้ตามเงื่อนไข สปสช.', 'OPD, งานประกัน'],
+    CAR_REFER: ['ค่ารถส่งต่อผู้ป่วย', 'ค่ารถพยาบาลเมื่อส่งผู้ป่วยไป รพ. อื่น — ต้องติ๊ก "ไปพร้อมรถ" ใน HOSxP', 'ER, งานประกัน'],
+    INST: ['อวัยวะเทียมและอุปกรณ์การรักษา', 'อุปกรณ์ที่ใช้กับผู้ป่วยแล้วเบิกแยกได้', 'งานประกัน'],
+    Palliative_care: ['ดูแลผู้ป่วยระยะท้ายแบบประคับประคอง', 'ผู้ป่วยที่ลงรหัส Z51.5 — เบิกชุดสิทธิประโยชน์ได้ถ้าลงทะเบียน', 'ทีม Palliative'],
+    Z515: ['รหัสโรค Z51.5', 'รหัสวินิจฉัย "การดูแลแบบประคับประคอง"', 'ใช้นับผู้ป่วย Palliative'],
+    'ยาClopidogrel': ['ยา Clopidogrel', 'ยาต้านเกล็ดเลือด สปสช. จ่ายคืนเม็ดละ 3 บาท (เท่าราคาทุน)', 'ห้องยา, งานประกัน'],
+    HERB32: ['ยาสมุนไพรที่ สปสช. จ่ายแยก (กลุ่ม 32 รายการ)', 'จ่ายยาสมุนไพรในรายการตามประกาศ สปสช. แล้วได้เงินเพิ่มจากเหมาจ่าย', 'ห้องยา, แพทย์แผนไทย'],
+    HERB9: ['ยาสมุนไพรที่ สปสช. จ่ายแยก (กลุ่ม 9 รายการ)', 'คล้าย HERB32 แต่เป็นอีกกลุ่มรายการยา', 'ห้องยา', true],
+    DENTURE: ['ฟันเทียม', 'ใส่ฟันเทียมให้ผู้สูงอายุ เบิกแยกได้', 'ทันตกรรม'],
+    ANC: ['ฝากครรภ์', 'บริการตรวจหญิงตั้งครรภ์ตามนัด เบิกแยกได้รายครั้ง', 'งานแม่และเด็ก'],
+    ANC_DENT: ['ตรวจฟันหญิงตั้งครรภ์', '', 'ทันตกรรม, งานแม่และเด็ก'],
+    ANC_ULTRA: ['อัลตราซาวด์หญิงตั้งครรภ์', '', 'งานแม่และเด็ก'],
+    PNC: ['ดูแลหลังคลอด', 'ตรวจแม่หลังคลอดตามนัด', 'งานแม่และเด็ก'],
+    FP: ['วางแผนครอบครัว', 'บริการคุมกำเนิด เช่น ยาฉีด ยาฝัง', 'งานแม่และเด็ก'],
+    UPT: ['ทดสอบการตั้งครรภ์', '', 'งานแม่และเด็ก'],
+    IRON: ['ยาเสริมธาตุเหล็ก', 'เบิกได้เมื่อจ่ายยาจริงเท่านั้น', 'งานแม่และเด็ก'],
+    IRON_PRE: ['ยาเสริมธาตุเหล็ก (กลุ่มย่อย)', 'น่าจะเป็นธาตุเหล็กในหญิงตั้งครรภ์/ก่อนตั้งครรภ์', 'งานแม่และเด็ก', true],
+    IRON_SCR: ['คัดกรองภาวะโลหิตจาง', 'น่าจะเป็นการตรวจคัดกรองซีดเพื่อให้ธาตุเหล็ก', 'งานแม่และเด็ก', true],
+    Fluoride: ['เคลือบ/ทาฟลูออไรด์', 'ป้องกันฟันผุในเด็ก', 'ทันตกรรม'],
+    Fit_Test: ['FIT test คัดกรองมะเร็งลำไส้ใหญ่', 'ตรวจเลือดแฝงในอุจจาระ', 'PCU, Lab — เบิกผ่าน e-Claim'],
+    Fit_test: ['FIT test คัดกรองมะเร็งลำไส้ใหญ่', 'ตรวจเลือดแฝงในอุจจาระ', 'PCU, Lab'],
+    HEP_B: ['คัดกรองไวรัสตับอักเสบบี', 'ตรวจเลือดหา HBsAg ในกลุ่มเป้าหมาย', 'Lab, PCU — เบิกผ่าน KTB'],
+    HEP_C: ['คัดกรองไวรัสตับอักเสบซี', 'ตรวจเลือดหา Anti-HCV ในกลุ่มเป้าหมาย', 'Lab, PCU — เบิกผ่าน KTB'],
+    'CLIA,EIA': ['วิธีตรวจทางห้องปฏิบัติการ (CLIA/EIA)', 'น่าจะเป็นค่าตรวจไวรัสตับด้วยวิธี CLIA/EIA', 'Lab', true],
+    FLU_VC: ['วัคซีนไข้หวัดใหญ่', 'ฉีดให้กลุ่มเสี่ยง เช่น ผู้สูงอายุ ผู้ป่วยเรื้อรัง', 'คลินิก NCD, งานวัคซีน'],
+    HPV: ['ตรวจ HPV คัดกรองมะเร็งปากมดลูก', '', 'งานคัดกรอง'],
+    EPI: ['วัคซีนพื้นฐานเด็ก', '', 'งานวัคซีน'],
+    dT: ['วัคซีนคอตีบ-บาดทะยัก', '', 'งานวัคซีน'],
+    HbA1C: ['ตรวจน้ำตาลสะสม (HbA1c)', 'ตรวจคุมเบาหวาน เบิกได้ปีละ 1–2 ครั้งต่อคน', 'Lab, คลินิกเบาหวาน — เบิกผ่าน MOPH Claim'],
+    'Cr.+K.': ['ตรวจการทำงานของไต + โพแทสเซียม', '', 'Lab — MOPH Claim'],
+    KTMN: ['KTMN', 'ยังไม่ทราบความหมาย', 'ถามทีมประกัน', true],
+    'ย้ายหน่วยบริการ': ['เงินกรณีผู้ป่วยย้ายหน่วยบริการ', 'น่าจะเป็นเงินปรับตามจำนวนผู้มีสิทธิที่ย้ายเข้า/ออก', 'งานประกัน', true],
+    // คำทั่วไปในหน้า
+    MEDIAN: ['มัธยฐาน', 'ค่ากลางของกลุ่ม (เรียงแล้วอยู่ตรงกลาง) ไม่ถูกดึงด้วย รพ. ที่สูงหรือต่ำผิดปกติ', 'ใช้เทียบกับ รพช.ขนาดเล็ก 10 แห่ง'],
+    COMMON: ['Common Diseases and Symptoms', 'กลุ่มอาการพื้นฐาน 10 กลุ่ม (หวัด ปวดกล้ามเนื้อ ท้องอืด ฯลฯ) ที่กระทรวงให้ใช้ยาสมุนไพรแทนยาแผนปัจจุบัน', 'ตัวชี้วัดแผนไทยข้อ 14'],
+    EST: ['ประมาณการ', 'ตัวเลขที่ยังไม่มีไฟล์ยืนยัน คำนวณจากจำนวนบริการใน HOSxP × อัตราที่เคยได้จริง — จะถูกแทนด้วยยอดจริงเมื่อมีไฟล์ใหม่', ''],
+  };
+  const gl = (k) => GLOSS[k] || null;
+  // ชื่อรายการที่กดดูคำอธิบายได้ (ไม่มีในคำศัพท์ = ข้อความธรรมดา)
+  const term = (k, text) => gl(k) ? `<button type="button" class="term" data-t="${esc(k)}">${esc(text)}</button>` : esc(text);
+  const qm = (k) => k && gl(k) ? `<button type="button" class="term q" data-t="${esc(k)}" aria-label="ความหมาย">?</button>` : '';
+  const glBody = (k) => { const g = gl(k); return `<span class="k">${esc(k)}</span><b>${esc(g[0])}</b>${g[1] ? `<span>${esc(g[1])}</span>` : ''}${g[2] ? `<span class="who">${esc(g[2])}</span>` : ''}${g[3] ? '<span class="unv">ยังไม่ยืนยันกับทีมประกัน</span>' : ''}`; };
+  // กดคำที่มีเส้นประ → กล่องคำอธิบายใต้คำนั้น · กดที่อื่นปิด
+  const glPop = document.getElementById('gl-pop');
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.term');
+    if (!b) { if (!e.target.closest('#gl-pop')) glPop.hidden = true; return; }
+    e.preventDefault();
+    if (!glPop.hidden && glPop.dataset.t === b.dataset.t) { glPop.hidden = true; return; }
+    glPop.dataset.t = b.dataset.t; glPop.innerHTML = glBody(b.dataset.t); glPop.hidden = false;
+    const r = b.getBoundingClientRect(), w = glPop.offsetWidth;
+    glPop.style.left = Math.max(16, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - w - 16)) + 'px';
+    glPop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') glPop.hidden = true; });
+  function drawGlossary() {
+    const q = document.getElementById('gl-q').value.trim().toLowerCase();
+    const ks = Object.keys(GLOSS).filter((k) => !q || (k + ' ' + GLOSS[k].slice(0, 3).join(' ')).toLowerCase().includes(q));
+    document.getElementById('gl-list').innerHTML = ks.map((k) => { const g = GLOSS[k]; return `<div class="gl-item"><span class="ab">${esc(k)}</span><b>${esc(g[0])}</b>${g[1] ? `<span>${esc(g[1])}</span>` : ''}${g[2] ? `<span class="who">${esc(g[2])}</span>` : ''}${g[3] ? '<span class="unv">ยังไม่ยืนยันกับทีมประกัน</span>' : ''}</div>`; }).join('') || '<p class="note">ไม่พบคำนี้</p>';
+  }
+  document.getElementById('gl-q').addEventListener('input', drawGlossary);
+  drawGlossary();
 
   const OPP = [
     ['ก. เคลมบริการที่ทำแล้วให้ครบ'],
@@ -330,16 +448,16 @@ td small { display: block; color: var(--text-light); }
     const herbT = sum((r) => r.herb.target), herbH = sum((r) => r.herb.with_herb), dup = sum((r) => r.ipd_ucwel.dup409);
     drawBeds(ms, R, L);
     const k = [
-      { a: 'IPD-01', l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
-      { a: 'IPD-06', l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: (unsent ? 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN' : 'ไม่มี AN ค้างส่ง') + (dup ? ' · ' + fmt(dup) + ' AN มีใน FDH แล้ว (ตอบ 409)' : ''), tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
-      { a: 'IPD-04', l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
-      { a: 'CLM-01', l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
+      { a: 'IPD-01', g: 'RW', l: 'ผู้ป่วยใน UC/WEL', n: fmt(ipdN) + ' ราย', s: 'RW เฉลี่ย ' + (ipdN ? (ipdRw / ipdN).toFixed(3) : '-') + ' · RW รวม ' + ipdRw.toFixed(1) },
+      { a: 'IPD-06', g: 'FDH', l: 'ส่ง FDH สำเร็จภายใน 7 วัน', n: pct(ipdN ? sent7 / ipdN : 0), s: (unsent ? 'ยังไม่พบการส่งสำเร็จ ' + fmt(unsent) + ' AN' : 'ไม่มี AN ค้างส่ง') + (dup ? ' · ' + fmt(dup) + ' AN มีใน FDH แล้ว (ตอบ 409)' : ''), tgt: [ipdN && sent7 / ipdN >= 0.98, 'เป้า ≥ 98%'] },
+      { a: 'IPD-04', g: 'SDX', l: 'ผู้ป่วยในไม่มีการวินิจฉัยรอง', n: fmt(noSdx) + ' ราย', s: pct(ipdN ? noSdx / ipdN : 0) + ' ของผู้ป่วยใน UC/WEL', warn: true },
+      { a: 'CLM-01', g: 'OP_AE', l: 'UC นอกเขต (มีค่าใช้จ่าย)', n: fmt(sum((r) => r.out_of_area.visits)) + ' visit', s: 'ER ' + fmt(sum((r) => r.out_of_area.er)) + ' · ค่าใช้จ่าย ' + fmt(sum((r) => r.out_of_area.charge)) + ' บาท' },
       { a: 'HERB-01', l: 'สั่งยาสมุนไพรในโรคพื้นฐาน', n: pct(herbT ? herbH / herbT : 0), s: fmt(herbH) + ' จาก ' + fmt(herbT) + ' visit', tgt: [herbT && herbH / herbT >= 0.5, 'เป้า 50%'] },
-      { a: 'BILL-OFC', l: 'OFC / LGO เรียกเก็บ', n: (sum((r) => r.ofc_opd + r.ofc_ipd) / 1e6).toFixed(2) + ' / ' + (sum((r) => r.lgo_opd + r.lgo_ipd) / 1e6).toFixed(2) + ' ล้าน', s: 'OPD + IPD ตามราคาใน HOSxP' },
+      { a: 'BILL-OFC', g: 'OFC', l: 'OFC / LGO เรียกเก็บ', n: (sum((r) => r.ofc_opd + r.ofc_ipd) / 1e6).toFixed(2) + ' / ' + (sum((r) => r.lgo_opd + r.lgo_ipd) / 1e6).toFixed(2) + ' ล้าน', s: 'OPD + IPD ตามราคาใน HOSxP' },
       { a: 'TTM-01', l: 'แพทย์แผนไทย เบิกได้รายครั้ง', n: fmt(sum((r) => r.thaimed.billable)) + ' บาท', s: fmt(sum((r) => r.thaimed.sessions)) + ' ครั้งบริการ · ในงบเหมาจ่าย ' + fmt(sum((r) => r.thaimed.capitation)) },
-      { a: 'PC-01', l: 'Palliative (Z51.5) รวมรายเดือน', n: fmt(sum((r) => r.palliative_pts)) + ' คน-เดือน', s: 'ผู้ป่วยที่ควรลงทะเบียนและเคลมชุดสิทธิ' },
+      { a: 'PC-01', g: 'Palliative_care', l: 'Palliative (Z51.5) รวมรายเดือน', n: fmt(sum((r) => r.palliative_pts)) + ' คน-เดือน', s: 'ผู้ป่วยที่ควรลงทะเบียนและเคลมชุดสิทธิ' },
     ];
-    document.getElementById('kpis').innerHTML = k.map((x) => `<div class="kpi${x.warn ? ' warn' : ''}"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.tgt ? `<span class="tgt ${x.tgt[0] ? 'ok' : 'bad'}">${x.tgt[0] ? '✓ ' : '✗ '}${esc(x.tgt[1])}</span>` : ''}${srcLink(x.a)}</div>`).join('');
+    document.getElementById('kpis').innerHTML = k.map((x) => `<div class="kpi${x.warn ? ' warn' : ''}"><span class="l">${esc(x.l)}${qm(x.g)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${x.tgt ? `<span class="tgt ${x.tgt[0] ? 'ok' : 'bad'}">${x.tgt[0] ? '✓ ' : '✗ '}${esc(x.tgt[1])}</span>` : ''}${srcLink(x.a)}</div>`).join('');
 
     chart('c-ipd', { data: { labels: L, datasets: [
       { type: 'bar', label: 'จำนวนราย', data: R.map((r) => r.ipd_ucwel.n), backgroundColor: C.primary, borderRadius: 4, yAxisID: 'y' },
@@ -371,6 +489,7 @@ td small { display: block; color: var(--text-light); }
     const upd = monthly.updated ? new Date(monthly.updated).toLocaleString('th-TH') : '-';
     drawHerbCd();
     const part = ms.some((m) => monthly.months[m].partial) ? ' · * = เดือนปัจจุบัน ยังไม่ครบเดือน' : '';
+    sumArgs = { ms, R };
     drawRevenue();
     document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'}${part} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
   }
@@ -394,11 +513,11 @@ td small { display: block; color: var(--text-light); }
     const days = ok.reduce((s, b) => s + b.days, 0), dch = ok.reduce((s, b) => s + b.dch, 0);
     const beds = ok[ok.length - 1].beds, rate = cap ? pd / cap : 0;
     document.getElementById('beds-kpis').innerHTML = [
-      { a: 'IPD-09', l: 'อัตราครองเตียง · ' + W.find((w) => w[0] === bedWard)[1], n: pct(rate), s: (qtr ? 'ไตรมาส ' + qtr + ' ' : 'ปีงบ ') + fy + ' · ' + beds + ' เตียง' },
+      { a: 'IPD-09', g: 'BED', l: 'อัตราครองเตียง · ' + W.find((w) => w[0] === bedWard)[1], n: pct(rate), s: (qtr ? 'ไตรมาส ' + qtr + ' ' : 'ปีงบ ') + fy + ' · ' + beds + ' เตียง' },
       { l: 'วันนอนรวม', n: fmt(pd) + ' วัน', s: 'เฉลี่ยผู้ป่วยนอนวันละ ' + (days ? (pd / days).toFixed(1) : '-') + ' คน' },
       { l: 'จำหน่าย', n: fmt(dch) + ' ราย', s: 'วันนอนเฉลี่ยต่อราย ' + (dch ? (pd / dch).toFixed(1) : '-') + ' วัน (โดยประมาณ)' },
       { l: 'ผู้ป่วยสูงสุดในวันเดียว', n: fmt(Math.max(...ok.map((b) => b.census_max))) + ' คน', s: 'เทียบเตียงที่มี ' + beds + ' เตียง' },
-    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${srcLink(x.a)}</div>`).join('');
+    ].map((x) => `<div class="kpi"><span class="l">${esc(x.l)}${qm(x.g)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span>${srcLink(x.a)}</div>`).join('');
     chart('c-beds', { data: { labels: L, datasets: [
       { type: 'line', label: 'อัตราครองเตียง %', data: B.map((b) => b && b.rate), borderColor: C.primary, backgroundColor: C.primary, yAxisID: 'y', tension: 0 },
       { type: 'line', label: 'เป้า 80%', data: B.map(() => 80), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' },
@@ -598,7 +717,9 @@ td small { display: block; color: var(--text-light); }
     return { rows, src, ms, f0, dataEnd };
   }
 
-  function drawRevenue() {
+  let revInfo = null, sumArgs = null;
+  function drawRevenue() { revInfo = null; drawRevenueInner(); drawSummary(); }
+  function drawRevenueInner() {
     const box = document.getElementById('rev');
     if (!monthly || !province || !province.history || !fy) { box.hidden = true; return; }
     const R = revenueRows(fy);
@@ -607,6 +728,7 @@ td small { display: block; color: var(--text-light); }
     const { rows, src, ms, f0, dataEnd } = R;
     const conf = rows.reduce((s, r) => s + r.conf, 0), est = rows.reduce((s, r) => s + r.est, 0), tot = conf + est;
     const f1 = dayN(fyEnd(fy)), full = dataEnd >= f1;
+    revInfo = { conf, est, tot, full, proj: full ? tot : tot / (dataEnd - f0 + 1) * (f1 - f0 + 1), rows: rows.slice(), dataEnd, src };
     document.getElementById('rev-title').textContent = `รายได้เบิกคืนจากเคลม ปีงบ ${fy}: ยืนยันแล้ว + ประมาณการ`;
     document.getElementById('rev-note').textContent = 'ยืนยันแล้ว = ยอดสะสมของ รพ. ในไฟล์ผลงานเคลมจังหวัดฉบับล่าสุด · ประมาณการ = ช่วงหลังวันที่ในไฟล์ถึงข้อมูล HOSxP ล่าสุด '
       + 'คิดจากอัตราที่ได้จริงต่อหน่วยบริการ (ยอดในไฟล์ ÷ จำนวนใน HOSxP ช่วงเดียวกัน) · เมื่อมีไฟล์ใหม่ ตัวเลขจะเปลี่ยนเป็นยอดจริงเอง · '
@@ -614,11 +736,11 @@ td small { display: block; color: var(--text-light); }
     const asofTxt = src.map((s) => s.x + (s.cur ? ' ถึง ' + thDate(s.cur.asof) : ' ยังไม่มีไฟล์ปีงบนี้')).join(' · ');
     const k = [
       { l: 'ยืนยันแล้ว (จากไฟล์เคลม)', n: fmt(conf) + ' บาท', s: asofTxt },
-      { l: 'ประมาณการ (ยังไม่มีไฟล์)', n: fmt(est) + ' บาท', s: 'ถึงข้อมูล HOSxP ' + thDate(isoOf(dataEnd)) + (src.some((s) => !s.cur) ? ' · ช่องทางที่ยังไม่มีไฟล์ใช้อัตราปีงบ ' + (fy - 1) : '') },
+      { g: 'EST', l: 'ประมาณการ (ยังไม่มีไฟล์)', n: fmt(est) + ' บาท', s: 'ถึงข้อมูล HOSxP ' + thDate(isoOf(dataEnd)) + (src.some((s) => !s.cur) ? ' · ช่องทางที่ยังไม่มีไฟล์ใช้อัตราปีงบ ' + (fy - 1) : '') },
       { l: 'รวมคาดว่าได้ ปีงบ ' + fy, n: (tot / 1e6).toFixed(2) + ' ล้านบาท', s: 'ประมาณการคิดเป็น ' + pct(tot ? est / tot : 0) + ' ของยอดนี้' },
       full ? null : { l: 'ถ้าอัตรานี้คงที่ทั้งปีงบ', n: (tot / (dataEnd - f0 + 1) * (f1 - f0 + 1) / 1e6).toFixed(2) + ' ล้านบาท', s: 'จากข้อมูล ' + (dataEnd - f0 + 1) + ' วัน จาก ' + (f1 - f0 + 1) + ' วัน (ไม่ปรับตามฤดูกาล)' },
     ].filter(Boolean);
-    document.getElementById('rev-kpis').innerHTML = k.map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
+    document.getElementById('rev-kpis').innerHTML = k.map((x) => `<div class="kpi"><span class="l">${esc(x.l)}${qm(x.g)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
 
     // รายเดือน: ค่าของแต่ละรายการในเดือน = อัตรา × ตัวนับของเดือน แบ่งเป็นส่วนที่อยู่ก่อน/หลังวันที่ในไฟล์
     const cConf = ms.map(() => 0), cEst = ms.map(() => 0);
@@ -641,7 +763,7 @@ td small { display: block; color: var(--text-light); }
     const unitTxt = (r) => r.use ? `${fmt(r.baseN)} ${r.use[2]}<small>${esc(r.use[0])}</small>` : '<span style="color:var(--text-light)">ไม่มีตัวนับ</span><small>ใช้ยอดเฉลี่ยต่อวัน</small>';
     const rateTxt = (r) => r.use ? (r.rate >= 100 ? fmt(r.rate) : r.rate.toFixed(2)) + ' บาท/' + r.use[2].replace(/^บาท/, '') : fmt(r.rate) + ' บาท/วัน';
     document.getElementById('rev-table').innerHTML = `<thead><tr><th>รายการ</th><th>ช่องทาง</th><th class="num">ยืนยันแล้ว</th><th class="num">ใน HOSxP ช่วงเดียวกัน</th><th class="num">ได้จริงต่อหน่วย</th><th class="num">ประมาณการเพิ่ม</th><th class="num">รวม</th></tr></thead><tbody>`
-      + rows.map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}</small></td><td>${esc(r.x)}</td><td class="num">${r.conf ? fmt(r.conf) : '–'}</td><td class="num">${unitTxt(r)}</td><td class="num">${rateTxt(r)}</td><td class="num">${fmt(r.est)}</td><td class="num"><b>${fmt(r.conf + r.est)}</b></td></tr>`).join('')
+      + rows.map((r) => `<tr><td>${term(r.it, lbl(r.it))}<small>${esc(r.it)}</small></td><td>${term(r.x, r.x)}</td><td class="num">${r.conf ? fmt(r.conf) : '–'}</td><td class="num">${unitTxt(r)}</td><td class="num">${rateTxt(r)}</td><td class="num">${fmt(r.est)}</td><td class="num"><b>${fmt(r.conf + r.est)}</b></td></tr>`).join('')
       + `</tbody><tfoot><tr><td colspan="2"><b>รวม</b></td><td class="num"><b>${fmt(conf)}</b></td><td></td><td></td><td class="num"><b>${fmt(est)}</b></td><td class="num"><b>${fmt(tot)}</b></td></tr></tfoot>`;
 
     // ประวัติไฟล์: ยอดสะสมลบกันระหว่างฉบับในปีงบเดียวกัน = ได้รับเพิ่มในช่วงนั้น
@@ -656,6 +778,56 @@ td small { display: block; color: var(--text-light); }
     });
     document.getElementById('rev-hist').innerHTML = `<thead><tr><th>ช่องทาง</th><th>ข้อมูล ณ</th><th class="num">ยอดสะสม</th><th class="num">ได้รับเพิ่ม</th><th class="num">เฉลี่ยต่อ 30 วัน</th><th>ไฟล์</th></tr></thead><tbody>${hr.reverse().join('')}</tbody>`;
   }
+
+  // ---------- สรุปสั้นๆ: ประโยคภาษาคนจากตัวเลขในหน้า (ปีงบ/ไตรมาสที่เลือก) ----------
+  const mb = (n) => (n / 1e6).toFixed(2) + ' ล้านบาท';
+  function drawSummary() {
+    if (!monthly || !sumArgs) return;
+    const { ms, R } = sumArgs, L = [];
+    const per = (qtr ? 'ไตรมาส ' + qtr + '/' : 'ปีงบ ') + fy;
+    const add = (icon, html) => L.push([icon, html]);
+    // รายได้เบิกคืน (ทั้งปีงบ)
+    if (revInfo && revInfo.tot) {
+      const v = revInfo;
+      add('ℹ️', `<b>ปีงบ ${fy} คาดว่าได้เงินเบิกคืนจากเคลมแล้ว ~${mb(v.tot)}</b> — ยืนยันจากไฟล์ ${mb(v.conf)} + ${term('EST', 'ประมาณการ')} ${mb(v.est)} (ช่วงที่ยังไม่มีไฟล์)`
+        + (v.full ? '' : ` · ถ้าอัตรานี้คงที่ ทั้งปีงบน่าจะได้ ~${mb(v.proj)}`));
+      const top = v.rows.map((r) => ({ it: r.it, t: r.conf + r.est })).sort((a, b) => b.t - a.t).slice(0, 3);
+      add('ℹ️', 'เงินก้อนใหญ่ที่สุดมาจาก ' + top.map((r) => `${term(r.it, lbl(r.it))} ${pct(r.t / v.tot)}`).join(' · '));
+    }
+    // ผู้ป่วยใน: เดือนที่ยังไม่ครบ/ยังไม่ลงรหัส ไม่นับเรื่องคุณภาพข้อมูล
+    const done = R.filter((r) => !r.partial), sum = (A, f) => A.reduce((s, r) => s + (f(r) || 0), 0);
+    const n = sum(done, (r) => r.ipd_ucwel.n);
+    if (n) {
+      const s7 = sum(done, (r) => r.ipd_ucwel.sent7) / n, nos = sum(done, (r) => r.ipd_ucwel.no_sdx) / n, rw = sum(done, (r) => r.ipd_ucwel.rw) / n;
+      add(s7 >= 0.98 ? '✅' : '⚠️', `ส่งข้อมูลผู้ป่วยในเข้า ${term('FDH', 'FDH')} สำเร็จภายใน 7 วัน ${pct(s7)} ${s7 >= 0.98 ? '(ผ่านเป้า 98%)' : '— ต่ำกว่าเป้า 98% เงินอาจเข้าช้า'}`);
+      add(nos > 0.2 ? '⚠️' : '✅', `ผู้ป่วยในบัตรทอง ${fmt(n)} ราย ${term('RW', 'RW')} เฉลี่ย ${rw.toFixed(2)} · ไม่มี${term('SDX', 'การวินิจฉัยรอง')} ${pct(nos)}`
+        + (nos > 0.2 ? ' — ถ้าบันทึกโรคร่วมให้ครบ RW และเงินที่ได้จะสูงขึ้น' : ''));
+    }
+    const B = R.map((r) => r.beds).filter(Boolean), cap = sum(B, (b) => b.beds * b.days);
+    if (cap) { const br = sum(B, (b) => b.patient_days) / cap; add(br >= 0.8 ? '✅' : '⚠️', `${term('BED', 'อัตราครองเตียง')} ${pct(br)} ${br >= 0.8 ? '(ถึงเป้า 80%)' : '(เป้า 80%)'}`); }
+    const hT = sum(R, (r) => r.herb.target), hH = sum(R, (r) => r.herb.with_herb);
+    if (hT) add(hH / hT >= 0.5 ? '✅' : '⚠️', `สั่งยาสมุนไพรในโรคพื้นฐาน (บัตรทอง) ${pct(hH / hT)} ของ visit ${hH / hT >= 0.5 ? '(ถึงเป้า 50%)' : '— เป้า 50%'}`);
+    // เทียบ รพ. ใกล้เคียง (ไฟล์จังหวัดล่าสุด)
+    if (province && province.sources) {
+      // ผู้ป่วยใน/ข้าราชการ/อปท. ขึ้นกับจำนวนผู้ป่วยมากกว่าการเคลมตกหล่น — ไม่ยกมาเป็น "ได้น้อยกว่า"
+      const g = gapRows('all').filter((r) => !r.cap && !['IP_DRG', 'OFC', 'LGO'].includes(r.it)).slice(0, 3);
+      if (g.length) add('⚠️', `บริการที่จ่ายแยกซึ่งได้น้อยกว่า รพ.ขนาดใกล้เคียง (${term('MEDIAN', 'มัธยฐาน')}) มากที่สุด: ` + g.map((r) => `${term(r.it, lbl(r.it))} ห่าง ~${fmt(r.gap)} บาท`).join(' · ') + ' (ยังไม่ปรับตามจำนวนประชากร)');
+    }
+    const opp = OPP.reduce((s, r) => s + (r[2] || 0), 0);
+    add('ℹ️', `จากการวิเคราะห์ ประมาณว่าเพิ่มรายได้ได้อีก ~${mb(opp)}/ปี — รายละเอียดในตาราง "แนวทางเพิ่มรายได้" ด้านล่าง`);
+    const asof = ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) + (R.some((r) => r.partial) ? ' (เดือนล่าสุดยังไม่ครบ)' : '') : '-';
+    document.getElementById('sum-title').textContent = `สรุปสั้นๆ ${per} · ข้อมูล ${asof}`;
+    document.getElementById('sum-list').innerHTML = L.map(([i, h]) => `<li><span>${i}</span><span>${h}</span></li>`).join('');
+  }
+  document.getElementById('sum-copy').addEventListener('click', (e) => {
+    const lis = [...document.querySelectorAll('#sum-list li')].map((li) => li.innerText.replace(/\s*\n\s*/g, ' ').trim());
+    const txt = document.getElementById('sum-title').textContent.replace('สรุปสั้นๆ', 'สรุปงานประกัน รพ.ถ้ำพรรณรา') + '\n' + lis.join('\n');
+    const b = e.currentTarget, ok = () => { b.textContent = '✓ คัดลอกแล้ว'; setTimeout(() => { b.textContent = '📋 คัดลอกข้อความสรุป'; }, 2000); };
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(ok, () => {
+      const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); ok(); } catch (err) { /* เบราว์เซอร์ไม่อนุญาต */ } ta.remove();
+    });
+  });
 
   // ---------- ส่งไฟล์ผลงานเคลมจากหน้าเว็บ: อ่าน Excel ในเบราว์เซอร์ แล้วเขียน insurance_province (sources + history) ตรง ----------
   // แปลงเหมือน read_claim_file() ใน Hospital Tasks/insurance-sync — ไม่ต้องเปิดเครื่องที่ติดตั้งสคริปต์
@@ -724,13 +896,10 @@ td small { display: block; color: var(--text-light); }
       scales: { x: { ticks: { callback: (v) => fmt(v) } }, y: { ticks: { autoSkip: false, font: { size: 11 } } } } }) });
   }
 
-  function drawGap() {
-    if (!province) return;
-    const srcs = Object.keys(province.sources);
-    document.getElementById('gap-chips').innerHTML = ['all', ...srcs].map((x) => `<button class="chip${x === gapSrc ? ' active' : ''}" data-s="${esc(x)}">${x === 'all' ? 'ทุกช่องทาง' : esc(x)}</button>`).join('');
-    const peers = province.peers || [];
-    const rows = [];
-    srcs.filter((x) => gapSrc === 'all' || x === gapSrc).forEach((x) => {
+  // รายการที่ได้ต่ำกว่ามัธยฐานกลุ่มเทียบเคียง (รายการที่ทีมยืนยันว่าเพิ่มไม่ได้อยู่ท้าย)
+  function gapRows(which) {
+    const peers = province.peers || [], rows = [];
+    Object.keys(province.sources).filter((x) => which === 'all' || x === which).forEach((x) => {
       const s = province.sources[x];
       s.items.forEach((it, i) => {
         const me = (s.hospitals[province.me] || [])[i] || 0;
@@ -738,9 +907,16 @@ td small { display: block; color: var(--text-light); }
         if (med - me > 0) rows.push({ it, x, me, med, gap: med - me, cap: CAPPED[it] });
       });
     });
-    rows.sort((a, b) => !a.cap - !b.cap || b.gap - a.gap);
+    return rows.sort((a, b) => !a.cap - !b.cap || b.gap - a.gap);
+  }
+
+  function drawGap() {
+    if (!province) return;
+    const srcs = Object.keys(province.sources);
+    document.getElementById('gap-chips').innerHTML = ['all', ...srcs].map((x) => `<button class="chip${x === gapSrc ? ' active' : ''}" data-s="${esc(x)}">${x === 'all' ? 'ทุกช่องทาง' : esc(x)}</button>`).join('');
+    const rows = gapRows(gapSrc);
     const max = Math.max(1, ...rows.filter((r) => !r.cap).map((r) => r.gap));
-    document.querySelector('#gap-table tbody').innerHTML = rows.slice(0, 25).map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}${r.cap ? ' · <span class="done-tag">' + esc(r.cap) + '</span>' : ''}</small></td><td>${esc(r.x)}</td><td class="num">${fmt(r.me)}</td><td class="num">${fmt(r.med)}</td><td class="num">${r.cap ? '<span style="color:var(--text-light)">' + fmt(r.gap) + '</span>' : fmt(r.gap) + `<div class="bar" style="width:${(r.gap / max * 100).toFixed(1)}%"></div>`}</td></tr>`).join('');
+    document.querySelector('#gap-table tbody').innerHTML = rows.slice(0, 25).map((r) => `<tr><td>${term(r.it, lbl(r.it))}<small>${esc(r.it)}${r.cap ? ' · <span class="done-tag">' + esc(r.cap) + '</span>' : ''}</small></td><td>${term(r.x, r.x)}</td><td class="num">${fmt(r.me)}</td><td class="num">${fmt(r.med)}</td><td class="num">${r.cap ? '<span style="color:var(--text-light)">' + fmt(r.gap) + '</span>' : fmt(r.gap) + `<div class="bar" style="width:${(r.gap / max * 100).toFixed(1)}%"></div>`}</td></tr>`).join('');
   }
   document.getElementById('gap-chips').addEventListener('click', (e) => { const b = e.target.closest('button[data-s]'); if (b) { gapSrc = b.dataset.s; drawGap(); } });
 
@@ -750,7 +926,7 @@ td small { display: block; color: var(--text-light); }
     document.getElementById('src-cards').innerHTML = order.map((x) => {
       const t = province.sources[x].totals;
       const me = t[province.me] || 0, med = median(peers.filter((p) => p in t).map((p) => t[p]));
-      return `<div class="src"><span class="nm">${esc(x)}</span><span class="rk" style="background:var(--primary-light);color:var(--primary-dark)">${med ? Math.round(me / med * 100) + '% ของมัธยฐาน' : '-'}</span><span class="amt">${fmt(me)} บาท</span>
+      return `<div class="src"><span class="nm">${term(x, x)}</span><span class="rk" style="background:var(--primary-light);color:var(--primary-dark)">${med ? Math.round(me / med * 100) + '% ของมัธยฐาน' : '-'}</span><span class="amt">${fmt(me)} บาท</span>
         <div class="meter"><i style="width:${Math.min(100, med ? me / med * 100 : 0).toFixed(1)}%"></i></div>
         <span class="pm">มัธยฐานกลุ่มเทียบเคียง ${fmt(med)} บาท · ไฟล์: ${esc(province.sources[x].file)}</span></div>`;
     }).join('');
