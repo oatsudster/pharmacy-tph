@@ -296,7 +296,6 @@ tr:hover td{background:#f8faf9;}
 .lo-section-wrap.highlighted .form-title{color:#065f46;}
 
 .session-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px;}
-.session-grid-3col{grid-template-columns:1fr 1fr 2fr;}
 
 /* ══ RESPONSIVE: TABLET ══ */
 @media (max-width: 900px) {
@@ -307,7 +306,7 @@ tr:hover td{background:#f8faf9;}
 /* ══ RESPONSIVE: MOBILE/TABLET (แนวตั้ง) ══ */
 @media (max-width: 760px) {
   .entry-grid{grid-template-columns:1fr;gap:20px 0;}
-  .session-grid,.session-grid-3col{grid-template-columns:1fr 1fr;}
+  .session-grid{grid-template-columns:1fr 1fr;}
 
   .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 14px;row-gap:8px;}
   .topbar-title{flex:1 1 auto;}
@@ -334,7 +333,7 @@ tr:hover td{background:#f8faf9;}
 
 @media (max-width: 480px) {
   .kpi-grid{grid-template-columns:1fr;}
-  .session-grid,.session-grid-3col{grid-template-columns:1fr;}
+  .session-grid{grid-template-columns:1fr;}
 
   .topbar-title{font-size:15px;}
   .clinic-tab{font-size:12px;padding:9px 4px;}
@@ -763,32 +762,6 @@ const DashUX = {
         </div>
       </div>
       <button class="btn-session" onclick="submitSession()">📋 บันทึก Session</button>
-    </div>
-  </div>
-
-  <!-- HT บ่าย: standalone quick entry (ไม่เกี่ยวกับการลงคลินิก เพราะเภสัชไม่ได้ดูช่วงบ่ายเป็นปกติอยู่แล้ว) -->
-  <div class="entry-full" style="margin-top:10px">
-    <div class="session-panel open" style="border-color:#ddd6fe;background:#f5f3ff">
-      <div class="table-title" style="margin-bottom:4px;color:#6d28d9">🫀 จำนวนคนไข้ HT บ่าย (เภสัชไม่ได้ดู)</div>
-      <div style="font-size:12px;color:var(--text-mid);margin-bottom:8px">🗄 ระบบเติมให้อัตโนมัติทุกเช้าจาก HOSxP (นัด HT ที่คีย์จ่ายยาหลัง 12:00 และไม่มีบันทึกคลินิกวันนั้น) — กรอกเองเฉพาะเมื่อต้องการแก้ ค่าที่กรอกเองจะใช้แทน</div>
-      <div class="session-grid session-grid-3col">
-        <div class="form-group">
-          <label>วันที่</label>
-          <div class="input-row">
-            <input type="text" id="pm-date" placeholder="วว/ดด/ปป" maxlength="8" oninput="autoDateTH(this)" style="flex:1">
-            <button class="btn-stamp" onclick="document.getElementById('pm-date').value=todayTH()">📅</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>จำนวนคนไข้ (ราย)</label>
-          <input type="number" id="pm-count" min="0" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label>หมายเหตุ</label>
-          <input type="text" id="pm-notes" placeholder="">
-        </div>
-      </div>
-      <button class="btn-session" style="background:#6d28d9" onclick="submitHtPm()">📋 บันทึกจำนวนคนไข้</button>
     </div>
   </div>
 
@@ -2022,21 +1995,6 @@ function submitSession() {
   showToast('✅ บันทึก Session แล้ว');
   document.getElementById('s-notes').value = '';
   document.getElementById('s-reason').value = '';
-}
-
-// ── SUBMIT HT บ่าย (standalone patient-count log) ─────────
-function submitHtPm() {
-  const date = thToISO(document.getElementById('pm-date').value);
-  const count = parseInt(document.getElementById('pm-count').value) || 0;
-  const notes = document.getElementById('pm-notes').value.trim();
-  if (!date) { showToast('⚠️ กรุณาระบุวันที่'); return; }
-  const rec = {id:uid(), date, clinic:'HT', attended:null, pharmacist:'', reason:'', htPmCount:count, notes, pmOnly:true, created:Date.now()};
-  sessionRecords.push(rec);
-  saveLocal(); fbSaveMeta();
-  renderAll();
-  showToast('✅ บันทึกจำนวนคนไข้ HT บ่ายแล้ว');
-  document.getElementById('pm-count').value = '';
-  document.getElementById('pm-notes').value = '';
 }
 
 // ── DELETE ───────────────────────────────────────────────
@@ -4523,7 +4481,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   document.getElementById('f-date').value = todayTH();
   document.getElementById('s-date').value = todayTH();
-  document.getElementById('pm-date').value = todayTH();
   // วันพุธ (3) → HT อัตโนมัติ, วันพฤหัสบดี (4) → DM อัตโนมัติ
   const dow = new Date().getDay();
   if (dow === 3) selectClinic('HT');
