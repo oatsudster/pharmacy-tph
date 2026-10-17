@@ -139,6 +139,15 @@ td small { display: block; color: var(--text-light); }
     <div class="src-cards" id="src-cards"></div>
   </section>
 
+  <section class="card" id="rev" hidden>
+    <h2 id="rev-title">รายได้เบิกคืนจากเคลม: ยืนยันแล้ว + ประมาณการ</h2>
+    <p class="note" id="rev-note"></p>
+    <div class="kpis" id="rev-kpis" style="margin-bottom:12px"></div>
+    <div class="chartbox"><canvas id="c-rev"></canvas></div>
+    <div class="tbl" style="margin-top:12px"><table id="rev-table" style="min-width:760px"></table></div>
+    <details class="hc-detail"><summary>ไฟล์ผลงานเคลมที่บันทึกไว้ (ยอดสะสมของ รพ. แต่ละฉบับ)</summary><div class="tbl"><table id="rev-hist" style="min-width:600px"></table></div></details>
+  </section>
+
   <section>
     <div class="kpis" id="kpis"></div>
   </section>
@@ -345,6 +354,7 @@ td small { display: block; color: var(--text-light); }
     const upd = monthly.updated ? new Date(monthly.updated).toLocaleString('th-TH') : '-';
     drawHerbCd();
     const part = ms.some((m) => monthly.months[m].partial) ? ' · * = เดือนปัจจุบัน ยังไม่ครบเดือน' : '';
+    drawRevenue();
     document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'}${part} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
   }
 
@@ -486,6 +496,150 @@ td small { display: block; color: var(--text-light); }
   document.getElementById('hc-group').addEventListener('change', (e) => { hc.group = e.target.value; drawHerbCd(); });
   document.getElementById('hc-table').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-g]'); if (tr) { hc.group = tr.dataset.g; drawHerbCd(); } });
 
+  // ---------- รายได้เบิกคืน: ยอดยืนยันจากไฟล์เคลม (province.history) + ประมาณการจาก HOSxP ช่วงที่ไฟล์ยังไม่ครอบคลุม ----------
+  // อัตราที่ได้จริงต่อหน่วย = ยอดในไฟล์ ÷ ตัวนับใน HOSxP ตั้งแต่ต้นปีงบถึงวันที่ข้อมูลในไฟล์ แล้วคูณตัวนับช่วงหลังจากนั้น
+  // รายการที่ไม่มีตัวนับ ใช้ยอดเฉลี่ยต่อวัน · ปีงบที่ยังไม่มีไฟล์ ใช้อัตราจากไฟล์ล่าสุดของปีงบก่อน
+  const cd = (r) => r.claim_drv || {};
+  // เดือนที่ยังไม่ได้ลงรหัส (RW = 0 แต่มีผู้ป่วย) ใช้จำนวนราย × RW เฉลี่ยของเดือนที่ลงรหัสแล้ว
+  const avgRw = () => { let n = 0, w = 0; Object.values(monthly.months).forEach((r) => { if (r.ipd_ucwel.rw > 0) { n += r.ipd_ucwel.n; w += r.ipd_ucwel.rw; } }); return n ? w / n : 0; };
+  const DRV = {
+    'e-Claim': {
+      IP_DRG: ['RW ผู้ป่วยใน UC/WEL (เดือนที่ยังไม่ลงรหัส ใช้ราย × RW เฉลี่ย)', (r) => r.ipd_ucwel.rw || r.ipd_ucwel.n * avgRw(), 'RW'],
+      OFC: ['ยอดเรียกเก็บ OFC', (r) => r.ofc_opd + r.ofc_ipd, 'บาทเรียกเก็บ'],
+      LGO: ['ยอดเรียกเก็บ LGO', (r) => r.lgo_opd + r.lgo_ipd, 'บาทเรียกเก็บ'],
+      HERB32: ['มูลค่ายาสมุนไพร UC/WEL', (r) => cd(r).herb_value, 'บาทราคายา'],
+      CAR_REFER: ['refer พร้อมรถ UC/WEL', (r) => r.refer_amb_ucwel, 'ครั้ง'],
+      OP_AE: ['UC นอกเขต ที่ ER', (r) => r.out_of_area.er, 'visit'],
+      WALKIN: ['UC นอกเขต ไม่ใช่ ER', (r) => r.out_of_area.visits - r.out_of_area.er, 'visit'],
+      'ยาClopidogrel': ['Clopidogrel UC/WEL ผู้ป่วยนอก', (r) => cd(r).clopidogrel_qty, 'เม็ด'],
+      ANC: ['บริการฝากครรภ์', (r) => cd(r).anc, 'ครั้ง'],
+      Fit_Test: ['FIT test UC/WEL', (r) => cd(r).fit, 'ครั้ง'],
+      Palliative_care: ['ผู้ป่วย Z51.5', (r) => r.palliative_pts, 'คน-เดือน'],
+    },
+    KTB: {
+      FLU_VC: ['วัคซีนไข้หวัดใหญ่', (r) => r.vaccine.flu, 'dose'],
+      HEP_B: ['ตรวจ HBsAg', (r) => cd(r).hbsag, 'ครั้ง'],
+      HEP_C: ['ตรวจ Anti-HCV', (r) => cd(r).hcv, 'ครั้ง'],
+    },
+    'MOPH Claim': {
+      HbA1C: ['HbA1c UC/WEL', (r) => r.hba1c_ucwel, 'ครั้ง'],
+      dT: ['วัคซีน dT/TT', (r) => r.vaccine.dt, 'dose'],
+    },
+  };
+  const REV_SRC = ['e-Claim', 'KTB', 'MOPH Claim'];
+  const dayN = (s) => Date.parse(s + 'T00:00:00Z') / 864e5;
+  const isoOf = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
+  const thDate = (s) => { const [y, m, d] = s.split('-').map(Number); return d + ' ' + TH_M[m] + ' ' + String(y + 543).slice(2); };
+  const fyStart = (f) => (f - 544) + '-10-01', fyEnd = (f) => (f - 543) + '-09-30';
+  const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0) + 1);
+  // ช่วงวันที่ข้อมูลของเดือน m ครอบคลุม (เดือนปัจจุบันถึงวันที่ประมวลผล)
+  function mSpan(m) {
+    const [y, mo] = m.split('-').map(Number), r = monthly.months[m];
+    const end = r.partial && r.computed ? r.computed.slice(0, 10) : isoOf(dayN(new Date(Date.UTC(y, mo, 1)).toISOString().slice(0, 10)) - 1);
+    return [dayN(m + '-01'), dayN(end)];
+  }
+  // ผลรวมตัวนับในช่วงวัน [w0, w1] (เดือนที่คร่อมช่วง คิดตามสัดส่วนวัน) — null ถ้ามีเดือนที่ยังไม่มีข้อมูลตัวนับนี้
+  function drvSum(fn, w0, w1) {
+    let s = 0;
+    for (const m of Object.keys(monthly.months)) {
+      const [a, b] = mSpan(m), ov = overlap(a, b, w0, w1);
+      if (!ov) continue;
+      const v = fn(monthly.months[m]);
+      if (v == null || !isFinite(v)) return null;
+      s += v * ov / (b - a + 1);
+    }
+    return s;
+  }
+
+  function revenueRows(F) {
+    const hist = province.history || {};
+    const ms = Object.keys(monthly.months).filter((m) => fyOf(m) === F).sort();
+    if (!ms.length) return null;
+    const f0 = dayN(fyStart(F)), dataEnd = mSpan(ms[ms.length - 1])[1];
+    const rows = [], src = [];
+    REV_SRC.forEach((x) => {
+      const snaps = Object.entries(hist[x] || {}).map(([d, s]) => Object.assign({ asof: d }, s)).sort((a, b) => a.asof < b.asof ? -1 : 1);
+      const cur = snaps.filter((s) => s.fy === F).pop();
+      const base = cur || snaps.filter((s) => s.fy < F).pop(); // ยังไม่มีไฟล์ปีงบนี้ → ใช้อัตราจากปีงบก่อน
+      if (!base) return;
+      const b0 = dayN(fyStart(base.fy)), b1 = dayN(base.asof);
+      const e0 = cur ? b1 + 1 : f0, e1 = dataEnd;
+      src.push({ x, cur, base });
+      Object.entries(base.items).forEach(([it, amt]) => {
+        const d = (DRV[x] || {})[it];
+        const conf = cur ? amt : 0;
+        const fnDay = () => 1;
+        let use = d && drvSum(d[1], b0, b1) ? d : null;
+        if (use && e1 >= e0 && drvSum(use[1], e0, e1) == null) use = null;
+        const fn = use ? use[1] : fnDay;
+        const baseN = use ? drvSum(fn, b0, b1) : b1 - b0 + 1;
+        const rate = amt / baseN;
+        const est = e1 >= e0 ? rate * (use ? drvSum(fn, e0, e1) : e1 - e0 + 1) : 0;
+        rows.push({ x, it, conf, est, rate, baseN, fn, use, cut: cur ? b1 : f0 - 1 });
+      });
+    });
+    return { rows, src, ms, f0, dataEnd };
+  }
+
+  function drawRevenue() {
+    const box = document.getElementById('rev');
+    if (!monthly || !province || !province.history || !fy) { box.hidden = true; return; }
+    const R = revenueRows(fy);
+    if (!R || !R.rows.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const { rows, src, ms, f0, dataEnd } = R;
+    const conf = rows.reduce((s, r) => s + r.conf, 0), est = rows.reduce((s, r) => s + r.est, 0), tot = conf + est;
+    const f1 = dayN(fyEnd(fy)), full = dataEnd >= f1;
+    document.getElementById('rev-title').textContent = `รายได้เบิกคืนจากเคลม ปีงบ ${fy}: ยืนยันแล้ว + ประมาณการ`;
+    document.getElementById('rev-note').textContent = 'ยืนยันแล้ว = ยอดสะสมของ รพ. ในไฟล์ผลงานเคลมจังหวัดฉบับล่าสุด · ประมาณการ = ช่วงหลังวันที่ในไฟล์ถึงข้อมูล HOSxP ล่าสุด '
+      + 'คิดจากอัตราที่ได้จริงต่อหน่วยบริการ (ยอดในไฟล์ ÷ จำนวนใน HOSxP ช่วงเดียวกัน) · เมื่อมีไฟล์ใหม่ ตัวเลขจะเปลี่ยนเป็นยอดจริงเอง · '
+      + 'ครอบคลุมเฉพาะ e-Claim (รวม IP_DRG, OFC, LGO), KTB, MOPH Claim — ไม่รวมเงินเหมาจ่ายรายหัว ประกันสังคม และชำระเงินเอง · แสดงทั้งปีงบเสมอ (ไม่ใช้ตัวกรองไตรมาส)';
+    const asofTxt = src.map((s) => s.x + (s.cur ? ' ถึง ' + thDate(s.cur.asof) : ' ยังไม่มีไฟล์ปีงบนี้')).join(' · ');
+    const k = [
+      { l: 'ยืนยันแล้ว (จากไฟล์เคลม)', n: fmt(conf) + ' บาท', s: asofTxt },
+      { l: 'ประมาณการ (ยังไม่มีไฟล์)', n: fmt(est) + ' บาท', s: 'ถึงข้อมูล HOSxP ' + thDate(isoOf(dataEnd)) + (src.some((s) => !s.cur) ? ' · ช่องทางที่ยังไม่มีไฟล์ใช้อัตราปีงบ ' + (fy - 1) : '') },
+      { l: 'รวมคาดว่าได้ ปีงบ ' + fy, n: (tot / 1e6).toFixed(2) + ' ล้านบาท', s: 'ประมาณการคิดเป็น ' + pct(tot ? est / tot : 0) + ' ของยอดนี้' },
+      full ? null : { l: 'ถ้าอัตรานี้คงที่ทั้งปีงบ', n: (tot / (dataEnd - f0 + 1) * (f1 - f0 + 1) / 1e6).toFixed(2) + ' ล้านบาท', s: 'จากข้อมูล ' + (dataEnd - f0 + 1) + ' วัน จาก ' + (f1 - f0 + 1) + ' วัน (ไม่ปรับตามฤดูกาล)' },
+    ].filter(Boolean);
+    document.getElementById('rev-kpis').innerHTML = k.map((x) => `<div class="kpi"><span class="l">${esc(x.l)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
+
+    // รายเดือน: ค่าของแต่ละรายการในเดือน = อัตรา × ตัวนับของเดือน แบ่งเป็นส่วนที่อยู่ก่อน/หลังวันที่ในไฟล์
+    const cConf = ms.map(() => 0), cEst = ms.map(() => 0);
+    ms.forEach((m, i) => {
+      const [a, b] = mSpan(m), n = b - a + 1;
+      rows.forEach((r) => {
+        const v = r.rate * (r.use ? r.fn(monthly.months[m]) || 0 : n);
+        cConf[i] += v * overlap(a, b, f0, r.cut) / n;
+        cEst[i] += v * overlap(a, b, r.cut + 1, dataEnd) / n;
+      });
+    });
+    chart('c-rev', { type: 'bar', data: { labels: ms.map((m) => mLabel(m) + (monthly.months[m].partial ? '*' : '')), datasets: [
+      { label: 'ยืนยันแล้ว (กระจายตามบริการในเดือน)', data: cConf.map(Math.round), backgroundColor: C.primary, borderRadius: 4, stack: 's' },
+      { label: 'ประมาณการ', data: cEst.map(Math.round), backgroundColor: C.gold, borderRadius: 4, stack: 's' },
+    ] }, options: baseOpts({ plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: {
+      label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)} บาท`, footer: (it) => 'รวม ' + fmt(it.reduce((s, c) => s + c.raw, 0)) + ' บาท' } } },
+      scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: (v) => fmt(v) } } } }) });
+
+    rows.sort((a, b) => (b.conf + b.est) - (a.conf + a.est));
+    const unitTxt = (r) => r.use ? `${fmt(r.baseN)} ${r.use[2]}<small>${esc(r.use[0])}</small>` : '<span style="color:var(--text-light)">ไม่มีตัวนับ</span><small>ใช้ยอดเฉลี่ยต่อวัน</small>';
+    const rateTxt = (r) => r.use ? (r.rate >= 100 ? fmt(r.rate) : r.rate.toFixed(2)) + ' บาท/' + r.use[2].replace(/^บาท/, '') : fmt(r.rate) + ' บาท/วัน';
+    document.getElementById('rev-table').innerHTML = `<thead><tr><th>รายการ</th><th>ช่องทาง</th><th class="num">ยืนยันแล้ว</th><th class="num">ใน HOSxP ช่วงเดียวกัน</th><th class="num">ได้จริงต่อหน่วย</th><th class="num">ประมาณการเพิ่ม</th><th class="num">รวม</th></tr></thead><tbody>`
+      + rows.map((r) => `<tr><td>${esc(lbl(r.it))}<small>${esc(r.it)}</small></td><td>${esc(r.x)}</td><td class="num">${r.conf ? fmt(r.conf) : '–'}</td><td class="num">${unitTxt(r)}</td><td class="num">${rateTxt(r)}</td><td class="num">${fmt(r.est)}</td><td class="num"><b>${fmt(r.conf + r.est)}</b></td></tr>`).join('')
+      + `</tbody><tfoot><tr><td colspan="2"><b>รวม</b></td><td class="num"><b>${fmt(conf)}</b></td><td></td><td></td><td class="num"><b>${fmt(est)}</b></td><td class="num"><b>${fmt(tot)}</b></td></tr></tfoot>`;
+
+    // ประวัติไฟล์: ยอดสะสมลบกันระหว่างฉบับในปีงบเดียวกัน = ได้รับเพิ่มในช่วงนั้น
+    const H = province.history || {}, hr = [];
+    REV_SRC.forEach((x) => {
+      const snaps = Object.entries(H[x] || {}).sort((a, b) => a[0] < b[0] ? -1 : 1);
+      snaps.forEach(([d, s], i) => {
+        const p = i && snaps[i - 1][1].fy === s.fy ? snaps[i - 1] : null;
+        const from = p ? dayN(p[0]) : dayN(fyStart(s.fy)) - 1, days = dayN(d) - from, inc = s.total - (p ? p[1].total : 0);
+        hr.push(`<tr><td>${esc(x)}</td><td>${thDate(d)}<small>ปีงบ ${s.fy}</small></td><td class="num">${fmt(s.total)}</td><td class="num">${fmt(inc)}<small>${p ? 'จากฉบับ ' + thDate(p[0]) : 'ตั้งแต่ต้นปีงบ'}</small></td><td class="num">${days > 0 ? fmt(inc / days * 30) : '–'}</td><td><small style="display:inline">${esc(s.file)}</small></td></tr>`);
+      });
+    });
+    document.getElementById('rev-hist').innerHTML = `<thead><tr><th>ช่องทาง</th><th>ข้อมูล ณ</th><th class="num">ยอดสะสม</th><th class="num">ได้รับเพิ่ม</th><th class="num">เฉลี่ยต่อ 30 วัน</th><th>ไฟล์</th></tr></thead><tbody>${hr.reverse().join('')}</tbody>`;
+  }
+
   // ---------- province ----------
   const pSrc = document.getElementById('p-src'), pItem = document.getElementById('p-item');
   pSrc.addEventListener('change', () => { fillItems(); drawProvince(); });
@@ -603,7 +757,7 @@ td small { display: block; color: var(--text-light); }
       if (!province) return;
       const keep = pSrc.value;
       pSrc.innerHTML = Object.keys(province.sources).sort().map((x) => `<option${x === (keep || 'e-Claim') ? ' selected' : ''}>${esc(x)}</option>`).join('');
-      fillItems(); drawProvince(); drawGap(); drawSrcCards();
+      fillItems(); drawProvince(); drawGap(); drawSrcCards(); drawRevenue();
     });
   } catch (e) {
     status.textContent = 'เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message;
