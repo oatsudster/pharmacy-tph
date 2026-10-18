@@ -126,6 +126,22 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .ipdstk .hn { font-size: 16pt; font-weight: 700; text-align: center; line-height: 1.05; }
 .ipdstk .hn b { font-size: 24pt; margin-left: 2mm; }
 .ipdstk .ft { margin-top: auto; font-size: 10.5pt; display: flex; justify-content: space-between; line-height: 1.1; }
+
+/* ── หัวสติกเกอร์ Medication Reconciliation 9 × 6 ซม. — ครึ่งบน = ใบ MR ตัวจริง, ครึ่งล่าง = ใบสำเนา (ข้อมูลเหมือนกัน) ── */
+.mrstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
+  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; }
+.mrstk:last-child { page-break-after: auto; break-after: auto; }
+.mrstk .half { height: 30mm; box-sizing: border-box; padding: 1.2mm 2.5mm 1mm 3mm; overflow: hidden; display: flex; flex-direction: column; line-height: 1.12; }
+.mrstk .half + .half { border-top: .25mm dashed #000; }
+.mrstk .t { display: flex; justify-content: space-between; gap: 2mm; font-size: 10.5pt; border-bottom: .25mm solid #000; padding-bottom: .2mm; white-space: nowrap; }
+.mrstk .t b { font-size: 11pt; }
+.mrstk .r1 { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; margin-top: .3mm; }
+.mrstk .nm { font-weight: 700; white-space: nowrap; overflow: hidden; min-width: 0; }
+.mrstk .bed { font-weight: 700; font-size: 13pt; white-space: nowrap; }
+.mrstk .ln { font-size: 11.5pt; white-space: nowrap; overflow: hidden; }
+.mrstk .ln b { font-weight: 700; }
+.mrstk .tx { font-size: 11.5pt; overflow-wrap: anywhere; }
+.mrstk .tx .lb { font-weight: 700; }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -169,6 +185,11 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <button class="btn" onclick="printIpd(ipdShown().map(x => x.an))">🖨 พิมพ์ทุกคนในรายการ</button>
       <label class="hint" style="margin:0">ดวงละคน × <input class="cp" type="number" id="ipd-copies" min="1" max="9" value="1"></label>
       <span class="hint" style="margin:0">กด 🖨 ท้ายชื่อ = พิมพ์คนนั้นทันที · เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
+    </div>
+    <div class="actions" style="margin:0 0 6px">
+      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" id="mr-date"></label>
+      <button class="btn btn-gold" id="mr-print-sel" onclick="printMr(ipdSelected())" disabled>📋 พิมพ์ MR ที่เลือก</button>
+      <span class="hint" style="margin:0">1 ดวง = 2 ชุด: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา</span>
     </div>
     <div id="ipd-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
@@ -395,6 +416,7 @@ const bedKey = b => String(b || '').replace(/\d+/g, d => d.padStart(4, '0'));
 function ipdShown() { return IPD.filter(x => !IPD_WARD || x.ward === IPD_WARD); }
 function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x => x.an); }
 async function loadIpd() {
+  const md = document.getElementById('mr-date'); if (!md.value) md.value = todayIso();
   const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
   if (!r) { document.getElementById('ipd-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
   IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
@@ -412,10 +434,13 @@ function renderIpd() {
       <div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
-      <button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
+      <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
+        <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button></div>
     </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
   const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
   b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
+  const mb = document.getElementById('mr-print-sel');
+  mb.disabled = !n; mb.textContent = `📋 พิมพ์ MR ที่เลือก${n ? ` (${n})` : ''}`;
 }
 function printIpd(ans) {
   const copies = Math.max(1, Math.min(9, +document.getElementById('ipd-copies').value || 1));
@@ -432,6 +457,48 @@ function printIpd(ans) {
   pa.querySelectorAll('.fit').forEach(el => {
     let fs = parseFloat(el.style.fontSize);
     while (el.scrollWidth > el.clientWidth + 1 && fs > 11) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
+  setTimeout(() => window.print(), 50);
+}
+// ── หัวสติกเกอร์ MR: ข้อมูลจาก HOSxP ตอนแรกรับ (อายุ/น้ำหนัก/โรคประจำตัว = an_stat, ipt.bw, opdscreen.pmh ของ visit แรกรับ)
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const thDmy = iso => { const [y, m, d] = String(iso || '').split('-').map(Number); return y ? `${d}/${m}/${String(y + 543).slice(-2)}` : '-'; };
+function mrAge(x) {
+  const y = +x.ageY, m = +x.ageM;
+  if (x.ageY == null || x.ageY === '') return '-';
+  return y < 15 && m ? `${y} ปี ${m} ด.` : `${y} ปี`;
+}
+function mrHalf(x, mrDate, tag) {
+  const dz = x.pmh || (x.clinics || []).join(', ') || 'ไม่มีข้อมูลในระบบ';
+  const al = (x.allergy || []).length ? x.allergy.join(', ') : 'ไม่มีประวัติในระบบ';
+  return `<div class="half">
+      <div class="t"><span><b>Medication Reconciliation</b> · ${tag}</span><span>วันที่ทำ MR <b>${escHtml(thDmy(mrDate))}</b></span></div>
+      <div class="r1"><div class="nm fit" style="font-size:15pt">${escHtml(x.name || '')}</div><div class="bed">เตียง ${escHtml(x.bed || '-')}</div></div>
+      <div class="ln">HN <b>${escHtml(x.hn)}</b> · AN <b>${escHtml(x.an)}</b> · Admit <b>${escHtml(thDmy(x.regdate))}</b>${x.regtime ? ' ' + escHtml(x.regtime) : ''}</div>
+      <div class="ln">อายุ <b>${escHtml(mrAge(x))}</b> · น้ำหนัก <b>${x.bw ? escHtml(x.bw) + ' กก.' : '-'}</b></div>
+      <div class="fitv" style="font-size:11.5pt">
+        <div class="tx"><span class="lb">แพ้ยา:</span> ${escHtml(al)}</div>
+        <div class="tx"><span class="lb">โรคประจำตัว:</span> ${escHtml(dz)}</div>
+      </div>
+    </div>`;
+}
+function printMr(ans) {
+  const list = IPD.filter(x => ans.includes(x.an));
+  if (!list.length) return;
+  const mrDate = document.getElementById('mr-date').value || todayIso();
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = list.map(x => `<div class="mrstk">${mrHalf(x, mrDate, 'ตัวจริง')}${mrHalf(x, mrDate, 'สำเนา')}</div>`).join('');
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  pa.querySelectorAll('.fit').forEach(el => {
+    let fs = parseFloat(el.style.fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 10) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  // แพ้ยา/โรคประจำตัวยาว → ลดตัวอักษรจนครึ่งดวงไม่ล้น
+  pa.querySelectorAll('.half').forEach(h => {
+    const v = h.querySelector('.fitv'); let fs = 11.5;
+    while (h.scrollHeight > h.clientHeight + 1 && fs > 7) { fs -= 0.5; v.querySelectorAll('.tx').forEach(t => t.style.fontSize = fs + 'pt'); }
   });
   pa.style.cssText = '';
   document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';

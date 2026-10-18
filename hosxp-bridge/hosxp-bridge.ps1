@@ -516,13 +516,27 @@ function DbRxQueue {
   [ordered]@{ ok = $true; items = $items; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 }
 function DbIpdList {
+  # อายุ น้ำหนัก (ipt.bw เป็นกรัม ไม่มีใช้ opdscreen ของ visit แรกรับ) โรคประจำตัว (pmh ตอนแรกรับ) — ใช้กับหัวสติกเกอร์ MR
   $rows = DbQuery ("SELECT i.an, i.hn, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, i.ward, w.name AS ward_name, " +
-    "a.bedno, a.roomno, CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname " +
+    "a.bedno, a.roomno, CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, " +
+    "s.age_y, s.age_m, i.bw, o.bw AS obw, o.pmh " +
     "FROM ipt i LEFT JOIN iptadm a ON a.an=i.an LEFT JOIN ward w ON w.ward=i.ward LEFT JOIN patient p ON p.hn=i.hn " +
+    "LEFT JOIN an_stat s ON s.an=i.an LEFT JOIN opdscreen o ON o.vn=i.vn " +
     "WHERE i.dchdate IS NULL AND i.regdate>=CURDATE() - INTERVAL 1 YEAR ORDER BY i.ward, a.bedno LIMIT 300")
+  $al = @{}; $cl = @{}
+  if ($rows.Count) {
+    $hns = ($rows | ForEach-Object { "'" + [HxDb]::Digits($_['hn']) + "'" } | Select-Object -Unique) -join ','
+    $ar = DbQuery ("SELECT hn, agent FROM opd_allergy WHERE hn IN ($hns) AND IFNULL(allergy_cancel_status,'')<>'Y' ORDER BY hn, report_date")
+    foreach ($x in $ar) { $a = "$($x['agent'])".Trim(); if ($a) { $al["$($x['hn'])"] = @($al["$($x['hn'])"]) + $a } }
+    $cr = DbQuery ("SELECT m.hn, c.name FROM clinicmember m JOIN clinic c ON c.clinic=m.clinic WHERE m.hn IN ($hns) AND IFNULL(m.discharge,'')<>'Y'")
+    foreach ($x in $cr) { $c = "$($x['name'])".Trim(); if ($c) { $cl["$($x['hn'])"] = @($cl["$($x['hn'])"]) + $c } }
+  }
   [ordered]@{ ok = $true; items = @($rows | ForEach-Object {
+    $bw = if ("$($_['bw'])" -match '^\d+(\.\d+)?$' -and [double]$_['bw'] -gt 0) { [math]::Round([double]$_['bw'] / 1000, 2) }
+      elseif ("$($_['obw'])" -match '^\d+(\.\d+)?$' -and [double]$_['obw'] -gt 0) { [math]::Round([double]$_['obw'], 2) } else { $null }
     [ordered]@{ an = $_['an']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
-      bed = $_['bedno']; room = $_['roomno']; name = $_['ptname'] } }) }
+      bed = $_['bedno']; room = $_['roomno']; name = $_['ptname']; ageY = $_['age_y']; ageM = $_['age_m']; bw = $bw
+      pmh = ("$($_['pmh'])" -replace '\s+', ' ').Trim(); allergy = @($al["$($_['hn'])"] | Where-Object { $_ }); clinics = @($cl["$($_['hn'])"] | Where-Object { $_ }) } }) }
 }
 # เครื่องที่ให้พิมพ์สรุปยากลับบ้านอัตโนมัติ: ชื่อเครื่อง (COMPUTERNAME) อยู่ใน hme-station.txt ในโฟลเดอร์ bridge
 # ไฟล์นี้ไม่อยู่ในตัวติดตั้ง — เครื่องอื่นจึงไม่พิมพ์อัตโนมัติจนกว่าจะเพิ่มชื่อเครื่องเอง (หน้าเว็บปิดปุ่มพิมพ์อัตโนมัติให้ด้วย)
