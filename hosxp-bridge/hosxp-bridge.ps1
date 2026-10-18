@@ -22,6 +22,8 @@
 #   /db/nightmeds?date=YYYY-MM-DD[&from=19:30&to=08:00] — ยาที่สั่งช่วงเวรบ่าย-ดึก (date-1 from → date to) ทั้ง OPD/ER และ AN
 #                     พร้อมแผนก เวลา admit วิธีใช้ อายุ น้ำหนัก eGFR ตั้งครรภ์ ประวัติแพ้ยา ยาเดิม 180 วัน ตารางยาตีกัน
 #                     — หน้า night-meds.html คัดยาที่ต้องคืนรถยา + ตรวจขนาดยา/ยาตีกัน/แพ้ยา
+#   /db/errx?hn=&date=YYYY-MM-DD — ใบสั่งยาของ HN นี้วันที่ date-1 และ date (แยกตาม VN/AN + เวลาสั่งแรก) พร้อมชื่อ อายุ
+#                     — ฟอร์มลง ME ER ใน ME_Dashboard.html ใส่แค่ HN แล้วเติมชื่อ อายุ วันที่/เวลาสั่งยาให้
 #   /db/adr?from=YYYY-MM-DD — รายงาน ADR (Pharmacy > Adverse drug reactions = patient_adr) พร้อมรายละเอียดทุกช่องและรายการยา
 #   /db/dmroster    — คนไข้ที่มีนัดคลินิก NCDs remission (clinic 032)
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
@@ -596,6 +598,21 @@ function DbRxSticker($hn) {
   [ordered]@{ ok = $true; hn = $hn; visits = $visits; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 }
 
+function DbErRx($hn, $path) {
+  if ($path -notmatch '[?&]date=(\d{4}-\d{2}-\d{2})') { throw 'ต้องระบุ date=YYYY-MM-DD' }
+  $d = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null)
+  $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
+  $p = DbQuery "SELECT pname, fname, lname, DATE_FORMAT(birthday,'%Y-%m-%d') AS birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
+  if (-not $p.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
+  # ใช้ ix_hn แล้วกรอง rxdate — ใบสั่งหนึ่งใบ = VN (OPD/ER) หรือ AN+วันที่ (ผู้ป่วยใน)
+  $rows = DbQuery ("SELECT o.vn, o.an, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(MIN(o.rxtime),'%H:%i') AS rxtime, " +
+    "COUNT(*) AS n, GROUP_CONCAT(DISTINCT k.department) AS dep, TIMESTAMPDIFF(YEAR, pt.birthday, o.rxdate) AS age " +
+    "FROM opitemrece o JOIN drugitems d ON d.icode=o.icode LEFT JOIN kskdepartment k ON k.depcode=o.dep_code LEFT JOIN patient pt ON pt.hn=o.hn " +
+    "WHERE o.hn='$hn' AND o.rxdate IN ('$d0','$d1') GROUP BY o.vn, o.an, o.rxdate ORDER BY o.rxdate, MIN(o.rxtime)")
+  $x = $p[0]
+  [ordered]@{ ok = $true; hn = $hn; name = ("$($x['pname'])$($x['fname']) $($x['lname'])").Trim(); birthday = $x['birthday']; sex = $x['sex']
+    rx = @($rows | ForEach-Object { [ordered]@{ vn = $_['vn']; an = $_['an']; date = $_['rxdate']; time = $_['rxtime']; n = $_['n']; dep = $_['dep']; age = $_['age'] } }) }
+}
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -672,6 +689,7 @@ function DbEndpoint($path) {
       elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
       elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
       elseif ($path -like '/db/smartrx*') { DbSmartRx $hn }
+      elseif ($path -like '/db/errx*') { DbErRx $hn $path }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)

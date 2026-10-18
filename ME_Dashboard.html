@@ -1822,7 +1822,10 @@ const DashUX = {
             <div class="section-label">👤 ข้อมูลผู้ป่วย</div>
             <div class="form-group">
               <label>HN</label>
-              <input type="text" id="f-hn" placeholder="รหัส HN">
+              <input type="text" id="f-hn" placeholder="รหัส HN" inputmode="numeric" autocomplete="off"
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();erHnLookup()}" onchange="erHnLookup()">
+              <span class="hint" id="hn-lookup-hint">ใส่ HN แล้วกด Enter → ดึงชื่อ อายุ วันที่/เวลาสั่งยาจาก HOSxP</span>
+              <div id="hn-lookup-rx" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
             </div>
             <div class="form-group">
               <label>ชื่อ-สกุล</label>
@@ -1906,14 +1909,6 @@ const DashUX = {
                        onkeydown="drugKey(event)">
                 <div class="drug-dropdown" id="drug-dropdown"></div>
               </div>
-            </div>
-            <div class="form-group">
-              <label>Ward / หน่วยงาน</label>
-              <select id="f-ward">
-                <option value="">-- เลือก --</option>
-                <option value="ER">ER (ห้องฉุกเฉิน)</option>
-                <option value="หอผู้ป่วยใน">หอผู้ป่วยใน (IPD)</option>
-              </select>
             </div>
             <div class="form-group">
               <label>ผู้บันทึก</label>
@@ -2572,8 +2567,64 @@ function toggleMESection() {
   }
 }
 
+// ── ใส่ HN แล้วดึงชื่อ อายุ วันที่/เวลาสั่งยาจาก HOSxP (เครื่องที่มี HOSxP Bridge) ──
+// เลือกใบสั่งยาช่วงเวรบ่าย-ดึก (16:00 เมื่อวาน → 08:00 ของ "วันที่") ก่อน ถ้ามีหลายใบให้กดเลือก
+let erHnRx = [];
+async function erHnLookup() {
+  const hn = document.getElementById('f-hn').value.replace(/\D/g, '');
+  const hint = document.getElementById('hn-lookup-hint'), box = document.getElementById('hn-lookup-rx');
+  if (!/^\d{5,10}$/.test(hn) || !window.tphHosxp || !tphHosxp.erRx) return;
+  const date = getDateValue();
+  if (!date) { hint.textContent = '⚠ กรอก "วันที่" ด้านบนก่อน'; hint.style.color = 'var(--warning)'; return; }
+  hint.textContent = '⏳ กำลังดึงจาก HOSxP…'; hint.style.color = 'var(--text-light)'; box.innerHTML = '';
+  const r = await tphHosxp.erRx(hn, date);
+  if (document.getElementById('f-hn').value.replace(/\D/g, '') !== hn) return;   // เปลี่ยน HN ระหว่างรอ
+  if (!r) { hint.textContent = 'ดึงจาก HOSxP ไม่ได้ (ไม่พบ HN หรือเครื่องนี้ไม่มี HOSxP Bridge) — กรอกเอง'; hint.style.color = 'var(--warning)'; return; }
+  document.getElementById('f-patient').value = r.name || '';
+  const prev = new Date(date + 'T12:00:00'); prev.setDate(prev.getDate() - 1);
+  const from = prev.toLocaleDateString('en-CA') + ' 16:00', to = date + ' 08:00';
+  const all = r.rx || [], night = all.filter(x => `${x.date} ${x.time}` >= from && `${x.date} ${x.time}` < to);
+  erHnRx = night.length ? night : all;
+  if (!erHnRx.length) {
+    const b = r.birthday ? Math.floor((new Date(date) - new Date(r.birthday)) / 31557600000) : '';
+    document.getElementById('f-age').value = b;
+    hint.textContent = '✓ ดึงชื่อ/อายุแล้ว — ไม่พบใบสั่งยาเมื่อวาน/วันนี้ กรอกวันที่-เวลาสั่งยาเอง'; hint.style.color = 'var(--warning)';
+    return;
+  }
+  erPickRx(0);
+  if (erHnRx.length > 1) box.innerHTML = erHnRx.map((x, i) =>
+    `<button type="button" class="btn-sm" data-i="${i}" onclick="erPickRx(${i})" style="padding:3px 10px;border:1.5px solid var(--border);border-radius:14px;background:var(--surface);font:inherit;font-size:13px;cursor:pointer">` +
+    `${escHtml(x.date.slice(8))}/${escHtml(x.date.slice(5, 7))} ${escHtml(x.time)} · ${x.an ? 'AN ' + escHtml(x.an) : escHtml(x.dep || 'OPD')} · ${+x.n} รายการ</button>`).join('');
+  erMarkRx(0);
+  if (!night.length) { hint.textContent += ' (ไม่อยู่ในช่วงเวรบ่าย-ดึก — ตรวจสอบอีกครั้ง)'; hint.style.color = 'var(--warning)'; }
+}
+function erPickRx(i) {
+  const x = erHnRx[i]; if (!x) return;
+  const [y, m, d] = x.date.split('-');
+  const od = document.getElementById('f-order-date-text');
+  od.value = `${d}/${m}/${String(+y + 543).slice(-2)}`; od.dataset.userEdited = '1';
+  document.getElementById('f-order-time-text').value = x.time;
+  if (x.age != null && x.age !== '') document.getElementById('f-age').value = x.age;
+  updateOrderDatePreview(); updateOrderTimePreview();
+  const hint = document.getElementById('hn-lookup-hint');
+  hint.textContent = `✓ ดึงจาก HOSxP: ${x.an ? 'AN ' + x.an : x.dep || 'OPD'} สั่งยา ${d}/${m}/${+y + 543} ${x.time} น.` +
+    (erHnRx.length > 1 ? ` — มี ${erHnRx.length} ใบ กดเลือกใบที่เกิด ME` : '');
+  hint.style.color = 'var(--success)';
+  erMarkRx(i);
+}
+function erMarkRx(i) {
+  document.querySelectorAll('#hn-lookup-rx button').forEach(b => {
+    const on = +b.dataset.i === i;
+    b.style.background = on ? 'var(--primary)' : 'var(--surface)'; b.style.color = on ? '#fff' : 'inherit';
+  });
+}
+
 function clearForm() {
   document.getElementById('me-form').reset();
+  erHnRx = [];
+  document.getElementById('hn-lookup-rx').innerHTML = '';
+  const hh = document.getElementById('hn-lookup-hint');
+  hh.textContent = 'ใส่ HN แล้วกด Enter → ดึงชื่อ อายุ วันที่/เวลาสั่งยาจาก HOSxP'; hh.style.color = '';
   // reset ME section
   document.getElementById('me-detail-section').style.display = 'none';
   document.getElementById('me-toggle-track').classList.remove('on');
@@ -2634,7 +2685,7 @@ function submitForm(e) {
     drugs:    hasME ? [...selectedDrugs] : [],
     drug:     hasME && selectedDrugs.length ? selectedDrugs[0].name : '',
     drugForm: hasME && selectedDrugs.length ? selectedDrugs[0].form : '',
-    ward:     hasME ? document.getElementById('f-ward').value : '',
+    ward:     hasME ? 'ER' : '',   // ฟอร์มนี้ลงเฉพาะ ER
     reporter: hasME ? document.getElementById('f-reporter').value : '',
     detail:   hasME ? document.getElementById('f-detail').value : '',
     intervention: hasME ? document.getElementById('f-intervention').value : '',
@@ -2694,7 +2745,6 @@ function editRecord(id) {
   selectedDrugs = (rec.drugs && rec.drugs.length) ? rec.drugs.map(d => ({...d}))
                 : (rec.drug ? [{name: rec.drug, form: rec.drugForm || ''}] : []);
   renderDrugChips();
-  document.getElementById('f-ward').value     = rec.ward || '';
   document.getElementById('f-reporter').value = rec.reporter || '';
   document.getElementById('f-detail').value   = rec.detail || '';
   document.getElementById('f-intervention').value = rec.intervention || '';
