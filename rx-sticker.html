@@ -133,11 +133,11 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .mrstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
   font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; }
 .mrstk:last-child { page-break-after: auto; break-after: auto; }
-.mrstk .half { height: 30mm; box-sizing: border-box; padding: 1.2mm 2.5mm 1mm 3mm; overflow: hidden; display: flex; flex-direction: column; line-height: 1.12; }
+.mrstk .half { height: 30mm; box-sizing: border-box; padding: 1.2mm 5mm 1mm 6mm; overflow: hidden; display: flex; flex-direction: column; line-height: 1.12; }
 .mrstk .half + .half { border-top: .25mm dashed #000; }
 .mrstk .t { display: flex; justify-content: space-between; gap: 2mm; font-size: 10.5pt; border-bottom: .25mm solid #000; padding-bottom: .2mm; white-space: nowrap; }
 .mrstk .t b { font-size: 11pt; }
-.mrstk .r1 { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; margin-top: .3mm; }
+.mrstk .r1 { display: flex; justify-content: center; align-items: baseline; gap: 5mm; margin-top: .3mm; }
 .mrstk .nm { font-weight: 700; white-space: nowrap; overflow: hidden; min-width: 0; }
 .mrstk .bed { font-weight: 700; font-size: 13pt; white-space: nowrap; }
 .mrstk .ln { font-size: 11.5pt; white-space: nowrap; overflow: hidden; }
@@ -539,6 +539,12 @@ function printMr(ans) {
   pa.querySelectorAll('.fit').forEach(el => {
     let fs = parseFloat(el.style.fontSize);
     while (el.scrollWidth > el.clientWidth + 1 && fs > 10) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  // หัว/บรรทัด HN ยาวเกินขอบที่แคบลง → ย่อตัวอักษร (ทั้งบรรทัดรวมตัวหนา)
+  pa.querySelectorAll('.mrstk .t, .mrstk .ln').forEach(el => {
+    const parts = [el, ...el.querySelectorAll('b')].map(e => [e, parseFloat(getComputedStyle(e).fontSize)]);
+    let k = 1;
+    while (el.scrollWidth > el.clientWidth + 1 && k > 0.7) { k -= 0.05; parts.forEach(([e, px]) => e.style.fontSize = px * k + 'px'); }
   });
   // แพ้ยา/โรคประจำตัวยาว → ลดตัวอักษรจนครึ่งดวงไม่ล้น
   pa.querySelectorAll('.half').forEach(h => {
