@@ -1901,6 +1901,7 @@ const DashUX = {
             </div>
             <div class="form-group full">
               <label>ชื่อยาที่เกี่ยวข้อง <span style="font-size:13px;color:var(--text-light);font-weight:400">(เพิ่มได้หลายชนิด)</span></label>
+              <div id="hn-rx-drugs" style="display:none;margin-bottom:8px;border:1.5px dashed var(--border);border-radius:8px;padding:8px 10px"></div>
               <div id="drug-chips" class="drug-chips-wrap"></div>
               <div class="drug-wrap" id="drug-wrap">
                 <input type="text" id="f-drug" placeholder="พิมพ์ชื่อยาเพื่อค้นหา แล้ว Enter เพื่อเพิ่ม..." autocomplete="off"
@@ -2236,7 +2237,7 @@ function renderDrugChips() {
   wrap.innerHTML = selectedDrugs.map((d, i) => {
     const badge = d.form ? `<span class="drug-form-badge ${drugFormClass(d.form)}">${d.form}</span>` : '';
     return `<span class="drug-chip">
-      ${badge}<span class="drug-chip-name">${d.name}</span>
+      ${badge}<span class="drug-chip-name">${escHtml(d.name)}</span>
       <button type="button" class="drug-chip-remove" onclick="drugRemoveChip(${i})" title="ลบ">✕</button>
     </span>`;
   }).join('');
@@ -2245,6 +2246,7 @@ function renderDrugChips() {
 function drugRemoveChip(i) {
   selectedDrugs.splice(i, 1);
   renderDrugChips();
+  erRenderRxDrugs();
 }
 
 function drugSearch(q) {
@@ -2285,6 +2287,7 @@ function drugSelect(i) {
   if (!selectedDrugs.some(s => s.name === d[0] && s.form === (d[3]||''))) {
     selectedDrugs.push({ name: d[0], form: d[3] || '' });
     renderDrugChips();
+    erRenderRxDrugs();
   }
   document.getElementById('f-drug').value = '';
   document.getElementById('drug-dropdown').classList.remove('open');
@@ -2576,6 +2579,7 @@ async function erHnLookup() {
   const date = getDateValue();
   if (!date) { hint.textContent = '⚠ กรอก "วันที่" ด้านบนก่อน'; hint.style.color = 'var(--warning)'; return; }
   hint.textContent = '⏳ กำลังดึงจาก HOSxP…'; hint.style.color = 'var(--text-light)'; box.innerHTML = '';
+  erHnRx = []; erRxIdx = -1; erRenderRxDrugs();
   const r = await tphHosxp.erRx(hn, date);
   if (document.getElementById('f-hn').value.replace(/\D/g, '') !== hn) return;   // เปลี่ยน HN ระหว่างรอ
   if (!r) { hint.textContent = 'ดึงจาก HOSxP ไม่ได้ (ไม่พบ HN หรือเครื่องนี้ไม่มี HOSxP Bridge) — กรอกเอง'; hint.style.color = 'var(--warning)'; return; }
@@ -2610,6 +2614,42 @@ function erPickRx(i) {
     (erHnRx.length > 1 ? ` — มี ${erHnRx.length} ใบ กดเลือกใบที่เกิด ME` : '');
   hint.style.color = 'var(--success)';
   erMarkRx(i);
+  erRxIdx = i;
+  erRenderRxDrugs();
+}
+// รายการยาในใบสั่งที่เลือก — กดเพื่อเพิ่ม/เอาออกจาก "ชื่อยาที่เกี่ยวข้อง"
+let erRxIdx = -1;
+const ER_FORM_MAP = [[/TABLET|เม็ด/i, 'Tab.'], [/CAPSULE/i, 'Cap.'], [/INTRAVENOUS/i, 'IV'], [/INJ/i, 'Inj.'], [/SYRUP/i, 'Syr.'],
+  [/SUSP/i, 'Susp.'], [/OTIC|EAR/i, 'Ear Drop'], [/EYE|OPH/i, 'Eye Drop'], [/DROP/i, 'Drop'], [/POWDER/i, 'Powder'], [/CREAM/i, 'Cream'],
+  [/OINT/i, 'Oint.'], [/LOTION/i, 'Lotion'], [/SUPPO/i, 'Suppo.'], [/EMUL/i, 'Emul.'], [/ELIXIR/i, 'Elixir'], [/SOL/i, 'Sol.']];
+function erDrugEntry(it) {
+  const key = String(it.name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const d = DRUG_LIST.find(x => x[0].replace(/\s+/g, ' ').trim().toLowerCase() === key);
+  if (d) return { name: d[0], form: d[3] || '' };
+  const f = ER_FORM_MAP.find(([re]) => re.test(String(it.form || '')));
+  return { name: String(it.name || '').trim(), form: f ? f[1] : '' };
+}
+function erRxDrugToggle(j) {
+  const x = erHnRx[erRxIdx], it = x && x.items[j]; if (!it) return;
+  const e = erDrugEntry(it), k = selectedDrugs.findIndex(s => s.name === e.name);
+  if (k >= 0) selectedDrugs.splice(k, 1); else selectedDrugs.push(e);
+  renderDrugChips(); erRenderRxDrugs();
+}
+function erRenderRxDrugs() {
+  const box = document.getElementById('hn-rx-drugs');
+  const x = erHnRx[erRxIdx];
+  if (!box) return;
+  if (!x || !(x.items || []).length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = `<div style="font-size:13px;color:var(--text-light);margin-bottom:6px">💊 ยาในใบสั่ง ${escHtml(x.date.slice(8))}/${escHtml(x.date.slice(5, 7))} ${escHtml(x.time)} น. — กดเลือกยาที่เกิด ME</div>` +
+    x.items.map((it, j) => {
+      const on = selectedDrugs.some(s => s.name === erDrugEntry(it).name);
+      return `<button type="button" onclick="erRxDrugToggle(${j})" style="display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;margin:2px 0;padding:5px 8px;` +
+        `border:1.5px solid ${on ? 'var(--primary)' : 'var(--border)'};border-radius:7px;background:${on ? '#e8f3ec' : 'var(--surface)'};font:inherit;font-size:14px;cursor:pointer">` +
+        `<span style="width:18px">${on ? '✓' : '+'}</span><span style="flex:1"><b>${escHtml(it.name)}</b> × ${escHtml(String(+it.qty))} ` +
+        `<span style="color:var(--text-light);font-size:12.5px">${escHtml(String(it.usage || '').replace(/[.\s]{4,}/g, ' ').trim())}</span></span>` +
+        `<span style="color:var(--text-light);font-size:12px">${escHtml(it.time || '')}</span></button>`;
+    }).join('');
 }
 function erMarkRx(i) {
   document.querySelectorAll('#hn-lookup-rx button').forEach(b => {
@@ -2620,7 +2660,7 @@ function erMarkRx(i) {
 
 function clearForm() {
   document.getElementById('me-form').reset();
-  erHnRx = [];
+  erHnRx = []; erRxIdx = -1; erRenderRxDrugs();
   document.getElementById('hn-lookup-rx').innerHTML = '';
   const hh = document.getElementById('hn-lookup-hint');
   hh.textContent = 'ใส่ HN แล้วกด Enter → ดึงชื่อ อายุ วันที่/เวลาสั่งยาจาก HOSxP'; hh.style.color = '';

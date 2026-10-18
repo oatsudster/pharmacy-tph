@@ -604,14 +604,27 @@ function DbErRx($hn, $path) {
   $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
   $p = DbQuery "SELECT pname, fname, lname, DATE_FORMAT(birthday,'%Y-%m-%d') AS birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $p.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
-  # ใช้ ix_hn แล้วกรอง rxdate — ใบสั่งหนึ่งใบ = VN (OPD/ER) หรือ AN+วันที่ (ผู้ป่วยใน)
-  $rows = DbQuery ("SELECT o.vn, o.an, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(MIN(o.rxtime),'%H:%i') AS rxtime, " +
-    "COUNT(*) AS n, GROUP_CONCAT(DISTINCT k.department) AS dep, TIMESTAMPDIFF(YEAR, pt.birthday, o.rxdate) AS age " +
+  # ใช้ ix_hn แล้วกรอง rxdate — ใบสั่งหนึ่งใบ = VN (OPD/ER) หรือ AN+วันที่ (ผู้ป่วยใน) พร้อมรายการยาในใบนั้น
+  $rows = DbQuery ("SELECT o.vn, o.an, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, " +
+    "k.department, TIMESTAMPDIFF(YEAR, pt.birthday, o.rxdate) AS age, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
+    "TRIM(IF(o.sp_use IS NOT NULL AND o.sp_use<>'', CONCAT_WS(' ', sp.name1, sp.name2, sp.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text " +
     "FROM opitemrece o JOIN drugitems d ON d.icode=o.icode LEFT JOIN kskdepartment k ON k.depcode=o.dep_code LEFT JOIN patient pt ON pt.hn=o.hn " +
-    "WHERE o.hn='$hn' AND o.rxdate IN ('$d0','$d1') GROUP BY o.vn, o.an, o.rxdate ORDER BY o.rxdate, MIN(o.rxtime)")
+    "LEFT JOIN drugusage u ON u.drugusage=o.drugusage LEFT JOIN sp_use sp ON sp.sp_use=o.sp_use " +
+    "WHERE o.hn='$hn' AND o.rxdate IN ('$d0','$d1') ORDER BY o.rxdate, o.rxtime, o.item_no")
+  $groups = [ordered]@{}
+  foreach ($r in $rows) {
+    $k = "$($r['vn'])|$($r['an'])|$($r['rxdate'])"
+    if (-not $groups.Contains($k)) {
+      $groups[$k] = [ordered]@{ vn = $r['vn']; an = $r['an']; date = $r['rxdate']; time = $r['rxtime']; n = 0; dep = ''; age = $r['age']; deps = @(); items = @() }
+    }
+    $g = $groups[$k]; $g.n++
+    if ($r['department'] -and $g.deps -notcontains $r['department']) { $g.deps += $r['department'] }
+    $g.items += [ordered]@{ icode = $r['icode']; name = $r['name']; strength = $r['strength']; units = $r['units']; form = $r['dosageform']
+      qty = $r['qty']; usage = $r['usage_text']; time = $r['rxtime'] }
+  }
   $x = $p[0]
   [ordered]@{ ok = $true; hn = $hn; name = ("$($x['pname'])$($x['fname']) $($x['lname'])").Trim(); birthday = $x['birthday']; sex = $x['sex']
-    rx = @($rows | ForEach-Object { [ordered]@{ vn = $_['vn']; an = $_['an']; date = $_['rxdate']; time = $_['rxtime']; n = $_['n']; dep = $_['dep']; age = $_['age'] } }) }
+    rx = @($groups.Values | ForEach-Object { $_.dep = $_.deps -join ','; $_.Remove('deps'); $_ }) }
 }
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
