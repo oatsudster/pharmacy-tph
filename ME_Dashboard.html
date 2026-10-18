@@ -2164,9 +2164,31 @@ Chart.register({
 // ======= DATA =======
 // วันที่เภสัชกรอกใบสั่งยาเองแล้ว → ตัดแถวที่โปรแกรมเติมให้อัตโนมัติ (rxAuto) ของวันนั้นทิ้ง ใช้ค่าที่เภสัชกรอกเป็นหลัก
 // ทำทุกครั้งที่โหลด/รับข้อมูลจาก Firebase/บันทึก — เครื่องอื่นที่ยังมีแถวเก่าส่งกลับมาก็ถูกตัดซ้ำได้เสมอ
+// ย้าย ME ER เดิมเข้าหัวข้อประเภทชุดใหม่ (ทบทวน 18 ต.ค. 69, เภสัชอนุมัติ) + ลบรายการที่ลงซ้ำ
+// ต้องทำทุกครั้งที่โหลด/รวมข้อมูล เพราะ mergeById ให้ข้อมูลในเครื่องชนะ — เครื่องที่ยังมีค่าเก่าจะได้ไม่เขียนกลับ
+// ย้ายเฉพาะรายการที่ยังเป็นหัวข้อเดิม (แก้เป็นหัวข้อใหม่เองภายหลังจะไม่ถูกทับ)
+const ER_TYPE_MIGRATION = (() => {
+  const NK = 'ไม่ได้คีย์ยาที่ใช้ลงระบบ (Omission – documentation)', QTY = 'คีย์จำนวนไม่ตรงกับที่จ่ายจริง (Wrong quantity)',
+    DRUG = 'คีย์/จ่ายยาผิดชนิด (Wrong drug)', STR = 'ผิดความแรง (Wrong strength)', FORM = 'ผิดรูปแบบยา (Wrong dosage form)',
+    DIR = 'วิธีใช้/ฉลากผิด (Wrong directions / Labeling)', DOSE = 'ขนาดยาไม่เหมาะสม (Wrong dose)',
+    LOST = 'ยาในรถยาขาด/หาย หาผู้ป่วยไม่พบ (Stock discrepancy)', DOC = 'ไม่มีใบสั่งยา ระบุผู้ป่วยไม่ได้ (Documentation error)';
+  return {
+    1781933115341: FORM, 1781933204813: NK, 1781933271309: NK, 1781933316653: NK, 1781931255709: NK, 1781932249366: NK,
+    1781934696495: NK, 1781930807293: NK, 1781931020245: QTY, 1782108414470: QTY, 1782108479117: FORM, 1782108565461: DOSE,
+    1782108607893: QTY, 1782783397114: NK, 1782783489867: DRUG, 1783393069648: STR, 1783393145232: LOST, 1783393765544: DOC,
+    1784169873496: QTY, 1784169693000: NK, 1784773563051: DRUG, 1785293658544: DIR, 1785826223505: LOST, 1785898204983: DRUG,
+    1785979915785: LOST, 1786411917098: DRUG, 1787104068325: DRUG, 1787621692107: DIR, 1788484942730: DRUG, 1789609078883: STR,
+    1791509525792: QTY, 1791685327032: QTY, 1791854636197: NK, 1792200845447: FORM,
+  };
+})();
+const ER_LEGACY_TYPES = new Set(['Wrong drug (ยาผิด)', 'Wrong dose (ขนาดผิด)', 'Wrong route (ทางผิด)', 'Wrong patient (ผู้ป่วยผิด)',
+  'Wrong time (เวลาผิด)', 'Wrong frequency (ความถี่ผิด)', 'Wrong form (รูปแบบผิด)', 'Omission (ขาดยา)', 'Extra dose (ยาเกิน)',
+  'Wrong duration (ระยะเวลาผิด)', 'Drug-Drug interaction', 'Contraindication', 'Labeling error (ฉลากผิด)', 'Near miss (เกือบพลาด)', 'อื่นๆ']);
+const ER_DELETED_IDS = new Set([1782197160810]);   // omeprazole 20/06/69 20:48 ลงซ้ำกับ 1782108607893
 function dropAutoRxDup(list) {
   const manual = new Set(list.filter(r => (r.rxDaily || 0) > 0 && !r.rxAuto).map(r => r.date));
-  return list.filter(r => !(r.rxAuto && manual.has(r.date)));
+  return list.filter(r => !(r.rxAuto && manual.has(r.date)) && !ER_DELETED_IDS.has(r.id)).map(r =>
+    ER_TYPE_MIGRATION[r.id] && ER_LEGACY_TYPES.has(r.meType) ? Object.assign({}, r, { meType: ER_TYPE_MIGRATION[r.id] }) : r);
 }
 let records = dropAutoRxDup(JSON.parse(localStorage.getItem('me_records_v2') || '[]'));
 let chartInstances = {};
