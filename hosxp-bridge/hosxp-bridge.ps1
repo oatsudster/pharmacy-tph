@@ -32,6 +32,7 @@
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/mrmeds?hn=&an= — ยาที่ได้รับจาก รพ. 1 ปีก่อน admit (OPD + ยากลับบ้าน) — สติกเกอร์ยาเดิมแปะใบ MR
+#   /db/mrdict      — รายการยาทั้งหมด (drugitems) + วิธีใช้ที่เปิดใช้ (drugusage.status='Y') พร้อมรหัสย่อ — คีย์ยาเดิมจาก รพ.อื่น ในใบ MR
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน) + อายุ น้ำหนัก แพ้ยา โรคประจำตัว สำหรับหัวสติกเกอร์ MR
 #   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
 #   /db/smartrx?hn= — Smart Pharmacy: อายุ เพศ สัญญาณชีพ lab แพ้ยา วินิจฉัย ตารางยาตีกัน — หน้าต่างลอยจ่ายยาของเภสัชกร
@@ -659,6 +660,16 @@ function DbMrMeds($hn, $path) {
   [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; items = @($rows | Where-Object { $_ } | ForEach-Object {
     $x = DrugRow $_; $x.vn = $_['vn']; $x.date = $_['d']; $x.dep = $_['dep']; $x.namePrint = $_['name_print']; $x }) }
 }
+# พจนานุกรมคีย์ยาเดิมจาก รพ.อื่น ในใบ MR: ยาทุกตัวใน drugitems (รวมที่เลิกใช้ — ยานอก รพ. อาจเป็นตัวที่เราไม่มีแล้ว)
+# + วิธีใช้ที่เปิดใช้ (status='Y' ~750 จาก 129k แถว) พร้อม code = รหัสย่อที่พิมพ์ใน HOSxP เช่น "11pt (1เม็ด * 1pc)"
+function DbMrDict {
+  $d = DbQuery "SELECT icode, name, strength, units, dosageform, istatus FROM drugitems WHERE name NOT LIKE 'ยาเดิม%' ORDER BY name"
+  $u = DbQuery ("SELECT drugusage, code, TRIM(CONCAT_WS(' ', name1, name2, name3)) AS t FROM drugusage " +
+    "WHERE status='Y' AND TRIM(CONCAT_WS('', name1, name2, name3))<>'' ORDER BY LENGTH(drugusage), drugusage")
+  [ordered]@{ ok = $true
+    drugs = @($d | ForEach-Object { [ordered]@{ icode = $_['icode']; name = $_['name']; strength = $_['strength']; units = $_['units']; form = $_['dosageform']; active = ("$($_['istatus'])" -eq 'Y') } })
+    usages = @($u | ForEach-Object { [ordered]@{ id = $_['drugusage']; code = $_['code']; text = $_['t'] } }) }
+}
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -718,11 +729,11 @@ function ApptFromDb($hn) {
 
 function DbEndpoint($path) {
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*' -or $path -like '/db/mrdict*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } elseif ($path -like '/db/mrdict*') { DbMrDict } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }

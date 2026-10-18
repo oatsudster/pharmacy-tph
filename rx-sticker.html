@@ -10,7 +10,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261018a"></script>
+<script src="lib/hosxp-db.js?v=20261018b"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
@@ -164,6 +164,12 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .md-row.off { color: #9aa5a0; }
 .md-row .src { grid-column: 2 / -1; font-size: 12px; color: var(--text-mid); }
 .md-row b { font-weight: 600; }
+.md-row.ext { background: #f5f9ff; }
+.md-row input.mdx-in, .mdx-add input { font: inherit; font-size: 13.5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; width: 100%; min-width: 0; }
+.md-row .src input.mdx-in { width: 200px; font-size: 12px; padding: 1px 5px; }
+.mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
+.mdx-add .t { grid-column: 1 / -1; font-weight: 600; font-size: 13.5px; }
+@media (max-width: 860px) { .mdx-add { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -218,7 +224,7 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
       <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
-    <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · ยาจากที่อื่นยังต้องเขียนเพิ่มเอง</div>
+    <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
       <button class="btn btn-gold" id="md-print" onclick="printMd()">🖨 พิมพ์</button>
       <label class="hint" style="margin:0">ชุด × <input class="cp" type="number" id="md-sets" min="1" max="4" value="2"></label>
@@ -236,6 +242,16 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <div class="hint" style="margin:0">พิมพ์ทดสอบ 1 ดวงแล้วทาบกับตารางใบ MR — เส้นไม่ตรงค่อยปรับตัวเลข (จำไว้ในเครื่องนี้) · สติกเกอร์จริงมีขีดสั้นที่ขอบซ้าย/ขวา = แนวเส้นแถว และขีดบน/ล่าง = เส้นแบ่งช่องชื่อยา|วิธีใช้ ใช้เล็งตอนแปะ</div>
     </details>
     <div id="md-list"></div>
+    <div class="mdx-add">
+      <div class="t">🏥 เพิ่มยาจาก รพ.อื่น / ยาที่ผู้ป่วยนำมา <span class="hint" id="mdx-meta" style="margin:0;font-weight:400"></span></div>
+      <input id="mdx-src" list="mdx-srcs" placeholder="ได้ยาจาก (รพ./คลินิก)" autocomplete="off">
+      <input id="mdx-name" list="mdx-drugs" placeholder="ชื่อยา + ความแรง (พิมพ์ 2-3 ตัวแล้วเลือก)" autocomplete="off">
+      <input id="mdx-usage" list="mdx-usages" placeholder="วิธีใช้ หรือรหัสย่อ เช่น 11pt 12pt 11ht" autocomplete="off">
+      <button class="btn btn-primary btn-sm" onclick="mdExtAdd()">➕ เพิ่ม</button>
+      <div class="hint" style="grid-column:1/-1;margin:0">Enter ที่ชื่อยา = ไปช่องวิธีใช้ · Enter ที่วิธีใช้ = เพิ่มรายการ · รหัสวิธีใช้เหมือนใน HOSxP · ยาที่ไม่มีในรายการพิมพ์เองได้ ·
+        จำรายการไว้ตาม HN ในเครื่องนี้ admit ครั้งหน้าขึ้นให้ตรวจเลย · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
+    </div>
+    <datalist id="mdx-drugs"></datalist><datalist id="mdx-usages"></datalist><datalist id="mdx-srcs"></datalist>
   </div>
 </div>
 
@@ -606,16 +622,92 @@ async function openMd(an) {
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const r = await tphHosxp.mrMeds(x.hn, x.an);
   if (!r || !r.ok) { document.getElementById('md-list').innerHTML = `<div class="empty">${escHtml(r && r.error ? r.error : NOBRIDGE)}</div>`; return; }
-  MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate) };
+  MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate).concat(mdExtLoad(x.hn)) };
+  renderMd();
+  mdLoadDict();
+}
+// ── ยาจาก รพ.อื่น / ยาที่ผู้ป่วยนำมา: คีย์เพิ่มแล้วพิมพ์รวมในสติกเกอร์ชุดเดียวกับยา รพ. ({ ext:true, namePrint, usage, src })
+// ชื่อยา/วิธีใช้เลือกจากรายการของ HOSxP หรือพิมพ์เอง · วิธีใช้พิมพ์รหัสย่อแบบ HOSxP ได้ (11pt → ข้อความเต็ม)
+// จำไว้ตาม HN ในเครื่องนี้ (mr_ext_meds) — admit ครั้งหน้าขึ้นให้ติ๊กไว้พร้อมวันที่บันทึก ให้เภสัชตรวจกับผู้ป่วยอีกครั้ง
+let MD_DICT = null, MD_UCODE = {};
+async function mdLoadDict() {
+  if (MD_DICT) return;
+  const r = await tphHosxp.mrDict();
+  if (!r) { document.getElementById('mdx-meta').textContent = '· โหลดรายการยาจาก HOSxP ไม่ได้ — พิมพ์ชื่อยา/วิธีใช้เองได้'; return; }
+  MD_DICT = r;
+  const names = new Set(), uses = new Map();
+  (r.drugs || []).forEach(d => { const n = mdClean([d.name, d.strength].filter(Boolean).join(' ')); if (n) names.add(n); });
+  (r.usages || []).forEach(u => {
+    const t = mdClean(u.text); if (!t || /^[.\s]+$/.test(t)) return;
+    const c = mdClean(u.code).split(/[\s(]/)[0].toLowerCase();
+    if (c && !MD_UCODE[c]) MD_UCODE[c] = t;
+    if (!uses.has(t)) uses.set(t, c);
+  });
+  document.getElementById('mdx-drugs').innerHTML = [...names].sort().map(n => `<option value="${escHtml(n)}">`).join('');
+  document.getElementById('mdx-usages').innerHTML = [...uses].map(([t, c]) => `<option value="${escHtml(t)}" label="${escHtml(c)}">`).join('');
+  document.getElementById('mdx-meta').textContent = `· ยา ${names.size} รายการ · วิธีใช้ ${uses.size} แบบจาก HOSxP`;
+}
+const mdUsage = v => MD_UCODE[String(v || '').trim().toLowerCase()] || mdClean(v);
+function mdExtAll() { try { return JSON.parse(localStorage.getItem('mr_ext_meds') || '{}'); } catch (e) { return {}; } }
+function mdExtLoad(hn) {
+  const s = mdExtAll()['h' + hn];
+  return s ? s.items.map(d => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', on: true, saved: s.at })) : [];
+}
+function mdExtSave() {
+  if (!MD) return;
+  const m = mdExtAll(), k = 'h' + MD.x.hn;
+  const items = MD.items.filter(d => d.ext && d.namePrint).map(d => ({ name: d.namePrint, usage: d.usage, src: d.src }));
+  delete m[k];   // key ขึ้นต้น h ให้เรียงตามลำดับที่บันทึก — ตัดคนที่เก่าสุดเมื่อเกิน 500 HN
+  if (items.length) m[k] = { at: new Date().toISOString().slice(0, 10), items };
+  const keys = Object.keys(m); keys.slice(0, Math.max(0, keys.length - 500)).forEach(x => delete m[x]);
+  try { localStorage.setItem('mr_ext_meds', JSON.stringify(m)); } catch (e) {}
+}
+function mdSrcs() { try { return JSON.parse(localStorage.getItem('mr_ext_srcs') || '[]'); } catch (e) { return []; } }
+function mdSrcRemember(s) {
+  if (!s) return;
+  const l = [s].concat(mdSrcs().filter(x => x !== s)).slice(0, 30);
+  try { localStorage.setItem('mr_ext_srcs', JSON.stringify(l)); } catch (e) {}
+  mdSrcList();
+}
+function mdSrcList() { document.getElementById('mdx-srcs').innerHTML = mdSrcs().map(s => `<option value="${escHtml(s)}">`).join(''); }
+function mdExtAdd() {
+  if (!MD) return;
+  const nEl = document.getElementById('mdx-name'), uEl = document.getElementById('mdx-usage');
+  const name = mdClean(nEl.value), src = mdClean(document.getElementById('mdx-src').value);
+  if (!name) { nEl.focus(); return; }
+  MD.items.push({ ext: true, namePrint: name, usage: mdUsage(uEl.value), src, on: true });
+  mdSrcRemember(src); mdExtSave();
+  nEl.value = ''; uEl.value = ''; nEl.focus();
   renderMd();
 }
+// แก้ในรายการ: ไม่ render ใหม่ (Tab ไปช่องถัดไปได้ไม่หลุด focus) — อัปเดตแค่ค่าในช่องนั้น
+function mdExtEdit(el, i, f) {
+  const d = MD.items[i];
+  d[f] = f === 'usage' ? mdUsage(el.value) : mdClean(el.value);
+  el.value = d[f];
+  if (f === 'src') mdSrcRemember(d.src);
+  mdExtSave();
+}
+function mdExtDel(i) { MD.items.splice(i, 1); mdExtSave(); renderMd(); }
+document.addEventListener('DOMContentLoaded', () => {
+  mdSrcList();
+  document.getElementById('mdx-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('mdx-usage').focus(); } });
+  document.getElementById('mdx-usage').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); mdExtAdd(); } });
+  document.getElementById('mdx-src').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('mdx-name').focus(); } });
+});
 function mdAll(v) { if (MD) { MD.items.forEach(d => d.on = v); renderMd(); } }
 function mdToggle(i, v) { MD.items[i].on = v; renderMd(); }
 function renderMd() {
   const sel = MD.items.filter(d => d.on).length;
   document.getElementById('md-meta').textContent = `${MD.x.name} · เตียง ${MD.x.bed || '-'} · admit ${thIso(MD.x.regdate)} · เลือก ${sel}/${MD.items.length} รายการ = ${Math.ceil(sel / mdPer())} ดวง/ชุด`;
   document.getElementById('md-print').disabled = !sel;
-  document.getElementById('md-list').innerHTML = MD.items.map((d, i) => `<div class="md-row${d.on ? '' : ' off'}">
+  document.getElementById('md-list').innerHTML = MD.items.map((d, i) => d.ext ? `<div class="md-row ext${d.on ? '' : ' off'}">
+      <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
+      <input class="mdx-in" list="mdx-drugs" value="${escHtml(d.namePrint)}" onchange="mdExtEdit(this, ${i}, 'namePrint')">
+      <div style="display:flex;gap:6px"><input class="mdx-in" list="mdx-usages" value="${escHtml(d.usage)}" onchange="mdExtEdit(this, ${i}, 'usage')">
+        <button class="btn btn-sm" onclick="mdExtDel(${i})" title="ลบรายการนี้">✕</button></div>
+      <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
+    </div>` : `<div class="md-row${d.on ? '' : ' off'}">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <b>${escHtml(mdName(d))}</b><span>${escHtml(d.usage)}</span>
       <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
@@ -634,7 +726,8 @@ function mdStickers(rows, grid) {
   tk += `<div class="tk" style="left:${c.c1 - .1}mm;top:0;width:.2mm;height:1.5mm"></div><div class="tk" style="left:${c.c1 - .1}mm;bottom:0;width:.2mm;height:1.5mm"></div>`;
   return pages.map(pg => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
       <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:12.5pt">${escHtml(mdName(d))}</div>
-        <div class="ds">ได้รับ ${escHtml(thDmy(d.date))} #${escHtml(d.qty)}${d.dep ? ' · ' + escHtml(mdClean(d.dep)) : ''}</div>` : ''}</div>
+        <div class="ds">${d.ext ? escHtml(d.src ? 'ยาจาก ' + d.src : 'ยาจากที่อื่น')
+          : `ได้รับ ${escHtml(thDmy(d.date))} #${escHtml(d.qty)}${d.dep ? ' · ' + escHtml(mdClean(d.dep)) : ''}`}</div>` : ''}</div>
       <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:10.5pt">${escHtml(d.usage)}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
