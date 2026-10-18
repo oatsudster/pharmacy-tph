@@ -1867,21 +1867,20 @@ const DashUX = {
             <div class="form-group">
               <label>ประเภทความคลาดเคลื่อน <span class="req">*</span></label>
               <select id="f-me-type">
+                <!-- หัวข้อจากการทบทวน ME ER ที่ลงไว้ (35 รายการ มี.ค.–ต.ค. 69) — วงเล็บ = ประเภทตาม NCC MERP Taxonomy -->
                 <option value="">-- เลือก --</option>
-                <option>Wrong drug (ยาผิด)</option>
-                <option>Wrong dose (ขนาดผิด)</option>
-                <option>Wrong route (ทางผิด)</option>
-                <option>Wrong patient (ผู้ป่วยผิด)</option>
-                <option>Wrong time (เวลาผิด)</option>
-                <option>Wrong frequency (ความถี่ผิด)</option>
-                <option>Wrong form (รูปแบบผิด)</option>
-                <option>Omission (ขาดยา)</option>
-                <option>Extra dose (ยาเกิน)</option>
-                <option>Wrong duration (ระยะเวลาผิด)</option>
-                <option>Drug-Drug interaction</option>
-                <option>Contraindication</option>
-                <option>Labeling error (ฉลากผิด)</option>
-                <option>Near miss (เกือบพลาด)</option>
+                <option>ไม่ได้คีย์ยาที่ใช้ลงระบบ (Omission – documentation)</option>
+                <option>คีย์จำนวนไม่ตรงกับที่จ่ายจริง (Wrong quantity)</option>
+                <option>คีย์/จ่ายยาผิดชนิด (Wrong drug)</option>
+                <option>ผิดความแรง (Wrong strength)</option>
+                <option>ผิดรูปแบบยา (Wrong dosage form)</option>
+                <option>วิธีใช้/ฉลากผิด (Wrong directions / Labeling)</option>
+                <option>ขนาดยาไม่เหมาะสม (Wrong dose)</option>
+                <option>ยาในรถยาขาด/หาย หาผู้ป่วยไม่พบ (Stock discrepancy)</option>
+                <option>ไม่มีใบสั่งยา ระบุผู้ป่วยไม่ได้ (Documentation error)</option>
+                <option>ผิดคน (Wrong patient)</option>
+                <option>ให้ยาที่ผู้ป่วยแพ้ (Known allergy)</option>
+                <option>ยาตีกัน (Drug–drug interaction)</option>
                 <option>อื่นๆ</option>
               </select>
             </div>
@@ -2740,7 +2739,10 @@ function editRecord(id) {
   document.getElementById('f-order-time-text').value = rec.orderTime || '';
   updateOrderTimePreview();
   document.getElementById('f-stage').value    = rec.stage || '';
-  document.getElementById('f-me-type').value  = rec.meType || '';
+  const mt = document.getElementById('f-me-type');
+  // รายการเก่าที่ใช้หัวข้อชุดเดิม: ใส่ตัวเลือกชั่วคราวไว้ให้แก้ไขได้โดยไม่ทำค่าหาย
+  if (rec.meType && ![...mt.options].some(o => o.value === rec.meType)) mt.add(new Option(rec.meType + ' (หัวข้อเดิม)', rec.meType));
+  mt.value = rec.meType || '';
   document.getElementById('f-severity').value = rec.severity || '';
   selectedDrugs = (rec.drugs && rec.drugs.length) ? rec.drugs.map(d => ({...d}))
                 : (rec.drug ? [{name: rec.drug, form: rec.drugForm || ''}] : []);
