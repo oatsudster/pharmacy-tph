@@ -2982,9 +2982,11 @@ function renderDashboard() {
     (totalRx?totalRx.toLocaleString('th-TH')+' ใบสั่งยา':'ยังไม่มีข้อมูล จึงแสดงอัตราเป็น —'),!totalRx);
 
   // ME Type
-  const meTypeCount = count(meRecs.map(r => (r.meType||'').split(' ')[0]).filter(Boolean));
+  // ป้ายกราฟ = ชื่อหัวข้อก่อนวงเล็บ (ภาษาไทย) — หัวข้อชุดใหม่มีเว้นวรรคในชื่อ ตัดคำแรกไม่ได้
+  const meTypeLabel = r => (r.meType||'').split(' (')[0].trim();
+  const meTypeCount = count(meRecs.map(meTypeLabel).filter(Boolean));
   renderChart('chart-me-type', 'bar', Object.keys(meTypeCount), Object.values(meTypeCount), palette(Object.keys(meTypeCount).length), false,
-    (lbl) => showDetailModal('ประเภท ME: ' + lbl, meRecs.filter(r => (r.meType||'').startsWith(lbl))));
+    (lbl) => showDetailModal('ประเภท ME: ' + lbl, meRecs.filter(r => meTypeLabel(r) === lbl)));
 
   // Severity
   const sevOrder  = ['A','B','C','D','E','F','G','H','I'];
