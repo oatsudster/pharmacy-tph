@@ -31,6 +31,7 @@
 #   /db/rxqueue     — visit วันนี้/เมื่อคืนที่มียา (ล่าสุด 40 visit) + ใครล็อก VN อยู่ (vn_lock) — หน้า rx-sticker.html
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
+#   /db/mrmeds?hn=&an= — ยาที่ได้รับจาก รพ. 1 ปีก่อน admit (OPD + ยากลับบ้าน) — สติกเกอร์ยาเดิมแปะใบ MR
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน) + อายุ น้ำหนัก แพ้ยา โรคประจำตัว สำหรับหัวสติกเกอร์ MR
 #   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
 #   /db/smartrx?hn= — Smart Pharmacy: อายุ เพศ สัญญาณชีพ lab แพ้ยา วินิจฉัย ตารางยาตีกัน — หน้าต่างลอยจ่ายยาของเภสัชกร
@@ -640,6 +641,24 @@ function DbErRx($hn, $path) {
   [ordered]@{ ok = $true; hn = $hn; name = ("$($x['pname'])$($x['fname']) $($x['lname'])").Trim(); birthday = $x['birthday']; sex = $x['sex']
     rx = @($groups.Values | ForEach-Object { $_.dep = $_.deps -join ','; $_.Remove('deps'); $_ }) }
 }
+# ยาเดิมสำหรับใบ MR: ยาที่ได้รับจาก รพ. ใน 1 ปีก่อน admit (OPD ไม่นับ visit ที่ admit) + ยากลับบ้านของการนอนครั้งก่อนๆ
+# ส่งทุกครั้งที่จ่าย หน้าเว็บเลือกเองว่ายาตัวไหนยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว + จำนวนพอถึงวัน admit)
+function DbMrMeds($hn, $path) {
+  $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
+  $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
+  if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
+  $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
+  $op = DbQuery ("SELECT r.vn, DATE_FORMAT(r.vstdate,'%Y-%m-%d') AS d, k.department AS dep, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
+    "$DRUG_JOIN LEFT JOIN ovst o ON o.vn=r.vn LEFT JOIN kskdepartment k ON k.depcode=o.main_dep " +
+    "WHERE r.hn='$hn' AND r.vstdate>='$reg' - INTERVAL 365 DAY AND r.vstdate<='$reg' AND (r.an IS NULL OR r.an='') AND r.vn<>'$avn' " +
+    "ORDER BY r.vstdate DESC, r.vn DESC, r.item_no")
+  $hm = DbQuery ("SELECT r.an AS vn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS d, 'ยากลับบ้าน (D/C)' AS dep, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
+    "$DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no JOIN ipt i ON i.an=r.an " +
+    "WHERE i.hn='$hn' AND n.order_type='HMe' AND i.dchdate>='$reg' - INTERVAL 365 DAY AND i.dchdate<='$reg' AND i.an<>'$an' ORDER BY i.dchdate DESC, r.item_no")
+  $rows = @($op) + @($hm)
+  [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; items = @($rows | Where-Object { $_ } | ForEach-Object {
+    $x = DrugRow $_; $x.vn = $_['vn']; $x.date = $_['d']; $x.dep = $_['dep']; $x.namePrint = $_['name_print']; $x }) }
+}
 function DbPatient($hn) {
   $rows = DbQuery "SELECT pname, fname, lname, birthday, sex FROM patient WHERE hn='$hn' LIMIT 1"
   if (-not $rows.Count) { return [ordered]@{ ok = $false; hn = $hn; error = 'ไม่พบ HN นี้' } }
@@ -717,6 +736,7 @@ function DbEndpoint($path) {
       elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
       elseif ($path -like '/db/smartrx*') { DbSmartRx $hn }
       elseif ($path -like '/db/errx*') { DbErRx $hn $path }
+      elseif ($path -like '/db/mrmeds*') { DbMrMeds $hn $path }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)

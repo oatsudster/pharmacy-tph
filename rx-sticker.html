@@ -10,7 +10,9 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261013d"></script>
+<script src="lib/hosxp-db.js?v=20261018a"></script>
+<script src="lib/rx-check.js?v=20261017a"></script>
+<script src="lib/smart-rx.js?v=20261018a"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
 <style id="page-size"></style>
 <style>
@@ -142,6 +144,26 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .mrstk .ln b { font-weight: 700; }
 .mrstk .tx { font-size: 11.5pt; overflow-wrap: anywhere; }
 .mrstk .tx .lb { font-weight: 700; }
+
+/* ── สติกเกอร์ยาเดิมแปะตารางใบ MR 9 × 6 ซม.: แถวละ 0.85 ซม. (7 แถว/ดวง) = ช่อง "รายการยาและขนาดยา" 6 ซม. + "วิธีใช้ยา" 3 ซม.
+   ตำแหน่งแถวใช้ mm ตายตัว (absolute) ให้ตรงเส้นตารางของแบบฟอร์ม — ปรับความสูงแถว/เลื่อนขึ้นลงได้ในหน้าจอ ── */
+.mdstk { width: 90mm; height: 60mm; position: relative; overflow: hidden; color: #000; page-break-after: always; break-after: page;
+  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; }
+.mdstk:last-child { page-break-after: auto; break-after: auto; }
+.mdstk .row { position: absolute; left: 0; width: 90mm; display: flex; }
+.mdstk .c1, .mdstk .c2 { box-sizing: border-box; height: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; line-height: 1.05; }
+.mdstk .c1 { padding: 0 1.5mm 0 2.5mm; }
+.mdstk .c2 { padding: 0 1.5mm 0 1.5mm; }
+.mdstk .dn { font-weight: 700; white-space: nowrap; overflow: hidden; }
+.mdstk .ds { font-size: 9pt; white-space: nowrap; overflow: hidden; }
+.mdstk .us { overflow-wrap: anywhere; }
+.mdstk .tk { position: absolute; background: #000; }
+.mdstk.grid .row { outline: .2mm solid #000; outline-offset: -.1mm; }
+.mdstk.grid .c1 { border-right: .2mm solid #000; }
+.md-row { display: grid; grid-template-columns: 26px 1.3fr 1fr; gap: 2px 10px; padding: 6px 4px; border-top: 1px solid #eef3ef; align-items: start; font-size: 13.5px; }
+.md-row.off { color: #9aa5a0; }
+.md-row .src { grid-column: 2 / -1; font-size: 12px; color: var(--text-mid); }
+.md-row b { font-weight: 600; }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -192,6 +214,28 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <span class="hint" style="margin:0">1 ดวง = 2 ชุด: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา</span>
     </div>
     <div id="ipd-list"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+  <div class="card" id="md-card" style="display:none">
+    <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
+    <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · ยาจากที่อื่นยังต้องเขียนเพิ่มเอง</div>
+    <div class="actions" style="margin:0 0 6px">
+      <button class="btn btn-gold" id="md-print" onclick="printMd()">🖨 พิมพ์</button>
+      <label class="hint" style="margin:0">ชุด × <input class="cp" type="number" id="md-sets" min="1" max="4" value="2"></label>
+      <button class="btn btn-sm" onclick="mdAll(true)">เลือกทั้งหมด</button>
+      <button class="btn btn-sm" onclick="mdAll(false)">ไม่เลือกเลย</button>
+      <span class="hint" style="margin:0">ดวงละ 7 ยา · ชุดแรกแปะใบตัวจริง ชุดถัดไปแปะใบสำเนา</span>
+    </div>
+    <details style="margin:0 0 6px"><summary class="hint" style="margin:0;cursor:pointer">📏 ปรับให้ตรงเส้นตาราง (ทำครั้งแรก หรือเมื่อเปลี่ยนแบบฟอร์ม/เครื่องพิมพ์)</summary>
+      <div class="actions" style="margin:6px 0">
+        <label class="hint" style="margin:0">ความสูงแถว <input class="cp" style="width:64px" type="number" id="md-rowh" step="0.05" min="6" max="12" onchange="mdSaveCal()"> มม.</label>
+        <label class="hint" style="margin:0">ช่องชื่อยากว้าง <input class="cp" style="width:64px" type="number" id="md-c1" step="0.5" min="40" max="75" onchange="mdSaveCal()"> มม.</label>
+        <label class="hint" style="margin:0">เลื่อนลง <input class="cp" style="width:64px" type="number" id="md-top" step="0.25" min="-3" max="3" onchange="mdSaveCal()"> มม.</label>
+        <button class="btn btn-sm" onclick="printMdGrid()">🖨 พิมพ์ทดสอบเส้นตาราง</button>
+      </div>
+      <div class="hint" style="margin:0">พิมพ์ทดสอบ 1 ดวงแล้วทาบกับตารางใบ MR — เส้นไม่ตรงค่อยปรับตัวเลข (จำไว้ในเครื่องนี้) · สติกเกอร์จริงมีขีดสั้นที่ขอบซ้าย/ขวา = แนวเส้นแถว และขีดบน/ล่าง = เส้นแบ่งช่องชื่อยา|วิธีใช้ ใช้เล็งตอนแปะ</div>
+    </details>
+    <div id="md-list"></div>
   </div>
 </div>
 
@@ -435,7 +479,8 @@ function renderIpd() {
       <div><div class="nm">${escHtml(x.name || '-')}</div>
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
       <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
-        <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button></div>
+        <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button>
+        <button class="btn btn-sm" onclick="openMd('${escHtml(x.an)}')" title="สติกเกอร์ยาเดิมแปะตารางใบ MR">💊 ยาเดิม</button></div>
     </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
   const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
   b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
@@ -504,6 +549,112 @@ function printMr(ans) {
   document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
+// ── สติกเกอร์ยาเดิมแปะตารางใบ MR ──
+// เลือกยา: ครั้งล่าสุดของแต่ละตัว (icode; ตัวยาเดียวกันต่างความแรง = เอาครั้งล่าสุด) ติ๊กให้ถ้าจำนวนที่ได้รับใช้ถึงวัน admit
+//   ยาเรื้อรัง: วันที่ได้ + จำนวนวันที่ยาพอ + 30 วัน ≥ admit (คำนวณจำนวน/วันไม่ได้ = ได้ภายใน 120 วัน)
+//   ยาบรรเทาอาการ/ปฏิชีวนะ (tphSmartRx.isChronic = false): ยายังเหลือถึงวัน admit (คำนวณไม่ได้ = ได้ภายใน 7 วัน)
+//   ไม่ติ๊ก: ยาฉีด/ยาที่ใช้ครั้งเดียวใน รพ., "ยาเดิม…" (ยาที่ผู้ป่วยนำมาเอง)
+let MD = null;
+const MD_CAL_DEF = { rowH: 8.5, c1: 60, top: 0 };
+function mdCal() { try { return Object.assign({}, MD_CAL_DEF, JSON.parse(localStorage.getItem('mr_md_cal') || '{}')); } catch (e) { return Object.assign({}, MD_CAL_DEF); } }
+function mdLoadCal() { const c = mdCal(); document.getElementById('md-rowh').value = c.rowH; document.getElementById('md-c1').value = c.c1; document.getElementById('md-top').value = c.top; }
+function mdSaveCal() {
+  const n = (id, d) => { const v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : d; };
+  const c = { rowH: n('md-rowh', 8.5), c1: n('md-c1', 60), top: n('md-top', 0) };
+  try { localStorage.setItem('mr_md_cal', JSON.stringify(c)); } catch (e) {}
+  if (MD) renderMd();
+}
+const mdClean = t => String(t || '').replace(/[�\u0000-\u001F ]/g, ' ').replace(/\s+/g, ' ').trim();
+const mdDays = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+const mdName = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
+const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Math.max(0, c.top) + 0.01) / c.rowH)); };
+function mdPick(items, reg) {
+  const SR = window.tphSmartRx;
+  const key = d => SR ? SR.coreKey(d) : d.icode;
+  const latest = new Map();
+  items.forEach(d => { if (!latest.has(d.icode) || d.date > latest.get(d.icode).date) latest.set(d.icode, d); });
+  const list = [...latest.values()].map(d => Object.assign({}, d, { usage: mdClean(d.usage) }));
+  // ตัวยาเดียวกันคนละ icode (เปลี่ยนความแรง/ยี่ห้อ) — ติ๊กเฉพาะครั้งล่าสุด
+  const newest = new Map();
+  list.forEach(d => { const k = key(d); if (!newest.has(k) || d.date > newest.get(k).date) newest.set(k, d); });
+  const INJ_ONCE = /\binj|ฉีด|\bIV\b|\bIM\b|\bamp\b|\bNSS\b|ทันที|\bstat\b/i;
+  return list.map(d => {
+    const chronic = SR ? SR.isChronic(d) : true;
+    const pd = SR ? SR.perDayInfo(d) : {};
+    const supply = pd.units > 0 && +d.qty > 0 ? Math.floor(+d.qty / pd.units) : null;
+    const age = mdDays(d.date, reg);
+    let on = supply != null ? age <= supply + (chronic ? 30 : 0) : age <= (chronic ? 120 : 7);
+    let why = supply != null ? `ยาพอ ${supply} วัน` : '';
+    if (SR && SR.isOldMed(d)) { on = false; why = 'ยาที่ผู้ป่วยนำมาเอง'; }
+    else if (INJ_ONCE.test([d.name, d.form, d.usage].join(' ')) && !chronic) { on = false; why = 'ยาฉีด/ใช้ใน รพ.'; }
+    else if (newest.get(key(d)) !== d) { on = false; why = 'มีรายการใหม่กว่าของตัวยาเดียวกัน'; }
+    return Object.assign(d, { on, why, chronic, age });
+  }).sort((a, b) => (b.on - a.on) || (b.chronic - a.chronic) || b.date.localeCompare(a.date) || mdName(a).localeCompare(mdName(b)));
+}
+async function openMd(an) {
+  const x = IPD.find(i => i.an === an); if (!x) return;
+  const card = document.getElementById('md-card');
+  card.style.display = ''; mdLoadCal(); MD = null;
+  document.getElementById('md-meta').textContent = `${x.name} · เตียง ${x.bed || '-'} · admit ${thIso(x.regdate)} · กำลังโหลด…`;
+  document.getElementById('md-list').innerHTML = '';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const r = await tphHosxp.mrMeds(x.hn, x.an);
+  if (!r || !r.ok) { document.getElementById('md-list').innerHTML = `<div class="empty">${escHtml(r && r.error ? r.error : NOBRIDGE)}</div>`; return; }
+  MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate) };
+  renderMd();
+}
+function mdAll(v) { if (MD) { MD.items.forEach(d => d.on = v); renderMd(); } }
+function mdToggle(i, v) { MD.items[i].on = v; renderMd(); }
+function renderMd() {
+  const sel = MD.items.filter(d => d.on).length;
+  document.getElementById('md-meta').textContent = `${MD.x.name} · เตียง ${MD.x.bed || '-'} · admit ${thIso(MD.x.regdate)} · เลือก ${sel}/${MD.items.length} รายการ = ${Math.ceil(sel / mdPer())} ดวง/ชุด`;
+  document.getElementById('md-print').disabled = !sel;
+  document.getElementById('md-list').innerHTML = MD.items.map((d, i) => `<div class="md-row${d.on ? '' : ' off'}">
+      <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
+      <b>${escHtml(mdName(d))}</b><span>${escHtml(d.usage)}</span>
+      <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
+    </div>`).join('') || '<div class="empty">ไม่พบยาจาก รพ. ใน 1 ปีก่อน admit</div>';
+}
+function mdStickers(rows, grid) {
+  const c = mdCal(), per = mdPer();
+  const pages = [];
+  for (let i = 0; i < rows.length; i += per) pages.push(rows.slice(i, i + per));
+  // ขีดสั้นแนวเส้นแถวที่ขอบซ้าย/ขวา + แนวเส้นแบ่งช่องที่ขอบบน/ล่าง ใช้เล็งตอนแปะ
+  let tk = '';
+  for (let k = 0; k <= per; k++) {
+    const y = c.top + k * c.rowH; if (y < 0 || y > 60) continue;
+    tk += `<div class="tk" style="left:0;top:${y - .1}mm;width:1.8mm;height:.2mm"></div><div class="tk" style="right:0;top:${y - .1}mm;width:1.8mm;height:.2mm"></div>`;
+  }
+  tk += `<div class="tk" style="left:${c.c1 - .1}mm;top:0;width:.2mm;height:1.5mm"></div><div class="tk" style="left:${c.c1 - .1}mm;bottom:0;width:.2mm;height:1.5mm"></div>`;
+  return pages.map(pg => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
+      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:12.5pt">${escHtml(mdName(d))}</div>
+        <div class="ds">ได้รับ ${escHtml(thDmy(d.date))} #${escHtml(d.qty)}${d.dep ? ' · ' + escHtml(mdClean(d.dep)) : ''}</div>` : ''}</div>
+      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:10.5pt">${escHtml(d.usage)}</div>` : ''}</div>
+    </div>`).join('')}</div>`).join('');
+}
+function mdPrint(html) {
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html;
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  pa.querySelectorAll('.fit').forEach(el => {
+    let fs = parseFloat(el.style.fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  pa.querySelectorAll('.fitv').forEach(el => {   // วิธีใช้ยาว → ลดตัวอักษรจนไม่เกินความสูงแถว
+    const box = el.parentElement; let fs = parseFloat(el.style.fontSize);
+    while (el.scrollHeight > box.clientHeight + 1 && fs > 7) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+  });
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
+  setTimeout(() => window.print(), 50);
+}
+function printMd() {
+  if (!MD) return;
+  const rows = MD.items.filter(d => d.on); if (!rows.length) return;
+  const sets = Math.max(1, Math.min(4, +document.getElementById('md-sets').value || 2));
+  mdPrint(Array(sets).fill(0).map(() => mdStickers(rows)).join(''));
+}
+function printMdGrid() { mdSaveCal(); mdPrint(mdStickers(Array(mdPer()).fill(null), true)); }
 // ── สรุปยากลับบ้าน (HMe) — ตรวจทุก 30 วินาที พิมพ์อัตโนมัติเมื่อใบสั่งไม่ถูกแก้มา 2 นาที ──
 let HME = [], HME_NOW = null, hmeFirst = true;
 const HME_STABLE_MS = 120000, HME_FRESH_MS = 30 * 60000;
