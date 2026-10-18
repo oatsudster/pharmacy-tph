@@ -286,7 +286,7 @@ function DbNightMeds($path) {
   $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
   # วิธีใช้: ข้อความวิธีใช้พิเศษ (sp_use) ถ้ามี ไม่งั้นรหัสวิธีใช้ปกติ — ใช้ตรวจขนาดยา
   $rows = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, " +
-    "o.dep_code, k.department, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
+    "o.dep_code, k.department, o.staff, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
     "TRIM(IF(o.sp_use IS NOT NULL AND o.sp_use<>'', CONCAT_WS(' ', sp.name1, sp.name2, sp.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text, " +
     "u.iperday, u.iperdose, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, p.sex, " +
@@ -300,7 +300,7 @@ function DbNightMeds($path) {
     "ORDER BY o.rxdate, o.rxtime, o.hn, o.item_no LIMIT 5000")
   $items = @($rows | ForEach-Object {
     [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['rxdate']; time = $_['rxtime']
-      dep = $_['dep_code']; depName = $_['department']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
+      dep = $_['dep_code']; depName = $_['department']; staff = $_['staff']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
       units = $_['units']; form = $_['dosageform']; qty = $_['qty']; usage = $_['usage_text']; iperday = $_['iperday']; iperdose = $_['iperdose']
       sex = $_['sex']; ageM = $_['age_m']; bw = $_['bw']; height = $_['height']; pregnancy = $_['pregnancy']; egfr = $_['egfr']
       regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
@@ -314,6 +314,15 @@ function DbNightMeds($path) {
   $erVisits = @($er | ForEach-Object {
     [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['vstdate']; time = $_['vsttime']
       depName = $_['department']; sex = $_['sex']; ageM = $_['age_m'] } })
+  # ใบสั่งยาที่ห้องจ่ายยา (030) กดบันทึกจ่ายแล้ว (ช่วงหัวค่ำที่ห้องยายังเปิด) — ยาไม่ได้มาจากรถยา ER
+  $vns = @($rows | ForEach-Object { [HxDb]::Digits($_['vn']) } | Where-Object { $_ } | Select-Object -Unique)
+  $pharmRx = @()
+  if ($vns.Count) {
+    $vin = ($vns | ForEach-Object { "'$_'" }) -join ','
+    $pr = DbQuery ("SELECT vn, DATE_FORMAT(MIN(rx_dispenser_datetime),'%Y-%m-%d %H:%i') AS at, GROUP_CONCAT(DISTINCT staff) AS staff " +
+      "FROM rx_dispenser_detail WHERE vn IN ($vin) AND depcode='030' GROUP BY vn")
+    $pharmRx = @($pr | ForEach-Object { [ordered]@{ vn = $_['vn']; at = $_['at']; staff = $_['staff'] } })
+  }
   # ข้อมูลประกอบการตรวจสอบ: ประวัติแพ้ยา ยาที่ได้รับใน 180 วันก่อนหน้า (ตรวจยาตีกันกับยาเดิม) และตารางยาตีกันของ รพ.
   $hns = @($rows | ForEach-Object { [HxDb]::Digits($_['hn']) } | Where-Object { $_ } | Select-Object -Unique)
   $allergy = @(); $homeMeds = @()
@@ -332,7 +341,7 @@ function DbNightMeds($path) {
   $dr = DbQuery "SELECT drugname1, drugname2, severity, not_allow, note FROM drug_interaction WHERE IFNULL(drug_interaction_type,1)=1"
   $ddi = @($dr | ForEach-Object {
     [ordered]@{ a = $_['drugname1']; b = $_['drugname2']; severity = $_['severity']; notAllow = $_['not_allow']; note = $_['note'] } })
-  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items; erVisits = $erVisits; allergy = $allergy; home = $homeMeds; ddi = $ddi }
+  [ordered]@{ ok = $true; from = "$d0 $from"; to = "$d1 $to"; items = $items; erVisits = $erVisits; pharmRx = $pharmRx; allergy = $allergy; home = $homeMeds; ddi = $ddi }
 }
 function DbAdr($path) {
   $from = '2025-01-01'

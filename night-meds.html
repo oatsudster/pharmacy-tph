@@ -173,8 +173,16 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 // เอา: ยาทุกชนิด ยาเม็ด ยาน้ำ ยาหยอดตา ยาฉีด น้ำเกลือขวด 1000 ml ที่สั่งใน ER/หอผู้ป่วยช่วงเวร
 // ไม่เอา: ยาพ่น (NB/MDI/inhaler), น้ำเกลือขวด 100 ml, ยาเดิมของผู้ป่วย, ของที่ไม่ใช่ยา,
 //         ยาของผู้ป่วยในเดิม (ไม่ได้ admit ในเวรนี้ — order หอผู้ป่วยช่วงหัวค่ำที่ห้องจ่ายยายังเปิด) — ยาแรกรับที่สั่งจาก ER นับเสมอ
-// รายการ OPD ที่คีย์ในนามห้องจ่ายยา (030) ตอนกลางดึกก็นับ เพราะห้องจ่ายยาปิดแล้ว ยามาจากรถยา
+//         ใบสั่งที่ห้องจ่ายยากดบันทึกจ่ายแล้ว (rx_dispenser_detail 030) และรายการที่เจ้าหน้าที่ห้องยาเป็นคนคีย์ —
+//         ห้องยายังเปิดถึงราว 20:30–21:00 ยาพวกนี้จ่ายจากห้องยา ไม่ได้มาจากรถยา
 const ER_DEP = '002';
+// เจ้าหน้าที่ขึ้นเวรห้องยา (login HOSxP → ชื่อ) — รายชื่อจากเภสัช 18 ต.ค. 69; มีคนใหม่ให้เพิ่มที่นี่
+const PHARM_STAFF = {
+  Somruedee: 'สมฤดี คงศรี', Sunisa: 'สุนิษา หล้าเปี้ย', Pamika: 'เปมิกา สิงหบุญพงศ์',
+  boom: 'พงศ์ไพสิฐ บรรจงเมือง', Siriwan: 'ศิริวรรณ สวัสดิวงค์', Pongsagorn: 'พงศกร นวเลิศปัญญา',
+};
+const pharmName = login => PHARM_STAFF[login] || PHARM_STAFF[Object.keys(PHARM_STAFF).find(k => k.toLowerCase() === String(login || '').toLowerCase())] || '';
+const firstName = full => String(full || '').split(' ')[0];
 const RE_INHALE = /\bNB\b|\bMDI\b|inhaler|nebul|BERODUAL|evohaler|accuhaler|turbuhaler/i;
 // เทียบแค่ตัวเลขขนาดขวด — ข้อความไทยใน units (เช่น "ถุง (100 ซีซี)") ที่ได้จาก bridge เพี้ยน จับคำว่า ซีซี ไม่ได้
 const RE_SMALL_NSS = /(^|[^\d,.])(50|100)(?![\d,.])/;
@@ -209,10 +217,16 @@ function formGroup(it) {
   if (/SYRUP|SUSP|SOLUTION|ELIXIR|DRY|DROP/.test(f)) return [2, '🧴 ยาน้ำ'];
   return [6, '📦 อื่นๆ'];
 }
-function classify(it, win) {
+function classify(it, win, pharmRx) {
   const txt = [it.drug, it.form, it.units].join(' ');
   if (!it.form) return [false, 'ไม่ใช่ยา (เช่น ขวดยา)'];
   if (/^ยาเดิม/.test(String(it.drug || '').trim())) return [false, 'ยาเดิมของผู้ป่วย'];
+  const pr = it.vn && pharmRx[it.vn];
+  if (pr) {
+    const who = String(pr.staff || '').split(',').map(s => firstName(pharmName(s)) || s).join(', ');
+    return [false, `ห้องยาบันทึกจ่ายแล้ว (${who} ${String(pr.at || '').slice(11)} น.)`];
+  }
+  if (pharmName(it.staff)) return [false, `ห้องยาคีย์/จ่าย (${firstName(pharmName(it.staff))})`];
   if (it.an && it.dep !== ER_DEP) {
     const reg = it.regdate && it.regtime ? `${it.regdate} ${it.regtime}` : '';
     if (!reg || reg < win.from || reg >= win.to) return [false, 'ผู้ป่วยในเดิม (ไม่ใช่ยาแรกรับ)'];
@@ -256,8 +270,10 @@ async function load() {
 function reclassify() {
   if (!DATA) return;
   const w = windowOf();
+  const pharmRx = {};
+  (DATA.pharmRx || []).forEach(r => { pharmRx[r.vn] = r; });
   ITEMS = (DATA.items || []).map((it, i) => {
-    const [inc, why] = classify(it, w);
+    const [inc, why] = classify(it, w, pharmRx);
     return Object.assign({}, it, { i, auto: inc, why, include: i in OVERRIDE ? OVERRIDE[i] : inc, key: it.an || it.vn || it.hn });
   });
   render();
