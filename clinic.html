@@ -342,6 +342,47 @@ tr:hover td{background:#f8faf9;}
 }
 
 </style>
+<style id="drp-dash-style">
+/* ── DRP Dashboard (interactive, cross-filter) ── */
+.drp-dash .dd-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.dd-chip{min-height:38px;padding:6px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);
+  font-size:13px;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:inherit;}
+.dd-chip:hover{border-color:var(--primary);color:var(--primary);}
+.dd-chip.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+.dd-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);cursor:pointer;margin-left:auto;}
+.dd-toggle input{width:18px;height:18px;accent-color:var(--primary);}
+.dd-active{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:30px;margin-bottom:12px;font-size:12px;color:var(--text-light);}
+.dd-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:#FBF3DC;
+  border:1px solid #ead99f;color:#715509;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
+.dd-pill:hover{background:#f6e7b8;}
+.dd-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px;}
+.dd-kpis .kpi-card.click{cursor:pointer;}
+.dd-kpis .kpi-card.click:hover{border-color:var(--primary);}
+.dd-kpis .kpi-val{font-size:24px;}
+.dd-grid{display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:14px;}
+.dd-grid.even{grid-template-columns:1fr 1fr;}
+.dd-grid .chart-wrap{height:260px;}
+.dd-grid .chart-wrap.tall{height:340px;}
+.dd-hint{font-weight:400;color:var(--text-light);font-size:12px;}
+.dd-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--text-mid);}
+.dd-legend button{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;
+  font-family:inherit;font-size:12px;color:var(--text-mid);padding:2px 0;min-height:28px;}
+.dd-legend button.dim{opacity:.4;}
+.dd-sw{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+.dd-heat{width:100%;border-collapse:separate;border-spacing:2px;min-width:520px;font-size:12px;}
+.dd-heat th{background:none;color:var(--text-mid);text-align:center;padding:6px 4px;}
+.dd-heat th:first-child{text-align:left;}
+.dd-heat td{padding:7px 6px;text-align:center;border:none;border-radius:6px;font-variant-numeric:tabular-nums;}
+.dd-heat td.lab{text-align:left;color:var(--text);background:none;white-space:nowrap;}
+.dd-heat td.cell{cursor:pointer;}
+.dd-heat td.cell:hover{outline:2px solid var(--gold);}
+.dd-heat td.sel{outline:2px solid var(--primary-dark);}
+.dd-heat tr:hover td{background-color:inherit;}
+.dd-insight{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:12px;
+  padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text-mid);line-height:1.8;}
+@media (max-width:1100px){.dd-kpis{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:900px){.dd-grid,.dd-grid.even{grid-template-columns:1fr;}.dd-kpis{grid-template-columns:repeat(2,1fr);}.dd-toggle{margin-left:0;}}
+</style>
 <style id="suite-design">
 /* Shared visual language, kept inline so each page remains self-contained. */
 :root {
@@ -967,6 +1008,7 @@ function rerenderCurrentView() {
   const view = window.reportView || 'main';
   if (view === 'session') renderSessionTab(document.getElementById('main-content'));
   else if (view === 'leftover') renderLeftoverReport(document.getElementById('main-content'));
+  else if (view === 'drp') renderDrpDashboard();
   else renderMain();
 }
 
@@ -3745,6 +3787,8 @@ function renderCurrentView() {
     else renderLeftoverReport(main);
   } else if (view === 'session') {
     renderSessionTab(main);
+  } else if (view === 'drp') {
+    renderDrpDashboard();
   } else {
     renderMain();
   }
@@ -3942,14 +3986,17 @@ function renderAttendanceSummaryTable(clinic) {
 }
 
 function buildClinicBtns(activeC) {
-  return ['HT','DM','COPD','all','leftover','session'].map(c => {
-    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
-    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',leftover:'',session:''};
+  return ['HT','DM','COPD','all','drp','leftover','session'].map(c => {
+    const labels = {HT:'🫀 HT', DM:'🩺 DM', COPD:'🫁 COPD', all:'📊 ทุกคลินิก', drp:'🔍 DRP Dashboard', leftover:'📦 ยาคงเหลือ', session:'📋 Session'};
+    const colors = {HT:'ht',DM:'dm',COPD:'copd',all:'',drp:'',leftover:'',session:''};
     const clickFn = c==='session' ? `renderSessionTab(document.getElementById('main-content'))`
                   : c==='leftover' ? `renderLeftoverReport(document.getElementById('main-content'))`
+                  : c==='drp' ? `renderDrpDashboard()`
                   : `renderMain()`;
-    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : 'main';
-    return `<button class="clinic-tab ${colors[c]} ${c===activeC?'active':''}" onclick="window.reportClinic='${c}';window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
+    const view = c==='session' ? 'session' : c==='leftover' ? 'leftover' : c==='drp' ? 'drp' : 'main';
+    // แท็บ DRP ไม่เปลี่ยน reportClinic — คลินิกเลือกภายในแดชบอร์ดเอง
+    const setClinic = c==='drp' ? '' : `window.reportClinic='${c}';`;
+    return `<button class="clinic-tab ${colors[c]} ${c===activeC?'active':''}" onclick="${setClinic}window.reportView='${view}';${clickFn}" style="flex:none;padding:10px 20px">${labels[c]}</button>`;
   }).join('');
 }
 
@@ -4049,6 +4096,321 @@ function renderMain() {
   renderAttendanceSummaryTable(clinic);
   renderTable();
   renderDailySummaryTable(clinic);
+}
+
+// ── DRP DASHBOARD (interactive · คลิกกราฟใดก็ได้เพื่อกรองกราฟอื่นทั้งหมด) ──
+// จัดกลุ่ม DRP 18 ประเภทเป็น 5 หมวด ให้เห็นภาพรวมก่อน แล้วค่อยเจาะลงประเภท/สาเหตุ/รายผู้ป่วย
+// สีหมวดเรียงตายตัว (ไม่เปลี่ยนตามอันดับ) เพื่อให้หมวดเดิมเป็นสีเดิมทุกกราฟ
+const DRP_GROUPS = [
+  {key:'adh',  label:'ไม่ใช้ยาตามสั่ง (Adherence)',      color:'#2a78d6', match:['Noncompliance','Self-Adjusted','Missed Dose','Leftover','Early Medication','Missed Follow-up']},
+  {key:'use',  label:'ใช้ยา/เก็บยาผิดวิธี',               color:'#eb6834', match:['Incorrect Dose Taken','Improper Drug Use','Improper Drug Storage']},
+  {key:'me',   label:'คลาดเคลื่อนสั่ง/จ่ายยา',            color:'#1baf7a', match:['Prescribing/Dispensing','Incomplete Dispensing','Dispensing Quantity','Therapeutic Duplication']},
+  {key:'safe', label:'ADR / ปฏิกิริยาระหว่างยา',          color:'#eda100', match:['Adverse Drug Reaction','Drug Interaction']},
+  {key:'oth',  label:'ปรับแผนการรักษา / อื่นๆ',           color:'#e87ba4', match:[]},
+];
+const DRP_LEFTOVER_TYPE = 'มียาเหลือสะสม (Medication Nonadherence – Leftover Medication)';
+// ชื่อ DRP รุ่นเก่า (ก่อนเพิ่มชื่อภาษาอังกฤษ) → ชื่อปัจจุบันใน DRP_TYPES เพื่อให้นับรวมเป็นประเภทเดียวกัน (ไม่แก้ข้อมูลที่บันทึกไว้)
+const DRP_LEGACY = {
+  'ยาเหลือสะสม':'Leftover', 'ผู้ป่วยลืมรับประทานยาบางมื้อ/บางวัน':'Missed Dose –', 'ผู้ป่วยไม่ได้ใช้ยาตามแพทย์สั่ง':'Noncompliance',
+  'ผู้ป่วยรับประทานยาผิดวิธีใช้':'Improper Drug Use', 'ยาหมดก่อนนัด':'Early Medication', 'ผู้ป่วยปรับขนาด/เวลารับประทานยาเอง':'Self-Adjusted',
+  'เกิด ADR จากยา':'Adverse Drug Reaction', 'ผู้ป่วยมาผิดนัด/ขาดนัด':'Missed Follow-up', 'ผู้ป่วยรับประทานยาผิดขนาด':'Incorrect Dose Taken',
+  'ผู้ป่วยได้รับยาผิดขนาด':'Prescribing/Dispensing', 'ผู้ป่วยไม่ได้รับประทานมื้อเที่ยงจึงไม่รับประทานยา':'Skipped Meal', 'อื่นๆ':'Others',
+};
+function drpCanonType(type) {
+  const t = String(type || '').trim();
+  if (DRP_TYPES.includes(t)) return t;
+  const key = DRP_LEGACY[t];
+  return (key && DRP_TYPES.find(x => x.includes(key))) || t;
+}
+function drpGroupOf(type) {
+  return (DRP_GROUPS.find(g => g.match.some(m => String(type).includes(m))) || DRP_GROUPS[DRP_GROUPS.length-1]).key;
+}
+const drpGroup = key => DRP_GROUPS.find(g => g.key === key);
+const drpTrunc = (s, n) => s.length > n ? s.slice(0, n-1) + '…' : s;
+function drpMonthLabel(key) { const [y, m] = key.split('-'); return TH_MONTHS[+m-1] + ' ' + String(+y+543).slice(-2); }
+
+window.drpF = window.drpF || {clinic:'', cat:'', type:'', month:'', pharm:''};
+window.drpExclLeftover = !!window.drpExclLeftover;
+
+// DRP ทุกรายการในช่วงเวลาที่เลือก (ยังไม่กรองมิติอื่น) — 1 แถว = 1 DRP
+function drpItems() {
+  const out = [];
+  visitRecords.forEach(v => {
+    if (!inPeriod(v.date)) return;
+    (v.drps || []).forEach(d => {
+      if (!d.type) return;
+      const type = drpCanonType(d.type);
+      if (window.drpExclLeftover && type === DRP_LEFTOVER_TYPE) return;
+      out.push({v, d, type, cat:drpGroupOf(type), clinic:v.clinic||'', month:(v.date||'').slice(0,7),
+        pharm:(v.pharmacist||'').trim() || 'ไม่ระบุ', cause:(d.cause && d.cause !== 'อื่นๆ' ? d.cause : (d.causeNote||'').trim()) || 'ไม่ระบุสาเหตุ'});
+    });
+  });
+  return out;
+}
+// กรองทุกมิติ ยกเว้นมิติของกราฟตัวเอง (cross-filter) — กราฟจึงยังเห็นตัวเลือกอื่นให้กดสลับได้
+function drpPass(it, except) {
+  const F = window.drpF;
+  return ['clinic','cat','type','month','pharm'].every(k => k === except || (Array.isArray(except) && except.includes(k)) || !F[k] || it[k] === F[k]);
+}
+function drpSet(k, val) {
+  window.drpF[k] = window.drpF[k] === val ? '' : val;
+  if (k === 'cat' && window.drpF.type && drpGroupOf(window.drpF.type) !== window.drpF.cat) window.drpF.type = '';
+  renderDrpDashboard();
+}
+function drpClear() { window.drpF = {clinic:'', cat:'', type:'', month:'', pharm:''}; renderDrpDashboard(); }
+function drpToggleLeftover(on) { window.drpExclLeftover = on; if (on && window.drpF.type === DRP_LEFTOVER_TYPE) window.drpF.type = ''; renderDrpDashboard(); }
+function drpVisitsOf(items) { const seen = new Set(); return items.filter(it => !seen.has(it.v.id) && seen.add(it.v.id)).map(it => it.v); }
+
+function renderDrpDashboard() {
+  const main = document.getElementById('main-content');
+  window.reportView = 'drp';
+  const F = window.drpF;
+  const all = drpItems();
+  const items = all.filter(it => drpPass(it));
+  const pct = (n, d) => d ? Math.round(n/d*1000)/10 : 0;
+
+  // ตัวหาร: ครั้งที่ให้คำปรึกษาในคลินิก/เดือน/เภสัชกรที่เลือก (ไม่ขึ้นกับหมวด/ประเภท DRP)
+  const scopeVisits = visitRecords.filter(v => inPeriod(v.date)
+    && (!F.clinic || v.clinic === F.clinic) && (!F.month || (v.date||'').slice(0,7) === F.month)
+    && (!F.pharm || ((v.pharmacist||'').trim() || 'ไม่ระบุ') === F.pharm));
+  const drpVisits = drpVisitsOf(items);
+  const hnVisits = {};
+  drpVisits.forEach(v => { const hn = (v.hn||'').trim(); if (hn) (hnVisits[hn] = hnVisits[hn] || []).push(v); });
+  const repeatHns = Object.keys(hnVisits).filter(hn => hnVisits[hn].length >= 2);
+  window._drpRepeatVisits = repeatHns.flatMap(hn => hnVisits[hn]).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const typeCount = {};
+  items.forEach(it => typeCount[it.type] = (typeCount[it.type]||0) + 1);
+  const topType = Object.entries(typeCount).sort((a,b) => b[1]-a[1])[0];
+
+  const pills = [];
+  if (F.clinic) pills.push(['clinic', 'คลินิก ' + F.clinic]);
+  if (F.cat) pills.push(['cat', 'หมวด: ' + drpGroup(F.cat).label]);
+  if (F.type) pills.push(['type', 'ประเภท: ' + drpShortName(F.type)]);
+  if (F.month) pills.push(['month', 'เดือน ' + drpMonthLabel(F.month)]);
+  if (F.pharm) pills.push(['pharm', 'เภสัชกร: ' + F.pharm]);
+
+  main.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${buildClinicBtns('drp')}</div>
+    ${periodBarHtml()}
+    <div class="drp-dash">
+      <div class="dd-bar">
+        ${['','HT','DM','COPD'].map(c => `<button class="dd-chip ${F.clinic===c?'on':''}" onclick="window.drpF.clinic='${c}';renderDrpDashboard()">${c || 'ทุกคลินิก'}</button>`).join('')}
+        <label class="dd-toggle"><input type="checkbox" ${window.drpExclLeftover?'checked':''} onchange="drpToggleLeftover(this.checked)"> ไม่นับ "มียาเหลือสะสม" (ดู DRP อื่นชัดขึ้น)</label>
+      </div>
+      <div class="dd-active">${pills.length
+        ? 'กรองอยู่: ' + pills.map(([k, t]) => `<button class="dd-pill" onclick="window.drpF.${k}='';renderDrpDashboard()" title="เอาตัวกรองนี้ออก">${escHtml(t)} ✕</button>`).join('') + `<button class="dd-pill" onclick="drpClear()">ล้างทั้งหมด</button>`
+        : '💡 คลิกส่วนใดของกราฟ ตาราง หรือคำอธิบายสี เพื่อกรองข้อมูลทั้งหน้า · คลิกซ้ำเพื่อยกเลิก'}</div>
+
+      <div class="dd-kpis">
+        <div class="kpi-card"><div class="kpi-label">DRP ที่พบ</div><div class="kpi-val">${items.length.toLocaleString()}</div><div class="kpi-sub">รายการ · ตามตัวกรอง</div></div>
+        <div class="kpi-card"><div class="kpi-label">ครั้งที่พบ DRP</div><div class="kpi-val">${pct(drpVisits.length, scopeVisits.length)}%</div><div class="kpi-sub">${drpVisits.length} ใน ${scopeVisits.length} ครั้งที่ให้คำปรึกษา</div></div>
+        <div class="kpi-card"><div class="kpi-label">DRP เฉลี่ยต่อครั้งที่พบ</div><div class="kpi-val">${drpVisits.length ? (items.length/drpVisits.length).toFixed(2) : '0'}</div><div class="kpi-sub">รายการ/ครั้ง</div></div>
+        <div class="kpi-card ${repeatHns.length?'click':''}" ${repeatHns.length?`onclick="showClinicDetail('🔁 ผู้ป่วยที่พบ DRP ซ้ำ ≥ 2 ครั้ง', window._drpRepeatVisits)" title="คลิกดูรายชื่อ"`:''}><div class="kpi-label">ผู้ป่วยที่พบ DRP ซ้ำ</div><div class="kpi-val ${repeatHns.length?'danger':''}">${repeatHns.length}</div><div class="kpi-sub">ราย (≥ 2 ครั้ง) จาก ${Object.keys(hnVisits).length} ราย${repeatHns.length?' · คลิกดู':''}</div></div>
+        <div class="kpi-card ${topType?'click':''}" ${topType?`onclick="drpSet('type', ${escHtml(JSON.stringify(topType[0]))})" title="คลิกเพื่อกรองประเภทนี้"`:''}><div class="kpi-label">พบบ่อยที่สุด</div><div class="kpi-val gold" style="font-size:16px;line-height:1.4">${topType ? escHtml(drpShortName(topType[0])) : '—'}</div><div class="kpi-sub">${topType ? topType[1] + ' รายการ (' + pct(topType[1], items.length) + '%)' : ''}</div></div>
+      </div>
+      ${drpInsightHtml(all, items)}
+
+      <div class="dd-grid">
+        <div class="chart-card"><div class="chart-title">สัดส่วนตามหมวด DRP <span class="dd-hint">(คลิกเพื่อกรอง)</span></div>
+          <div class="chart-wrap"><canvas id="dd-cat"></canvas></div><div class="dd-legend" id="dd-cat-legend"></div></div>
+        <div class="chart-card"><div class="chart-title">ประเภท DRP ${F.cat ? '· ' + escHtml(drpGroup(F.cat).label) : ''} <span class="dd-hint">(คลิกแท่งเพื่อกรอง · สีตามหมวด)</span></div>
+          <div class="chart-wrap tall"><canvas id="dd-type"></canvas></div></div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:14px"><div class="chart-title">แนวโน้มรายเดือน แยกตามหมวด <span class="dd-hint">(คลิกแท่งเพื่อเลือกเดือน)</span></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="dd-month"></canvas></div></div>
+
+      <div class="dd-grid even">
+        <div class="chart-card"><div class="chart-title">สาเหตุ ${F.type ? '· ' + escHtml(drpShortName(F.type)) : '(ทุกประเภทที่กรองอยู่)'} <span class="dd-hint">(คลิกแท่งเพื่อดูผู้ป่วย)</span><div class="dd-hint" id="dd-cause-note"></div></div>
+          <div class="chart-wrap tall"><canvas id="dd-cause"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">แผนที่ความร้อน · ประเภท DRP × คลินิก <span class="dd-hint">(คลิกช่องเพื่อกรอง)</span></div>
+          <div class="tbl-wrap" id="dd-heat"></div></div>
+      </div>
+
+      <div class="dd-grid even">
+        <div class="chart-card"><div class="chart-title">DRP ที่พบ แยกตามเภสัชกร <span class="dd-hint">(คลิกเพื่อกรอง)</span></div>
+          <div class="chart-wrap"><canvas id="dd-pharm"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">ยาที่เกี่ยวข้องกับยาเหลือสะสม <span class="dd-hint">(10 อันดับ · ตามตัวกรอง)</span></div>
+          <div class="chart-wrap"><canvas id="dd-lodrug"></canvas></div></div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-head"><span class="table-title">รายการ DRP ตามตัวกรอง (${items.length.toLocaleString()} รายการ)</span>
+          <span class="dd-hint">${items.length > 300 ? 'แสดง 300 รายการล่าสุด · ' : ''}คลิกแถวเพื่อแก้ไขบันทึก</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>วันที่</th><th>HN / ชื่อ</th><th>คลินิก</th><th>หมวด</th><th>ประเภท DRP</th><th>สาเหตุ</th><th>เภสัชกร</th></tr></thead>
+          <tbody>${items.slice().sort((a,b) => (b.v.date||'').localeCompare(a.v.date||'') || (b.v.created||0)-(a.v.created||0)).slice(0,300).map(it => `
+            <tr style="cursor:pointer" onclick="editVisit('${escHtml(it.v.id)}')">
+              <td style="white-space:nowrap">${escHtml(thDate(it.v.date))}</td>
+              <td><strong>${escHtml(it.v.hn||'')}</strong><div style="font-size:11px;color:var(--text-mid)">${escHtml(it.v.name||'')}</div></td>
+              <td><span class="badge badge-${escHtml(it.clinic.toLowerCase())}">${escHtml(it.clinic)}</span></td>
+              <td><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><span class="dd-sw" style="background:${drpGroup(it.cat).color}"></span>${escHtml(drpGroup(it.cat).label)}</span></td>
+              <td>${escHtml(drpShortName(it.type))}</td>
+              <td style="font-size:11px;color:var(--text-mid)">${escHtml(it.cause)}</td>
+              <td style="font-size:11px">${escHtml(it.pharm)}</td>
+            </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:24px">ไม่พบ DRP ตามตัวกรองนี้</td></tr>'}</tbody>
+        </table></div>
+      </div>
+    </div>`;
+
+  renderDrpCharts(all);
+}
+
+// สรุปเป็นประโยคอัตโนมัติ: หมวดหลัก, เดือนล่าสุดเทียบเดือนก่อน, สาเหตุหลัก
+function drpInsightHtml(all, items) {
+  if (!items.length) return '';
+  const lines = [];
+  const catCount = {};
+  items.forEach(it => catCount[it.cat] = (catCount[it.cat]||0) + 1);
+  const [topCat, topCatN] = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0];
+  lines.push(`📌 DRP ส่วนใหญ่อยู่ในหมวด <strong>${escHtml(drpGroup(topCat).label)}</strong> ${Math.round(topCatN/items.length*100)}%`);
+  if (!window.drpF.month) {
+    const byMonth = {};
+    all.filter(it => drpPass(it, 'month')).forEach(it => byMonth[it.month] = (byMonth[it.month]||0) + 1);
+    const ms = Object.keys(byMonth).sort();
+    if (ms.length >= 2) {
+      const cur = byMonth[ms[ms.length-1]], prev = byMonth[ms[ms.length-2]], diff = cur - prev;
+      lines.push(`📈 ${drpMonthLabel(ms[ms.length-1])} พบ ${cur} รายการ ${diff === 0 ? 'เท่ากับ' : diff > 0 ? '<span style="color:var(--danger)">เพิ่มขึ้น ' + diff + '</span> จาก' : '<span style="color:#16a34a">ลดลง ' + (-diff) + '</span> จาก'} ${drpMonthLabel(ms[ms.length-2])} (${prev})`);
+    }
+  }
+  const causeCount = {};
+  items.filter(it => it.cause !== 'ไม่ระบุสาเหตุ').forEach(it => causeCount[it.cause] = (causeCount[it.cause]||0) + 1);
+  const topCause = Object.entries(causeCount).sort((a,b) => b[1]-a[1])[0];
+  if (topCause) lines.push(`🔎 สาเหตุที่ระบุบ่อยที่สุด: <strong>${escHtml(drpTrunc(topCause[0], 60))}</strong> (${topCause[1]} ครั้ง)`);
+  return `<div class="dd-insight">${lines.join('<br>')}</div>`;
+}
+
+function renderDrpCharts(all) {
+  const F = window.drpF;
+  ['dd-cat','dd-type','dd-month','dd-cause','dd-pharm','dd-lodrug'].forEach(destroyChart);
+  const hover = (evt, els) => { if (evt.native) evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+  const axisTick = {font:{size:11}, color:'#3D5A47'};
+  const grid = {color:'#eef2ef'};
+  const dim = (hex, on) => on ? hex : hex + '40';
+  const count = (arr, key) => { const m = {}; arr.forEach(it => m[it[key]] = (m[it[key]]||0) + 1); return m; };
+
+  // 1) หมวด — donut
+  const catItems = all.filter(it => drpPass(it, 'cat'));
+  const catMap = count(catItems, 'cat');
+  const cats = DRP_GROUPS.filter(g => catMap[g.key]);
+  const catTotal = catItems.length;
+  if (cats.length) {
+    chartInstances['dd-cat'] = new Chart(document.getElementById('dd-cat'), {type:'doughnut',
+      data:{labels:cats.map(g => g.label), datasets:[{data:cats.map(g => catMap[g.key]),
+        backgroundColor:cats.map(g => dim(g.color, !F.cat || F.cat === g.key)), borderColor:'#fff', borderWidth:2, hoverOffset:8}]},
+      options:{responsive:true, maintainAspectRatio:false, cutout:'62%',
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => ` ${c.label}: ${c.raw} (${Math.round(c.raw/catTotal*1000)/10}%)`}}},
+        onClick:(e, els) => { if (els.length) drpSet('cat', cats[els[0].index].key); }, onHover:hover}});
+  } else emptyDrpChart('dd-cat');
+  document.getElementById('dd-cat-legend').innerHTML = cats.map(g =>
+    `<button class="${F.cat && F.cat !== g.key ? 'dim' : ''}" onclick="drpSet('cat','${g.key}')"><span class="dd-sw" style="background:${g.color}"></span>${escHtml(g.label)} <strong>${catMap[g.key]}</strong> <span style="color:var(--text-light)">(${Math.round(catMap[g.key]/catTotal*100)}%)</span></button>`).join('');
+
+  // 2) ประเภท — horizontal bar, สีตามหมวด
+  const typeEntries = Object.entries(count(all.filter(it => drpPass(it, 'type')), 'type')).sort((a,b) => b[1]-a[1]).slice(0, 12);
+  if (typeEntries.length) {
+    chartInstances['dd-type'] = new Chart(document.getElementById('dd-type'), {type:'bar',
+      data:{labels:typeEntries.map(e => drpTrunc(drpShortName(e[0]), 30)), datasets:[{data:typeEntries.map(e => e[1]),
+        backgroundColor:typeEntries.map(e => dim(drpGroup(drpGroupOf(e[0])).color, !F.type || F.type === e[0])),
+        borderRadius:4, borderSkipped:'start', barPercentage:.75, categoryPercentage:.9}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},
+          tooltip:{callbacks:{title:c => typeEntries[c[0].dataIndex][0], label:c => ` ${c.raw} รายการ · หมวด ${drpGroup(drpGroupOf(typeEntries[c.dataIndex][0])).label}`}}},
+        scales:{x:{beginAtZero:true, ticks:{...axisTick, precision:0}, grid}, y:{ticks:axisTick, grid:{display:false}}},
+        onClick:(e, els) => { if (els.length) drpSet('type', typeEntries[els[0].index][0]); }, onHover:hover}});
+  } else emptyDrpChart('dd-type');
+
+  // 3) รายเดือน — stacked bar ตามหมวด (12 เดือนล่าสุดที่มีข้อมูล)
+  const mItems = all.filter(it => drpPass(it, 'month'));
+  const months = [...new Set(mItems.map(it => it.month))].filter(Boolean).sort().slice(-12);
+  if (months.length) {
+    const mCats = DRP_GROUPS.filter(g => mItems.some(it => it.cat === g.key));
+    chartInstances['dd-month'] = new Chart(document.getElementById('dd-month'), {type:'bar',
+      data:{labels:months.map(drpMonthLabel), datasets:mCats.map(g => ({label:g.label,
+        data:months.map(m => mItems.filter(it => it.month === m && it.cat === g.key).length),
+        backgroundColor:months.map(m => dim(g.color, !F.month || F.month === m)),
+        borderColor:'#fff', borderWidth:{top:2}, borderSkipped:'bottom', maxBarThickness:42}))},
+      options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+        plugins:{legend:{position:'bottom', labels:{boxWidth:12, boxHeight:12, font:{size:11}, color:'#3D5A47'}},
+          tooltip:{callbacks:{footer:c => 'รวม ' + c.reduce((s, x) => s + x.raw, 0) + ' รายการ'}}},
+        scales:{x:{stacked:true, ticks:axisTick, grid:{display:false}}, y:{stacked:true, beginAtZero:true, ticks:{...axisTick, precision:0}, grid}},
+        onClick:(e, els) => { if (els.length) drpSet('month', months[els[0].index]); }, onHover:hover}});
+  } else emptyDrpChart('dd-month');
+
+  // 4) สาเหตุ — ใช้ตัวกรองครบทุกมิติ คลิกเพื่อดูรายชื่อผู้ป่วย
+  const items = all.filter(it => drpPass(it));
+  // "ไม่ระบุสาเหตุ" มักมากจนบังแท่งอื่น จึงแสดงเป็นตัวเลขใต้หัวข้อแทน
+  const noCause = items.filter(it => it.cause === 'ไม่ระบุสาเหตุ').length;
+  document.getElementById('dd-cause-note').textContent = noCause ? `ไม่ได้ระบุสาเหตุ ${noCause} จาก ${items.length} รายการ (ไม่แสดงในกราฟ)` : '';
+  const causeEntries = Object.entries(count(items.filter(it => it.cause !== 'ไม่ระบุสาเหตุ'), 'cause')).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  if (causeEntries.length) {
+    const clr = F.type ? drpGroup(drpGroupOf(F.type)).color : F.cat ? drpGroup(F.cat).color : '#1A5E38';
+    chartInstances['dd-cause'] = new Chart(document.getElementById('dd-cause'), {type:'bar',
+      data:{labels:causeEntries.map(e => drpTrunc(e[0], 30)), datasets:[{data:causeEntries.map(e => e[1]),
+        backgroundColor:clr, borderRadius:4, borderSkipped:'start', barPercentage:.75}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => causeEntries[c[0].dataIndex][0], label:c => ` ${c.raw} ครั้ง (${Math.round(c.raw/items.length*100)}%)`}}},
+        scales:{x:{beginAtZero:true, ticks:{...axisTick, precision:0}, grid}, y:{ticks:axisTick, grid:{display:false}}},
+        onClick:(e, els) => { if (!els.length) return; const c = causeEntries[els[0].index][0];
+          showClinicDetail('🔎 สาเหตุ: ' + c, drpVisitsOf(items.filter(it => it.cause === c))); }, onHover:hover}});
+  } else emptyDrpChart('dd-cause');
+
+  // 5) Heatmap ประเภท × คลินิก (ความเข้มสีเดียว อ่อน→เข้ม)
+  const hItems = all.filter(it => drpPass(it, ['clinic','type']));
+  const hTypes = Object.entries(count(hItems, 'type')).sort((a,b) => b[1]-a[1]).slice(0, 10).map(e => e[0]);
+  const clinics = ['HT','DM','COPD'];
+  const cell = {}; let hMax = 0;
+  hItems.forEach(it => { const k = it.type + '|' + it.clinic; cell[k] = (cell[k]||0) + 1; hMax = Math.max(hMax, cell[k]); });
+  window._drpHeatTypes = hTypes;
+  document.getElementById('dd-heat').innerHTML = hTypes.length ? `<table class="dd-heat">
+    <thead><tr><th>ประเภท DRP</th>${clinics.map(c => `<th>${c}</th>`).join('')}<th>รวม</th></tr></thead>
+    <tbody>${hTypes.map((t, i) => {
+      const row = clinics.map(c => cell[t + '|' + c] || 0);
+      return `<tr><td class="lab" title="${escHtml(t)}">${escHtml(drpTrunc(drpShortName(t), 26))}</td>${row.map((n, j) => {
+        const a = n ? .12 + .88 * n / hMax : 0;
+        const sel = F.type === t && F.clinic === clinics[j];
+        return `<td class="cell ${sel ? 'sel' : ''}" style="background:${n ? `rgba(26,94,56,${a.toFixed(2)})` : '#f4f7f5'};color:${a > .5 ? '#fff' : '#1C2B22'}"
+          title="${escHtml(drpShortName(t))} · ${clinics[j]}: ${n} รายการ" onclick="drpHeatClick(${i},'${clinics[j]}')">${n || '·'}</td>`;
+      }).join('')}<td style="font-weight:700;color:var(--text-mid)">${row.reduce((s, n) => s + n, 0)}</td></tr>`;
+    }).join('')}</tbody></table>` : '<p style="text-align:center;color:var(--text-light);padding:40px 0">ไม่มีข้อมูล</p>';
+
+  // 6) เภสัชกร
+  const pEntries = Object.entries(count(all.filter(it => drpPass(it, 'pharm')), 'pharm')).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  if (pEntries.length) {
+    chartInstances['dd-pharm'] = new Chart(document.getElementById('dd-pharm'), {type:'bar',
+      data:{labels:pEntries.map(e => drpTrunc(e[0], 22)), datasets:[{data:pEntries.map(e => e[1]),
+        backgroundColor:pEntries.map(e => dim('#1A5E38', !F.pharm || F.pharm === e[0])), borderRadius:4, borderSkipped:'start', barPercentage:.7}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => pEntries[c[0].dataIndex][0], label:c => ` ${c.raw} รายการ`}}},
+        scales:{x:{beginAtZero:true, ticks:{...axisTick, precision:0}, grid}, y:{ticks:axisTick, grid:{display:false}}},
+        onClick:(e, els) => { if (els.length) drpSet('pharm', pEntries[els[0].index][0]); }, onHover:hover}});
+  } else emptyDrpChart('dd-pharm');
+
+  // 7) ยาเหลือสะสม — นับจากตารางยาคงเหลือของครั้งที่ผ่านตัวกรอง (ไม่ขึ้นกับสวิตช์ "ไม่นับยาเหลือ")
+  const loVisits = visitRecords.filter(v => inPeriod(v.date) && (v.leftovers||[]).length
+    && (!F.clinic || v.clinic === F.clinic) && (!F.month || (v.date||'').slice(0,7) === F.month)
+    && (!F.pharm || ((v.pharmacist||'').trim() || 'ไม่ระบุ') === F.pharm));
+  const loMap = {}, loVis = {};
+  loVisits.forEach(v => v.leftovers.forEach(l => { const k = cleanDrugName(l.drug); if (!k) return;
+    loMap[k] = (loMap[k]||0) + 1; (loVis[k] = loVis[k] || []).push(v); }));
+  const loEntries = Object.entries(loMap).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  if (loEntries.length) {
+    chartInstances['dd-lodrug'] = new Chart(document.getElementById('dd-lodrug'), {type:'bar',
+      data:{labels:loEntries.map(e => drpTrunc(e[0], 24)), datasets:[{data:loEntries.map(e => e[1]),
+        backgroundColor:'#2a78d6', borderRadius:4, borderSkipped:'start', barPercentage:.7}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => loEntries[c[0].dataIndex][0], label:c => ` เหลือใน ${c.raw} ครั้งที่ให้คำปรึกษา`}}},
+        scales:{x:{beginAtZero:true, ticks:{...axisTick, precision:0}, grid}, y:{ticks:axisTick, grid:{display:false}}},
+        onClick:(e, els) => { if (!els.length) return; const k = loEntries[els[0].index][0]; showClinicDetail('📦 ยาเหลือ: ' + k, loVis[k]); }, onHover:hover}});
+  } else emptyDrpChart('dd-lodrug');
+}
+function drpHeatClick(i, clinic) {
+  const t = window._drpHeatTypes[i], F = window.drpF;
+  if (F.type === t && F.clinic === clinic) { F.type = ''; F.clinic = ''; }
+  else { F.type = t; F.clinic = clinic; if (F.cat && drpGroupOf(t) !== F.cat) F.cat = ''; }
+  renderDrpDashboard();
+}
+function emptyDrpChart(id) {
+  const wrap = document.getElementById(id).parentElement;
+  wrap.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:60px 0">ไม่มีข้อมูลตามตัวกรองนี้</p>';
 }
 
 function renderLeftoverReport(main) {
