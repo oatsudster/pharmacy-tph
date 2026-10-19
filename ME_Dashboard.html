@@ -513,17 +513,6 @@
   .section .page { flex: 1; min-width: 0; }
 
   /* ── UPLOAD AREA ─────────────────────────────────────── */
-  .upload-zone {
-    border: 2.5px dashed var(--border); border-radius: 16px;
-    padding: 40px 24px; text-align: center; cursor: pointer;
-    transition: all .2s; background: #fafcfb; margin-bottom: 20px;
-  }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--primary); background: var(--primary-light);
-  }
-  .upload-zone .uz-icon { font-size: 48px; margin-bottom: 12px; }
-  .upload-zone .uz-title { font-size: 20px; font-weight: 700; color: var(--primary-dark); margin-bottom: 6px; }
-  .upload-zone .uz-sub { font-size: 15px; color: var(--text-light); }
 
   .import-status-bar {
     background: var(--primary-light); border: 1px solid var(--border);
@@ -841,14 +830,14 @@ const DashUX = {
         <div class="lc-icon">📋</div>
         <div class="lc-title">OPD</div>
         <div class="lc-sub">ผู้ป่วยนอก</div>
-        <div class="lc-desc">นำเข้าข้อมูลจาก HosXP<br>วิเคราะห์ Dashboard และรายงาน</div>
+        <div class="lc-desc">ดึงข้อมูลจาก HOSxP อัตโนมัติ<br>วิเคราะห์ Dashboard และรายงาน</div>
         <div class="lc-count" id="land-opd-count">0 รายการ</div>
       </div>
       <div class="landing-card" onclick="showSection('ipd')">
         <div class="lc-icon">🏥</div>
         <div class="lc-title">IPD</div>
         <div class="lc-sub">ผู้ป่วยใน</div>
-        <div class="lc-desc">นำเข้าข้อมูลจาก HosXP<br>วิเคราะห์ Dashboard และรายงาน</div>
+        <div class="lc-desc">ดึงข้อมูลจาก HOSxP อัตโนมัติ<br>วิเคราะห์ Dashboard และรายงาน</div>
         <div class="lc-count" id="land-ipd-count">0 รายการ</div>
       </div>
       <div class="landing-card" onclick="showSection('er')">
@@ -920,7 +909,7 @@ const DashUX = {
     <button class="tab-btn active" id="tab-opd-dash"    onclick="showHosXPTab('opd','dash',this)">📊 Dashboard</button>
     <button class="tab-btn"        id="tab-opd-kpi"     onclick="showHosXPTab('opd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-opd-records" onclick="showHosXPTab('opd','records',this)">📋 รายการ</button>
-    <button class="tab-btn hx-manual-only" id="tab-opd-upload"  onclick="showHosXPTab('opd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn hx-manual-only" id="tab-opd-upload"  onclick="showHosXPTab('opd','upload',this)">🗄 ข้อมูล HOSxP</button>
     <button class="tab-btn hx-manual-only" id="tab-opd-manual"  onclick="showHosXPTab('opd','manual',this)">✏️ บันทึกเอง</button>
     <button class="tab-btn hx-manual-toggle" onclick="toggleHxManual()" title="ข้อมูลดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการนำเข้า/บันทึกเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
@@ -930,8 +919,8 @@ const DashUX = {
     <div id="opd-no-data" style="display:none;text-align:center;padding:80px 20px;color:var(--text-light)">
       <div style="font-size:56px;margin-bottom:16px">📭</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:8px">ยังไม่มีข้อมูล ผู้ป่วยนอก</div>
-      <div style="font-size:16px">กรุณาไปที่แท็บ <strong>นำเข้าข้อมูล</strong> เพื่ออัพโหลดไฟล์จาก HosXP</div>
-      <button class="btn btn-primary" style="margin-top:22px;font-size:17px" onclick="showHosXPTab('opd','upload',null)">📤 นำเข้าข้อมูล</button>
+      <div style="font-size:16px">ข้อมูลดึงจากฐานข้อมูล HOSxP (เฉพาะเครื่องที่มี HOSxP Bridge)</div>
+      <button class="btn btn-primary" style="margin-top:22px;font-size:17px" onclick="syncMeFromHosxp(true)">🗄 ดึงจาก HOSxP</button>
     </div>
     <div id="opd-dash-content">
       <div class="month-filter-bar">
@@ -1053,7 +1042,7 @@ const DashUX = {
   <!-- OPD UPLOAD -->
   <div class="page" id="page-opd-upload" style="padding:24px;overflow-y:auto">
     <div class="card" style="max-width:700px;margin:0 auto">
-      <div class="card-title">📤 นำเข้าข้อมูล ผู้ป่วยนอก จาก HosXP</div>
+      <div class="card-title">🗄 ข้อมูล ผู้ป่วยนอก จาก HOSxP</div>
       <div class="import-status-bar">
         <div>
           <div style="font-size:14px;color:var(--text-light);margin-bottom:2px">ข้อมูลในระบบปัจจุบัน</div>
@@ -1070,26 +1059,11 @@ const DashUX = {
           <button class="btn btn-danger" onclick="requireAdmin(() => deleteHosXPMonth('OPD'))" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
         </div>
       </div>
-      <div class="upload-zone" id="opd-upload-zone"
-           onclick="document.getElementById('opd-file-input').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="event.preventDefault();this.classList.remove('drag-over');handleHosXPDrop(event,'OPD')">
-        <div class="uz-icon">📁</div>
-        <div class="uz-title">คลิกหรือลากไฟล์มาวางที่นี่</div>
-        <div class="uz-sub">รองรับ .xls/.xlsx จาก HosXP — แยก OPD/IPD อัตโนมัติจากคอลัมน์ แผนก</div>
-        <input type="file" id="opd-file-input" accept=".xls,.xlsx" style="display:none"
-               onchange="handleHosXPUpload(this,'OPD')">
-      </div>
       <div style="margin-top:12px"><button type="button" class="btn" onclick="syncMeFromHosxp(true)" title="ดึงรายงาน Medication error จากฐานข้อมูล HOSxP ตั้งแต่ ต.ค.68 (เฉพาะเครื่องที่มี HOSxP Bridge) — รายการที่มีแล้วไม่ลงซ้ำ">🗄 ดึงจาก HOSxP</button></div>
       <div id="opd-upload-log" style="font-size:15px;color:var(--text-mid);margin-top:12px;line-height:1.7"></div>
       <div class="card" style="margin-top:20px;background:var(--primary-light)">
-        <div class="card-title" style="font-size:16px">📌 วิธีใช้งาน</div>
-        <ol style="padding-left:20px;line-height:2.2;font-size:16px">
-          <li>HosXP → รายงาน ME → Export Excel</li>
-          <li>อัพโหลดที่นี่ (ระบบแยก OPD/IPD อัตโนมัติ)</li>
-          <li>กรอกจำนวนใบสั่งยารายเดือนที่แท็บ <strong>🎯 ตัวชี้วัด</strong></li>
-        </ol>
+        <div class="card-title" style="font-size:16px">📌 ที่มาของข้อมูล</div>
+        <div style="line-height:2;font-size:16px">ดึงรายงาน Medication error จากฐานข้อมูล HOSxP อัตโนมัติทุกวันที่ 1 (ของเดือนก่อน) — ต้องการข้อมูลล่าสุดทันทีให้กด 🗄 ดึงจาก HOSxP</div>
       </div>
     </div>
   </div>
@@ -1255,7 +1229,7 @@ const DashUX = {
     <button class="tab-btn active" id="tab-ipd-dash"    onclick="showHosXPTab('ipd','dash',this)">📊 Dashboard</button>
     <button class="tab-btn"        id="tab-ipd-kpi"     onclick="showHosXPTab('ipd','kpi',this)">🎯 ตัวชี้วัด</button>
     <button class="tab-btn"        id="tab-ipd-records" onclick="showHosXPTab('ipd','records',this)">📋 รายการ</button>
-    <button class="tab-btn hx-manual-only" id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">📤 นำเข้าข้อมูล</button>
+    <button class="tab-btn hx-manual-only" id="tab-ipd-upload"  onclick="showHosXPTab('ipd','upload',this)">🗄 ข้อมูล HOSxP</button>
     <button class="tab-btn hx-manual-only" id="tab-ipd-manual"  onclick="showHosXPTab('ipd','manual',this)">✏️ บันทึกเอง</button>
     <button class="tab-btn"        id="tab-ipd-adminrpt" onclick="showHosXPTab('ipd','adminrpt',this)">🧾 Admin Error รายเดือน</button>
     <button class="tab-btn hx-manual-toggle" onclick="toggleHxManual()" title="ข้อมูลดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการนำเข้า/บันทึกเอง">⚙️ ลงข้อมูลเอง</button>
@@ -1266,8 +1240,8 @@ const DashUX = {
     <div id="ipd-no-data" style="display:none;text-align:center;padding:80px 20px;color:var(--text-light)">
       <div style="font-size:56px;margin-bottom:16px">📭</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:8px">ยังไม่มีข้อมูล ผู้ป่วยใน</div>
-      <div style="font-size:16px">กรุณาไปที่แท็บ <strong>นำเข้าข้อมูล</strong> เพื่ออัพโหลดไฟล์จาก HosXP</div>
-      <button class="btn btn-primary" style="margin-top:22px;font-size:17px" onclick="showHosXPTab('ipd','upload',null)">📤 นำเข้าข้อมูล</button>
+      <div style="font-size:16px">ข้อมูลดึงจากฐานข้อมูล HOSxP (เฉพาะเครื่องที่มี HOSxP Bridge)</div>
+      <button class="btn btn-primary" style="margin-top:22px;font-size:17px" onclick="syncMeFromHosxp(true)">🗄 ดึงจาก HOSxP</button>
     </div>
     <div id="ipd-dash-content">
       <div class="month-filter-bar">
@@ -1389,7 +1363,7 @@ const DashUX = {
   <!-- IPD UPLOAD -->
   <div class="page" id="page-ipd-upload" style="padding:24px;overflow-y:auto">
     <div class="card" style="max-width:700px;margin:0 auto">
-      <div class="card-title">📤 นำเข้าข้อมูล ผู้ป่วยใน จาก HosXP</div>
+      <div class="card-title">🗄 ข้อมูล ผู้ป่วยใน จาก HOSxP</div>
       <div class="import-status-bar">
         <div>
           <div style="font-size:14px;color:var(--text-light);margin-bottom:2px">ข้อมูลในระบบปัจจุบัน</div>
@@ -1406,26 +1380,11 @@ const DashUX = {
           <button class="btn btn-danger" onclick="requireAdmin(() => deleteHosXPMonth('IPD'))" style="white-space:nowrap;padding:7px 16px">🗑 ลบเดือนนี้</button>
         </div>
       </div>
-      <div class="upload-zone" id="ipd-upload-zone"
-           onclick="document.getElementById('ipd-file-input').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="event.preventDefault();this.classList.remove('drag-over');handleHosXPDrop(event,'IPD')">
-        <div class="uz-icon">📁</div>
-        <div class="uz-title">คลิกหรือลากไฟล์มาวางที่นี่</div>
-        <div class="uz-sub">รองรับ .xls/.xlsx จาก HosXP — แยก OPD/IPD อัตโนมัติจากคอลัมน์ แผนก</div>
-        <input type="file" id="ipd-file-input" accept=".xls,.xlsx" style="display:none"
-               onchange="handleHosXPUpload(this,'IPD')">
-      </div>
       <div style="margin-top:12px"><button type="button" class="btn" onclick="syncMeFromHosxp(true)" title="ดึงรายงาน Medication error จากฐานข้อมูล HOSxP ตั้งแต่ ต.ค.68 (เฉพาะเครื่องที่มี HOSxP Bridge) — รายการที่มีแล้วไม่ลงซ้ำ">🗄 ดึงจาก HOSxP</button></div>
       <div id="ipd-upload-log" style="font-size:15px;color:var(--text-mid);margin-top:12px;line-height:1.7"></div>
       <div class="card" style="margin-top:20px;background:var(--primary-light)">
-        <div class="card-title" style="font-size:16px">📌 วิธีใช้งาน</div>
-        <ol style="padding-left:20px;line-height:2.2;font-size:16px">
-          <li>HosXP → รายงาน ME → Export Excel</li>
-          <li>อัพโหลดที่นี่ (ระบบแยก OPD/IPD อัตโนมัติ)</li>
-          <li>กรอกจำนวนวันนอนรายเดือนที่แท็บ <strong>🎯 ตัวชี้วัด</strong></li>
-        </ol>
+        <div class="card-title" style="font-size:16px">📌 ที่มาของข้อมูล</div>
+        <div style="line-height:2;font-size:16px">ดึงรายงาน Medication error จากฐานข้อมูล HOSxP อัตโนมัติทุกวันที่ 1 (ของเดือนก่อน) — ต้องการข้อมูลล่าสุดทันทีให้กด 🗄 ดึงจาก HOSxP</div>
       </div>
     </div>
   </div>
@@ -3639,155 +3598,6 @@ function extractStageShort(str) {
   if (str.includes('ให้ยา')) return 'Administration';
   if (str.includes('ติดตาม')) return 'Monitoring';
   return str.split('(')[0].trim().substring(0, 25);
-}
-
-// ======= FILE UPLOAD =======
-function handleHosXPUpload(input, dept) {
-  const file = input.files[0];
-  if (!file) return;
-  parseHosXPFile(file, dept);
-  input.value = '';
-}
-
-function handleHosXPDrop(e, dept) {
-  const file = e.dataTransfer.files[0];
-  if (file) parseHosXPFile(file, dept);
-}
-
-// แม็ปคอลัมน์ตามชื่อหัวตาราง แทนตำแหน่งตายตัว — กันพัง เมื่อ HosXP เพิ่ม/สลับคอลัมน์
-// (เช่นไฟล์รุ่นใหม่ที่เพิ่มคอลัมน์ "ชนิดความคลาดเคลื่อน" แทรกก่อนคอลัมน์ระดับความรุนแรง)
-// ไฟล์รุ่นเก่า (11 คอลัมน์ ไม่มี "ชนิดความคลาดเคลื่อน") ยังอ่านได้ถูกต้องด้วยตำแหน่งสำรอง
-function mapHosXPColumns(headerRow) {
-  const H = (headerRow || []).map(h => String(h||'').trim());
-  const find = (...names) => { for (const n of names) { const i = H.indexOf(n); if (i !== -1) return i; } return -1; };
-  const col = {
-    seq:      find('ลำดับ'),
-    datetime: find('วันที่/เวลา','วันที่'),
-    hn:       find('HN'),
-    patient:  find('ชื่อผู้ป่วย'),
-    doctor:   find('ผู้สั่งยา','แพทย์'),
-    dept:     find('แผนก'),
-    drug:     find('ชื่อยา','ยา'),
-    stage:    find('ขั้นตอนของความคลาดเคลื่อน','ขั้นตอน'),
-    meType:   find('ชนิดความคลาดเคลื่อน'),
-    severity: find('ระดับความรุนแรง','ความรุนแรง'),
-    detail:   find('หมายเหตุ','รายละเอียด'),
-    reporter: find('เจ้าหน้าที่','ผู้บันทึก'),
-  };
-  const LEGACY_POS = { seq:0, datetime:1, hn:2, patient:3, doctor:4, dept:5, drug:6, stage:7, severity:8, detail:9, reporter:10 };
-  Object.keys(LEGACY_POS).forEach(k => { if (col[k] === -1) col[k] = LEGACY_POS[k]; });
-  return col;
-}
-
-function parseHosXPFile(file, hintDept) {
-  const logEl = document.getElementById((hintDept||'opd').toLowerCase() + '-upload-log');
-  if (logEl) logEl.textContent = '⏳ กำลังอ่านไฟล์...';
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const wb   = XLSX.read(data, { type: 'array', cellDates: false });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const col  = mapHosXPColumns(rows[0]);
-
-      let imported = 0, skippedDup = 0, skippedInvalid = 0;
-      const deptCount = { OPD: 0, IPD: 0, OTHER: 0 };
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row.length < 6) { skippedInvalid++; continue; }
-
-        const seq        = row[col.seq];
-        const dateRaw     = row[col.datetime];
-        const hn          = row[col.hn];
-        const patient     = row[col.patient];
-        const doctor      = row[col.doctor];
-        const deptRaw     = row[col.dept];
-        const drug        = row[col.drug];
-        const stageRaw    = row[col.stage];
-        const meTypeRaw   = col.meType !== -1 ? row[col.meType] : '';
-        const severityRaw = row[col.severity];
-        const detail      = row[col.detail];
-        const reporter    = row[col.reporter];
-        if (!dateRaw) { skippedInvalid++; continue; }
-
-        // dateRaw can be a number (Excel serial) or a JS Date (if SheetJS auto-converted)
-        let date, time;
-        if (typeof dateRaw === 'number') {
-          const r = excelSerialToDatetime(dateRaw);
-          date = r.date; time = r.time;
-        } else if (dateRaw instanceof Date) {
-          const y = dateRaw.getFullYear();
-          const mo = String(dateRaw.getMonth()+1).padStart(2,'0');
-          const dy = String(dateRaw.getDate()).padStart(2,'0');
-          const h  = String(dateRaw.getHours()).padStart(2,'0');
-          const mn = String(dateRaw.getMinutes()).padStart(2,'0');
-          date = `${y}-${mo}-${dy}`; time = `${h}:${mn}`;
-        } else if (typeof dateRaw === 'string' && dateRaw) {
-          const num = parseFloat(dateRaw);
-          if (!isNaN(num)) { const r = excelSerialToDatetime(num); date = r.date; time = r.time; }
-        }
-        if (!date) { skippedInvalid++; continue; }
-
-        const dept      = String(deptRaw || '').toUpperCase().trim();
-        const sevLetter = extractSeverity(String(severityRaw || ''));
-        const stageS    = extractStageShort(String(stageRaw || ''));
-
-        const isDup = hosxpRecords.some(r =>
-          r.date === date && r.hn === String(hn||'') && r.drug === String(drug||'') && r.dept === dept
-        );
-        if (isDup) { skippedDup++; continue; }
-
-        hosxpRecords.push({
-          id: Date.now() + Math.random(),
-          date, time,
-          hn: String(hn || ''),
-          patient: String(patient || ''),
-          doctor:  String(doctor || ''),
-          dept,
-          drug:     String(drug || ''),
-          stage:    stageS,
-          stageRaw: String(stageRaw || ''),
-          meType:   String(meTypeRaw || ''),
-          severity: sevLetter,
-          severityRaw: String(severityRaw || ''),
-          detail:   String(detail || ''),
-          reporter: String(reporter || ''),
-          source: 'hosxp',
-        });
-        imported++;
-        if (dept === 'OPD') deptCount.OPD++;
-        else if (dept === 'IPD') deptCount.IPD++;
-        else deptCount.OTHER++;
-      }
-
-      saveHosXP();
-      updateHosXPStatus();
-      renderHosXPDashboard('OPD');
-      renderHosXPDashboard('IPD');
-      updateLandingCounts();
-
-      let log, _modalTitle, _modalMsg;
-      if (imported === 0 && skippedDup > 0 && skippedInvalid === 0) {
-        log = `ℹ️ ข้อมูลทั้งหมด ${skippedDup} รายการมีอยู่ในระบบแล้ว\nหากต้องการนำเข้าซ้ำ ให้กด "ลบข้อมูล" ก่อน แล้วนำเข้าใหม่`;
-        _modalTitle = 'ข้อมูลมีอยู่แล้ว'; _modalMsg = `ซ้ำ ${skippedDup} รายการ`;
-      } else {
-        log = `✅ นำเข้าสำเร็จ ${imported} รายการ (OPD: ${deptCount.OPD}, IPD: ${deptCount.IPD}` +
-          (deptCount.OTHER ? `, อื่นๆ: ${deptCount.OTHER}` : '') + `)` +
-          (skippedDup     ? `\n⚠️ ข้ามซ้ำ ${skippedDup} รายการ` : '') +
-          (skippedInvalid ? `\n⚠️ ข้ามไม่สมบูรณ์ ${skippedInvalid} รายการ` : '');
-        _modalTitle = 'นำเข้าสำเร็จ!'; _modalMsg = `นำเข้า ${imported} รายการ\nOPD: ${deptCount.OPD}  IPD: ${deptCount.IPD}`;
-      }
-      if (logEl) logEl.innerHTML = log.replace(/\n/g,'<br>');
-      showSuccessModal(_modalTitle, _modalMsg, '📤');
-    } catch(err) {
-      if (logEl) logEl.textContent = '❌ เกิดข้อผิดพลาด: ' + err.message;
-      alert('เกิดข้อผิดพลาดในการอ่านไฟล์:\n' + err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 // ======= ME จากฐานข้อมูล HOSxP (med_error) =======

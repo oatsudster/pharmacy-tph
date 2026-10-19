@@ -262,7 +262,7 @@ tr.missing-symptom:hover td { background: #fef3c7; }
   .modal-box { padding: 16px; width: 100%; }
   table { font-size: 11px; }
 }
-/* รายงาน ADR ดึงจาก HOSxP อัตโนมัติรายเดือน — ฟอร์มเพิ่มเอง/นำเข้า Excel ซ่อนไว้ เปิดด้วยปุ่ม ⚙️ ลงข้อมูลเอง */
+/* รายงาน ADR ดึงจาก HOSxP อัตโนมัติรายเดือน — ฟอร์มเพิ่มเอง ซ่อนไว้ เปิดด้วยปุ่ม ⚙️ ลงข้อมูลเอง */
 body:not(.hx-manual) .hx-manual-only { display: none !important; }
 body.hx-manual .hx-manual-toggle { background: #fef3c7; color: #78350f; }
 </style>
@@ -447,7 +447,6 @@ const DashUX = {
   <div class="topbar-badge">รพ.ถ้ำพรรณรา</div>
   <div class="topbar-btns">
     <button class="tbtn" id="adr-db-btn" onclick="syncAdrFromHosxp(true)" title="ดึงรายงาน ADR จาก HOSxP (Pharmacy › Adverse drug reactions) พร้อมรายละเอียด — เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge">🗄 ดึงจาก HOSxP</button>
-    <div class="tbtn hx-manual-only"><label>📥 Import HosXP<input type="file" accept=".xls,.xlsx" onchange="importHosXP(this)"></label></div>
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
     <div class="tbtn"><label>📂 Import JSON<input type="file" accept=".json" onchange="importJSON(this)"></label></div>
@@ -839,12 +838,6 @@ function fiscalInfo(dateStr) {
   return { year: fy, month: TH_MONTHS[m], fyIdx: FISCAL_MONTHS.indexOf(TH_MONTHS[m]) };
 }
 
-function excelToDate(serial) {
-  if (!serial || typeof serial !== 'number') return '';
-  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
-  return d.toISOString().slice(0,10);
-}
-
 function saveLocal() { localStorage.setItem('adr_records', JSON.stringify(records)); }
 
 // ═══ DRUG DATALIST ═══════════════════════════════════════════════
@@ -973,89 +966,6 @@ function resetForm() {
   document.getElementById('f-sev').value = 'ไม่ร้ายแรง (Non-serious)';
   document.getElementById('f-prodtype').value = 'ยา';
   onTypeChange('');
-}
-
-// ═══ IMPORT HOSXP EXCEL ═════════════════════════════════════════
-async function importHosXP(input) {
-  const file = input.files[0]; if (!file) return;
-  input.value = '';
-  showToast('📥 กำลัง import...', 10000);
-  try {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type:'array', cellDates:false });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
-
-    // Find header row
-    let hRow = 0;
-    for (let i=0; i<Math.min(6,rows.length); i++) {
-      if (rows[i].some(c=>String(c).includes('HN')||String(c).includes('วันที่'))) { hRow=i; break; }
-    }
-    const headers = rows[hRow].map(h=>String(h).trim());
-    const col = (name) => headers.findIndex(h=>h.includes(name));
-
-    const cDate=col('วันที่'), cHN=col('HN'), cName=col('ชื่อ'), cDept=col('แผนก'),
-          cAN=col('AN'), cDiag=col('ผลวินิจฉัย'), cType=col('ชนิด'),
-          cProd=col('ประเภทผลิต'), cSev=col('ความร้ายแรง'), cDrug=col('รายการผลิต');
-
-    const mapType = v => {
-      const s = String(v).toLowerCase();
-      if (s.includes('g6pd')) return 'G6PD';
-      if (s.includes('type b')||s.includes('แพ้')||/\bb\b/.test(s)) return 'B';
-      if (s.includes('type a')||s.includes('ข้างเคียง')||/\ba\b/.test(s)) return 'A';
-      return '';
-    };
-    const SEV_MAP = [
-      ['ไม่ร้ายแรง (Non-serious)', ['ไม่ร้ายแรง','non-serious','ไม่รุนแรง']],
-      ['ร้ายแรง - เสียชีวิต (Death)', ['เสียชีวิต','death']],
-      ['ร้ายแรง - อันตรายถึงชีวิต (Life-threatening)', ['อันตรายถึงชีวิต','life-threat','อัตรายถึงชีวิต']],
-      ['ร้ายแรง - ต้องเข้ารับการรักษาในโรงพยาบาล (Hospitalization-initial)', ['hospitalization-initial','เข้ารับการรักษา','ต้องเข้า']],
-      ['ร้ายแรง - ทำให้เพิ่มระยะเวลาในการรักษานานขึ้น (Hospitalization-prolonged)', ['hospitalization-prolonged','เพิ่มระยะเวลา','prolonged']],
-      ['ร้ายแรง - พิการ (Disability)', ['พิการ','disability']],
-      ['ร้ายแรง - เป็นเหตุให้เกิดความผิดปกติแต่กำเนิด (Congenital anomaly)', ['แต่กำเนิด','congenital']],
-    ];
-    const mapSev = v => {
-      const s = String(v).trim();
-      for (const [canonical, keys] of SEV_MAP) {
-        if (s === canonical || keys.some(k => s.toLowerCase().includes(k.toLowerCase()))) return canonical;
-      }
-      return s || 'ยังไม่ทราบ';
-    };
-    const getDate = raw => {
-      if (!raw) return '';
-      if (typeof raw==='number'&&raw>1000) return excelToDate(raw);
-      const s = String(raw);
-      if (s.match(/\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
-      return s;
-    };
-
-    let imported=0, skipped=0;
-    for (let i=hRow+1; i<rows.length; i++) {
-      const r = rows[i]; if (!r||r.every(c=>!c)) continue;
-      const dateStr = getDate(cDate>=0?r[cDate]:'');
-      const hn = cHN>=0?String(r[cHN]).trim():'';
-      const drug = cDrug>=0?String(r[cDrug]).trim():'';
-      if (records.some(x=>x.date===dateStr&&x.hn===hn&&x.drug===drug)) { skipped++; continue; }
-
-      records.unshift({
-        id: uid(), date: dateStr, hn,
-        name: cName>=0?String(r[cName]).trim():'',
-        dept: cDept>=0?String(r[cDept]).trim():'',
-        an: cAN>=0?String(r[cAN]).trim():'',
-        type: mapType(cType>=0?r[cType]:''),
-        symptom: '',
-        drug,
-        productType: cProd>=0?String(r[cProd]).trim():'ยา',
-        severity: mapSev(cSev>=0?r[cSev]:''),
-        diagnosis: cDiag>=0?String(r[cDiag]).trim():'',
-        source: 'hosxp', created: Date.now()
-      });
-      imported++;
-    }
-    saveLocal(); window.fbSaveADR && fbSaveADR();
-    renderAll();
-    showToast(`✅ Import ${imported} รายการ (ข้าม ${skipped} ซ้ำ)${imported?'\n⚠️ กรุณาระบุลักษณะอาการให้ครบ':''}`, 4000);
-  } catch(e) { showToast('❌ เกิดข้อผิดพลาด: '+e.message); console.error(e); }
 }
 
 // ═══ ดึงจากฐานข้อมูล HOSxP (Pharmacy > Adverse drug reactions) ═══
