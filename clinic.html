@@ -565,7 +565,6 @@ const DashUX = {
   <div class="topbar-btns">
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
-    <label class="tbtn"><span>📥 Import</span><input type="file" accept=".json" onchange="importJSON(event)"></label>
     <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — วาง DRP ที่พิมพ์ใน HOSxP แล้วบันทึกได้เลย ไม่ต้องสลับหน้า">🩺 บันทึกคลินิก (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('tech')" title="สำหรับ จพ. — หน้าต่างเล็กลอยอยู่เหนือ HosXP ดูยาคงเหลือและคำนวณจำนวนเม็ดที่ต้อง key จนถึงวันนัด (ปุ่มลัด Alt+2 · จาก HOSxP กด Ctrl+Alt+J)">🪟 ยาคงเหลือ จพ. (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('rph')" title="สำหรับเภสัชกรตอนจ่ายยา — จำนวนที่ต้องจ่ายแยกเป็นซอง/แผง (prepack) + Smart Pharmacy: แจ้งยาที่แพทย์ปรับจาก visit ก่อน และตรวจความเหมาะสมกับค่า lab (ปุ่มลัด Alt+1 · จาก HOSxP กด Ctrl+Alt+P)">💊 จ่ายยา เภสัชกร (ลอย)</button>
@@ -4556,28 +4555,6 @@ function exportJSON() {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   const a = Object.assign(document.createElement('a'),{href:url,download:'clinic_backup_'+ts+'.json'});
   a.click(); URL.revokeObjectURL(url);
-}
-function importJSON(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      if (data.visitRecords) {
-        const keep = new Set(data.visitRecords.map(r => r.id));
-        visitRecords.forEach(r => { if (!keep.has(r.id)) queueVisit(null, r.id); });
-        visitRecords = data.visitRecords;
-        visitRecords.forEach(r => queueVisit(r));
-      }
-      if (data.sessionRecords) sessionRecords = data.sessionRecords;
-      if (data.priceOverrides) priceOverrides = data.priceOverrides;
-      if (Array.isArray(data.noAdjustDrugs)) noAdjustDrugs = data.noAdjustDrugs;
-      saveLocal(); fbSaveMeta(); renderAll();
-      showToast('✅ Import สำเร็จ — '+visitRecords.length+' รายการ');
-    } catch { showToast('❌ ไฟล์ไม่ถูกต้อง'); }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
 }
 
 // ── FIREBASE ─────────────────────────────────────────────
