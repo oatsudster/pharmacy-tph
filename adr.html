@@ -449,7 +449,6 @@ const DashUX = {
     <button class="tbtn" id="adr-db-btn" onclick="syncAdrFromHosxp(true)" title="ดึงรายงาน ADR จาก HOSxP (Pharmacy › Adverse drug reactions) พร้อมรายละเอียด — เฉพาะเครื่อง รพ. ที่มี HOSxP Bridge">🗄 ดึงจาก HOSxP</button>
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(records,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
-    <div class="tbtn"><label>📂 Import JSON<input type="file" accept=".json" onchange="importJSON(this)"></label></div>
     <button class="tbtn hx-manual-toggle" onclick="toggleHxManual()" title="รายงาน ADR ดึงจาก HOSxP อัตโนมัติทุกวันที่ 1 — เปิดเมื่อต้องการเพิ่ม/นำเข้าเอง">⚙️ ลงข้อมูลเอง</button>
   </div>
   <span class="sync-badge" id="sync-badge">⏳ กำลังเชื่อมต่อ...</span>
@@ -1064,29 +1063,13 @@ function adrHosxpDetailHtml(it) {
   </div>`;
 }
 
-// ═══ EXPORT / IMPORT JSON ═══════════════════════════════════════
+// ═══ EXPORT JSON (Backup) ═══════════════════════════════════════
 function exportJSON() {
   const blob = new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),records},null,2)],{type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url;
   a.download='ADR_backup_'+today()+'.json'; a.click(); URL.revokeObjectURL(url);
   showToast('✅ Export สำเร็จ');
-}
-
-function importJSON(input) {
-  const file = input.files[0]; if (!file) return; input.value='';
-  const rd = new FileReader();
-  rd.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      const arr = data.records||data;
-      if (!Array.isArray(arr)) throw new Error('รูปแบบไม่ถูกต้อง');
-      records = arr; saveLocal();
-      window.fbSaveADR && fbSaveADR(); renderAll();
-      showToast(`✅ Import ${records.length} รายการ`);
-    } catch(err) { showToast('❌ ไฟล์ไม่ถูกต้อง: '+err.message); }
-  };
-  rd.readAsText(file);
 }
 
 // ═══ TAB SWITCH ══════════════════════════════════════════════════
