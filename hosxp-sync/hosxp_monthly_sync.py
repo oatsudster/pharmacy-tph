@@ -16,6 +16,9 @@
 ทุกรอบ (ทุกวัน): จำนวนคนไข้ HT บ่าย (clinic_data.sessionRecords pmOnly) — ผู้ป่วยนัดคลินิก HT ที่คีย์จ่ายยาหลัง 12:00
 และไม่มีบันทึกในหน้าคลินิกวันนั้น (= ไม่ได้พบเภสัช) เติมเป็นแถว htPmAuto=true; คิดใหม่ย้อนหลัง 14 วัน; ถ้ากรอกเอง ค่าที่กรอกเองชนะ
 
+ทุกรอบ (ทุกวัน): DRP ที่เภสัชพิมพ์ใน COUNSELLING น้อยกว่า 30 นาที (ช่องวิธีใช้) ย้อนหลัง 14 วันถึงเมื่อวาน → clinic_YYYY-MM
+มีบันทึกคลินิก HN+วันเดียวกันแล้วแค่แนบข้อความ (เติม DRP เฉพาะที่ยังว่าง) ไม่งั้นเพิ่มบันทึกใหม่ source='hosxp' drpAuto=true
+
 ใช้: python hosxp_monthly_sync.py [--month YYYY-MM] [--dry-run]
 ฐานข้อมูล: %LOCALAPPDATA%\\HOSxPBridge\\db.json (SELECT อย่างเดียว) · log/state อยู่โฟลเดอร์เดียวกัน
 """
@@ -37,6 +40,7 @@ import pymysql
 START_MONTH = '2026-10'
 ER_RX_START = '2026-10-01'  # วันแรกที่เติมใบสั่งยา ER ให้อัตโนมัติ (เปลี่ยนด้วย --er-from)
 HT_PM_START = '2026-10-01'  # วันแรกที่เติมจำนวนคนไข้ HT บ่ายให้อัตโนมัติ (เปลี่ยนด้วย --ht-from)
+COUNSEL_START = '2026-10-16'  # วันแรกที่ดึง DRP จาก COUNSELLING ให้อัตโนมัติ (ก่อนหน้านี้ดึงย้อนหลังครั้งเดียวแล้ว; --counsel-from)
 FS = 'https://firestore.googleapis.com/v1/projects/pharmacy-tph/databases/(default)/documents/pharmacy_tph/'
 FS_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE'
 CLASSIFY_URL = 'https://admin-error-classify.oatsudster.workers.dev'
@@ -575,6 +579,193 @@ def fill_ht_pm(db, d_from, dry):
         log('HT บ่าย เติมอัตโนมัติ ' + ', '.join(r['added'] + r['ch']) + tag)
 
 
+# ── DRP จาก COUNSELLING ใน HOSxP → clinic_YYYY-MM ────────────────────────────────
+# เภสัชพิมพ์ DRP ในช่องวิธีใช้ของรายการ "COUNSELLING น้อยกว่า 30 นาที" (icode 3000589) ข้อความอยู่ใน opi_dispense.usage_line1-4
+# ทุกรอบดึงย้อนหลัง 14 วัน (ถึงเมื่อวาน ให้เภสัชลงหน้าคลินิกเองในวันนั้นก่อน):
+#   - มีบันทึกคลินิก HN+วันเดียวกันแล้ว → แนบข้อความ HOSxP (hxNote) และเติม DRP เฉพาะรายการที่ยังไม่มี DRP
+#   - ยังไม่มี → เพิ่มบันทึกใหม่ id 'hx<vn>' (source 'hosxp') — ถ้าเภสัชลบทิ้งแล้ว (deletedVisitIds) ไม่เพิ่มกลับ
+# ข้ามข้อความที่ซ้ำกับครั้งก่อนของ HN เดียวกัน: แพทย์ re-med ใบสั่งยาเก่าแล้วรายการ COUNSELLING ติดมาด้วย
+COUNSEL_ICODE = '3000589'
+DRP_FULL = {
+    'WT': 'รับประทานยาผิดวิธีใช้ (Improper Drug Use Technique)',
+    'WD': 'รับประทานยาผิดขนาด (Incorrect Dose Taken by Patient)',
+    'SA': 'ปรับขนาด/เวลารับประทานยาเอง (Self-Adjusted Dose or Timing – Nonadherence)',
+    'NC': 'ไม่ใช้ยาตามแพทย์สั่ง (Noncompliance / Nonadherence)',
+    'MD': 'ลืมรับประทานยาบางมื้อ/บางวัน (Missed Dose – Nonadherence)',
+    'MEAL': 'ไม่ได้รับประทานอาหารเที่ยงจึงงดใช้ยา (Missed Dose Due to Skipped Meal)',
+    'ADR': 'เกิดอาการไม่พึงประสงค์จากการใช้ยา (Adverse Drug Reaction, ADR)',
+    'DI': 'เกิดปฏิกิริยาระหว่างยา (Drug Interaction)',
+    'DUP': 'ได้รับยาซ้ำซ้อนจากหลายสถานพยาบาล (Therapeutic Duplication)',
+    'TM': 'มีการปรับเปลี่ยนแผนการรักษาโดยแพทย์ (Therapy Modification)',
+    'MF': 'มาผิดนัด/ขาดนัดติดตามการรักษา (Missed Follow-up Appointment)',
+    'LO': 'มียาเหลือสะสม (Medication Nonadherence – Leftover Medication)',
+    'ED': 'ยาหมดก่อนถึงวันนัด (Early Medication Depletion – Overuse)',
+    'RXD': 'ได้รับยาผิดขนาดจากการสั่งจ่าย (Incorrect Dosage – Prescribing/Dispensing Error)',
+    'OTH': 'อื่นๆ (Others)',
+}
+COUNSEL_PHARM = {'boom': 'ภก.พงศ์ไพสิฐ บรรจงเมือง', 'Pongsagorn': 'ภก.พงศกร นวเลิศปัญญา', 'Somruedee': 'ภญ.สมฤดี คงศรี',
+                 'saranya': 'ภญ.ศรัญญา จันทร์ธิบดี'}
+COUNSEL_CLINIC = {'001': 'DM', '023': 'DM', '002': 'HT', '024': 'HT', '013': 'COPD'}
+DRP_SYM = 'แพทย์สั่งให้ทานทุกวัน แต่ผู้ป่วยทานเมื่อมีอาการเท่านั้น'
+DRP_SADR = 'เกิด ADR หลังทานยา'
+DRP_DOSE = r'\d(?:\.\d+|/\d)?\s*[x*\-]\s*\d[^>]{0,12}(?:-+\s*>|>>|→)'   # "1x4pc>>1x2pc", "2*4-->2*3", "18-0-12ac>>18-0-9"
+DRP_WRONG = r'(ทาน|กิน|ใช้|ฉีด)(ยา)?\s?[^\s,]{0,20}\s?ผิด(?!นัด)|ผิดวิธี'
+# (รหัส, เงื่อนไข, สาเหตุ) ตรวจทั้งข้อความ ได้หลาย DRP (ประเภทละครั้ง) — ตรงกับที่จัดเองทีละข้อความ 257/280 ข้อความของปีงบ 69
+# ตามแบบที่ทีมใช้: "ทานยาผิด X 1x4>>1x2" = ผิดวิธีใช้, COPD "ไม่หอบเลยไม่ใช้ ICS" = ปรับยาเอง (ใช้เมื่อมีอาการ)
+DRP_RULES = [
+    ('DI', r'\bDI\b|interaction|ปฏิกิริยาระหว่างยา', ''),
+    ('ADR', r'ADR|\bs/e\b|hypogly|น้ำตาลต่ำ|ไอแห้ง|dry cough|\bcough\b|เท้าบวม|ขาบวม|ผื่น|แพ้ยา|ใจสั่น|ง่วง|เวียนศีรษะ|เวียนหัว', ''),
+    ('SA', r'ไม่(ค่อย)?หอบ.{0,6}ไม่(ค่อย)?(ได้)?ใช้|ไม่มีอาการ.{0,6}ไม่(ค่อย)?(ได้)?(ใช้|กิน|ทาน)|ดีขึ้น.{0,8}ไม่(ใช้|กิน|ทาน)|เมื่อมีอาการ|ตอนปวด', DRP_SYM),
+    ('SA', r'วัดความดันที่บ้าน|BP ที่บ้าน|เจาะน้ำตาลที่บ้าน|DTX', 'ตรวจวัดความดัน/DTX เองที่บ้าน'),
+    ('SA', r'คุมอาหาร(?!ไม่ได้)', 'ผู้ป่วยควบคุมอาหาร จึงไม่ทานยา'),
+    ('SA', r'(ปรับ|ปรั|ลด|หยุด|เพิ่ม|กิน|ทาน)[^,.]{0,25}เอง|ญาติ(ลด|ปรับ)|ลูก(ลด|ปรับ)|คิดว่า(ทาน|กิน)(ยา)?มาก|(จะ|เลย|จึง)หยุด|เลือกกิน', ''),
+    ('MF', r'ผิดนัด|ขาดนัด', ''),
+    ('ED', r'หมดก่อน|ยาหาย', ''),
+    ('LO', r'มียา(เดิม)?เหลือ|ยา(เดิม)?ที่เหลือ(?!ไม่ได้)|เหลือเยอะ|leftover', ''),
+    ('MEAL', r'อาหารเที่ยงไม่|ไม่(ค่อย)?(ได้)?(กิน|ทาน)(ข้าว|อาหาร)?(มื้อ)?เที่ยง.{0,6}(จึง|เลย)|รวบมื้อ', ''),
+    ('MD', r'ลืม|missed', ''),
+    ('MD', r'ไม่(ค่อย)?(ได้)?(ทาน|กิน|ฉีด)(ยา)?.{0,30}(มื้อ|ก่อนนอน)|(เช้า|เที่ยง|เย็น)ไม่(ได้)?(ฉีด|ทาน|กิน)', ''),
+    ('NC', r'ไม่สม่ำเสมอ|ไม่ส่ำเสมอ|ไม่สมำเสมอ|ไม่ค่อย(ทาน|กิน|ใช้|ฉีด)|ไม่(ทาน|กิน|ใช้|ฉีด)ยา|ไม่ยอม|ไม่สะดวกฉีด|ไม่ใช้ยาตามสั่ง|ใช้\s?\S*\s?สม่ำเสมอตามแพทย์สั่ง', ''),
+    ('WD', r'ผิดขนาด', ''),
+    ('WT', DRP_WRONG + '|' + DRP_DOSE + r'|\d\s*puff.{0,10}(->|>>)|อ่านหนังสือไม่ออก', ''),
+    ('TM', r'consult.{0,15}(ปรับ|เปลี่ยน|off|เพิ่ม)|(แพทย์|รพ\.?\s?\S+|หมอ)\s*(ปรับ|เปลี่ยน|off|เพิ่ม)|\boff\b', ''),
+    ('DUP', r'ร้านยา', ''),
+    ('RXD', r'GFR.{0,20}(ขนาด|ไม่ควรเกิน|ลด)', ''),
+    ('OTH', r'สมุนไพร|ยาชุด|ยาต้ม|ยาของ(ผู้อื่น|คนอื่น|น้อง|พี่|ลูก)|รพ\.?\s?สต|ไม่ทราบฉีด', ''),
+]
+DRP_LABEL = [(r'ไม่อ่านฉลาก', 'ไม่อ่านฉลาก'), (r'วิธีใช้เก่า|ฉลากเก่า|อ่านฉลากใหม่', 'ไม่อ่านฉลากเป็นปัจจุบัน'), (r'อ่านฉลากผิด', 'อ่านฉลากผิด')]
+
+
+def classify_drp(text):
+    """ข้อความ COUNSELLING → [{type, cause, causeNote}] ตามกฎคำหลัก ([] = ไม่ใช่ DRP เช่นให้คำแนะนำ/ข้อมูลยาจาก รพ. อื่น)"""
+    t = text or ''
+    out = []
+    for code, rx, cause in DRP_RULES:
+        if not any(c == code for c, _ in out) and re.search(rx, t, re.I):
+            out.append((code, cause))
+    has = lambda c: any(x == c for x, _ in out)  # noqa: E731
+    drop = lambda c: [x for x in out if x[0] != c]  # noqa: E731
+    wrong = re.search(DRP_WRONG, t)
+    if has('ADR') and re.search(r'ไม่น่าจะ|ไม่ได้เกิดจาก', t):
+        out = drop('ADR')
+    # ปรับ/หยุดยาเองเพราะอาการข้างเคียง (ไม่ได้เขียนว่า ADR) → "ปรับยาเอง: เกิด ADR หลังทานยา" ข้อเดียว
+    if has('SA') and has('ADR') and not re.search(r'ADR|s/e|hypogly', t, re.I):
+        out = [(c, DRP_SADR if c == 'SA' and not k else k) for c, k in drop('ADR')]
+    if (has('SA') or has('MD') or has('MEAL') or has('TM')) and has('WT') and not wrong:
+        out = drop('WT')
+    if has('WD'):
+        out = drop('WT')
+    if (has('MD') or has('SA') or has('MEAL')) and has('NC') and not re.search(r'ไม่ใช้ยาตามสั่ง', t):
+        out = drop('NC')
+    if has('MEAL'):
+        out = drop('MD')
+    if has('MD') and re.search(r'ทานยาสม่ำเสมอ|ไม่ขาดยา', t):
+        out = drop('MD')
+    if has('TM') and has('ADR') and re.search(r'off', t, re.I) and not re.search(r'ADR\s*[a-z]|เท้าบวม|ไอ', t, re.I):
+        out = drop('ADR')
+    if has('ED') and has('MF'):
+        out = [(c, 'ผิดนัด' if c == 'ED' else k) for c, k in out]
+    res = []
+    for c, k in out:
+        if c == 'WT' and not k:
+            k = next((v for rx, v in DRP_LABEL if re.search(rx, t)), '')
+        if c == 'MD' and not k:
+            k = ('ไม่ได้ทานอาหารเช้า' if re.search(r'ไม่(ค่อย)?(ได้)?(ทาน|กิน)(อาหาร|ข้าว)?(มื้อ)?เช้า|ลืมมื้อเช้า', t) else
+                 'ไม่ได้ทานอาหารเที่ยง' if re.search(r'ไม่(ได้)?(ทาน|กิน)(อาหาร|ข้าว)(มื้อ)?เที่ยง', t) else
+                 'ลืมทานมื้อก่อนนอน' if re.search('ก่อนนอน', t) else '')
+        res.append({'type': DRP_FULL[c], 'cause': k, 'causeNote': ''})
+    return res
+
+
+def counsel_rows(db, d_from, d_to):
+    """ข้อความ COUNSELLING ช่วงวันที่ (ไม่รวมแถวว่าง = แค่คิดค่าบริการ และข้อความที่ re-med มาจากครั้งก่อน)"""
+    txt = ("TRIM(CONCAT_WS(' ', NULLIF(TRIM(x.usage_line1),'.'), NULLIF(TRIM(x.usage_line2),'.'), NULLIF(TRIM(x.usage_line3),'.'), "
+           "NULLIF(NULLIF(TRIM(x.usage_line4),'.'),'#')))")
+    rows = q(db, f"""SELECT o.vn, o.hn, o.vstdate, o.staff, x.modify_staff ms, v.main_dep, {txt} t,
+        TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), '  ', IFNULL(p.lname,''))) ptname
+      FROM opitemrece o JOIN opi_dispense x ON x.hos_guid=o.hos_guid LEFT JOIN ovst v ON v.vn=o.vn LEFT JOIN patient p ON p.hn=o.hn
+      WHERE o.icode=%s AND o.vstdate>=%s AND o.vstdate<=%s ORDER BY o.vstdate, o.vn""", (COUNSEL_ICODE, d_from, d_to))
+    norm = lambda v: re.sub(r'\s+', ' ', v or '').strip()  # noqa: E731
+    rows = [r for r in rows if norm(r['t'])]
+    if not rows:
+        return []
+    hns = sorted({r['hn'] for r in rows})
+    prior = q(db, f"""SELECT o.hn, MIN(o.vstdate) d, {txt} t FROM opitemrece o JOIN opi_dispense x ON x.hos_guid=o.hos_guid
+      WHERE o.icode=%s AND o.hn IN ({','.join(['%s'] * len(hns))}) GROUP BY o.hn, t""", (COUNSEL_ICODE, *hns))
+    first = {(p['hn'], norm(p['t'])): p['d'] for p in prior}
+    out, seen = [], set()
+    for r in rows:
+        r['t'] = norm(r['t'])
+        key = (r['hn'], s(r['vstdate']))
+        if first.get((r['hn'], r['t']), r['vstdate']) < r['vstdate'] or key in seen:
+            continue
+        seen.add(key)
+        appt = sorted({a['clinic'] for a in q(db, 'SELECT clinic FROM oapp WHERE hn=%s AND nextdate=%s', (r['hn'], r['vstdate']))})
+        clinic = next((COUNSEL_CLINIC[c] for c in appt if c in COUNSEL_CLINIC), None)
+        if not clinic and r['main_dep'] == '028':
+            clinic = 'COPD'
+        if not clinic and r['vn']:
+            dx = [d['icd10'] or '' for d in q(db, 'SELECT icd10 FROM ovstdiag WHERE vn=%s', (r['vn'],))]
+            clinic = next((c for pre, c in (('J44', 'COPD'), ('E1', 'DM'), ('I1', 'HT')) if any(d.startswith(pre) for d in dx)), None)
+        r['clinic'] = clinic or 'HT'
+        out.append(r)
+    return out
+
+
+def fill_counsel_drp(db, d_from, dry):
+    today = dt.date.today()
+    last = (today - dt.timedelta(days=1)).isoformat()
+    first = max(d_from, (today - dt.timedelta(days=14)).isoformat())
+    if last < first:
+        return
+    rows = counsel_rows(db, first, last)
+    if not rows:
+        return
+    try:
+        dead = set(from_fs(http('GET', f'{FS}clinic_data?key={FS_KEY}')['fields'].get('deletedVisitIds', {'arrayValue': {}})))
+    except (urllib.error.HTTPError, KeyError):
+        dead = set()
+    tag = ' [dry-run ไม่ได้เขียน]' if dry else ''
+    for m in sorted({s(r['vstdate'])[:7] for r in rows}):
+        mine = [r for r in rows if s(r['vstdate']).startswith(m)]
+
+        def mut(f, mine=mine):
+            lst = f.setdefault('list', [])
+            by_key = {}
+            for v in lst:
+                by_key.setdefault((norm_hn(v.get('hn')), v.get('date')), v)
+            ids, vns = {v.get('id') for v in lst}, {v.get('hxVn') for v in lst if v.get('hxVn')}
+            added, patched = [], []
+            for r in mine:
+                d, vn, drps = s(r['vstdate']), s(r['vn']), classify_drp(r['t'])
+                v = by_key.get((norm_hn(r['hn']), d))
+                if v:
+                    if v.get('hxNote'):
+                        continue
+                    v['hxNote'], v['hxVn'] = r['t'], vn
+                    if drps and not v.get('drps'):
+                        v['drps'], v['drpAuto'] = drps, True
+                    patched.append(f"{r['hn']}/{d}")
+                    continue
+                rid = 'hx' + (vn or f"{r['hn']}{d.replace('-', '')}")
+                if rid in ids or rid in dead or (vn and vn in vns):
+                    continue
+                lst.append({'id': rid, 'date': d, 'clinic': r['clinic'], 'hn': r['hn'], 'name': r['ptname'] or '',
+                            'pharmacist': COUNSEL_PHARM.get(r['ms']) or COUNSEL_PHARM.get(r['staff'], ''),
+                            'notes': '', 'pharmNote': '', 'drps': drps, 'leftovers': [], 'totalSaving': 0,
+                            'created': int(dt.datetime.fromisoformat(d + 'T10:00:00').timestamp() * 1000),
+                            'source': 'hosxp', 'hxVn': vn, 'hxNote': r['t'], 'drpAuto': bool(drps)})
+                added.append(f"{r['hn']}/{d}:{len(drps)}")
+            if added or patched:
+                f['updated'] = int(time.time() * 1000)
+            return {'changed': bool(added or patched), 'added': added, 'patched': patched}
+
+        r = update_doc(f'clinic_{m}', mut, dry, mask=['list', 'updated'])
+        if r.get('added') or r.get('patched'):
+            log(f"DRP COUNSELLING clinic_{m}: เพิ่ม {len(r['added'])} ราย ({', '.join(r['added'])})"
+                f"; แนบข้อความให้บันทึกเดิม {len(r['patched'])} ราย{tag}")
+
+
 def months_between(a, b):
     y, mo = map(int, a.split('-'))
     out = []
@@ -594,6 +785,7 @@ def main():
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--er-from', default=ER_RX_START, help='เติมใบสั่งยา ER ที่ขาดตั้งแต่วันนี้ (YYYY-MM-DD)')
     ap.add_argument('--ht-from', default=HT_PM_START, help='เติมจำนวนคนไข้ HT บ่ายตั้งแต่วันนี้ (YYYY-MM-DD; คิดย้อนหลังสูงสุด 14 วัน)')
+    ap.add_argument('--counsel-from', default=COUNSEL_START, help='ดึง DRP จาก COUNSELLING ตั้งแต่วันนี้ (YYYY-MM-DD; ย้อนหลังสูงสุด 14 วัน)')
     args = ap.parse_args()
 
     today = dt.date.today()
@@ -624,6 +816,10 @@ def main():
             fill_er_rx(db, args.er_from, args.dry_run)
         except Exception as e:  # noqa: BLE001 — ไม่ให้ขวางการดึงรายเดือน
             log(f'ใบสั่งยา ER ผิดพลาด: {type(e).__name__}: {e}')
+        try:  # ก่อน HT บ่าย: คนไข้ที่เภสัชให้คำปรึกษา (มีบันทึกคลินิก) ไม่นับเป็น HT บ่าย
+            fill_counsel_drp(db, args.counsel_from, args.dry_run)
+        except Exception as e:  # noqa: BLE001
+            log(f'DRP COUNSELLING ผิดพลาด: {type(e).__name__}: {e}')
         try:
             fill_ht_pm(db, args.ht_from, args.dry_run)
         except Exception as e:  # noqa: BLE001
