@@ -795,14 +795,10 @@ const DashUX = {
     </a>
   </nav>
   <div class="sidebar-utility">
-    <div class="sidebar-utility-label">สำรอง / นำเข้าข้อมูล</div>
+    <div class="sidebar-utility-label">สำรองข้อมูล</div>
     <button onclick="exportData()" style="width:100%;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;margin-bottom:6px;font-family:inherit;text-align:left;" onmouseover="this.style.background='rgba(255,255,255,.22)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">
       💾 Export ข้อมูล (JSON)
     </button>
-    <label style="width:100%;display:block;background:rgba(196,154,34,.25);color:#f5d87a;border:1px solid rgba(196,154,34,.4);border-radius:7px;padding:7px 10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left;" onmouseover="this.style.background='rgba(196,154,34,.4)'" onmouseout="this.style.background='rgba(196,154,34,.25)'">
-      📂 Import ข้อมูล (JSON)
-      <input type="file" accept=".json" onchange="importData(this)" style="display:none">
-    </label>
   </div>
   <div class="sidebar-footer">ปีงบประมาณ <span id="nav-year">2569</span></div>
 </aside>
@@ -1033,7 +1029,7 @@ const DashUX = {
           <tbody id="opd-table-body"></tbody>
         </table>
         <div class="empty-state" id="opd-table-empty" style="display:none">
-          <p>ยังไม่มีข้อมูล — กรุณานำเข้าไฟล์จาก HosXP</p>
+          <p>ยังไม่มีข้อมูล — ระบบดึงจาก HOSxP อัตโนมัติ</p>
         </div>
       </div>
     </div>
@@ -1354,7 +1350,7 @@ const DashUX = {
           <tbody id="ipd-table-body"></tbody>
         </table>
         <div class="empty-state" id="ipd-table-empty" style="display:none">
-          <p>ยังไม่มีข้อมูล — กรุณานำเข้าไฟล์จาก HosXP</p>
+          <p>ยังไม่มีข้อมูล — ระบบดึงจาก HOSxP อัตโนมัติ</p>
         </div>
       </div>
     </div>
@@ -4581,33 +4577,6 @@ function exportData() {
   showToast('✅ Export สำเร็จ');
 }
 
-function importData(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const p = JSON.parse(e.target.result);
-      if (p.me_records_v2)  { localStorage.setItem('me_records_v2', JSON.stringify(p.me_records_v2)); records = p.me_records_v2; }
-      if (p.hosxp_records)  { localStorage.setItem('hosxp_records', JSON.stringify(p.hosxp_records)); hosxpRecords = p.hosxp_records; }
-      if (p.hosxp_denom)    { localStorage.setItem('hosxp_denom', JSON.stringify(p.hosxp_denom)); }
-      if (p.hosxp_manual_seeded) localStorage.setItem('hosxp_manual_seeded_v2', p.hosxp_manual_seeded);
-      showToast('✅ Import สำเร็จ — ER ' + records.length + ' รายการ, HosXP ' + hosxpRecords.length + ' รายการ');
-      renderDashboard();
-      renderHosXPDashboard('OPD');
-      renderHosXPDashboard('IPD');
-      updateLandingCounts();
-      // Push imported data to Firebase
-      if (typeof window._fbSaveER === 'function') window._fbSaveER();
-      if (typeof window._fbSaveHosXP === 'function') window._fbSaveHosXP();
-      if (typeof window._fbSaveDenom === 'function') window._fbSaveDenom();
-    } catch(err) {
-      showToast('❌ ไฟล์ไม่ถูกต้อง: ' + err.message);
-    }
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
 
 
 // ======= OVERVIEW DASHBOARD (OPD + IPD + ER รวม) =======
