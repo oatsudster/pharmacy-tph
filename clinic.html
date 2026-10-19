@@ -4246,7 +4246,7 @@ function renderDrpDashboard() {
               <td><span class="badge badge-${escHtml(it.clinic.toLowerCase())}">${escHtml(it.clinic)}</span></td>
               <td><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><span class="dd-sw" style="background:${drpGroup(it.cat).color}"></span>${escHtml(drpGroup(it.cat).label)}</span></td>
               <td>${escHtml(drpShortName(it.type))}</td>
-              <td style="font-size:11px;color:var(--text-mid)">${escHtml(it.cause)}</td>
+              <td style="font-size:11px;color:var(--text-mid)">${escHtml(it.cause)}${it.v.hxNote ? `<div style="margin-top:3px;color:var(--text-light)" title="${escHtml(it.v.hxNote)}">🗄 HOSxP: ${escHtml(drpTrunc(it.v.hxNote, 90))}</div>` : ''}</td>
               <td style="font-size:11px">${escHtml(it.pharm)}</td>
             </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:24px">ไม่พบ DRP ตามตัวกรองนี้</td></tr>'}</tbody>
         </table></div>
