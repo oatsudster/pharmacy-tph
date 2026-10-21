@@ -153,7 +153,8 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .mdstk .row { position: absolute; left: 0; width: 90mm; display: flex; }
 .mdstk .c1, .mdstk .c2 { box-sizing: border-box; height: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; line-height: 1.05; }
 .mdstk .c1 { padding: 0 1.5mm 0 2.5mm; }
-.mdstk .c2 { padding: 0 1.5mm 0 1.5mm; }
+/* วิธีใช้เว้นขอบขวา 5 มม. — เดิม 1.5 มม. ตัวอักษรชนขอบสติกเกอร์ */
+.mdstk .c2 { padding: 0 5mm 0 1.5mm; }
 .mdstk .dn { font-weight: 700; white-space: nowrap; overflow: hidden; }
 .mdstk .ds { font-size: 9pt; white-space: nowrap; overflow: hidden; }
 .mdstk .us { overflow-wrap: anywhere; }
@@ -589,6 +590,52 @@ function mdSaveCal() {
 const mdClean = t => String(t || '').replace(/[�\u0000-\u001F ]/g, ' ').replace(/\s+/g, ' ').trim();
 const mdDays = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
 const mdName = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
+// วิธีใช้ยาเม็ดภาษาไทยแบบ HOSxP → ตัวย่อทางการแพทย์ในสติกเกอร์ (ตามที่ผู้ใช้ขอ 2026-10-21):
+//   "ครั้งละ ครึ่ง เม็ด วันละ 1 ครั้ง หลังอาหาร เช้า" → "½ x 1 pc", "... ก่อนนอน" → "½ x 1 hs", "... หลังอาหารเย็น" → "½ x 1 pc เย็น",
+//   "1 เม็ด วันละ 3 ครั้ง หลังอาหาร เช้า-เที่ยง-เย็น" → "1 x 3 pc", วันเว้นวัน → qod, ทุก 8 ชม. → q8h
+//   มื้อมาตรฐานไม่เขียน: วันละ 1 = เช้า, 2 = เช้า เย็น, 3 = เช้า เที่ยง เย็น
+// แปลงไม่ได้ครบทุกคำ (prn ทันที เวลา 14.00 น. สัปดาห์ละ ขนาดแยกมื้อ ยาน้ำ ฯลฯ) = ใช้ข้อความเดิม ไม่เดา
+// ทดสอบกับวิธีใช้ยาเม็ด 150 แบบที่ใช้บ่อยใน HOSxP 1 ปี: แปลงได้ 93 แบบ (81% ของรายการยา)
+function mdAbbr(t) {
+  const s = String(t || '').replace(/\s+/g, ' ').trim();
+  if (!/^รับประทาน/.test(s) || /เวลา|เมื่อ|ถ้า|ทันที|สัปดาห์|อาการ|\bprn\b|\bstat\b|ยูนิต|ช้อน|ซีซี|\bcc\b|มล|\bml\b|ซอง/i.test(s.replace(/วันละ\s*\d+\s*เวลา/g, ''))) return s;
+  let r = ' ' + s.replace(/^รับประทาน/, ' ') + ' ';
+  const am = [...r.matchAll(/(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป)\s*(ครึ่ง)?/g)];
+  if (am.length !== 1) return s;   // ไม่มีจำนวน หรือระบุขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
+  const a = am[0], x = a[1].replace(/\s/g, '');
+  let amt = { 'ครึ่ง': 0.5, '½': 0.5, '1/2': 0.5, '¼': 0.25, '1/4': 0.25, '3/4': 0.75 }[x];
+  if (amt == null) amt = /\//.test(x) ? NaN : +x;
+  if (a[2] || a[4]) amt = amt >= 1 ? amt + 0.5 : NaN;   // "1 เม็ดครึ่ง"
+  if (!(amt > 0)) return s;
+  r = r.replace(a[0], ' ');
+  let freq = null, qh = null, tm = '', hs = false, qod = false;
+  const meals = [];
+  r = r.replace(/วันเว้นวัน/, () => { qod = true; return ' '; })
+    .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)?/, (_, n) => { freq = +n; return ' '; })
+    .replace(/ทุก\s*(\d+)\s*(ชั่วโมง|ชม\.?)/, (_, n) => { qh = +n; return ' '; })
+    .replace(/(หลัง|ก่อน)\s*อาหาร(\s*\d+\s*นาที)?/g, (_, w) => { tm = tm || (w === 'หลัง' ? 'pc' : 'ac'); return ' '; })
+    .replace(/ก่อนนอน/g, () => { hs = true; return ' '; })
+    .replace(/เช้า|กลางวัน|เที่ยง|เย็น/g, w => { const m = w === 'กลางวัน' ? 'เที่ยง' : w; if (!meals.includes(m)) meals.push(m); return ' '; });
+  if (/[฀-๿]/.test(r.replace(/และ/g, ''))) return s;   // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว ฯลฯ) — ใช้ของเดิม
+  const n = mdAmt(amt);
+  if (qh) return freq || meals.length || hs ? s : `${n} x q${qh}h${tm ? ' ' + tm : ''}`;
+  const slots = meals.length + (hs ? 1 : 0);
+  if (qod) return freq || slots > 1 ? s : `${n} x qod${tm ? ' ' + tm + (meals.length && meals[0] !== 'เช้า' ? ' ' + meals[0] : '') : ''}${hs ? (tm ? ', ' : ' ') + 'hs' : ''}`;
+  if (freq == null) freq = slots || null;
+  if (!freq || (slots && slots !== freq) || (meals.length && !tm)) return s;
+  const ORDER = ['เช้า', 'เที่ยง', 'เย็น'];
+  meals.sort((p, q) => ORDER.indexOf(p) - ORDER.indexOf(q));
+  const canon = [[], ['เช้า'], ['เช้า', 'เย็น'], ORDER][meals.length];
+  const omit = hs ? meals.length === 3 : meals.join() === canon.join();   // + ก่อนนอน: เขียนมื้อเว้นแต่ครบ 3 มื้อ (1 x 4 pc, hs)
+  const parts = [];
+  if (tm) parts.push(tm + (meals.length && !omit ? ' ' + meals.join(' ') : ''));
+  if (hs) parts.push('hs');
+  return `${n} x ${freq}${parts.length ? ' ' + parts.join(', ') : ''}`;
+}
+function mdAmt(v) {
+  const w = Math.floor(v), f = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' }[v - w];
+  return f == null ? String(v) : (w || !f ? String(w) : '') + f;
+}
 const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Math.max(0, c.top) + 0.01) / c.rowH)); };
 function mdPick(items, reg) {
   const SR = window.tphSmartRx;
@@ -709,7 +756,7 @@ function renderMd() {
       <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
     </div>` : `<div class="md-row${d.on ? '' : ' off'}">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
-      <b>${escHtml(mdName(d))}</b><span>${escHtml(d.usage)}</span>
+      <b>${escHtml(mdName(d))}</b><span>${mdAbbr(d.usage) !== mdClean(d.usage) ? `<b>${escHtml(mdAbbr(d.usage))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(d.usage)}</span>
       <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
     </div>`).join('') || '<div class="empty">ไม่พบยาจาก รพ. ใน 1 ปีก่อน admit</div>';
 }
@@ -725,19 +772,21 @@ function mdStickers(rows, grid) {
   }
   tk += `<div class="tk" style="left:${c.c1 - .1}mm;top:0;width:.2mm;height:1.5mm"></div><div class="tk" style="left:${c.c1 - .1}mm;bottom:0;width:.2mm;height:1.5mm"></div>`;
   return pages.map(pg => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
-      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:12.5pt">${escHtml(mdName(d))}</div>
+      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${escHtml(mdName(d))}</div>
         <div class="ds">${d.ext ? escHtml(d.src ? 'ยาจาก ' + d.src : 'ยาจากที่อื่น')
           : `ได้รับ ${escHtml(thDmy(d.date))} #${escHtml(d.qty)}${d.dep ? ' · ' + escHtml(mdClean(d.dep)) : ''}`}</div>` : ''}</div>
-      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:10.5pt">${escHtml(d.usage)}</div>` : ''}</div>
+      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(d.usage))}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
 function mdPrint(html) {
   const pa = document.getElementById('print-area');
   pa.innerHTML = html;
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
-  pa.querySelectorAll('.fit').forEach(el => {
+  pa.querySelectorAll('.fit').forEach(el => {   // ชื่อยายาว/แถวเตี้ย → ลดตัวอักษรจนไม่เกินความกว้างและความสูงแถว
+    // ช่องจัดกลางแนวตั้ง (flex) ส่วนที่ล้นด้านบนไม่นับใน scrollHeight — วัดจากความสูงรวมของบรรทัดแทน
+    const box = el.parentElement, tall = () => [...box.children].reduce((h, c) => h + c.offsetHeight, 0) > box.clientHeight + 1;
     let fs = parseFloat(el.style.fontSize);
-    while (el.scrollWidth > el.clientWidth + 1 && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+    while ((el.scrollWidth > el.clientWidth + 1 || tall()) && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
   pa.querySelectorAll('.fitv').forEach(el => {   // วิธีใช้ยาว → ลดตัวอักษรจนไม่เกินความสูงแถว
     const box = el.parentElement; let fs = parseFloat(el.style.fontSize);
