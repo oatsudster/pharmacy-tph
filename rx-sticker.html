@@ -591,7 +591,7 @@ const mdClean = t => String(t || '').replace(/[�\u0000-\u001F ]/g, ' ').repla
 const mdDays = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
 const mdName = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
 // วิธีใช้ยาเม็ดภาษาไทยแบบ HOSxP → ตัวย่อทางการแพทย์ในสติกเกอร์ (ตามที่ผู้ใช้ขอ 2026-10-21):
-//   "ครั้งละ ครึ่ง เม็ด วันละ 1 ครั้ง หลังอาหาร เช้า" → "½ x 1 pc", "... ก่อนนอน" → "½ x 1 hs", "... หลังอาหารเย็น" → "½ x 1 pc เย็น",
+//   "ครั้งละ ครึ่ง เม็ด วันละ 1 ครั้ง หลังอาหาร เช้า" → "0.5 x 1 pc", "... ก่อนนอน" → "0.5 x 1 hs", "... หลังอาหารเย็น" → "0.5 x 1 pc เย็น",
 //   "1 เม็ด วันละ 3 ครั้ง หลังอาหาร เช้า-เที่ยง-เย็น" → "1 x 3 pc", วันเว้นวัน → qod, ทุก 8 ชม. → q8h
 //   มื้อมาตรฐานไม่เขียน: วันละ 1 = เช้า, 2 = เช้า เย็น, 3 = เช้า เที่ยง เย็น
 // แปลงไม่ได้ครบทุกคำ (prn ทันที เวลา 14.00 น. สัปดาห์ละ ขนาดแยกมื้อ ยาน้ำ ฯลฯ) = ใช้ข้อความเดิม ไม่เดา
@@ -632,10 +632,8 @@ function mdAbbr(t) {
   if (hs) parts.push('hs');
   return `${n} x ${freq}${parts.length ? ' ' + parts.join(', ') : ''}`;
 }
-function mdAmt(v) {
-  const w = Math.floor(v), f = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' }[v - w];
-  return f == null ? String(v) : (w || !f ? String(w) : '') + f;
-}
+// จำนวนเม็ดเป็นทศนิยม: ครึ่งเม็ด = 0.5, 1 เม็ดครึ่ง = 1.5, 1/4 = 0.25 (ผู้ใช้ขอ 2026-10-21 แทน ½)
+const mdAmt = v => String(Math.round(v * 100) / 100);
 const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Math.max(0, c.top) + 0.01) / c.rowH)); };
 function mdPick(items, reg) {
   const SR = window.tphSmartRx;
