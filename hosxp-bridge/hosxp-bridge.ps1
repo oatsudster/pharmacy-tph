@@ -642,23 +642,48 @@ function DbErRx($hn, $path) {
   [ordered]@{ ok = $true; hn = $hn; name = ("$($x['pname'])$($x['fname']) $($x['lname'])").Trim(); birthday = $x['birthday']; sex = $x['sex']
     rx = @($groups.Values | ForEach-Object { $_.dep = $_.deps -join ','; $_.Remove('deps'); $_ }) }
 }
-# ยาเดิมสำหรับใบ MR: ยาที่ได้รับจาก รพ. ใน 1 ปีก่อน admit (OPD ไม่นับ visit ที่ admit) + ยากลับบ้านของการนอนครั้งก่อนๆ
-# ส่งทุกครั้งที่จ่าย หน้าเว็บเลือกเองว่ายาตัวไหนยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว + จำนวนพอถึงวัน admit)
+# ยาเดิมสำหรับใบ MR (ผู้ใช้ขอ 2026-10-21 — เดิมเอายาทุก visit OPD ใน 1 ปีมารวม ยา ER/ยาบรรเทาอาการปนมาเยอะ):
+#   visit ที่มาตามนัดคลินิกโรคเรื้อรัง ($MED_CLINICS: DM/HT/COPD) ครั้งล่าสุดที่มียาของแต่ละคลินิก ใน 1 ปีก่อน admit
+#   + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุดก่อน admit นี้ — หน้าเว็บใช้ D/C เป็นจุดตัด
+#   chronic = $true บอกหน้าเว็บว่าเป็นข้อมูลแบบนี้ (bridge รุ่นเก่าส่งทุก visit)
 function DbMrMeds($hn, $path) {
   $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
   $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
   if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
   $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
-  $op = DbQuery ("SELECT r.vn, DATE_FORMAT(r.vstdate,'%Y-%m-%d') AS d, k.department AS dep, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
-    "$DRUG_JOIN LEFT JOIN ovst o ON o.vn=r.vn LEFT JOIN kskdepartment k ON k.depcode=o.main_dep " +
-    "WHERE r.hn='$hn' AND r.vstdate>='$reg' - INTERVAL 365 DAY AND r.vstdate<='$reg' AND (r.an IS NULL OR r.an='') AND r.vn<>'$avn' " +
-    "ORDER BY r.vstdate DESC, r.vn DESC, r.item_no")
-  $hm = DbQuery ("SELECT r.an AS vn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS d, 'ยากลับบ้าน (D/C)' AS dep, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
-    "$DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no JOIN ipt i ON i.an=r.an " +
-    "WHERE i.hn='$hn' AND n.order_type='HMe' AND i.dchdate>='$reg' - INTERVAL 365 DAY AND i.dchdate<='$reg' AND i.an<>'$an' ORDER BY i.dchdate DESC, r.item_no")
-  $rows = @($op) + @($hm)
-  [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; items = @($rows | Where-Object { $_ } | ForEach-Object {
-    $x = DrugRow $_; $x.vn = $_['vn']; $x.date = $_['d']; $x.dep = $_['dep']; $x.namePrint = $_['name_print']; $x }) }
+  $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn FROM oapp a JOIN clinic c ON c.clinic=a.clinic " +
+    "JOIN ovst o ON o.vn=a.visit_vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
+    "WHERE a.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
+    "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
+  $items = New-Object System.Collections.ArrayList
+  if ($vis.Count) {
+    $vns = ($vis | ForEach-Object { "'" + [HxDb]::Digits($_['vn']) + "'" } | Select-Object -Unique) -join ','
+    $all = DbQuery ("SELECT r.vn, DATE_FORMAT(r.vstdate,'%Y-%m-%d') AS d, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
+      "$DRUG_JOIN WHERE r.vn IN ($vns) AND (r.an IS NULL OR r.an='') ORDER BY r.vstdate DESC, r.vn DESC, r.item_no")
+    # แต่ละคลินิกเอา visit ล่าสุดที่มียา (นัด LAB บางครั้งไม่มียา) — visit เดียวกันนัดหลายคลินิกเอาครั้งเดียว
+    $seen = @{}; $used = @{}
+    foreach ($v in $vis) {
+      $vn = "$($v['vn'])"
+      if ($seen.ContainsKey("$($v['clinic'])")) { continue }
+      $rs = @($all | Where-Object { "$($_['vn'])" -eq $vn })
+      if (-not $rs.Count) { continue }
+      $seen["$($v['clinic'])"] = $true
+      if ($used.ContainsKey($vn)) { continue }
+      $used[$vn] = $true
+      foreach ($r in $rs) { [void]$items.Add(@{ r = $r; dep = "นัด $($v['clinic_name'])" }) }
+    }
+  }
+  $last = DbQuery ("SELECT an FROM ipt WHERE hn='$hn' AND an<>'$an' AND dchdate IS NOT NULL AND dchdate>='$reg' - INTERVAL 365 DAY " +
+    "AND dchdate<='$reg' ORDER BY dchdate DESC, dchtime DESC LIMIT 1")
+  if ($last.Count) {
+    $lan = [HxDb]::Digits($last[0]['an'])
+    $hm = DbQuery ("SELECT r.an AS vn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS d, $DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print " +
+      "$DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no JOIN ipt i ON i.an=r.an " +
+      "WHERE r.an='$lan' AND n.order_type='HMe' ORDER BY r.item_no")
+    foreach ($r in $hm) { [void]$items.Add(@{ r = $r; dep = 'ยากลับบ้าน (D/C)' }) }
+  }
+  [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; chronic = $true; items = @($items | ForEach-Object {
+    $q = $_.r; $x = DrugRow $q; $x.vn = $q['vn']; $x.date = $q['d']; $x.dep = $_.dep; $x.namePrint = $q['name_print']; $x }) }
 }
 # พจนานุกรมคีย์ยาเดิมจาก รพ.อื่น ในใบ MR: ยาทุกตัวใน drugitems (รวมที่เลิกใช้ — ยานอก รพ. อาจเป็นตัวที่เราไม่มีแล้ว)
 # + วิธีใช้ที่เปิดใช้ (status='Y' ~750 จาก 129k แถว) พร้อม code = รหัสย่อที่พิมพ์ใน HOSxP เช่น "11pt (1เม็ด * 1pc)"

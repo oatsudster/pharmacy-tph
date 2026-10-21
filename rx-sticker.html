@@ -659,9 +659,14 @@ function mdAbbr(t) {
 // จำนวนเม็ดเป็นทศนิยม: ครึ่งเม็ด = 0.5, 1 เม็ดครึ่ง = 1.5, 1/4 = 0.25 (ผู้ใช้ขอ 2026-10-21 แทน ½)
 const mdAmt = v => String(Math.round(v * 100) / 100);
 const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Math.max(0, c.top) + 0.01) / c.rowH)); };
-function mdPick(items, reg) {
+function mdPick(items, reg, chronicSrc) {
   const SR = window.tphSmartRx;
   const key = d => SR ? SR.coreKey(d) : d.icode;
+  // bridge แบบใหม่ (chronicSrc): ยามาจากนัดคลินิกโรคเรื้อรัง + ยากลับบ้านครั้งล่าสุด — D/C เป็นจุดตัด
+  // ยาคลินิกที่ได้ก่อนวัน D/C และไม่อยู่ในยากลับบ้าน = แพทย์หยุดตอนจำหน่าย → ไม่ติ๊ก
+  const isDc = d => /^ยากลับบ้าน/.test(d.dep || '');
+  const dcDate = chronicSrc ? items.filter(isDc).reduce((a, d) => d.date > a ? d.date : a, '') : '';
+  const dcKeys = new Set(items.filter(isDc).map(key));
   const latest = new Map();
   items.forEach(d => { if (!latest.has(d.icode) || d.date > latest.get(d.icode).date) latest.set(d.icode, d); });
   const list = [...latest.values()].map(d => Object.assign({}, d, { usage: mdClean(d.usage) }));
@@ -679,6 +684,7 @@ function mdPick(items, reg) {
     if (SR && SR.isOldMed(d)) { on = false; why = 'ยาที่ผู้ป่วยนำมาเอง'; }
     else if (INJ_ONCE.test([d.name, d.form, d.usage].join(' ')) && !chronic) { on = false; why = 'ยาฉีด/ใช้ใน รพ.'; }
     else if (newest.get(key(d)) !== d) { on = false; why = 'มีรายการใหม่กว่าของตัวยาเดียวกัน'; }
+    else if (dcDate && !isDc(d) && d.date < dcDate && !dcKeys.has(key(d))) { on = false; why = `ไม่อยู่ในยากลับบ้านครั้งล่าสุด (D/C ${thIso(dcDate)})`; }
     return Object.assign(d, { on, why, chronic, age });
   }).sort((a, b) => (b.on - a.on) || (b.chronic - a.chronic) || b.date.localeCompare(a.date) || mdName(a).localeCompare(mdName(b)));
 }
@@ -691,7 +697,7 @@ async function openMd(an) {
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const r = await tphHosxp.mrMeds(x.hn, x.an);
   if (!r || !r.ok) { document.getElementById('md-list').innerHTML = `<div class="empty">${escHtml(r && r.error ? r.error : NOBRIDGE)}</div>`; return; }
-  MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate).concat(mdExtLoad(x.hn)) };
+  MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate, !!r.chronic).concat(mdExtLoad(x.hn)) };
   renderMd();
   mdLoadDict();
 }
@@ -780,7 +786,7 @@ function renderMd() {
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <b>${escHtml(mdName(d))}</b><span>${mdAbbr(d.usage) !== mdClean(d.usage) ? `<b>${escHtml(mdAbbr(d.usage))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(d.usage)}</span>
       <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
-    </div>`).join('') || '<div class="empty">ไม่พบยาจาก รพ. ใน 1 ปีก่อน admit</div>';
+    </div>`).join('') || '<div class="empty">ไม่พบยาจากนัดคลินิกโรคเรื้อรัง (DM/HT/COPD) หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
 }
 function mdStickers(rows, grid) {
   const c = mdCal(), per = mdPer();
