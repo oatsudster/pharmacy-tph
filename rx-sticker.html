@@ -159,8 +159,8 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .mdstk .ds { font-size: 9pt; white-space: nowrap; overflow: hidden; }
 .mdstk .us { overflow-wrap: anywhere; font-weight: 700; }   /* วิธีใช้ตัวหนา (ผู้ใช้ขอ 2026-10-21) */
 .mdstk .tk { position: absolute; background: #000; }
-.mdstk.grid .row { outline: .2mm solid #000; outline-offset: -.1mm; }
-.mdstk.grid .c1 { border-right: .2mm solid #000; }
+.mdstk.grid .row, .mdstk .row.bx { outline: .25mm solid #000; outline-offset: -.125mm; }
+.mdstk.grid .c1, .mdstk .row.bx .c1 { border-right: .25mm solid #000; }
 .md-row { display: grid; grid-template-columns: 26px 1.3fr 1fr; gap: 2px 10px; padding: 6px 4px; border-top: 1px solid #eef3ef; align-items: start; font-size: 13.5px; }
 .md-row.off { color: #9aa5a0; }
 .md-row .src { grid-column: 2 / -1; font-size: 12px; color: var(--text-mid); }
@@ -769,10 +769,10 @@ function mdStickers(rows, grid) {
     tk += `<div class="tk" style="left:0;top:${y - .1}mm;width:1.8mm;height:.2mm"></div><div class="tk" style="right:0;top:${y - .1}mm;width:1.8mm;height:.2mm"></div>`;
   }
   tk += `<div class="tk" style="left:${c.c1 - .1}mm;top:0;width:.2mm;height:1.5mm"></div><div class="tk" style="left:${c.c1 - .1}mm;bottom:0;width:.2mm;height:1.5mm"></div>`;
-  return pages.map(pg => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
-      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${escHtml(mdName(d))}</div>
-        <div class="ds">${d.ext ? escHtml(d.src ? 'ยาจาก ' + d.src : 'ยาจากที่อื่น')
-          : `ได้รับ ${escHtml(thDmy(d.date))} #${escHtml(d.qty)}${d.dep ? ' · ' + escHtml(mdClean(d.dep)) : ''}`}</div>` : ''}</div>
+  // ยาแต่ละตัวมีเส้นขอบตาราง (class bx) + ลำดับ 1 2 3… ต่อเนื่องข้ามดวงในชุดเดียวกัน
+  // ไม่พิมพ์วันที่ได้รับ/คลินิก/รพ.ที่ได้ยา — เภสัชเขียนเองในช่องถัดไปของใบ MR (ผู้ใช้ขอ 2026-10-21)
+  return pages.map((pg, pi) => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row${d ? ' bx' : ''}" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
+      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${pi * per + k + 1}. ${escHtml(mdName(d))}</div>` : ''}</div>
       <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(d.usage))}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
