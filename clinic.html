@@ -21,6 +21,7 @@
 <script src="lib/clinic-store.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <script src="lib/rx-check.js"></script>
+<script src="lib/renal-dose.js"></script>
 <script src="lib/smart-rx.js"></script>
 <style>
 :root {
@@ -3472,6 +3473,10 @@ const SMART_CSS = `
   .sm-it .dt{font-size:11px;color:#3D5A47;font-weight:400}
   .sm-it.new{background:#e0f2fe}.sm-it.switch{background:#ede9fe}.sm-it.stop{background:#f3f4f6}.sm-it.strength,.sm-it.up,.sm-it.down{background:#FBF3DC}.sm-it.usage{background:#f5f3ff}
   .sm-it.high{background:#fee2e2;color:#991b1b;font-weight:600}.sm-it.warn{background:#FFFBEB;color:#92400e}.sm-it.info{background:#f0f9ff;color:#0c4a6e}
+  .sm-it.ok{background:#EAF4EE;color:#124228}
+  .sm-it .rec{font-size:11px;font-weight:400;opacity:.85}
+  .sm-kid{font-size:12px;background:#F4F7F5;border-radius:7px;padding:5px 7px;margin-bottom:4px;line-height:1.5}
+  .sm-kid b.bad{color:#b91c1c}
   .chip{display:inline-block;padding:2px 7px;border-radius:6px;background:#EAF4EE;color:#124228;margin:0 3px 4px 0;font-size:11px}
   .chip.bad{background:#fee2e2;color:#b91c1c;font-weight:700}
   .chip small{opacity:.75;font-weight:400}
@@ -3529,7 +3534,8 @@ function renderSmart() {
   const today = (c.order && c.order.drugs) || [], info = c.info || {};
   const res = tphSmartRx.analyze({ today, visits: c.visits || [], info, prevVn: c.prevVn });
   c.res = res;
-  const hi = res.alerts.filter(a => a.level === 'high').length, wa = res.alerts.filter(a => a.level === 'warn').length;
+  const lvAll = res.alerts.concat(res.renal ? res.renal.rows : []);
+  const hi = lvAll.filter(a => a.level === 'high').length, wa = lvAll.filter(a => a.level === 'warn').length;
   const nC = res.changes.length;
   bar.innerHTML = !today.length ? '' : `<div class="sm-bar ${hi ? 'hi' : nC || wa ? 'wa' : 'ok'}">${!res.prev ? '🆕 ไม่มี visit ก่อนให้เทียบ'
     : nC ? `🔔 แพทย์ปรับยาจาก visit ก่อน ${nC} รายการ` : '✅ ยาเหมือน visit ก่อน'}${hi ? ` · 🔴 ${hi}` : ''}${wa ? ` · 🟠 ${wa}` : ''}<span>ดูรายละเอียด ▾</span></div>`;
@@ -3549,6 +3555,7 @@ function renderSmart() {
     + (today.length ? `<div class="sm-sec">ความเหมาะสมของยา (lab / สัญญาณชีพ / ยาตีกัน / แพ้ยา)</div>`
       + (res.alerts.length ? res.alerts.map(a => `<div class="sm-it ${a.level}">${LV[a.level]} ${escHtml(a.text)}</div>`).join('')
         : '<div class="sm-it info">🟢 ไม่พบปัญหาจากกฎที่ตรวจ</div>') : '')
+    + (today.length ? smartRenalHtml(res.renal) : '')
     + `<div class="sm-sec">Lab ล่าสุด <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
     + (labs.length ? labs.map(l => `<span class="chip${l.bad ? ' bad' : ''}" title="${escHtml(l.raw)} · ${escHtml(tphHosxp.thDate(l.date))}${l.prev != null ? ` · ครั้งก่อน ${l.prev} (${escHtml(tphHosxp.thDate(l.prevDate))})` : ''}">${escHtml(l.label)} ${l.value}${l.prev != null ? ` <small>(${l.prev})</small>` : ''} <small>${escHtml(short(l.date))}</small></span>`).join('')
       : '<div class="muted">ไม่มีผล lab ใน 1 ปี</div>')
@@ -3557,6 +3564,25 @@ function renderSmart() {
     + (ai && ai.err ? `<div class="warn" style="margin-top:4px">AI ไม่ตอบ: ${escHtml(ai.err)}</div>` : '')
     + (ai && ai.text ? `<div class="sm-ai">${smartMd(ai.text)}</div>` : '')
     + '<div class="muted" style="margin-top:6px;font-size:10.5px">ผลจากระบบ/AI เป็นตัวช่วยคัดกรอง เภสัชกรต้องพิจารณาเองทุกครั้ง · AI ได้รับเฉพาะอายุ เพศ โรค lab และรายการยา (ไม่มีชื่อ/HN)</div>';
+}
+// ขนาดยาตามการทำงานของไต (lib/renal-dose.js): Cr / eGFR / CrCl + ยาทุกตัวในใบสั่งที่มีเกณฑ์ปรับตามไต
+function smartRenalHtml(r) {
+  if (!r) return '';
+  const f = r.fn, n = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('th-TH');
+  const h = '<div class="sm-sec">💧 ขนาดยาตามการทำงานของไต (eGFR / CrCl)</div>';
+  if (r.skipped) return h + `<div class="muted">${escHtml(r.skipped)}</div>`;
+  if (f.egfr == null && f.crcl == null)
+    return h + `<div class="sm-it ${r.missing.length ? 'warn' : 'info'}">${r.missing.length ? `🟠 ไม่มีผล Cr/eGFR ใน 1 ปี แต่ได้ยาที่ต้องปรับตามไต: ${escHtml(r.missing.join(', '))} — ควรส่งตรวจ Cr` : 'ไม่มีผล Cr/eGFR ใน 1 ปี'}</div>`;
+  const kid = [];
+  if (f.cr != null) kid.push(`Cr <b>${n(f.cr, 2)}</b> <small>(${escHtml(tphHosxp.thDate(f.crDate))})</small>`);
+  if (f.egfr != null) kid.push(`eGFR <b class="${f.egfr < 60 ? 'bad' : ''}">${n(f.egfr)}</b> <small>${escHtml(f.stage)}${f.egfrSrc !== 'lab' ? ` · ${escHtml(f.egfrSrc)}` : ''}</small>`);
+  if (f.crcl != null) kid.push(`CrCl <b class="${f.crcl < 60 ? 'bad' : ''}">${n(f.crcl)}</b> mL/min <small>(CG · ${escHtml(f.wtNote)} ${n(f.wt, 1)} กก.${f.wtNote !== 'น้ำหนักจริง' ? ` จากน้ำหนัก ${n(f.bw, 1)}` : ''} · อายุ ${Math.floor(f.ageY)} ปี)</small>`);
+  else kid.push('<small>ไม่มีน้ำหนักใน 1 ปี — ใช้ eGFR แทน CrCl</small>');
+  if (f.old) kid.push('<b class="bad">ผล Cr เก่ากว่า 6 เดือน</b>');
+  const IC = { high: '🔴', warn: '🟠', info: '🟢', ok: '✅' };
+  return h + `<div class="sm-kid">${kid.join(' · ')}</div>`
+    + (r.rows.length ? r.rows.map(x => `<div class="sm-it ${x.level}">${IC[x.level]} <b>${escHtml(x.drug)}</b> <small>(${escHtml(x.basis)} ${n(x.value)})</small> — ${escHtml(x.text)}${x.level !== 'ok' && x.limit ? `<div class="rec">เกณฑ์ ${escHtml(x.limit)}${x.usage ? ` · สั่ง: ${escHtml(x.usage)}` : ''}</div>` : ''}</div>`).join('')
+      : '<div class="sm-it ok">✅ ไม่มียาในใบสั่งที่ต้องปรับขนาดตามไต</div>');
 }
 function onSmartChange(e) {
   if (!e.target.matches('select[data-sm-prev]')) return;
