@@ -596,8 +596,32 @@ const mdName = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).
 //   มื้อมาตรฐานไม่เขียน: วันละ 1 = เช้า, 2 = เช้า เย็น, 3 = เช้า เที่ยง เย็น
 // แปลงไม่ได้ครบทุกคำ (prn ทันที เวลา 14.00 น. สัปดาห์ละ ขนาดแยกมื้อ ยาน้ำ ฯลฯ) = ใช้ข้อความเดิม ไม่เดา
 // ทดสอบกับวิธีใช้ยาเม็ด 150 แบบที่ใช้บ่อยใน HOSxP 1 ปี: แปลงได้ 93 แบบ (81% ของรายการยา)
+// ยาพ่น MDI (ผู้ใช้ขอ 2026-10-21): "กดพ่นยาทางปาก 2 ที ... วันละ 2 เวลา เช้า-เย็น" → "2 puff bid",
+//   "... เวลามีอาการหอบ ทุก 4 ชั่วโมง" → "2 puff prn q 4 hr", "1 ที วันละ 1 ครั้ง ก่อนนอน" → "1 puff hs",
+//   "ทุก 20 นาที ใน 1 ชั่วโมงแรก ... หลังจากนั้นทุก 4 ชั่วโมงเมื่อมีอาการ" → "2 puff q 20 min x3, then prn q 4 hr"
+//   ยาพ่นฝอยละออง (cc + NSS, nebule) ไม่แปลง
+function mdAbbrInh(s) {
+  const m = s.match(/^(?:กด)?พ่น(?:ยา)?(?:เข้า)?ทางปาก\s*(\d+(?:\s*-\s*\d+)?)\s*(?:ที|ครั้ง)/);
+  if (!m || /cc|ซีซี|ซี\.ซี|nss|nebule|\bNB\b/i.test(s)) return s;
+  const puff = `${m[1].replace(/\s/g, '')} puff`;
+  let r = ' ' + s.slice(m[0].length) + ' ', freq = null, qh = null, hs = false, prn = false, stat = '';
+  r = r.replace(/แต่ละครั้ง\s*เว้น\s*(ช่วง)?\s*ห่าง\s*\d+\s*นาที/g, ' ')
+    .replace(/ทุก\s*20\s*นาที\s*ใน\s*1\s*ชั่วโมงแรก\s*(หาก\s*ยัง\s*หอบ)?\s*หลังจากนั้น\s*(พ่นยาทางปาก)?/, () => { stat = 'q 20 min x3, then '; return ' '; })
+    .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)/, (_, n) => { freq = +n; return ' '; })
+    .replace(/(ซ้ำได้)?\s*ทุก\s*(\d+)\s*(ชั่วโมง|ชม\.?)/, (_, x, n) => { qh = +n; return ' '; })
+    .replace(/(เวลา|เมื่อ)\s*(มี)?\s*(อาการ)?\s*(หอบ|เหนื่อย)?(\s*,?\s*(หอบ|เหนื่อย))?/g, w => { prn = true; return ' '; })
+    .replace(/ก่อนนอน/, () => { hs = true; return ' '; })
+    .replace(/เช้า|เย็น/g, ' ');
+  if (/[฀-๿]/.test(r) || (stat && !(prn && qh))) return s;
+  if (prn) return `${puff} ${stat}prn${qh ? ' q ' + qh + ' hr' : ''}`;
+  if (qh && !freq) return `${puff} q ${qh} hr`;
+  if (freq === 1 && hs) return `${puff} hs`;
+  const F = { 1: 'od', 2: 'bid', 3: 'tid', 4: 'qid' }[freq];
+  return F && !qh ? `${puff} ${F}${hs ? ', hs' : ''}` : s;
+}
 function mdAbbr(t) {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
+  if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
   if (!/^รับประทาน/.test(s) || /เวลา|เมื่อ|ถ้า|ทันที|สัปดาห์|อาการ|\bprn\b|\bstat\b|ยูนิต|ช้อน|ซีซี|\bcc\b|มล|\bml\b|ซอง/i.test(s.replace(/วันละ\s*\d+\s*เวลา/g, ''))) return s;
   let r = ' ' + s.replace(/^รับประทาน/, ' ') + ' ';
   const am = [...r.matchAll(/(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป)\s*(ครึ่ง)?/g)];
