@@ -3380,10 +3380,14 @@ function renderFloatLeftover() {
         : isTablet(o.unit || (l && l.unit)) || nameIsTablet(o.name) ? 'tablet' : 'other',
       unit: o.unit || (l && l.unit) || '' });
   });
+  // ยาเหลือที่ไม่มีในใบสั่งยาวันนี้ ไม่ต้องจ่าย — ไม่ใส่ในตาราง (เคยทำให้ยาพ่นจากบันทึกคลินิก COPD เดือนก่อน
+  // โผล่ใน visit ที่แพทย์ไม่ได้สั่ง) แสดงเป็นบรรทัดหมายเหตุใต้ตารางแทน · ยังไม่มีใบสั่งยาเลยค่อยแสดงเป็นแถวเหมือนเดิม
+  const loOnly = [];
   los.forEach((l, i) => {
     if (used.has(i)) return;
+    if (order) { loOnly.push(`${cleanDrugName(l.drug)} ${+l.qty || 0} ${l.unit || ''}`.trim()); return; }
     rows.push({ key: 'l:' + l.drug, name: cleanDrugName(l.drug), use: null, lo: +l.qty || 0,
-      loUnit: l.unit || 'เม็ด', hasLo: true, notInOrder: !!order, unit: l.unit || 'เม็ด',
+      loUnit: l.unit || 'เม็ด', hasLo: true, unit: l.unit || 'เม็ด',
       kind: isInsulin(l.drug) ? 'insulin' : isInhaler(l.drug, l.unit) ? 'inhaler' : isSymptomatic(l.drug) ? 'symptom'
         : isAntibiotic(l.drug) ? 'antibiotic'
         : isTablet(l.unit || 'เม็ด') ? 'tablet' : 'other' });
@@ -3402,7 +3406,8 @@ function renderFloatLeftover() {
         : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'} — คิดเต็มจำนวน (ถือว่าไม่มียาเหลือ)</div>`}
     </div><div id="fl-ocr"></div>
     <div class="empty paused-msg">⏸ ไม่ได้อยู่หน้าบันทึกจ่ายยาใน HOSxP<br>จะแสดงการคำนวณเมื่อกลับไปหน้าบันทึกจ่ายยา</div>`;
-  if (!rows.length) { out.innerHTML = head; out.dataset.hn = hn; applyFloatPaused(); renderFloatOcrStatus(); return; }
+  const loOnlyNote = loOnly.length ? `<div class="muted" style="margin-top:6px">📦 ยาเหลือตามบันทึกที่ไม่มีในใบสั่งยาวันนี้ (ไม่ต้องจ่าย): ${escHtml(loOnly.join(', '))}</div>` : '';
+  if (!rows.length) { out.innerHTML = head + loOnlyNote; out.dataset.hn = hn; applyFloatPaused(); renderFloatOcrStatus(); return; }
 
   // เก็บ "ใช้/วัน" ที่เภสัชกรแก้เองไว้ ไม่ให้ถูกค่าจาก OCR/การซิงค์ทับ (เฉพาะคนไข้คนเดิม)
   const userPd = {};
@@ -3430,8 +3435,7 @@ function renderFloatLeftover() {
           : r.kind === 'antibiotic' ? '<span class="tag info">🦠 ยาฆ่าเชื้อ — ไม่ปรับจำนวน</span>'
           : !adjust ? '<span class="tag info">ไม่ใช่ยาเม็ด — ไม่ปรับจำนวน</span>'
           : r.use && r.use.prn ? '<span class="tag">✋ ใช้เมื่อมีอาการ — กรอกเอง</span>'
-          : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>'
-          : r.notInOrder ? '<span class="tag">ไม่พบในใบสั่งยา HOSxP</span>' : '';
+          : r.use && !r.use.perDay ? '<span class="tag">✋ อ่านวิธีใช้ไม่ครบ — กรอกเอง</span>' : '';
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
@@ -3442,6 +3446,7 @@ function renderFloatLeftover() {
           <td class="need zero">—</td>
         </tr>`; }).join('')}</tbody>
     </table>
+    ${loOnlyNote}
     ${Object.keys(noAdjPending).length ? `<div class="savebar">มีการเปลี่ยนแปลงที่ยังไม่บันทึก ${Object.keys(noAdjPending).length} รายการ
       <button type="button" class="save" data-na-save="1">💾 บันทึก</button><button type="button" data-na-cancel="1">ยกเลิก</button></div>` : ''}
     <div class="muted calc-note" style="margin-top:6px">ต้องจ่าย = ((${days} + ${FLOAT_EXTRA_DAYS}) วัน × ใช้/วัน) − ยาเหลือ แล้วปัดขึ้น (เผื่อเพิ่ม ${FLOAT_EXTRA_DAYS} วัน) · ปรับเฉพาะยาเม็ด/แคปซูล (ไม่รวมยาบรรเทาอาการ/ยาฆ่าเชื้อ) · อินซูลิน: ใช้ = ยูนิต/วัน คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต)</div>`;
