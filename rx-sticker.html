@@ -664,6 +664,9 @@ function mdAbbr(t) {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
   if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
   if (/^ฉีด|ยูนิต|\bunits?\b|\d\s*u\b/i.test(s) && !/รับประทาน/.test(s)) return mdAbbrIns(s);
+  // ท้ายประโยค "Hold if BP < 120/80" → ต่อท้ายตัวย่อ "1 x 1 pc Hold if BP < 120/80" (ห้ามหายจากสติกเกอร์)
+  const hm = s.match(/^(.*?\S)\s*\(?\s*(hold\b[^()]*?)\s*\)?\s*$/i);
+  if (hm) { const base = mdAbbr(hm[1]); return base !== hm[1] ? `${base} ${hm[2]}` : s; }
   // ท้ายประโยค "เวลาบวม" / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
   //   ไม่นับ "วันละ 2 เวลา เช้า เย็น" และ "เวลา 14.00 น."; ส่วนที่เหลือต้องแปลงได้ครบ ไม่งั้นใช้ข้อความเดิม
   const pm = s.replace(/วันละ\s*(\d+)\s*เวลา/g, 'วันละ $1 ครั้ง').match(/^(.*\S)\s+(?:เวลา|เมื่อ|ถ้า)\s*(?:มี)?\s*(?:อาการ)?\s*([฀-๿][฀-๿ ]*)$/);
@@ -675,6 +678,7 @@ function mdAbbr(t) {
   let r = ' ' + s.replace(/^รับประทาน/, ' ') + ' ';
   const am = [...r.matchAll(/(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป)\s*(ครึ่ง)?/g)];
   if (am.length !== 1) return s;   // ไม่มีจำนวน หรือระบุขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
+  if (/\d\s*-\s*$/.test(r.slice(0, am[0].index + am[0][0].indexOf(am[0][1])))) return s;   // ช่วงขนาด "1-2 เม็ด"
   const a = am[0], x = a[1].replace(/\s/g, '');
   let amt = { 'ครึ่ง': 0.5, '½': 0.5, '1/2': 0.5, '¼': 0.25, '1/4': 0.25, '3/4': 0.75 }[x];
   if (amt == null) amt = /\//.test(x) ? NaN : +x;
@@ -689,7 +693,9 @@ function mdAbbr(t) {
     .replace(/(หลัง|ก่อน)\s*อาหาร(\s*\d+\s*นาที)?/g, (_, w) => { tm = tm || (w === 'หลัง' ? 'pc' : 'ac'); return ' '; })
     .replace(/ก่อนนอน/g, () => { hs = true; return ' '; })
     .replace(/เช้า|กลางวัน|เที่ยง|เย็น/g, w => { const m = w === 'กลางวัน' ? 'เที่ยง' : w; if (!meals.includes(m)) meals.push(m); return ' '; });
-  if (/[฀-๿]/.test(r.replace(/และ/g, ''))) return s;   // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว ฯลฯ) — ใช้ของเดิม
+  // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว, "hold if BP < 140/90" ฯลฯ) — ใช้ของเดิม ไม่ให้คำสั่งหายจากสติกเกอร์
+  if (/[฀-๿a-z\d]/i.test(r.replace(/และ/g, ''))) return s;
+  if (hs && tm && !meals.length) return s;   // "หลังอาหาร ก่อนนอน" ไม่บอกมื้อ
   const n = mdAmt(amt);
   if (qh) return freq || meals.length || hs ? s : `${n} x q${qh}h${tm ? ' ' + tm : ''}`;
   const slots = meals.length + (hs ? 1 : 0);
