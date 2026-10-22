@@ -628,9 +628,42 @@ function mdAbbrInh(s) {
   const F = { 1: 'od', 2: 'bid', 3: 'tid', 4: 'qid' }[freq];
   return F && !qh ? `${puff} ${F}${hs ? ', hs' : ''}` : s;
 }
+// อินซูลิน (ผู้ใช้ขอ 2026-10-22): "ฉีดเข้าใต้ผิวหนัง 16 ยูนิต ก่อนอาหารเช้า 8 ยูนิต ก่อนอาหารเย็น" → "16-0-8 u SC ac",
+//   เช้าอย่างเดียว → "16-0-0 u SC ac", ก่อนนอนอย่างเดียว → "10 u SC hs"
+//   รับทั้งแบบ "ก่อนอาหาร เช้า 6 ยูนิต เย็น 4 ยูนิต" และเลขในช่องจุด "..8.... ยูนิต เช้า"; "เข้า" ที่พิมพ์ผิดนับเป็นเช้า
+//   stat/ทันที, IV, ผสมยา, ระบุเวลา น., ช่องจุดไม่ได้เติม หรือจับคู่เลขกับมื้อไม่ลงตัว = ใช้ข้อความเดิม
+function mdAbbrIns(s) {
+  if (/ทันที|\bstat\b|\biv\b|\+|น\.|\bat\b|\/hr|\bRI\b|mixtard|vien/i.test(s)) return s;
+  const sc = /ฉีดเข้าใต้ผิวหนัง|\bsc\b/i.test(s);
+  let freq = null, ac = false;
+  const r = (' ' + s + ' ')
+    .replace(/\(\s*ควรฉีดยาให้ตรงเวลาทุกวัน\s*\)/g, ' ')
+    .replace(/\.{2,}\s*(\d+)\s*\.{2,}|(?:^|\s)\.(\d+)\.{2,}|(\d+)\.+(?=\s*ยูนิต)/g, (_, a, b, c) => ` ${a || b || c} `)
+    .replace(/\.{3,}\s*ยูนิต\s*(?:เช้า|เที่ยง|เย็น)?/g, ' ')
+    .replace(/ฉีดเข้าใต้ผิวหนัง|ฉีด|\bsc\b/gi, ' ')
+    .replace(/วันละ\s*(\d+)\s*ครั้ง/g, (_, n) => { freq = +n; return ' '; })
+    .replace(/ก่อน\s*(?:อา)?หาร|\bac\b/gi, () => { ac = true; return ' '; })
+    .replace(/(\d)\s*(?:ยูนิต[ทิ]?|units?|u)(?![a-z])/gi, '$1 ')
+    .replace(/ยูนิต|และ|-/g, ' ').replace(/\bhs\b/gi, 'ก่อนนอน').replace(/เข้า/g, 'เช้า').replace(/กลางวัน/g, 'เที่ยง')
+    .replace(/(?:^|\s)\.(?=\s|$)/g, ' ');
+  const tok = r.match(/\d+|เช้า|เที่ยง|เย็น|ก่อนนอน|\S+/g) || [];
+  if (tok.some(w => !/^(\d+|เช้า|เที่ยง|เย็น|ก่อนนอน)$/.test(w)) || !tok.length || tok.length % 2) return s;
+  const numFirst = /^\d/.test(tok[0]), dose = {};
+  for (let i = 0; i < tok.length; i += 2) {
+    const [n, m] = numFirst ? [tok[i], tok[i + 1]] : [tok[i + 1], tok[i]];
+    if (!/^\d+$/.test(n) || /^\d/.test(m) || m in dose || +n <= 0) return s;
+    dose[m] = +n;
+  }
+  const k = Object.keys(dose), route = sc ? ' SC' : '';
+  if (freq && freq !== k.length) return s;
+  if (k.length === 1 && k[0] === 'ก่อนนอน') return `${dose['ก่อนนอน']} u${route} hs`;
+  if ('ก่อนนอน' in dose) return s;
+  return `${['เช้า', 'เที่ยง', 'เย็น'].map(m => dose[m] || 0).join('-')} u${route}${ac ? ' ac' : ''}`;
+}
 function mdAbbr(t) {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
   if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
+  if (/^ฉีด|ยูนิต|\bunits?\b|\d\s*u\b/i.test(s) && !/รับประทาน/.test(s)) return mdAbbrIns(s);
   // ท้ายประโยค "เวลาบวม" / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
   //   ไม่นับ "วันละ 2 เวลา เช้า เย็น" และ "เวลา 14.00 น."; ส่วนที่เหลือต้องแปลงได้ครบ ไม่งั้นใช้ข้อความเดิม
   const pm = s.replace(/วันละ\s*(\d+)\s*เวลา/g, 'วันละ $1 ครั้ง').match(/^(.*\S)\s+(?:เวลา|เมื่อ|ถ้า)\s*(?:มี)?\s*(?:อาการ)?\s*([฀-๿][฀-๿ ]*)$/);
