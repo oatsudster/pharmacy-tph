@@ -149,11 +149,15 @@ function DbQuery($sql) {
   }
 }
 
-# วิธีใช้: ข้อความวิธีใช้พิเศษ (sp_use) ถ้ามี ไม่งั้นรหัสวิธีใช้ปกติ — 3 บรรทัดต่อกันเหมือนบนฉลากยา
+# วิธีใช้: 3 บรรทัดต่อกันเหมือนบนฉลากยา — วิธีใช้ที่แก้ใน HOSxP ภายหลัง (opi_dispense.usage_lock='Y' → usage_line1-3)
+# ก่อน แล้วข้อความวิธีใช้พิเศษ (sp_use) แล้วรหัสวิธีใช้ปกติ — ลำดับเดียวกับ StickerDetailReport
+# (2026-10-22: HN 4802454 Lasix รหัส .51pt แก้เป็น "...เช้า เวลาบวม" แต่เดิมดึงข้อความตามรหัส)
 $DRUG_COLS = "d.icode, d.name, d.strength, d.units, d.dosageform, r.qty, r.item_no, " +
-  "TRIM(IF(r.sp_use IS NOT NULL AND r.sp_use<>'', CONCAT_WS(' ', s.name1, s.name2, s.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text"
+  "TRIM(IF(od.usage_lock='Y', CONCAT_WS(' ', od.usage_line1, od.usage_line2, od.usage_line3), " +
+  "IF(r.sp_use IS NOT NULL AND r.sp_use<>'', CONCAT_WS(' ', s.name1, s.name2, s.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3)))) AS usage_text"
 $DRUG_JOIN = "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode " +
-  "LEFT JOIN drugusage u ON u.drugusage=r.drugusage LEFT JOIN sp_use s ON s.sp_use=r.sp_use"
+  "LEFT JOIN drugusage u ON u.drugusage=r.drugusage LEFT JOIN sp_use s ON s.sp_use=r.sp_use " +
+  "LEFT JOIN opi_dispense od ON od.hos_guid=r.hos_guid"
 
 # $hn ผ่าน [HxDb]::Digits มาแล้วทุกครั้ง (ตัวเลขล้วน) จึงใส่ใน SQL ได้ตรงๆ
 function DbAppts($hn) {
