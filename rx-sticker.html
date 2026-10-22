@@ -696,50 +696,82 @@ function mdAbbrSplit(s) {
   const head = ['เช้า', 'เที่ยง', 'เย็น'].map(m => mdAmt(dose[m] || 0)).join('-') + ' ' + tm;
   return 'ก่อนนอน' in dose ? `${head}, ${mdAmt(dose['ก่อนนอน'])} hs` : head;
 }
+// ยาเม็ด / ยาน้ำ (กติกาจากผู้ใช้ 2026-10-22):
+//   "1 เม็ด ทุก 4-6 ชั่วโมง เวลาปวดหรือมีไข้" → "1 tab prn q4-6h" (อาการปวด/ไข้ไม่ต้องเขียน อาการอื่นต่อท้าย)
+//   "1 เม็ด วันละ 1-2 ครั้ง เมื่อมีอาการปวด" → "1 tab prn OD/BID"
+//   "(สัปดาห์ละ 1 ครั้ง)" → "1 x 1 ac weekly", "** 5 วัน" → "... x 5 d"
+//   "วันละ 4 ครั้ง เช้า กลางวัน เย็น ก่อนนอน" (ไม่บอกก่อน/หลังอาหาร) → "2 x 4 pc"; 3 มื้อ + ก่อนนอน → "1 x 4 ac" (ไม่ต้อง ", hs")
+//   ยาน้ำเป็น ml ทั้งหมด: ช้อนชา = 5 ml, ช้อนโต๊ะ = 15 ml → "15 ml x 3 pc"; "วันละครั้ง" = วันละ 1 ครั้ง
+const MD_FREQ = { 1: 'OD', 2: 'BID', 3: 'TID', 4: 'QID' };
 function mdAbbr(t) {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
   if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
   if (/^ฉีด|ยูนิต|\bunits?\b|\d\s*u\b/i.test(s) && !/รับประทาน/.test(s)) return mdAbbrIns(s);
-  // ท้ายประโยค "Hold if BP < 120/80" → ต่อท้ายตัวย่อ "1 x 1 pc Hold if BP < 120/80" (ห้ามหายจากสติกเกอร์)
+  // ส่วนท้ายที่แปลงแยกแล้วต่อท้ายตัวย่อ — ส่วนหน้าต้องแปลงได้ ไม่งั้นใช้ข้อความเดิมทั้งบรรทัด
+  const tail = (m, f) => { if (!m) return null; const base = mdAbbr(m[1]); return base !== m[1] ? f(base) : s; };
+  // "Hold if BP < 120/80" → "1 x 1 pc Hold if BP < 120/80" (ห้ามหายจากสติกเกอร์)
   const hm = s.match(/^(.*?\S)\s*\(?\s*(hold\b[^()]*?)\s*\)?\s*$/i);
-  if (hm) { const base = mdAbbr(hm[1]); return base !== hm[1] ? `${base} ${hm[2]}` : s; }
-  // ท้ายประโยค "เวลาบวม" / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
-  //   ไม่นับ "วันละ 2 เวลา เช้า เย็น" และ "เวลา 14.00 น."; ส่วนที่เหลือต้องแปลงได้ครบ ไม่งั้นใช้ข้อความเดิม
-  const pm = s.replace(/วันละ\s*(\d+)\s*เวลา/g, 'วันละ $1 ครั้ง').match(/^(.*\S)\s+(?:เวลา|เมื่อ|ถ้า)\s*(?:มี)?\s*(?:อาการ)?\s*([฀-๿][฀-๿ ]*)$/);
-  if (pm && !/เช้า|เที่ยง|เย็น|นอน|อาหาร/.test(pm[2])) {
-    const base = mdAbbr(pm[1]);
-    return base !== pm[1] ? `${base} prn ${pm[2].trim()}` : s;
+  if (hm) return tail(hm, b => `${b} ${hm[2]}`);
+  // "** 5 วัน" → "x 5 d"
+  const dm = s.match(/^(.*?\S)\s*\*+\s*(\d+)\s*วัน\s*\.?$/);
+  if (dm) return tail(dm, b => `${b} x ${dm[2]} d`);
+  // สัปดาห์ละครั้ง → weekly (ไม่บอกวันละกี่ครั้ง = 1 ครั้ง)
+  const wm = s.match(/^(.*?\S)\s*\(?\s*สัปดาห์ละ\s*1?\s*ครั้ง\s*\)?\s*\.?$/);
+  if (wm) {
+    const base = /วันละ/.test(wm[1]) ? wm[1] : wm[1] + ' วันละ 1 ครั้ง', b = mdAbbr(base);
+    return b !== base && / x 1\b/.test(b) ? `${b} weekly` : s;
   }
-  if (!/^รับประทาน/.test(s) || /เวลา|เมื่อ|ถ้า|ทันที|สัปดาห์|อาการ|\bprn\b|\bstat\b|ยูนิต|ช้อน|ซีซี|\bcc\b|มล|\bml\b|ซอง/i.test(s.replace(/วันละ\s*\d+\s*เวลา/g, ''))) return s;
-  let r = ' ' + mdMixed(s.replace(/^รับประทาน/, ' ')) + ' ';
-  const am = [...r.matchAll(/(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป)\s*(ครึ่ง)?/g)];
-  if (am.length > 1) return mdAbbrSplit(s);   // ขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
+  // ท้ายประโยค "เวลาบวม" / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
+  //   ไม่นับ "วันละ 2 เวลา เช้า เย็น" และ "เวลา 14.00 น."
+  const pm = s.replace(/วันละ\s*(\d+)\s*เวลา/g, 'วันละ $1 ครั้ง').match(/^(.*\S)\s+(?:เวลา|เมื่อ|ถ้า)\s*(?:มี)?\s*(?:อาการ)?\s*([฀-๿][฀-๿ /,]*)$/);
+  if (pm && !/เช้า|เที่ยง|เย็น|นอน|อาหาร/.test(pm[2])) {
+    const sym = /^(?:ใช้|ลด|แก้|ปวด|มี|ไข้|หรือ|อาการ|[ /,])+$/.test(pm[2]) ? '' : ' ' + pm[2].trim().replace(/\s*,\s*$/, '');
+    return tail(pm, b => {
+      // ทุก N ชม. / วันละ 1-2 ครั้ง → "1 tab prn q4-6h", "1 tab prn OD/BID"
+      const q = b.match(/^([\d.]+)( ml)? x (q[\d-]+h|[A-Z]+\/[A-Z]+)$/);
+      return q ? `${q[1]}${q[2] || ' tab'} prn ${q[3]}${sym}` : `${b} prn${sym || ' ' + pm[2].trim()}`;
+    });
+  }
+  const s2 = s.replace(/วันละ\s*(ครั้ง|เวลา)/g, 'วันละ 1 ครั้ง')
+    .replace(/(อาหาร\s*)3\s*มื้อ/g, '$1เช้า เที่ยง เย็น')
+    .replace(/\(\s*[\d.]+\s*(?:มล|ซีซี|ซี\.ซี|cc|ml)[^()]*\)/gi, ' ')   // "1 ช้อนชา (5 มล.หรือ 5 ซีซี)"
+    .replace(/ห่างกัน\s*(?:อย่างน้อย)?/g, ' ');
+  if (!/^รับประทาน/.test(s2) || /เวลา|เมื่อ|ถ้า|ทันที|สัปดาห์|อาการ|\bprn\b|\bstat\b|ยูนิต|ซอง/i.test(s2.replace(/วันละ\s*\d+\s*เวลา/g, ''))) return s;
+  let r = ' ' + mdMixed(s2.replace(/^รับประทาน/, ' ')) + ' ';
+  const UNIT = /(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป|ช้อนชา|ช้อนโต๊ะ|ซีซี|ซี\.ซี\.?|cc\.?|มล\.?|ml\.?)\s*(ครึ่ง)?/gi;
+  const am = [...r.matchAll(UNIT)];
+  if (am.length > 1) { const sp = mdAbbrSplit(s2); return sp === s2 ? s : sp; }   // ขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
   if (am.length !== 1) return s;
   if (/\d\s*-\s*$/.test(r.slice(0, am[0].index + am[0][0].indexOf(am[0][1])))) return s;   // ช่วงขนาด "1-2 เม็ด"
-  const a = am[0], amt = mdTab(a[1], a[2] || a[4]);
+  const a = am[0], ml = { 'ช้อนชา': 5, 'ช้อนโต๊ะ': 15 }[a[3]] || (/^(เม็ด|แคป)/.test(a[3]) ? 0 : 1);
+  const amt = mdTab(a[1], a[2] || a[4]) * (ml || 1);
   if (!(amt > 0)) return s;
   r = r.replace(a[0], ' ');
-  let freq = null, qh = null, tm = '', hs = false, qod = false;
+  let freq = null, fr = null, qh = null, tm = '', hs = false, qod = false;
   const meals = [];
   r = r.replace(/วันเว้นวัน/, () => { qod = true; return ' '; })
+    .replace(/วันละ\s*(\d)\s*-\s*(\d)\s*(ครั้ง|เวลา)?/, (_, p, q) => { fr = MD_FREQ[p] && MD_FREQ[q] ? `${MD_FREQ[p]}/${MD_FREQ[q]}` : 'x'; return ' '; })
     .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)?/, (_, n) => { freq = +n; return ' '; })
-    .replace(/ทุก\s*(\d+)\s*(ชั่วโมง|ชม\.?)/, (_, n) => { qh = +n; return ' '; })
+    .replace(/ทุก\s*(\d+(?:\s*-\s*\d+)?)\s*(ชั่วโมง|ชม\.?)/, (_, n) => { qh = n.replace(/\s/g, ''); return ' '; })
     .replace(/(หลัง|ก่อน)\s*อาหาร(\s*\d+\s*นาที)?/g, (_, w) => { tm = tm || (w === 'หลัง' ? 'pc' : 'ac'); return ' '; })
     .replace(/ก่อนนอน/g, () => { hs = true; return ' '; })
     .replace(/เช้า|กลางวัน|เที่ยง|เย็น/g, w => { const m = w === 'กลางวัน' ? 'เที่ยง' : w; if (!meals.includes(m)) meals.push(m); return ' '; });
-  // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว, "hold if BP < 140/90" ฯลฯ) — ใช้ของเดิม ไม่ให้คำสั่งหายจากสติกเกอร์
+  // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว, เวลา 14.00 ฯลฯ) — ใช้ของเดิม ไม่ให้คำสั่งหายจากสติกเกอร์
   if (/[฀-๿a-z\d]/i.test(r.replace(/และ/g, ''))) return s;
   if (hs && tm && !meals.length) return s;   // "หลังอาหาร ก่อนนอน" ไม่บอกมื้อ
-  const n = mdAmt(amt);
+  const n = mdAmt(amt) + (ml ? ' ml' : '');
+  if (fr) return fr === 'x' || freq || qh || meals.length || hs || tm ? s : `${n} x ${fr}`;   // ใช้ได้เฉพาะ prn (ผู้เรียกแปลงต่อ)
   if (qh) return freq || meals.length || hs ? s : `${n} x q${qh}h${tm ? ' ' + tm : ''}`;
   const slots = meals.length + (hs ? 1 : 0);
   if (qod) return freq || slots > 1 ? s : `${n} x qod${tm ? ' ' + tm + (meals.length && meals[0] !== 'เช้า' ? ' ' + meals[0] : '') : ''}${hs ? (tm ? ', ' : ' ') + 'hs' : ''}`;
   if (freq == null) freq = slots || null;
-  if (!freq || (slots && slots !== freq) || (meals.length && !tm)) return s;
+  if (!freq || (slots && slots !== freq)) return s;
+  if (meals.length && !tm) tm = 'pc';   // "เช้า กลางวัน เย็น ก่อนนอน" ไม่บอกก่อน/หลังอาหาร = pc (ผู้ใช้กำหนด)
   const ORDER = ['เช้า', 'เที่ยง', 'เย็น'];
   meals.sort((p, q) => ORDER.indexOf(p) - ORDER.indexOf(q));
+  if (hs && meals.length === 3) return `${n} x ${freq} ${tm}`;   // 3 มื้อ + ก่อนนอน = "1 x 4 ac"
   const canon = [[], ['เช้า'], ['เช้า', 'เย็น'], ORDER][meals.length];
-  const omit = hs ? meals.length === 3 : meals.join() === canon.join();   // + ก่อนนอน: เขียนมื้อเว้นแต่ครบ 3 มื้อ (1 x 4 pc, hs)
+  const omit = !hs && meals.join() === canon.join();
   const parts = [];
   if (tm) parts.push(tm + (meals.length && !omit ? ' ' + meals.join(' ') : ''));
   if (hs) parts.push('hs');
