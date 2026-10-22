@@ -660,6 +660,42 @@ function mdAbbrIns(s) {
   if ('ก่อนนอน' in dose) return s;
   return `${['เช้า', 'เที่ยง', 'เย็น'].map(m => dose[m] || 0).join('-')} u${route}${ac ? ' ac' : ''}`;
 }
+// จำนวนเม็ด "ครึ่ง" "1/4" "1.5" (+ "1 เม็ดครึ่ง") → ตัวเลข; อ่านไม่ได้ = NaN
+function mdTab(x, half) {
+  x = x.replace(/\s/g, '');
+  let v = { 'ครึ่ง': 0.5, '½': 0.5, '1/2': 0.5, '¼': 0.25, '1/4': 0.25, '3/4': 0.75 }[x];
+  if (v == null) v = /\//.test(x) ? NaN : +x;
+  return half ? (v >= 1 ? v + 0.5 : NaN) : v;
+}
+// เศษส่วนคละ "1 1/4 เม็ด" → "1.25 เม็ด" (เดิมอ่านเป็น 1/4)
+const mdMixed = t => t.replace(/(?<![\d.\/])(\d+)\s+(\d+)\s*\/\s*([1-9]\d*)(?=\s*(?:เม็ด|แคปซูล|แคป))/g, (_, a, b, c) => String(Math.round((+a + b / c) * 100) / 100));
+// ขนาดแยกมื้อ (ผู้ใช้ขอ 2026-10-22): "หลังอาหาร เช้า 2 เม็ด - เที่ยง 1 เม็ด - เย็น 2 เม็ด" → "2-1-2 pc",
+//   "2 เม็ด ก่อนอาหารเช้า 1 เม็ด ก่อนอาหารเย็น" → "2-0-1 ac", "1 เม็ด หลังอาหารเช้า 2 เม็ด ก่อนนอน" → "1-0-0 pc, 2 hs"
+//   ก่อน+หลังอาหารปนกัน, ช่วงขนาด 1-2 เม็ด, มื้อซ้ำ, จับคู่เลขกับมื้อไม่ลงตัว = ใช้ข้อความเดิม
+function mdAbbrSplit(s) {
+  let freq = null, tm = '', bad = false;
+  const r = (' ' + mdMixed(s.replace(/^รับประทาน/, ' ')) + ' ')
+    .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)?/, (_, n) => { freq = +n; return ' '; })
+    .replace(/(หลัง|ก่อน)\s*อาหาร/g, (_, w) => { const v = w === 'หลัง' ? 'pc' : 'ac'; if (tm && tm !== v) bad = true; tm = v; return ' '; })
+    .replace(/กลางวัน/g, 'เที่ยง')
+    .replace(/(?:ครั้งละ)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(?:เม็ด|แคปซูล|แคป)(\s*ครึ่ง(?!\s*(?:เม็ด|แคป)))?/g, (w, x, h1, h2, off, all) => {
+      if (/\d\s*-\s*$/.test(all.slice(0, off + w.indexOf(x)))) bad = true;
+      return ` #${mdTab(x, h1 || h2)} `;
+    })
+    .replace(/และ|-|,/g, ' ');
+  const tok = r.match(/\S+/g) || [];
+  if (bad || tok.length % 2 || tok.some(w => !/^(#[\d.]+|เช้า|เที่ยง|เย็น|ก่อนนอน)$/.test(w))) return s;
+  const numFirst = tok[0][0] === '#', dose = {};
+  for (let i = 0; i < tok.length; i += 2) {
+    const [n, m] = numFirst ? [tok[i], tok[i + 1]] : [tok[i + 1], tok[i]];
+    if (n[0] !== '#' || m[0] === '#' || m in dose || !(+n.slice(1) > 0)) return s;
+    dose[m] = +n.slice(1);
+  }
+  const k = Object.keys(dose), meals = k.filter(m => m !== 'ก่อนนอน');
+  if ((freq && freq !== k.length) || !meals.length || !tm) return s;
+  const head = ['เช้า', 'เที่ยง', 'เย็น'].map(m => mdAmt(dose[m] || 0)).join('-') + ' ' + tm;
+  return 'ก่อนนอน' in dose ? `${head}, ${mdAmt(dose['ก่อนนอน'])} hs` : head;
+}
 function mdAbbr(t) {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
   if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
@@ -675,14 +711,12 @@ function mdAbbr(t) {
     return base !== pm[1] ? `${base} prn ${pm[2].trim()}` : s;
   }
   if (!/^รับประทาน/.test(s) || /เวลา|เมื่อ|ถ้า|ทันที|สัปดาห์|อาการ|\bprn\b|\bstat\b|ยูนิต|ช้อน|ซีซี|\bcc\b|มล|\bml\b|ซอง/i.test(s.replace(/วันละ\s*\d+\s*เวลา/g, ''))) return s;
-  let r = ' ' + s.replace(/^รับประทาน/, ' ') + ' ';
+  let r = ' ' + mdMixed(s.replace(/^รับประทาน/, ' ')) + ' ';
   const am = [...r.matchAll(/(?:ครั้งละ|ครั้ง)?\s*(ครึ่ง|½|¼|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(ครึ่ง)?\s*(เม็ด|แคปซูล|แคป)\s*(ครึ่ง)?/g)];
-  if (am.length !== 1) return s;   // ไม่มีจำนวน หรือระบุขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
+  if (am.length > 1) return mdAbbrSplit(s);   // ขนาดแยกมื้อ (เช้า 2 เม็ด - เย็น 1 เม็ด)
+  if (am.length !== 1) return s;
   if (/\d\s*-\s*$/.test(r.slice(0, am[0].index + am[0][0].indexOf(am[0][1])))) return s;   // ช่วงขนาด "1-2 เม็ด"
-  const a = am[0], x = a[1].replace(/\s/g, '');
-  let amt = { 'ครึ่ง': 0.5, '½': 0.5, '1/2': 0.5, '¼': 0.25, '1/4': 0.25, '3/4': 0.75 }[x];
-  if (amt == null) amt = /\//.test(x) ? NaN : +x;
-  if (a[2] || a[4]) amt = amt >= 1 ? amt + 0.5 : NaN;   // "1 เม็ดครึ่ง"
+  const a = am[0], amt = mdTab(a[1], a[2] || a[4]);
   if (!(amt > 0)) return s;
   r = r.replace(a[0], ' ');
   let freq = null, qh = null, tm = '', hs = false, qod = false;
