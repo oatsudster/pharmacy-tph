@@ -10,7 +10,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
-<script src="lib/hosxp-db.js?v=20261018b"></script>
+<script src="lib/hosxp-db.js?v=20261022a"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
@@ -171,6 +171,11 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
 .mdx-add .t { grid-column: 1 / -1; font-weight: 600; font-size: 13.5px; }
 @media (max-width: 860px) { .mdx-add { grid-template-columns: 1fr; } }
+.mdv { background: #fffbeb; border: 1px solid #f0dca4; border-radius: 8px; padding: 8px; margin-top: 10px; }
+.mdv summary { font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.mdv-row { display: grid; grid-template-columns: 112px 1fr; gap: 8px; align-items: start; padding: 6px 0; border-top: 1px solid #f3e6c4; font-size: 13px; }
+.mdv-row .muted { font-size: 12px; }
+.mdv-row.in { color: var(--text-mid); }
 </style>
 </head>
 <body data-suite-page="rx-sticker">
@@ -243,6 +248,10 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <div class="hint" style="margin:0">พิมพ์ทดสอบ 1 ดวงแล้วทาบกับตารางใบ MR — เส้นไม่ตรงค่อยปรับตัวเลข (จำไว้ในเครื่องนี้) · สติกเกอร์จริงมีขีดสั้นที่ขอบซ้าย/ขวา = แนวเส้นแถว และขีดบน/ล่าง = เส้นแบ่งช่องชื่อยา|วิธีใช้ ใช้เล็งตอนแปะ</div>
     </details>
     <div id="md-list"></div>
+    <details class="mdv" id="mdv" ontoggle="if (this.open) mdvOpen()">
+      <summary>📋 ดึงยาเดิมจาก visit อื่นเพิ่ม <span class="hint" id="mdv-meta" style="margin:0;font-weight:400">· ทุก visit OPD ที่มียา + ยากลับบ้าน ใน 1 ปีก่อน admit</span></summary>
+      <div id="mdv-list"></div>
+    </details>
     <div class="mdx-add">
       <div class="t">🏥 เพิ่มยาจาก รพ.อื่น / ยาที่ผู้ป่วยนำมา <span class="hint" id="mdx-meta" style="margin:0;font-weight:400"></span></div>
       <input id="mdx-src" list="mdx-srcs" placeholder="ได้ยาจาก (รพ./คลินิก)" autocomplete="off">
@@ -700,7 +709,8 @@ function mdPick(items, reg, chronicSrc) {
 async function openMd(an) {
   const x = IPD.find(i => i.an === an); if (!x) return;
   const card = document.getElementById('md-card');
-  card.style.display = ''; mdLoadCal(); MD = null;
+  card.style.display = ''; mdLoadCal(); MD = null; MDV = null;
+  document.getElementById('mdv').open = false; document.getElementById('mdv-list').innerHTML = '';
   document.getElementById('md-meta').textContent = `${x.name} · เตียง ${x.bed || '-'} · admit ${thIso(x.regdate)} · กำลังโหลด…`;
   document.getElementById('md-list').innerHTML = '';
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -779,6 +789,57 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mdx-usage').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); mdExtAdd(); } });
   document.getElementById('mdx-src').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('mdx-name').focus(); } });
 });
+// ── ดึงยาเดิมจาก visit อื่นเพิ่มเอง (ผู้ใช้ขอ 2026-10-22) — รายการอัตโนมัติเอาแค่นัดล่าสุดของแต่ละคลินิก + D/C ครั้งล่าสุด
+// กด + เพิ่ม = ยาของ visit นั้นที่ยังไม่อยู่ในรายการ: ยาเรื้อรังติ๊กไว้ · ยาบรรเทาอาการ/ระยะสั้น และตัวยาเดียวกับที่ติ๊กอยู่แล้ว
+//   เข้ามาแบบไม่ติ๊ก ให้เภสัชเลือกเอง · แถว qty 0 (บันทึกว่ามียาเดิม) ไม่นับว่าขาดถ้ายาตัวนั้นอยู่ในรายการแล้ว
+// กด − เอาออก = เอาเฉพาะรายการที่เพิ่มจากตรงนี้ออก (ไม่แตะรายการที่ระบบเลือกให้)
+let MDV = null;
+async function mdvOpen() {
+  if (!MD || MDV) return;
+  const an = MD.x.an, el = document.getElementById('mdv-list');
+  MDV = { an, visits: null };
+  el.innerHTML = '<div class="empty">กำลังโหลด…</div>';
+  const r = await tphHosxp.mrVisits(MD.x.hn, an);
+  if (!MD || !MDV || MDV.an !== an) return;
+  if (!r || !r.ok) {
+    MDV = null;
+    el.innerHTML = `<div class="empty">${escHtml(r && /endpoint/.test(r.error || '') ? 'bridge เครื่องนี้ยังเป็นรุ่นเก่า — อัปเดต hosxp-bridge.ps1 ก่อน' : (r && r.error) || NOBRIDGE)}</div>`;
+    return;
+  }
+  MDV.visits = r.visits || [];
+  renderMdv();
+}
+const mdvHas = (v, d) => MD.items.some(x => !x.ext && x.icode === d.icode && (String(x.vn) === String(v.vn) || !(+d.qty > 0)));
+function renderMdv() {
+  if (!MD || !MDV || !MDV.visits) return;
+  document.getElementById('mdv-meta').textContent = `· ${MDV.visits.length} ครั้งใน 1 ปีก่อน admit (OPD ที่มียา + ยากลับบ้าน)`;
+  document.getElementById('mdv-list').innerHTML = MDV.visits.map((v, i) => {
+    const have = v.items.filter(d => mdvHas(v, d)).length;
+    const added = MD.items.some(x => x.added && String(x.vn) === String(v.vn));
+    const btn = have < v.items.length ? `<button class="btn btn-sm btn-gold" onclick="mdvAdd(${i})">+ เพิ่ม${have ? ' ที่เหลือ' : ''}</button>`
+      : added ? `<button class="btn btn-sm" onclick="mdvDel(${i})">− เอาออก</button>` : '<span class="hint" style="margin:0">อยู่ในรายการแล้ว</span>';
+    return `<div class="mdv-row${have ? ' in' : ''}">${btn}<div><b>${escHtml(thIso(v.date))}</b> · ${escHtml(mdClean(v.dep) || '-')}${v.pdx ? ' · ' + escHtml(v.pdx) : ''} · ${v.items.length} รายการ${have ? ` (อยู่ในรายการ ${have})` : ''}
+      <div class="muted">${v.items.map(d => escHtml(mdName(d))).join(' · ')}</div></div></div>`;
+  }).join('') || '<div class="empty">ไม่พบ visit ที่มียาใน 1 ปีก่อน admit</div>';
+}
+function mdvAdd(i) {
+  const v = MDV && MDV.visits[i]; if (!v) return;
+  const SR = window.tphSmartRx, key = d => SR ? SR.coreKey(d) : d.icode;
+  const onKeys = new Set(MD.items.filter(x => !x.ext && x.on).map(key));
+  const add = v.items.filter(d => !mdvHas(v, d)).map(d => {
+    const chronic = SR ? SR.isChronic(d) : true, dup = onKeys.has(key(d));
+    return Object.assign({}, d, { usage: mdClean(d.usage), added: true, on: chronic && !dup, chronic,
+      why: 'เพิ่มจาก visit อื่น' + (dup ? ' — มีตัวยาเดียวกันติ๊กอยู่แล้ว' : '') });
+  });
+  const at = MD.items.findIndex(x => x.ext);
+  MD.items.splice(at < 0 ? MD.items.length : at, 0, ...add);
+  renderMd(); renderMdv();
+}
+function mdvDel(i) {
+  const v = MDV && MDV.visits[i]; if (!v) return;
+  MD.items = MD.items.filter(x => !(x.added && String(x.vn) === String(v.vn)));
+  renderMd(); renderMdv();
+}
 function mdAll(v) { if (MD) { MD.items.forEach(d => d.on = v); renderMd(); } }
 function mdToggle(i, v) { MD.items[i].on = v; renderMd(); }
 function renderMd() {

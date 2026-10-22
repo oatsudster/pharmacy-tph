@@ -32,6 +32,7 @@
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/mrmeds?hn=&an= — ยาที่ได้รับจาก รพ. 1 ปีก่อน admit (OPD + ยากลับบ้าน) — สติกเกอร์ยาเดิมแปะใบ MR
+#   /db/mrvisits?hn=&an= — ทุก visit OPD ที่มียา + ยากลับบ้านทุกครั้ง ใน 1 ปีก่อน admit พร้อมรายการยา — เภสัชเลือกดึงยาเดิมจาก visit อื่นเพิ่ม
 #   /db/mrdict      — รายการยาทั้งหมด (drugitems) + วิธีใช้ที่เปิดใช้ (drugusage.status='Y') พร้อมรหัสย่อ — คีย์ยาเดิมจาก รพ.อื่น ในใบ MR
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน) + อายุ น้ำหนัก แพ้ยา โรคประจำตัว สำหรับหัวสติกเกอร์ MR
 #   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
@@ -691,6 +692,32 @@ function DbMrMeds($hn, $path) {
   [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; chronic = $true; items = @($items | ForEach-Object {
     $q = $_.r; $x = DrugRow $q; $x.vn = $q['vn']; $x.date = $q['d']; $x.dep = $_.dep; $x.namePrint = $q['name_print']; $x }) }
 }
+# ให้เภสัชเลือกดึงยาเดิมจาก visit อื่นเพิ่มเองในใบ MR (ผู้ใช้ขอ 2026-10-22) — /db/mrmeds เลือกให้แค่นัดล่าสุดของแต่ละคลินิก
+#   ทุก visit OPD ที่มียาใน 1 ปีก่อน admit (ไม่นับ visit ที่ admit) + ยากลับบ้าน (HMe) ทุกครั้งที่จำหน่าย — ล่าสุดก่อน
+function DbMrVisits($hn, $path) {
+  $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
+  $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
+  if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
+  $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
+  $op = DbQuery ("SELECT r.vn, DATE_FORMAT(r.vstdate,'%Y-%m-%d') AS d, k.department AS dep, IFNULL(v.pdx,'') AS pdx, " +
+    "$DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print $DRUG_JOIN LEFT JOIN ovst o ON o.vn=r.vn " +
+    "LEFT JOIN kskdepartment k ON k.depcode=o.main_dep LEFT JOIN vn_stat v ON v.vn=r.vn " +
+    "WHERE r.hn='$hn' AND r.vstdate>='$reg' - INTERVAL 365 DAY AND r.vstdate<='$reg' AND (r.an IS NULL OR r.an='') AND r.vn<>'$avn' " +
+    "ORDER BY r.vstdate DESC, r.vn DESC, r.item_no LIMIT 600")
+  $hm = DbQuery ("SELECT r.an AS vn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS d, 'ยากลับบ้าน (D/C)' AS dep, IFNULL(a.pdx,'') AS pdx, " +
+    "$DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print $DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no " +
+    "JOIN ipt i ON i.an=r.an LEFT JOIN an_stat a ON a.an=r.an " +
+    "WHERE i.hn='$hn' AND n.order_type='HMe' AND i.an<>'$an' AND i.dchdate>='$reg' - INTERVAL 365 DAY AND i.dchdate<='$reg' " +
+    "ORDER BY i.dchdate DESC, r.item_no")
+  $map = [ordered]@{}
+  foreach ($r in (@($op) + @($hm) | Where-Object { $_ })) {
+    $vn = "$($r['vn'])"
+    if (-not $map.Contains($vn)) { $map[$vn] = [ordered]@{ vn = $vn; date = $r['d']; dep = $r['dep']; pdx = $r['pdx']; items = New-Object System.Collections.ArrayList } }
+    $x = DrugRow $r; $x.vn = $vn; $x.date = $r['d']; $x.dep = $r['dep']; $x.namePrint = $r['name_print']
+    [void]$map[$vn].items.Add($x)
+  }
+  [ordered]@{ ok = $true; hn = $hn; an = $an; regdate = $reg; visits = @($map.Values | Sort-Object { $_.date } -Descending) }
+}
 # พจนานุกรมคีย์ยาเดิมจาก รพ.อื่น ในใบ MR: ยาทุกตัวใน drugitems (รวมที่เลิกใช้ — ยานอก รพ. อาจเป็นตัวที่เราไม่มีแล้ว)
 # + วิธีใช้ที่เปิดใช้ (status='Y' ~750 จาก 129k แถว) พร้อม code = รหัสย่อที่พิมพ์ใน HOSxP เช่น "11pt (1เม็ด * 1pc)"
 function DbMrDict {
@@ -779,6 +806,7 @@ function DbEndpoint($path) {
       elseif ($path -like '/db/smartrx*') { DbSmartRx $hn }
       elseif ($path -like '/db/errx*') { DbErRx $hn $path }
       elseif ($path -like '/db/mrmeds*') { DbMrMeds $hn $path }
+      elseif ($path -like '/db/mrvisits*') { DbMrVisits $hn $path }
       elseif ($path -like '/db/patient*') { DbPatient $hn } else { throw 'ไม่รู้จัก endpoint' }
   } catch { $res = [ordered]@{ ok = $false; error = "$_" } }
   return [HxDb]::Json($res)
