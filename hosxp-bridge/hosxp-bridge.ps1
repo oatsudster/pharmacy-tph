@@ -643,7 +643,9 @@ function DbErRx($hn, $path) {
     rx = @($groups.Values | ForEach-Object { $_.dep = $_.deps -join ','; $_.Remove('deps'); $_ }) }
 }
 # ยาเดิมสำหรับใบ MR (ผู้ใช้ขอ 2026-10-21 — เดิมเอายาทุก visit OPD ใน 1 ปีมารวม ยา ER/ยาบรรเทาอาการปนมาเยอะ):
-#   visit ที่มาตามนัดคลินิกโรคเรื้อรัง ($MED_CLINICS: DM/HT/COPD) ครั้งล่าสุดที่มียาของแต่ละคลินิก ใน 1 ปีก่อน admit
+#   visit ที่มาตามนัด (oapp) ครั้งล่าสุดที่มียาของแต่ละคลินิก ใน 1 ปีก่อน admit — ทุกคลินิก ไม่ใช่แค่ DM/HT/COPD
+#   (2026-10-22: HN 4802454 เริ่ม Lasix/Losartan ที่นัด F/U คลินิก 000 ตรวจโรคทั่วไป แล้วไม่ถูกดึง; ยาบรรเทาอาการใน visit
+#   แบบนี้หน้าเว็บไม่ติ๊กให้อยู่แล้วตามจำนวนวันที่ยาพอ)
 #   + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุดก่อน admit นี้ — หน้าเว็บใช้ D/C เป็นจุดตัด
 #   chronic = $true บอกหน้าเว็บว่าเป็นข้อมูลแบบนี้ (bridge รุ่นเก่าส่งทุก visit)
 function DbMrMeds($hn, $path) {
@@ -653,7 +655,7 @@ function DbMrMeds($hn, $path) {
   $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn FROM oapp a JOIN clinic c ON c.clinic=a.clinic " +
     "JOIN ovst o ON o.vn=a.visit_vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
-    "WHERE a.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
+    "WHERE a.hn='$hn' AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $items = New-Object System.Collections.ArrayList
   if ($vis.Count) {

@@ -662,13 +662,15 @@ const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Mat
 function mdPick(items, reg, chronicSrc) {
   const SR = window.tphSmartRx;
   const key = d => SR ? SR.coreKey(d) : d.icode;
-  // bridge แบบใหม่ (chronicSrc): ยามาจากนัดคลินิกโรคเรื้อรัง + ยากลับบ้านครั้งล่าสุด — D/C เป็นจุดตัด
+  // bridge แบบใหม่ (chronicSrc): ยามาจาก visit ตามนัด (ล่าสุดของแต่ละคลินิก) + ยากลับบ้านครั้งล่าสุด — D/C เป็นจุดตัด
   // ยาคลินิกที่ได้ก่อนวัน D/C และไม่อยู่ในยากลับบ้าน = แพทย์หยุดตอนจำหน่าย → ไม่ติ๊ก
   const isDc = d => /^ยากลับบ้าน/.test(d.dep || '');
   const dcDate = chronicSrc ? items.filter(isDc).reduce((a, d) => d.date > a ? d.date : a, '') : '';
   const dcKeys = new Set(items.filter(isDc).map(key));
   const latest = new Map();
-  items.forEach(d => { if (!latest.has(d.icode) || d.date > latest.get(d.icode).date) latest.set(d.icode, d); });
+  // แถว qty 0 = บันทึกว่ายังมียาเดิมอยู่ ไม่ได้จ่าย (เช่น HN 4802454 นัด 5/10/69) — ใช้ครั้งที่จ่ายจริงแทน
+  const newer = (d, o) => (+d.qty > 0) !== (+o.qty > 0) ? +d.qty > 0 : d.date > o.date;
+  items.forEach(d => { if (!latest.has(d.icode) || newer(d, latest.get(d.icode))) latest.set(d.icode, d); });
   const list = [...latest.values()].map(d => Object.assign({}, d, { usage: mdClean(d.usage) }));
   // ตัวยาเดียวกันคนละ icode (เปลี่ยนความแรง/ยี่ห้อ) — ติ๊กเฉพาะครั้งล่าสุด
   const newest = new Map();
@@ -786,7 +788,7 @@ function renderMd() {
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <b>${escHtml(mdName(d))}</b><span>${mdAbbr(d.usage) !== mdClean(d.usage) ? `<b>${escHtml(mdAbbr(d.usage))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(d.usage)}</span>
       <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
-    </div>`).join('') || '<div class="empty">ไม่พบยาจากนัดคลินิกโรคเรื้อรัง (DM/HT/COPD) หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
+    </div>`).join('') || '<div class="empty">ไม่พบยาจาก visit ตามนัด หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
 }
 function mdStickers(rows, grid) {
   const c = mdCal(), per = mdPer();
