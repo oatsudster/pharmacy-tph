@@ -598,7 +598,24 @@ function mdSaveCal() {
 }
 const mdClean = t => String(t || '').replace(/[�\u0000-\u001F ]/g, ' ').replace(/\s+/g, ' ').trim();
 const mdDays = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
-const mdName = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
+const mdName0 = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
+// "ยาเดิม…" = ยานอกบัญชีที่ได้จาก รพ.อื่น (ผู้ใช้อธิบาย 2026-10-26): คีย์รายการ "ยาเดิม......" แล้วพิมพ์ชื่อยาจริงไว้หน้าวิธีใช้
+//   "Lercanidipine 20 mg รับประทานครั้งละ 1 เม็ด ก่อนอาหารเช้า" → ชื่อ "ยาเดิม: Lercanidipine 20 mg" วิธีใช้ "1 x 1 ac"
+//   "ยาเดิม(Atorvastatin)" = ชื่ออยู่ในวงเล็บ วิธีใช้ปกติ
+function mdOld(d) {
+  const nm = mdClean(d.name), u = mdClean(d.usage);
+  if (d.namePrint || !/^ยาเดิม/.test(nm)) return null;
+  const pm = nm.match(/^ยาเดิม\s*\((.+)\)\s*$/);
+  if (pm) return { name: 'ยาเดิม: ' + pm[1].trim(), use: u };
+  const m = u.replace(/^\[[^\]]*\]\s*/, '').match(/^([A-Za-z][^฀-๿]*?)\s*(?=[฀-๿]|\d+(?:\.\d+)?\s*(?:[x*]\s*\d|tab|cap|puff)|$)/i);
+  if (!m || !m[1]) return null;
+  let name = m[1], use = u.slice(u.indexOf(m[1]) + m[1].length);
+  const num = name.match(/\s(\d+(?:\.\d+)?)$/);   // "Symbicort 1 สูด" — เลขท้ายไม่มีหน่วย = ขนาดยา ไม่ใช่ความแรง
+  if (num) { name = name.slice(0, num.index); use = num[1] + ' ' + use; }
+  return { name: 'ยาเดิม: ' + name.trim(), use: mdClean(use) };
+}
+const mdName = d => { const o = mdOld(d); return o ? o.name : mdName0(d); };
+const mdUse = d => { const o = mdOld(d); return o ? o.use : d.usage; };
 // วิธีใช้ยาเม็ดภาษาไทยแบบ HOSxP → ตัวย่อทางการแพทย์ในสติกเกอร์ (ตามที่ผู้ใช้ขอ 2026-10-21):
 //   "ครั้งละ ครึ่ง เม็ด วันละ 1 ครั้ง หลังอาหาร เช้า" → "0.5 x 1 pc", "... ก่อนนอน" → "0.5 x 1 hs", "... หลังอาหารเย็น" → "0.5 x 1 pc เย็น",
 //   "1 เม็ด วันละ 3 ครั้ง หลังอาหาร เช้า-เที่ยง-เย็น" → "1 x 3 pc", วันเว้นวัน → qod, ทุก 8 ชม. → q8h
@@ -779,11 +796,18 @@ function mdAbbr0(s) {
     const base = /วันละ/.test(wm[1]) ? wm[1] : wm[1] + ' วันละ 1 ครั้ง', b = mdAbbr(base);
     return b !== base && / x 1\b/.test(b) ? `${b} weekly` : s;
   }
-  // ท้ายประโยค "เวลาบวม" / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
+  // เวลาเดียว (ยา TB, ผู้ใช้ขอ 2026-10-26): "3 เม็ด วันละ 1 ครั้ง เวลา ...14.00...น." → "3 x 1 @14.00" ("เช้า" ที่ติดมากับเวลาไม่นับ)
+  const tm1 = s.match(/^(.*?\S)\s*(?:เช้า)?\s*(?:เวลา)?[\s.]*(\d{1,2})[.:](\d{2})[\s.]*(?:น\.?)?[\s.]*$/);
+  if (tm1 && !/\d[.:]\d{2}/.test(tm1[1])) {
+    const base = tm1[1].replace(/\s*(?:เช้า|เวลา)\s*$/, ''), b = mdAbbr(/วันละ/.test(base) ? base : base + ' วันละ 1 ครั้ง');
+    return /^[\d.]+(?: ml)? x 1$/.test(b) ? `${b} @${+tm1[2]}.${tm1[3]}` : s;
+  }
+  // ท้ายประโยค "เวลาบวม\ / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
   //   ไม่นับ "วันละ 2 เวลา เช้า เย็น" และ "เวลา 14.00 น."
   const pm = s.replace(/วันละ\s*(\d+)\s*เวลา/g, 'วันละ $1 ครั้ง').match(/^(.*\S)\s+(?:เวลา|เมื่อ|ถ้า)\s*(?:มี)?\s*(?:อาการ)?\s*([฀-๿][฀-๿ /,]*)$/);
-  if (pm && !/เช้า|เที่ยง|เย็น|นอน|อาหาร/.test(pm[2])) {
-    const sym = /^(?:ใช้|ลด|แก้|ปวด|มี|ไข้|หรือ|อาการ|[ /,])+$/.test(pm[2]) ? '' : ' ' + pm[2].trim().replace(/\s*,\s*$/, '');
+  if (pm && (!/เช้า|เที่ยง|เย็น|นอน|อาหาร/.test(pm[2]) || /^นอนไม่หลับ$/.test(pm[2].trim()))) {
+    // "ก่อนนอน เวลานอนไม่หลับ" → "1 x 1 hs prn insomnia" (ผู้ใช้ขอ 2026-10-26)
+    const sym = /^นอนไม่หลับ$/.test(pm[2].trim()) ? ' insomnia' : /^(?:ใช้|ลด|แก้|ปวด|มี|ไข้|หรือ|อาการ|[ /,])+$/.test(pm[2]) ? '' : ' ' + pm[2].trim().replace(/\s*,\s*$/, '');
     return tail(pm, b => {
       // ทุก N ชม. / วันละ 1-2 ครั้ง → "1 tab prn q4-6h", "1 tab prn OD/BID"
       const q = b.match(/^([\d.]+)( ml)? x (q[\d-]+(?:h|min)|[A-Z]+\/[A-Z]+)$/);
@@ -1023,7 +1047,7 @@ function renderMd() {
       <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
     </div>` : `<div class="md-row${d.on ? '' : ' off'}">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
-      <b>${escHtml(mdName(d))}</b><span>${mdAbbr(d.usage) !== mdClean(d.usage) ? `<b>${escHtml(mdAbbr(d.usage))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(d.usage)}</span>
+      <b>${escHtml(mdName(d))}</b><span>${mdAbbr(mdUse(d)) !== mdClean(mdUse(d)) ? `<b>${escHtml(mdAbbr(mdUse(d)))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(mdUse(d))}</span>
       <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
     </div>`).join('') || '<div class="empty">ไม่พบยาจาก visit ตามนัด หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
 }
@@ -1042,7 +1066,7 @@ function mdStickers(rows, grid) {
   // ไม่พิมพ์วันที่ได้รับ/คลินิก/รพ.ที่ได้ยา — เภสัชเขียนเองในช่องถัดไปของใบ MR (ผู้ใช้ขอ 2026-10-21)
   return pages.map((pg, pi) => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row${d ? ' bx' : ''}" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
       <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${pi * per + k + 1}. ${escHtml(mdName(d))}</div>` : ''}</div>
-      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(d.usage))}</div>` : ''}</div>
+      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(mdUse(d)))}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
 function mdPrint(html) {
