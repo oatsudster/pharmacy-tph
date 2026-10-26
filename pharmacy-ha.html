@@ -76,6 +76,7 @@ button { font: inherit; }
 :root[data-theme="dark"] .tab[aria-selected="true"] { color: #0F1612; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab[aria-selected="true"] { color: #0F1612; } }
 .tab .cnt { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.tab .cnt[hidden], .month-sel[hidden] { display: none; }
 .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
 .seg button { border: 0; background: transparent; color: var(--text-2); padding: 4px 11px; border-radius: 999px; cursor: pointer; font-size: 13px; white-space: nowrap; }
