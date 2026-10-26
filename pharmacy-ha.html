@@ -118,7 +118,7 @@ button { font: inherit; }
 .score { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; }
 .score .big { font-size: 46px; font-weight: 700; line-height: 1; color: var(--text); }
 .score .big small { font-size: 18px; color: var(--text-3); font-weight: 500; }
-.dots { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+.dots { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; max-width: 640px; }
 .dot { aspect-ratio: 1; border-radius: 8px; border: 0; cursor: pointer; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; position: relative; }
 .dot.good { background: var(--good); }
 .dot.bad { background: var(--bad); }
@@ -589,7 +589,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     chart('ch-medrec', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
       { label: 'ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? +(x.doneMeds / x.admMeds * 100).toFixed(1) : null; }), borderColor: css('--mark'), backgroundColor: css('--mark'), pointRadius: 3 },
       { label: 'admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? +(x.done / x.adm * 100).toFixed(1) : null; }), borderColor: css('--mark-muted'), backgroundColor: css('--mark-muted'), pointRadius: 3 }] },
-      options: opts({ y: '%', unit: '%', legend: true, yMax: 100 }) });
+      options: opts({ y: '%', unit: '%', legend: true }) });
     return { ...t, pm };
   }
 
@@ -724,7 +724,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
       layout: { padding: { top: 6, right: 6 } },
       elements: { line: { borderWidth: 2, tension: .3 }, point: { radius: 0, hoverRadius: 5, hitRadius: 12, borderWidth: 0 },
         bar: { borderRadius: 4, borderSkipped: 'bottom', borderWidth: 0, maxBarThickness: 26 } },
-      datasets: { bar: { categoryPercentage: .7, barPercentage: .9 } },
+      datasets: { bar: { categoryPercentage: .7, barPercentage: .9, ...(stacked ? { borderWidth: { top: 2 }, borderColor: css('--surface') } : {}) } },
       plugins: {
         legend: { display: !!legend, position: 'bottom', align: 'start', labels: { color: t3, usePointStyle: true, pointStyle: 'line', boxWidth: 18, font: { family: 'Noto Sans Thai', size: 12 } } },
         tooltip: { backgroundColor: css('--surface'), titleColor: t3, bodyColor: t1, borderColor: css('--border'), borderWidth: 1, padding: 10, boxPadding: 4,
