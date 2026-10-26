@@ -18,173 +18,373 @@
 <script src="lib/hosxp-db.js"></script>
 <style>
 :root {
-  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
-  --gold: #C49A22; --gold-light: #FBF3DC;
-  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
-  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
-  --danger: #b91c1c; --danger-light: #fdecec; --ok: #15803d; --ok-light: #e8f5ec;
-  --muted: #D3DDD6;
+  color-scheme: light;
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE; --gold: #C49A22; --gold-light: #FBF3DC;
+  --bg: #F4F7F5; --surface: #ffffff; --surface-2: #F7FAF8; --border: #DDE7E0; --grid: #E9EFEB;
+  --text: #1C2B22; --text-2: #4A6354; --text-3: #7A9A85;
+  --good: #15803d; --good-bg: #E6F4EA; --bad: #b91c1c; --bad-bg: #FDECEC; --warn: #9a6a00; --warn-bg: #FBF3DC;
+  --mark: #1A5E38; --mark-muted: #B9C9BE; --target: #C49A22;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --shadow: 0 1px 2px rgba(18, 66, 40, .06), 0 4px 14px rgba(18, 66, 40, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --primary: #5FBF86; --primary-dark: #0E2A1A; --primary-light: #1B2E23; --gold: #D9B347; --gold-light: #2E2915;
+    --bg: #0F1612; --surface: #16211B; --surface-2: #1B2821; --border: #2A3A30; --grid: #233229;
+    --text: #E6EFE9; --text-2: #B3C6BA; --text-3: #85A091;
+    --good: #4ADE80; --good-bg: #163222; --bad: #F87171; --bad-bg: #3A1B1B; --warn: #E5B94E; --warn-bg: #2E2915;
+    --mark: #5FBF86; --mark-muted: #4A5C51; --target: #D9B347;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #5FBF86; --primary-dark: #0E2A1A; --primary-light: #1B2E23; --gold: #D9B347; --gold-light: #2E2915;
+  --bg: #0F1612; --surface: #16211B; --surface-2: #1B2821; --border: #2A3A30; --grid: #233229;
+  --text: #E6EFE9; --text-2: #B3C6BA; --text-3: #85A091;
+  --good: #4ADE80; --good-bg: #163222; --bad: #F87171; --bad-bg: #3A1B1B; --warn: #E5B94E; --warn-bg: #2E2915;
+  --mark: #5FBF86; --mark-muted: #4A5C51; --target: #D9B347;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --shadow: none;
 }
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; font-variant-numeric: tabular-nums; }
-.topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
-.topbar a, .topbar button { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 13px; border: 0; cursor: pointer; }
-.topbar h1 { font-size: 18px; margin: 0; }
-.topbar .sub { font-size: 12px; opacity: .8; }
-.topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.topbar select { font: inherit; font-size: 13px; border-radius: 8px; border: 0; padding: 5px 8px; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
-.card h2 { font-size: 16px; margin: 0 0 2px; color: var(--primary-dark); }
-.card h3 { font-size: 14.5px; margin: 14px 0 4px; color: var(--primary-dark); }
-.note { font-size: 12.5px; color: var(--text-light); margin: 0 0 10px; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.kpi { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; text-decoration: none; color: inherit; display: block; }
-.kpi:hover { border-color: var(--primary); }
-.kpi .lbl { font-size: 12.5px; color: var(--text-mid); }
-.kpi .val { font-size: 24px; font-weight: 700; color: var(--primary-dark); line-height: 1.3; }
-.kpi .sub { font-size: 12px; color: var(--text-light); }
-.kpi.bad .val { color: var(--danger); }
-.kpi.good .val { color: var(--ok); }
+a { color: var(--primary); }
+button { font: inherit; }
+
+/* header */
+.hero { background: linear-gradient(120deg, #124228 0%, #1A5E38 60%, #2d6e45 100%); color: #fff; padding: 14px 16px 18px; }
+.hero-in { max-width: 1240px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.hero .back { color: #fff; text-decoration: none; background: rgba(255,255,255,.14); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+.hero h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+.hero .sub { font-size: 12.5px; opacity: .82; margin-top: 2px; }
+.hero .actions { margin-left: auto; display: flex; gap: 8px; }
+.hero .actions button { color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.hero .actions button:hover { background: rgba(255,255,255,.24); }
+
+/* sticky bar: tabs + filters */
+.bar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.bar-in { max-width: 1240px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { border: 0; background: transparent; color: var(--text-2); padding: 7px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+.tab:hover { background: var(--primary-light); color: var(--text); }
+.tab[aria-selected="true"] { background: var(--primary); color: #fff; }
+:root[data-theme="dark"] .tab[aria-selected="true"] { color: #0F1612; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab[aria-selected="true"] { color: #0F1612; } }
+.tab .cnt { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: var(--text-2); padding: 4px 11px; border-radius: 999px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* layout */
+.wrap { max-width: 1240px; margin: 0 auto; padding: 16px; }
+.view { display: none; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.view.on { display: grid; animation: fade .18s ease; }
+@keyframes fade { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; box-shadow: var(--shadow); }
+.card-h { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.card-h h2 { font-size: 16px; margin: 0; color: var(--text); }
+.card-h .note { margin: 2px 0 0; }
+.card-h .tools { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+.note { font-size: 12.5px; color: var(--text-3); margin: 0 0 8px; line-height: 1.55; }
+.g2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.g3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.ghost { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; cursor: pointer; }
+.ghost:hover { border-color: var(--primary); color: var(--primary); }
+.ghost[aria-pressed="true"] { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.kpi { position: relative; text-align: left; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 10px; background: var(--surface); cursor: pointer; color: inherit; transition: border-color .15s, transform .15s; min-width: 0; }
+.kpi:hover, .kpi:focus-visible { border-color: var(--primary); transform: translateY(-1px); outline: none; }
+.kpi .lbl { font-size: 12.5px; color: var(--text-2); display: flex; gap: 6px; align-items: center; }
+.kpi .val { font-size: 28px; font-weight: 700; line-height: 1.25; margin-top: 2px; color: var(--text); }
+.kpi .val small { font-size: 14px; font-weight: 500; color: var(--text-3); }
+.kpi .sub { font-size: 12px; color: var(--text-3); }
+.kpi svg.spark { display: block; width: 100%; height: 30px; margin-top: 6px; }
+.badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.badge.good { background: var(--good-bg); color: var(--good); }
+.badge.bad { background: var(--bad-bg); color: var(--bad); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.na { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+.kpi .badge { position: absolute; top: 10px; right: 10px; }
+
+/* RDU scoreboard */
+.score { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; }
+.score .big { font-size: 46px; font-weight: 700; line-height: 1; color: var(--text); }
+.score .big small { font-size: 18px; color: var(--text-3); font-weight: 500; }
+.dots { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+.dot { aspect-ratio: 1; border-radius: 8px; border: 0; cursor: pointer; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; position: relative; }
+.dot.good { background: var(--good); }
+.dot.bad { background: var(--bad); }
+.dot.na { background: var(--mark-muted); }
+.dot:hover, .dot:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (max-width: 640px) { .score { grid-template-columns: 1fr; } .dots { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* alerts */
+.alerts { display: grid; gap: 8px; }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; text-align: left; color: inherit; width: 100%; }
+.alert:hover { border-color: var(--primary); }
+.alert .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.alert.bad .ic { background: var(--bad-bg); color: var(--bad); }
+.alert.warn .ic { background: var(--warn-bg); color: var(--warn); }
+.alert.good .ic { background: var(--good-bg); color: var(--good); }
+.alert b { font-weight: 600; }
+.alert .d { font-size: 12.5px; color: var(--text-3); }
+
+/* RDU list + detail */
+.rdu-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
+@media (max-width: 920px) { .rdu-layout { grid-template-columns: 1fr; } }
+.rlist { display: grid; gap: 6px; }
+.ritem { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 9px 10px; border-radius: 10px; border: 1px solid transparent; background: var(--surface-2); cursor: pointer; text-align: left; color: inherit; width: 100%; }
+.ritem:hover { border-color: var(--border); }
+.ritem[aria-current="true"] { border-color: var(--primary); background: var(--primary-light); }
+.ritem .no { font-size: 12px; color: var(--text-3); text-align: center; }
+.ritem .nm { font-size: 13.5px; line-height: 1.4; }
+.ritem .v { font-weight: 700; font-size: 14px; text-align: right; white-space: nowrap; }
+.ritem .bullet { grid-column: 2 / 4; }
+.bullet { position: relative; height: 8px; border-radius: 4px; background: var(--grid); }
+.bullet .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.bullet .fill.good { background: var(--good); }
+.bullet .fill.bad { background: var(--bad); }
+.bullet .fill.na { background: var(--mark-muted); }
+.bullet .tgt { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--target); border-radius: 1px; }
+.detail .head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.detail .head h3 { margin: 0; font-size: 16px; line-height: 1.45; flex: 1 1 240px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 12px 0 4px; }
+.stat { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+.stat .k { font-size: 11.5px; color: var(--text-3); }
+.stat .x { font-size: 18px; font-weight: 700; }
+.stat .y { font-size: 11.5px; color: var(--text-3); }
+.def { font-size: 12.5px; color: var(--text-2); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; margin-top: 10px; line-height: 1.6; }
+.def b { color: var(--text); }
+
+/* charts */
+.chart { position: relative; height: 250px; }
+.chart.sm { height: 190px; }
+.chart.tall { height: 290px; }
+.tbl-view { display: none; }
+.card.show-table .chart { display: none; }
+.card.show-table .tbl-view { display: block; }
+
+/* tables */
 .tbl-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-th, td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-th { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 7px 9px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
+th { color: var(--text-3); font-weight: 600; font-size: 12px; white-space: nowrap; background: var(--surface); position: sticky; top: 0; }
 td.num, th.num { text-align: right; white-space: nowrap; }
-tr.sel td { background: var(--gold-light); }
-tr.click { cursor: pointer; }
-tr.click:hover td { background: #f6faf7; }
-.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
-.pill.ok { background: var(--ok-light); color: var(--ok); }
-.pill.bad { background: var(--danger-light); color: var(--danger); }
-.pill.na { background: #eef1ef; color: var(--text-light); }
-.pill.info { background: var(--gold-light); color: #7a5c0e; }
-.chart-box { position: relative; height: 240px; margin-top: 10px; }
-.def { font-size: 12.5px; color: var(--text-mid); background: #f8fbf9; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
-details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
-.empty { color: var(--text-light); font-size: 13.5px; padding: 8px 0; }
-.btn { font: inherit; font-size: 13px; border: 1px solid var(--primary); color: var(--primary); background: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; }
-.btn:hover { background: var(--primary-light); }
+tr.total td { font-weight: 700; border-top: 1px solid var(--border); }
+td.over { color: var(--bad); font-weight: 600; }
+.mini { font-size: 11px; color: var(--text-3); }
+.empty { color: var(--text-3); font-size: 13.5px; padding: 10px 0; }
+.search { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-width: 200px; }
+
+/* small stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.tile { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+.tile .k { font-size: 11.5px; color: var(--text-3); }
+.tile .x { font-size: 22px; font-weight: 700; }
+.tile .x.bad { color: var(--bad); }
+.tile .x.good { color: var(--good); }
+
+/* horizontal bars (HTML) */
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: minmax(80px, 34%) minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .t { height: 14px; border-radius: 0 4px 4px 0; background: var(--grid); position: relative; }
+.hbar .t i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
+.hbar .n { text-align: right; font-weight: 600; }
+.hbar .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+
+details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.chip { font-size: 12px; background: #eef4f0; border-radius: 8px; padding: 2px 8px; }
-.warn { background: var(--gold-light); border: 1px solid #ecd9a0; color: #6b4f0b; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.chip { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px; color: var(--text-2); }
+
+.loading { opacity: .55; transition: opacity .2s; }
 @media (max-width: 640px) {
   .wrap { padding: 10px; }
-  .topbar h1 { font-size: 16px; }
-  .kpi .val { font-size: 20px; }
+  .hero h1 { font-size: 17px; }
+  .kpi .val { font-size: 24px; }
+  .hero .actions { margin-left: 0; }
 }
 @media print {
-  .topbar { position: static; }
-  .topbar .right, .no-print { display: none !important; }
+  .bar, .hero .actions, .no-print, .card-h .tools { display: none !important; }
+  .view { display: grid !important; break-before: page; }
   body { background: #fff; }
-  .card { break-inside: avoid; }
+  .card { break-inside: avoid; box-shadow: none; }
 }
 </style>
 </head>
 <body>
-<div class="topbar">
-  <a href="index.html">← หน้าหลัก</a>
-  <div>
-    <h1>ตัวชี้วัดงานเภสัชกรรม (HA)</h1>
-    <div class="sub" id="updated">กำลังโหลด…</div>
+<header class="hero">
+  <div class="hero-in">
+    <a class="back" href="index.html">← หน้าหลัก</a>
+    <div>
+      <h1>ตัวชี้วัดงานเภสัชกรรม (HA)</h1>
+      <div class="sub" id="updated">กำลังโหลด…</div>
+    </div>
+    <div class="actions">
+      <button id="btn-xlsx" type="button">⬇ Excel</button>
+      <button type="button" onclick="window.print()">🖨 พิมพ์</button>
+    </div>
   </div>
-  <div class="right">
-    <select id="fy" aria-label="ปีงบประมาณ"></select>
-    <select id="half" aria-label="ช่วงเวลา">
-      <option value="">ทั้งปีงบ</option>
-      <option value="H1">ครึ่งปีแรก (ต.ค.–มี.ค.)</option>
-      <option value="H2">ครึ่งปีหลัง (เม.ย.–ก.ย.)</option>
-    </select>
-    <button id="btn-xlsx" type="button">⬇ Excel</button>
-    <button type="button" onclick="window.print()">🖨 พิมพ์</button>
-  </div>
-</div>
+</header>
 
-<div class="wrap">
-  <div class="card">
-    <h2>ภาพรวม</h2>
-    <p class="note" id="sum-note">ตัวเลขดึงจาก HOSxP อัตโนมัติทุกวัน และจากบันทึกในระบบ ME / ADR / คลินิก ของห้องยา — กดการ์ดเพื่อไปที่หัวข้อ</p>
+<nav class="bar" aria-label="หัวข้อและช่วงเวลา">
+  <div class="bar-in">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-v="overview" aria-selected="true">ภาพรวม</button>
+      <button class="tab" role="tab" data-v="rdu">RDU<span class="cnt" id="cnt-rdu" hidden></span></button>
+      <button class="tab" role="tab" data-v="safety">ความปลอดภัยด้านยา<span class="cnt" id="cnt-safety" hidden></span></button>
+      <button class="tab" role="tab" data-v="care">บริบาลทางเภสัชกรรม</button>
+      <button class="tab" role="tab" data-v="service">บริการ</button>
+      <button class="tab no-print" role="tab" data-v="cases">รายเคส</button>
+    </div>
+    <div class="filters">
+      <div class="seg" id="seg-fy" role="group" aria-label="ปีงบประมาณ"></div>
+      <div class="seg" id="seg-half" role="group" aria-label="ช่วงเวลา">
+        <button type="button" data-h="" aria-pressed="true">ทั้งปี</button>
+        <button type="button" data-h="H1">ต.ค.–มี.ค.</button>
+        <button type="button" data-h="H2">เม.ย.–ก.ย.</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap" id="main">
+  <!-- ภาพรวม -->
+  <section class="view on" id="v-overview" role="tabpanel">
+    <div class="card">
+      <div class="card-h"><div><h2>RDU Hospital</h2><p class="note" id="score-note"></p></div></div>
+      <div class="score">
+        <div><div class="big" id="score-big">—</div><div class="note" id="score-sub" style="margin:4px 0 0"></div></div>
+        <div class="dots" id="score-dots"></div>
+      </div>
+    </div>
     <div class="kpis" id="kpis"></div>
-  </div>
+    <div class="card">
+      <div class="card-h"><div><h2>ประเด็นที่ควรทบทวน</h2><p class="note">สรุปอัตโนมัติจากตัวชี้วัดที่ไม่ถึงเป้า — กดเพื่อดูรายละเอียด</p></div></div>
+      <div class="alerts" id="alerts"></div>
+    </div>
+  </section>
 
-  <div class="card" id="sec-rdu">
-    <h2>การใช้ยาอย่างสมเหตุผล (RDU Hospital)</h2>
-    <p class="note" id="rdu-note"></p>
-    <div class="tbl-wrap"><table id="rdu-table"></table></div>
-    <div id="rdu-detail"></div>
-    <h3>ตัวชี้วัดเฝ้าระวัง (ไม่คิดคะแนน)</h3>
-    <div class="tbl-wrap"><table id="watch-table"></table></div>
-    <details style="margin-top:10px">
-      <summary>รายการยาที่นับในแต่ละกลุ่ม (ตรวจการจับคู่ยา → ATC)</summary>
-      <p class="note" style="margin-top:6px">รายการยาของ รพ. ยังไม่ได้ใส่รหัส ATC ใน HOSxP ระบบจึงจับคู่จากชื่อยา ถ้าพบยาที่จัดกลุ่มผิด แจ้งแก้ได้ที่ hosxp-sync/ha_atc_overrides.json</p>
-      <div id="drug-groups"></div>
-    </details>
-  </div>
-
-  <div class="card" id="sec-safety">
-    <h2>ความปลอดภัยด้านยา</h2>
-    <div class="grid2">
-      <div>
-        <h3>จ่ายยาที่ผู้ป่วยมีประวัติแพ้ (เป้าหมาย 0)</h3>
-        <p class="note" id="allergy-note"></p>
-        <div class="chart-box"><canvas id="ch-allergy"></canvas></div>
+  <!-- RDU -->
+  <section class="view" id="v-rdu" role="tabpanel">
+    <div class="rdu-layout">
+      <div class="card">
+        <div class="card-h"><div><h2>12 ตัวชี้วัดที่คิดคะแนน</h2><p class="note" id="rdu-note"></p></div></div>
+        <div class="rlist" id="rlist"></div>
+        <h2 style="font-size:14.5px;margin:16px 0 6px">ตัวชี้วัดเฝ้าระวัง</h2>
+        <div class="rlist" id="wlist"></div>
       </div>
-      <div>
-        <h3>Medication error (ต่อ 1,000)</h3>
-        <p class="note">OPD ต่อ 1,000 ใบสั่งยา (เป้า ≤ 20) · IPD ต่อ 1,000 วันนอน (เป้า ≤ 10) · ER ต่อ 1,000 ใบสั่งยา — ข้อมูลเดียวกับ <a href="ME_Dashboard.html">ME Dashboard</a></p>
-        <div class="tbl-wrap"><table id="me-table"></table></div>
+      <div class="card detail" id="rdu-card">
+        <div class="head"><h3 id="rd-title"></h3><span id="rd-badge"></span>
+          <div class="tools" style="margin-left:auto"><button class="ghost" type="button" data-tbl="rdu-card">ตาราง</button></div></div>
+        <div class="stats" id="rd-stats"></div>
+        <div class="chart tall"><canvas id="ch-rdu" aria-label="แนวโน้มรายเดือน"></canvas></div>
+        <div class="tbl-view tbl-wrap" id="tv-ch-rdu"></div>
+        <div class="def" id="rd-def"></div>
       </div>
     </div>
-    <h3>รายการที่จ่ายยาซึ่งผู้ป่วยมีประวัติแพ้</h3>
-    <p class="note" id="allergy-cases-note"></p>
-    <div class="tbl-wrap"><table id="allergy-table"></table></div>
-    <div class="grid2" style="margin-top:6px">
-      <div>
-        <h3>ADR ที่รายงาน</h3>
-        <p class="note">จากระบบรายงาน ADR (<a href="adr.html">เปิดหน้า ADR</a>)</p>
-        <div class="tbl-wrap"><table id="adr-table"></table></div>
+    <div class="card">
+      <details class="groups">
+        <summary>รายการยาที่นับในแต่ละกลุ่ม (ตรวจการจับคู่ยา → ATC)</summary>
+        <p class="note" style="margin-top:6px">รายการยาของ รพ. ยังไม่ได้ใส่รหัส ATC ใน HOSxP ระบบจึงจับคู่จากชื่อยา ถ้าพบยาที่จัดกลุ่มผิด แก้ได้ที่ hosxp-sync/ha_atc_overrides.json</p>
+        <div id="drug-groups"></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ความปลอดภัย -->
+  <section class="view" id="v-safety" role="tabpanel">
+    <div class="g2">
+      <div class="card" id="c-allergy">
+        <div class="card-h"><div><h2>จ่ายยาที่ผู้ป่วยมีประวัติแพ้</h2><p class="note" id="allergy-note"></p></div>
+          <div class="tools"><button class="ghost" type="button" data-tbl="c-allergy">ตาราง</button></div></div>
+        <div class="tiles" id="allergy-tiles"></div>
+        <div class="chart sm"><canvas id="ch-allergy"></canvas></div>
+        <div class="tbl-view tbl-wrap" id="tv-ch-allergy"></div>
       </div>
-      <div>
-        <h3>ADE trigger จากรหัสโรค</h3>
-        <p class="note">ครั้งที่มีรหัส ICD-10 ที่บ่งชี้เหตุการณ์ไม่พึงประสงค์จากยา — ใช้ค้นหาเคสมาทบทวน</p>
-        <div class="tbl-wrap"><table id="ade-table"></table></div>
+      <div class="card" id="c-adr">
+        <div class="card-h"><div><h2>ADR ที่รายงาน</h2><p class="note">จากระบบรายงาน ADR (<a href="adr.html">เปิดหน้า ADR</a>)</p></div>
+          <div class="tools"><button class="ghost" type="button" data-tbl="c-adr">ตาราง</button></div></div>
+        <div class="tiles" id="adr-tiles"></div>
+        <div class="chart sm"><canvas id="ch-adr"></canvas></div>
+        <div class="tbl-view tbl-wrap" id="tv-ch-adr"></div>
       </div>
     </div>
-  </div>
-
-  <div class="card" id="sec-care">
-    <h2>การบริบาลทางเภสัชกรรม</h2>
-    <div class="grid2">
-      <div>
-        <h3>Medication reconciliation ผู้ป่วยใน</h3>
-        <p class="note" id="medrec-note"></p>
-        <div class="chart-box"><canvas id="ch-medrec"></canvas></div>
+    <div class="card" id="c-me">
+      <div class="card-h"><div><h2>Medication error</h2><p class="note">ข้อมูลเดียวกับ <a href="ME_Dashboard.html">ME Dashboard</a> · เส้นสีทอง = เป้าหมาย</p></div>
+        <div class="tools"><button class="ghost" type="button" data-tbl="c-me">ตาราง</button></div></div>
+      <div class="tiles" id="me-tiles"></div>
+      <div class="g3">
+        <div><div class="mini" style="margin-bottom:4px">OPD · ต่อ 1,000 ใบสั่งยา (เป้า ≤ 20)</div><div class="chart sm"><canvas id="ch-me-opd"></canvas></div></div>
+        <div><div class="mini" style="margin-bottom:4px">IPD · ต่อ 1,000 วันนอน (เป้า ≤ 10)</div><div class="chart sm"><canvas id="ch-me-ipd"></canvas></div></div>
+        <div><div class="mini" style="margin-bottom:4px">ER · ต่อ 1,000 ใบสั่งยา</div><div class="chart sm"><canvas id="ch-me-er"></canvas></div></div>
       </div>
-      <div>
-        <h3>ปัญหาจากการใช้ยา (DRP) ในคลินิกโรคเรื้อรัง</h3>
-        <p class="note">จากบันทึกคลินิก DM / HT / COPD (<a href="clinic.html">เปิดหน้าคลินิก</a>)</p>
-        <div class="tbl-wrap"><table id="drp-table"></table></div>
-        <div class="chips" id="drp-types"></div>
+      <div class="tbl-view tbl-wrap" id="tv-me"></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-h"><div><h2>รายการจ่ายยาที่ผู้ป่วยมีประวัติแพ้</h2><p class="note">HN และชื่อผู้ป่วยดูได้ในแท็บรายเคส (เครื่องใน รพ.)</p></div>
+          <div class="tools"><button class="ghost" type="button" id="btn-brand" aria-pressed="false">แสดงที่ไม่นับ</button></div></div>
+        <div class="tbl-wrap" style="max-height:360px"><table id="allergy-table"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div><h2>ADE trigger จากรหัสโรค</h2><p class="note">ครั้งที่มีรหัส ICD-10 บ่งชี้เหตุการณ์ไม่พึงประสงค์จากยา — ใช้ค้นหาเคสมาทบทวน</p></div></div>
+        <div class="hbars" id="ade"></div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="card" id="sec-service">
-    <h2>ระยะเวลารอรับยาผู้ป่วยนอก</h2>
-    <p class="note" id="wait-note"></p>
-    <div class="grid2">
-      <div class="chart-box"><canvas id="ch-wait"></canvas></div>
-      <div class="tbl-wrap"><table id="wait-table"></table></div>
+  <!-- บริบาล -->
+  <section class="view" id="v-care" role="tabpanel">
+    <div class="card" id="c-medrec">
+      <div class="card-h"><div><h2>Medication reconciliation ผู้ป่วยใน</h2><p class="note" id="medrec-note"></p></div>
+        <div class="tools"><button class="ghost" type="button" data-tbl="c-medrec">ตาราง</button></div></div>
+      <div class="tiles" id="medrec-tiles"></div>
+      <div class="chart"><canvas id="ch-medrec"></canvas></div>
+      <div class="tbl-view tbl-wrap" id="tv-ch-medrec"></div>
     </div>
-  </div>
+    <div class="g2">
+      <div class="card" id="c-drp">
+        <div class="card-h"><div><h2>DRP ในคลินิกโรคเรื้อรัง</h2><p class="note">ร้อยละของครั้งที่พบเภสัชกรแล้วพบ DRP — จากบันทึกคลินิก (<a href="clinic.html">เปิดหน้าคลินิก</a>)</p></div>
+          <div class="tools"><button class="ghost" type="button" data-tbl="c-drp">ตาราง</button></div></div>
+        <div class="tiles" id="drp-tiles"></div>
+        <div class="chart sm"><canvas id="ch-drp"></canvas></div>
+        <div class="tbl-view tbl-wrap" id="tv-ch-drp"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div><h2>ประเภท DRP ที่พบบ่อย</h2><p class="note" id="drp-type-note"></p></div></div>
+        <div class="hbars" id="drp-types"></div>
+      </div>
+    </div>
+  </section>
 
-  <div class="card no-print" id="sec-cases">
-    <h2>รายเคสที่ต้องทบทวน (เฉพาะเครื่องใน รพ.)</h2>
-    <p class="note" id="cases-note">รายชื่อผู้ป่วยไม่ได้เก็บบนอินเทอร์เน็ต — แสดงเฉพาะเครื่องที่รันโปรแกรมดึงข้อมูลตัวชี้วัด (ผ่าน HOSxP Bridge)</p>
-    <div id="cases"></div>
-  </div>
-</div>
+  <!-- บริการ -->
+  <section class="view" id="v-service" role="tabpanel">
+    <div class="card" id="c-wait">
+      <div class="card-h"><div><h2>ระยะเวลารอรับยาผู้ป่วยนอก</h2><p class="note" id="wait-note"></p></div>
+        <div class="tools"><button class="ghost" type="button" data-tbl="c-wait">ตาราง</button></div></div>
+      <div class="tiles" id="wait-tiles"></div>
+      <div class="chart"><canvas id="ch-wait"></canvas></div>
+      <div class="tbl-view tbl-wrap" id="tv-ch-wait"></div>
+    </div>
+  </section>
+
+  <!-- รายเคส -->
+  <section class="view" id="v-cases" role="tabpanel">
+    <div class="card">
+      <div class="card-h"><div><h2>รายเคสที่ต้องทบทวน</h2><p class="note" id="cases-note">รายชื่อผู้ป่วยไม่ได้เก็บบนอินเทอร์เน็ต — แสดงเฉพาะเครื่องที่รันโปรแกรมดึงข้อมูลตัวชี้วัด (ผ่าน HOSxP Bridge)</p></div>
+        <div class="tools"><input class="search" id="case-q" type="search" placeholder="ค้นหา HN / ชื่อ / ยา"></div></div>
+      <div id="cases"></div>
+    </div>
+  </section>
+</main>
 
 <script>
 (function () {
@@ -197,7 +397,6 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
     appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
   };
   const COL = 'pharmacy_tph';
-  const C = { primary: '#1A5E38', gold: '#C49A22', muted: '#B9C9BE', danger: '#b91c1c', mid: '#3D5A47' };
   const TH_M = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   const esc = window.escHtml || ((s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
   const fmt = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -205,10 +404,13 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
   const thDate = (iso) => iso ? `${+iso.slice(8, 10)} ${TH_M[+iso.slice(5, 7)]} ${String(+iso.slice(0, 4) + 543).slice(-2)}` : '';
   const fyOf = (m) => +m.slice(0, 4) + 543 + (+m.slice(5, 7) >= 10 ? 1 : 0);
   const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const ICON = { good: '✓', bad: '✕', warn: '!', na: '–' };
+  const badge = (st, txt) => `<span class="badge ${st}">${ICON[st]} ${esc(txt)}</span>`;
 
   let ha = null, hxRecs = [], erRecs = [], denom = {}, adrRecs = [], clinicVisits = [], cases = null;
   const charts = {};
-  let selRdu = 'RI';
+  const state = { fy: null, half: '', view: 'overview', rdu: 'RI', showBrand: false, q: '' };
 
   // ── ช่วงเวลา ──
   function fyMonths(fy) {
@@ -217,14 +419,15 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
     return out;
   }
   function period() {
-    const fy = +$('fy').value, half = $('half').value;
     const last = ha ? ha.months[ha.months.length - 1] : new Date().toISOString().slice(0, 7);
-    let ms = fyMonths(fy).filter((m) => m <= last);
-    if (half === 'H1') ms = ms.filter((m) => +m.slice(5) >= 10 || +m.slice(5) <= 3);
-    if (half === 'H2') ms = ms.filter((m) => +m.slice(5) >= 4 && +m.slice(5) <= 9);
-    return { fy, half, key: `FY${fy}${half}`, months: ms, label: `ปีงบ ${fy}${half === 'H1' ? ' ครึ่งปีแรก' : half === 'H2' ? ' ครึ่งปีหลัง' : ''}` };
+    let ms = fyMonths(state.fy).filter((m) => m <= last);
+    if (state.half === 'H1') ms = ms.filter((m) => +m.slice(5) >= 10 || +m.slice(5) <= 3);
+    if (state.half === 'H2') ms = ms.filter((m) => +m.slice(5) >= 4 && +m.slice(5) <= 9);
+    return { fy: state.fy, key: `FY${state.fy}${state.half}`, months: ms,
+      label: `ปีงบ ${state.fy}${state.half === 'H1' ? ' (ต.ค.–มี.ค.)' : state.half === 'H2' ? ' (เม.ย.–ก.ย.)' : ''}` };
   }
   const inP = (date, P) => !!date && P.months.includes(String(date).slice(0, 7));
+  const sumM = (obj, P, k) => P.months.reduce((s, m) => s + (((obj || {})[m] || {})[k] || 0), 0);
 
   // ── RDU ──
   function rduValue(def, x) {
@@ -238,49 +441,58 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
     const t = def.target;
     return { '<=': v <= t, '>=': v >= t, '<': v < t, '>': v > t, '=': v === t }[def.op];
   }
-  const unitTxt = (def) => def.kind === 'COUNT' ? ' คน' : def.kind === 'MEAN' ? ' รายการ' : def.kind === 'TRIGGER' ? ' ครั้ง' : '%';
+  const stOf = (p) => p == null ? 'na' : p ? 'good' : 'bad';
+  const unitTxt = (def) => def.kind === 'COUNT' ? ' คน' : def.kind === 'MEAN' ? '' : def.kind === 'TRIGGER' ? ' ครั้ง' : '%';
   const valTxt = (def, v) => v == null ? '—' : (def.kind === 'COUNT' || def.kind === 'TRIGGER') ? fmt(v) + unitTxt(def) : fmt(v, def.kind === 'MEAN' ? 2 : 1) + unitTxt(def);
   const tgtTxt = (def) => def.target == null ? '—' : `${def.op.replace('<=', '≤').replace('>=', '≥')} ${fmt(def.target, def.target % 1 ? 1 : 0)}${unitTxt(def)}`;
-  const statusPill = (p) => p == null ? '<span class="pill na">ไม่มีข้อมูล</span>' : p ? '<span class="pill ok">ผ่าน</span>' : '<span class="pill bad">ไม่ผ่าน</span>';
+  const shortName = (d) => d.name.replace(/^ร้อยละ(การใช้ยา|ของ)?/, '').replace(/ในผู้ป่วยนอก$/, '').trim();
+  const rv = (code, key) => { const d = ha.rdu.defs.find((x) => x.code === code); return d ? rduValue(d, (ha.rdu.values[code] || {})[key]) : null; };
 
   function rduStats(P) {
     const defs = ha.rdu.defs.filter((d) => d.scored);
     let passN = 0, evalN = 0;
-    defs.forEach((d) => { const p = pass(d, rduValue(d, ha.rdu.values[d.code][P.key])); if (p != null) { evalN++; if (p) passN++; } });
-    return { passN, evalN, total: defs.length };
+    const st = defs.map((d) => { const p = pass(d, rduValue(d, ha.rdu.values[d.code][P.key])); if (p != null) { evalN++; if (p) passN++; } return { d, p }; });
+    return { passN, evalN, total: defs.length, st, min: ha.rdu.passMin || 10 };
+  }
+
+  function bulletHtml(d, v, p) {
+    if (d.kind === 'COUNT' || d.kind === 'TRIGGER' || d.target == null) return '';
+    const max = Math.max(d.target * 1.6, (v || 0) * 1.1, d.kind === 'MEAN' ? 5 : 5);
+    const lim = d.kind === 'RATE' && d.target >= 50 ? 100 : max;
+    const w = v == null ? 0 : Math.min(100, v / lim * 100);
+    return `<div class="bullet" title="ผลงาน ${valTxt(d, v)} · เป้า ${tgtTxt(d)}"><div class="fill ${stOf(p)}" style="width:${w}%"></div><div class="tgt" style="left:calc(${Math.min(100, d.target / lim * 100)}% - 1px)"></div></div>`;
   }
 
   function drawRdu(P) {
     const st = rduStats(P);
-    $('rdu-note').textContent = `${ha.rdu.editionName || 'RDU Hospital'} — ${P.label}: ผ่าน ${st.passN} จาก ${st.evalN} ตัวที่มีข้อมูล` +
-      (ha.rdu.passText ? ` · เกณฑ์: ${ha.rdu.passText}` : '') + ' · นิยาม รหัสโรค กลุ่มยา และเป้าหมาย ใช้ตามตาราง RDU ใน HOSxP · กดแถวเพื่อดูแนวโน้มรายเดือน';
-    const row = (d) => {
-      const x = ha.rdu.values[d.code][P.key] || {}, v = rduValue(d, x);
-      const nd = x.d != null ? `${fmt(x.n)} / ${fmt(x.d)}` : fmt(x.n);
-      return `<tr class="click${d.code === selRdu ? ' sel' : ''}" data-code="${esc(d.code)}"><td>${esc(d.no)}</td><td>${esc(d.name)}</td>` +
-        `<td class="num">${tgtTxt(d)}</td><td class="num"><b>${valTxt(d, v)}</b></td><td class="num">${nd}</td><td>${statusPill(pass(d, v))}</td></tr>`;
+    $('rdu-note').textContent = `${P.label}: ผ่าน ${st.passN} จาก ${st.evalN} ตัวที่มีข้อมูล (เกณฑ์ผ่าน ≥ ${st.min} จาก ${st.total}) · แถบสีทอง = เป้าหมาย`;
+    const item = (d) => {
+      const v = rduValue(d, ha.rdu.values[d.code][P.key]), p = pass(d, v);
+      return `<button type="button" class="ritem" data-code="${esc(d.code)}" aria-current="${d.code === state.rdu}"><span class="no">${esc(d.no)}</span>` +
+        `<span class="nm">${esc(shortName(d))}</span><span class="v" style="color:${p === false ? 'var(--bad)' : 'inherit'}">${valTxt(d, v)}</span>` +
+        `<span class="bullet-wrap" style="grid-column:2/4">${bulletHtml(d, v, p)}</span></button>`;
     };
-    $('rdu-table').innerHTML = '<thead><tr><th>#</th><th>ตัวชี้วัด</th><th class="num">เป้าหมาย</th><th class="num">ผลงาน</th><th class="num">ตัวตั้ง / ตัวหาร</th><th>สถานะ</th></tr></thead><tbody>' +
-      ha.rdu.defs.filter((d) => d.scored).map(row).join('') + '</tbody>';
-    const watch = ha.rdu.defs.filter((d) => !d.scored && d.kind !== 'TRIGGER');
-    $('watch-table').innerHTML = '<thead><tr><th>#</th><th>ตัวชี้วัด</th><th class="num">ค่าอ้างอิง</th><th class="num">ผลงาน</th><th class="num">ตัวตั้ง / ตัวหาร</th><th></th></tr></thead><tbody>' +
-      watch.map(row).join('') + '</tbody>';
-    document.querySelectorAll('#rdu-table tr.click, #watch-table tr.click').forEach((tr) => tr.addEventListener('click', () => { selRdu = tr.dataset.code; drawRdu(P); }));
-    drawRduDetail(P);
-  }
-
-  function drawRduDetail(P) {
-    const d = ha.rdu.defs.find((x) => x.code === selRdu);
-    if (!d) { $('rdu-detail').innerHTML = ''; return; }
-    $('rdu-detail').innerHTML = `<div class="chart-box"><canvas id="ch-rdu"></canvas></div>` +
-      `<div class="def"><b>${esc(d.no)}. ${esc(d.name)}</b><br>ตัวตั้ง: ${esc(d.num)}<br>ตัวหาร: ${esc(d.den)}` +
-      (d.def ? `<br><span style="color:var(--text-light)">${esc(d.def)}</span>` : '') +
-      (d.unit === 'PATIENT' ? '<br><span style="color:var(--text-light)">นับเป็นจำนวนผู้ป่วย (HN) — ค่าทั้งปีจึงไม่เท่ากับผลรวมรายเดือน</span>' : '') + '</div>';
-    const ms = fyMonths(P.fy).filter((m) => ha.months.includes(m));
-    const vals = ms.map((m) => rduValue(d, ha.rdu.values[d.code][m]));
-    const ds = [{ type: d.kind === 'COUNT' ? 'bar' : 'line', label: d.kind === 'COUNT' ? 'จำนวน' : 'ผลงานรายเดือน', data: vals, borderColor: C.primary, backgroundColor: C.primary, tension: .25, spanGaps: true, pointRadius: 3 }];
-    if (d.target != null) ds.push({ type: 'line', label: 'เป้าหมาย', data: ms.map(() => d.target), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0, fill: false });
-    chart('ch-rdu', { type: 'line', data: { labels: ms.map(mLabel), datasets: ds }, options: baseOpts(d.kind === 'COUNT' ? 'คน' : d.kind === 'MEAN' ? 'รายการ/ครั้ง' : '%') });
+    $('rlist').innerHTML = ha.rdu.defs.filter((d) => d.scored).map(item).join('');
+    $('wlist').innerHTML = ha.rdu.defs.filter((d) => !d.scored && d.kind !== 'TRIGGER').map(item).join('');
+    document.querySelectorAll('.ritem').forEach((b) => b.addEventListener('click', () => { state.rdu = b.dataset.code; drawRdu(P); }));
+    const d = ha.rdu.defs.find((x) => x.code === state.rdu) || ha.rdu.defs[0];
+    const v = rduValue(d, ha.rdu.values[d.code][P.key]), p = pass(d, v);
+    $('rd-title').textContent = `${d.no}. ${d.name}`;
+    $('rd-badge').innerHTML = d.scored ? badge(stOf(p), p == null ? 'ไม่มีข้อมูล' : p ? 'ผ่าน' : 'ไม่ผ่าน') : badge('na', 'เฝ้าระวัง');
+    const sx = (k, lbl) => { const x = ha.rdu.values[d.code][k]; const vv = rduValue(d, x); return `<div class="stat"><div class="k">${lbl}</div><div class="x" style="color:${pass(d, vv) === false ? 'var(--bad)' : 'inherit'}">${valTxt(d, vv)}</div><div class="y">${x ? (x.d != null ? `${fmt(x.n)} / ${fmt(x.d)}` : '') : ''}</div></div>`; };
+    $('rd-stats').innerHTML = `<div class="stat"><div class="k">เป้าหมาย</div><div class="x">${tgtTxt(d)}</div><div class="y">${d.better === 'H' ? 'ยิ่งมากยิ่งดี' : 'ยิ่งน้อยยิ่งดี'}</div></div>` +
+      sx(`FY${P.fy}`, `ทั้งปีงบ ${P.fy}`) + sx(`FY${P.fy}H1`, 'ต.ค.–มี.ค.') + sx(`FY${P.fy}H2`, 'เม.ย.–ก.ย.') + sx(`FY${P.fy - 1}`, `ปีงบ ${P.fy - 1}`);
+    $('rd-def').innerHTML = `<b>ตัวตั้ง</b> ${esc(d.num)}<br><b>ตัวหาร</b> ${esc(d.den)}` + (d.def ? `<br><span style="color:var(--text-3)">${esc(d.def)}</span>` : '') +
+      (d.unit === 'PATIENT' ? '<br><span style="color:var(--text-3)">นับเป็นจำนวนผู้ป่วย (HN) — ค่าทั้งปีจึงไม่เท่ากับผลรวมรายเดือน</span>' : '');
+    const ms = P.months, vals = ms.map((m) => rduValue(d, ha.rdu.values[d.code][m]));
+    const isCount = d.kind === 'COUNT' || d.kind === 'TRIGGER';
+    const ds = [{ type: isCount ? 'bar' : 'line', label: isCount ? 'จำนวน' : 'ผลงาน', data: vals.map((x) => x == null ? null : +x.toFixed(2)),
+      borderColor: css('--mark'), backgroundColor: isCount ? css('--mark') : css('--mark'), fill: false,
+      pointBackgroundColor: vals.map((x) => pass(d, x) === false ? css('--bad') : css('--mark')), pointRadius: 4, pointHoverRadius: 6 }];
+    if (d.target != null) ds.push({ type: 'line', label: 'เป้าหมาย', data: ms.map(() => d.target), borderColor: css('--target'), borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false });
+    chart('ch-rdu', { type: isCount ? 'bar' : 'line', data: { labels: ms.map(mLabel), datasets: ds },
+      options: opts({ y: isCount ? 'คน/ครั้ง' : d.kind === 'MEAN' ? 'รายการ/ครั้ง' : '%', unit: unitTxt(d), legend: d.target != null }) });
+    setCnt('cnt-rdu', st.evalN - st.passN);
   }
 
   function drawDrugGroups() {
@@ -288,34 +500,34 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
       'RDU-METFORMIN': 'Metformin', 'RDU-ICS': 'Inhaled corticosteroid', 'RDU-LA-BZD': 'Long-acting benzodiazepine',
       'RDU-NSAH': 'Antihistamine ชนิดไม่ง่วง', 'RDU-PREG-X': 'ยาห้ามใช้ในหญิงตั้งครรภ์' };
     $('drug-groups').innerHTML = Object.entries(ha.rdu.drugGroups).map(([g, xs]) =>
-      `<div style="margin-top:8px"><b style="font-size:13.5px">${esc(NAMES[g] || g)}</b> <span class="note">(${xs.length})</span>` +
+      `<div style="margin-top:10px"><b style="font-size:13.5px">${esc(NAMES[g] || g)}</b> <span class="mini">(${xs.length})</span>` +
       `<div class="chips">${xs.map((x) => `<span class="chip">${esc(x)}</span>`).join('') || '<span class="empty">ไม่พบยาใน รพ.</span>'}</div></div>`).join('');
   }
 
   // ── ความปลอดภัย ──
+  function allergyStats(P) {
+    return { n: sumM(ha.allergy.months, P, 'n'), brand: sumM(ha.allergy.months, P, 'brand'), opd: sumM(ha.allergy.months, P, 'opd'), ipd: sumM(ha.allergy.months, P, 'ipd') };
+  }
   function drawAllergy(P) {
-    const a = ha.allergy, ms = P.months;
-    const n = ms.reduce((s, m) => s + ((a.months[m] || {}).n || 0), 0);
-    const br = ms.reduce((s, m) => s + ((a.months[m] || {}).brand || 0), 0);
-    $('allergy-note').textContent = `${P.label}: ${fmt(n)} ครั้ง (ไม่นับอีก ${fmt(br)} ครั้งที่บันทึกว่าแพ้เฉพาะยี่ห้อ / เคยได้ยาแล้วไม่มีอาการ) · ` +
-      `ตรวจจากบันทึกแพ้ยา ${fmt(a.allergies)} รายการ (ไม่นับ Type A) — จับคู่ชื่อยาไม่ได้ ${fmt(a.unmatched)} รายการ`;
+    const a = ha.allergy, s = allergyStats(P), ms = P.months;
+    $('allergy-note').textContent = `เป้าหมาย 0 · ตรวจจากบันทึกแพ้ยา ${fmt(a.allergies)} รายการ (ไม่นับ Type A) — จับคู่ชื่อยาไม่ได้ ${fmt(a.unmatched)} รายการ`;
+    $('allergy-tiles').innerHTML = tile('นับเป็นแพ้ยาซ้ำ', fmt(s.n), s.n ? 'bad' : 'good') + tile('OPD / IPD', `${fmt(s.opd)} / ${fmt(s.ipd)}`) + tile('แพ้เฉพาะยี่ห้อ / ทนได้ (ไม่นับ)', fmt(s.brand));
     chart('ch-allergy', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [
-      { label: 'นับเป็นแพ้ยาซ้ำ', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: C.danger, stack: 's' },
-      { label: 'แพ้เฉพาะยี่ห้อ / ทนยาได้', data: ms.map((m) => (a.months[m] || {}).brand || 0), backgroundColor: C.muted, stack: 's' }] },
-      options: baseOpts('ครั้ง', true) });
-    const ev = a.events.filter((e) => inP(e.date, P));
-    $('allergy-cases-note').textContent = ev.length ? `${P.label} — HN และชื่อผู้ป่วยดูได้ในหัวข้อรายเคสด้านล่าง (เครื่องใน รพ.)` : '';
-    $('allergy-table').innerHTML = ev.length ? '<thead><tr><th>วันที่จ่าย</th><th>ยาที่จ่าย</th><th>บันทึกแพ้</th><th>บันทึกแพ้เมื่อ</th><th>จุดบริการ</th><th></th></tr></thead><tbody>' +
-      ev.map((e) => `<tr${e.brandOnly ? ' style="color:var(--text-light)"' : ''}><td>${thDate(e.date)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)}</td><td>${thDate(e.allergyDate)}</td>` +
-        `<td>${esc(e.setting)} · ${esc(e.dept)}</td><td>${e.brandOnly ? '<span class="pill na">แพ้เฉพาะยี่ห้อ/ทนได้</span>' : '<span class="pill bad">ทบทวน</span>'}</td></tr>`).join('') + '</tbody>'
-      : '<tbody><tr><td class="empty">ไม่พบในช่วงนี้</td></tr></tbody>';
+      { label: 'นับเป็นแพ้ยาซ้ำ', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: css('--bad'), stack: 's' },
+      { label: 'แพ้เฉพาะยี่ห้อ / ทนได้', data: ms.map((m) => (a.months[m] || {}).brand || 0), backgroundColor: css('--mark-muted'), stack: 's' }] },
+      options: opts({ y: 'ครั้ง', stacked: true, unit: ' ครั้ง', legend: true }) });
+    const ev = a.events.filter((e) => inP(e.date, P) && (state.showBrand || !e.brandOnly)).slice().reverse();
+    $('allergy-table').innerHTML = ev.length ? '<thead><tr><th>วันที่จ่าย</th><th>ยาที่จ่าย</th><th>บันทึกแพ้</th><th>จุดบริการ</th></tr></thead><tbody>' +
+      ev.map((e) => `<tr${e.brandOnly ? ' style="color:var(--text-3)"' : ''}><td style="white-space:nowrap">${thDate(e.date)}</td><td>${esc(e.drug)}</td>` +
+        `<td>${esc(e.agent)}<div class="mini">บันทึก ${thDate(e.allergyDate)}${e.brandOnly ? ' · แพ้เฉพาะยี่ห้อ/ทนได้' : ''}</div></td><td>${esc(e.setting)}<div class="mini">${esc(e.dept)}</div></td></tr>`).join('') + '</tbody>'
+      : '<tbody><tr><td class="empty">ไม่พบในช่วงนี้ 🎉</td></tr></tbody>';
+    return s;
   }
 
   function meMonthly(P) {
-    const rx = {};  // ER ใบสั่งยาต่อวัน: ค่าที่กรอกเองชนะค่าอัตโนมัติ (ตรงกับ ME Dashboard)
-    const manual = {}, auto = {};
+    const manual = {}, auto = {};  // ER ใบสั่งยาต่อวัน: ค่าที่กรอกเองชนะค่าอัตโนมัติ (ตรงกับ ME Dashboard)
     erRecs.forEach((r) => { if ((r.rxDaily || 0) > 0) { const t = r.rxAuto ? auto : manual; if (r.rxDaily > (t[r.date] || 0)) t[r.date] = r.rxDaily; } });
-    Object.assign(rx, auto, manual);
+    const rx = Object.assign({}, auto, manual);
     return P.months.map((m) => {
       const opd = hxRecs.filter((r) => r.dept === 'OPD' && (r.date || '').startsWith(m));
       const ipd = hxRecs.filter((r) => r.dept === 'IPD' && (r.date || '').startsWith(m));
@@ -329,85 +541,108 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
 
   function drawMe(P) {
     const rows = meMonthly(P);
-    const tot = rows.reduce((t, r) => { Object.keys(t).forEach((k) => { t[k] += r[k]; }); return t; }, { opd: 0, opdD: 0, ipd: 0, ipdD: 0, er: 0, erD: 0, sev: 0 });
-    const cell = (n, d, std) => { const v = rate(n, d); return `<td class="num"${v != null && std && v > std ? ' style="color:var(--danger)"' : ''}>${v == null ? '—' : fmt(v, 2)}<br><span style="font-size:11px;color:var(--text-light)">${fmt(n)}/${fmt(d)}</span></td>`; };
-    $('me-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">OPD</th><th class="num">IPD</th><th class="num">ER</th><th class="num">ระดับ E–I</th></tr></thead><tbody>' +
+    const t = rows.reduce((a, r) => { Object.keys(a).forEach((k) => { a[k] += r[k]; }); return a; }, { opd: 0, opdD: 0, ipd: 0, ipdD: 0, er: 0, erD: 0, sev: 0 });
+    const o = rate(t.opd, t.opdD), i = rate(t.ipd, t.ipdD), e = rate(t.er, t.erD);
+    $('me-tiles').innerHTML = tile('OPD / 1,000 ใบสั่งยา', fmt(o, 2), o != null && o > 20 ? 'bad' : 'good', `${fmt(t.opd)} รายการ`) +
+      tile('IPD / 1,000 วันนอน', fmt(i, 2), i != null && i > 10 ? 'bad' : 'good', `${fmt(t.ipd)} รายการ`) +
+      tile('ER / 1,000 ใบสั่งยา', fmt(e, 2), '', `${fmt(t.er)} รายการ`) + tile('ระดับ E–I', fmt(t.sev), t.sev ? 'bad' : 'good', 'ถึงผู้ป่วยและเกิดอันตราย');
+    const mini = (id, k, kd, tgt) => chart(id, { type: 'line', data: { labels: rows.map((r) => mLabel(r.m)), datasets: [
+      { label: 'อัตรา', data: rows.map((r) => { const v = rate(r[k], r[kd]); return v == null ? null : +v.toFixed(2); }), borderColor: css('--mark'), backgroundColor: css('--mark'),
+        pointBackgroundColor: rows.map((r) => tgt && rate(r[k], r[kd]) > tgt ? css('--bad') : css('--mark')), pointRadius: 3, spanGaps: true },
+      ...(tgt ? [{ label: 'เป้าหมาย', data: rows.map(() => tgt), borderColor: css('--target'), borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0 }] : [])] },
+      options: opts({ unit: ' ต่อ 1,000', legend: false, small: true }) });
+    mini('ch-me-opd', 'opd', 'opdD', 20); mini('ch-me-ipd', 'ipd', 'ipdD', 10); mini('ch-me-er', 'er', 'erD', null);
+    const cell = (n, d, std) => { const v = rate(n, d); return `<td class="num${v != null && std && v > std ? ' over' : ''}">${v == null ? '—' : fmt(v, 2)}<div class="mini">${fmt(n)}/${fmt(d)}</div></td>`; };
+    $('tv-me').innerHTML = '<table><thead><tr><th>เดือน</th><th class="num">OPD</th><th class="num">IPD</th><th class="num">ER</th><th class="num">ระดับ E–I</th></tr></thead><tbody>' +
       rows.map((r) => `<tr><td>${mLabel(r.m)}</td>${cell(r.opd, r.opdD, 20)}${cell(r.ipd, r.ipdD, 10)}${cell(r.er, r.erD)}<td class="num">${fmt(r.sev)}</td></tr>`).join('') +
-      `<tr style="font-weight:700"><td>รวม</td>${cell(tot.opd, tot.opdD, 20)}${cell(tot.ipd, tot.ipdD, 10)}${cell(tot.er, tot.erD)}<td class="num">${fmt(tot.sev)}</td></tr></tbody>`;
-    return tot;
+      `<tr class="total"><td>รวม</td>${cell(t.opd, t.opdD, 20)}${cell(t.ipd, t.ipdD, 10)}${cell(t.er, t.erD)}<td class="num">${fmt(t.sev)}</td></tr></tbody></table>`;
+    return { ...t, rOpd: o, rIpd: i, rEr: e, rows };
   }
 
   function drawAdr(P) {
     const recs = adrRecs.filter((r) => inP(r.date, P));
     const serious = (r) => /^ร้ายแรง/.test(r.severity || '');
     const byM = P.months.map((m) => { const x = recs.filter((r) => r.date.startsWith(m)); return { m, n: x.length, s: x.filter(serious).length }; });
-    $('adr-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">รายงาน</th><th class="num">ร้ายแรง</th></tr></thead><tbody>' +
-      byM.map((r) => `<tr><td>${mLabel(r.m)}</td><td class="num">${fmt(r.n)}</td><td class="num">${fmt(r.s)}</td></tr>`).join('') +
-      `<tr style="font-weight:700"><td>รวม</td><td class="num">${fmt(recs.length)}</td><td class="num">${fmt(recs.filter(serious).length)}</td></tr></tbody>`;
-    return { n: recs.length, serious: recs.filter(serious).length };
+    const n = recs.length, s = recs.filter(serious).length;
+    $('adr-tiles').innerHTML = tile('รายงานทั้งหมด', fmt(n)) + tile('ร้ายแรง', fmt(s), s ? 'bad' : '') + tile('เฉลี่ยต่อเดือน', fmt(P.months.length ? n / P.months.length : null, 1));
+    chart('ch-adr', { type: 'bar', data: { labels: byM.map((r) => mLabel(r.m)), datasets: [
+      { label: 'ร้ายแรง', data: byM.map((r) => r.s), backgroundColor: css('--bad'), stack: 's' },
+      { label: 'ไม่ร้ายแรง', data: byM.map((r) => r.n - r.s), backgroundColor: css('--mark'), stack: 's' }] },
+      options: opts({ y: 'ราย', stacked: true, unit: ' ราย', legend: true }) });
+    return { n, serious: s, byM };
   }
 
   function drawAde(P) {
     const defs = ha.rdu.defs.filter((d) => d.kind === 'TRIGGER');
-    $('ade-table').innerHTML = '<thead><tr><th>Trigger</th><th class="num">ครั้ง</th></tr></thead><tbody>' +
-      defs.map((d) => `<tr><td>${esc(d.name.replace('ADE trigger: ', ''))}</td><td class="num">${fmt((ha.rdu.values[d.code][P.key] || {}).n)}</td></tr>`).join('') + '</tbody>';
+    const vals = defs.map((d) => ({ d, n: (ha.rdu.values[d.code][P.key] || {}).n || 0 }));
+    hbars('ade', vals.map((x) => ({ label: x.d.name.replace('ADE trigger: ', ''), n: x.n, txt: fmt(x.n) + ' ครั้ง', color: x.n ? css('--bad') : css('--mark-muted') })));
   }
 
-  // ── บริบาลทางเภสัชกรรม ──
+  // ── บริบาล ──
   function drawMedrec(P) {
     const ms = P.months, mr = ha.medrec;
-    const sum = (k) => ms.reduce((s, m) => s + ((mr[m] || {})[k] || 0), 0);
-    const t = { adm: sum('adm'), done: sum('done'), admMeds: sum('admMeds'), doneMeds: sum('doneMeds') };
-    $('medrec-note').textContent = `${P.label}: ทำ ${fmt(t.done)} จาก ${fmt(t.adm)} admit (${fmt(t.adm ? t.done / t.adm * 100 : null, 1)}%) · ` +
-      `เฉพาะผู้ป่วยที่มีประวัติรับยา OPD ใน ${ha.priorDays} วันก่อน admit: ${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} (${fmt(t.admMeds ? t.doneMeds / t.admMeds * 100 : null, 1)}%) — นับจากบันทึก Medication reconciliation ใน HOSxP`;
+    const t = { adm: sumM(mr, P, 'adm'), done: sumM(mr, P, 'done'), admMeds: sumM(mr, P, 'admMeds'), doneMeds: sumM(mr, P, 'doneMeds') };
+    const pm = t.admMeds ? t.doneMeds / t.admMeds * 100 : null, pa = t.adm ? t.done / t.adm * 100 : null;
+    $('medrec-note').textContent = `นับจากบันทึก Medication reconciliation ใน HOSxP · "มียาเดิม" = มีประวัติรับยา OPD ใน ${ha.priorDays} วันก่อน admit`;
+    $('medrec-tiles').innerHTML = tile('ผู้ป่วยที่มียาเดิม', pm == null ? '—' : fmt(pm, 1) + '%', '', `${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} ราย`) +
+      tile('admit ทั้งหมด', pa == null ? '—' : fmt(pa, 1) + '%', '', `${fmt(t.done)} จาก ${fmt(t.adm)} ราย`) + tile('ยังไม่ได้ทำ (มียาเดิม)', fmt(t.admMeds - t.doneMeds), t.admMeds - t.doneMeds ? 'bad' : 'good', 'ราย');
     chart('ch-medrec', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
-      { label: 'ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? x.doneMeds / x.admMeds * 100 : null; }), borderColor: C.primary, backgroundColor: C.primary, tension: .25 },
-      { label: 'admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? x.done / x.adm * 100 : null; }), borderColor: C.muted, backgroundColor: C.muted, tension: .25 }] },
-      options: baseOpts('%', false, 100) });
-    return t;
+      { label: 'ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? +(x.doneMeds / x.admMeds * 100).toFixed(1) : null; }), borderColor: css('--mark'), backgroundColor: css('--mark'), pointRadius: 3 },
+      { label: 'admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? +(x.done / x.adm * 100).toFixed(1) : null; }), borderColor: css('--mark-muted'), backgroundColor: css('--mark-muted'), pointRadius: 3 }] },
+      options: opts({ y: '%', unit: '%', legend: true, yMax: 100 }) });
+    return { ...t, pm };
   }
 
   function drawDrp(P) {
     const vs = clinicVisits.filter((v) => inP(v.date, P));
-    const withDrp = (v) => Array.isArray(v.drps) && v.drps.length > 0;
-    const clinics = ['DM', 'HT', 'COPD'];
-    const row = (label, xs) => `<tr><td>${label}</td><td class="num">${fmt(xs.length)}</td><td class="num">${fmt(xs.filter(withDrp).length)}</td>` +
-      `<td class="num">${fmt(xs.reduce((s, v) => s + (v.drps || []).length, 0))}</td><td class="num">${xs.length ? fmt(xs.filter(withDrp).length / xs.length * 100, 1) + '%' : '—'}</td></tr>`;
-    $('drp-table').innerHTML = '<thead><tr><th>คลินิก</th><th class="num">ครั้งที่พบเภสัช</th><th class="num">ครั้งที่พบ DRP</th><th class="num">จำนวน DRP</th><th class="num">ร้อยละ</th></tr></thead><tbody>' +
-      clinics.map((c) => row(c, vs.filter((v) => v.clinic === c))).join('') + `<tr style="font-weight:700">${row('รวม', vs).slice(4)}</tbody>`;
+    const has = (v) => Array.isArray(v.drps) && v.drps.length > 0;
+    const CL = [['DM', '--s1'], ['HT', '--s2'], ['COPD', '--s3']];
+    const ms = P.months;
+    const pctOf = (xs) => xs.length ? +(xs.filter(has).length / xs.length * 100).toFixed(1) : null;
+    chart('ch-drp', { type: 'line', data: { labels: ms.map(mLabel), datasets: CL.map(([c, col]) => ({
+      label: c, data: ms.map((m) => pctOf(vs.filter((v) => v.clinic === c && v.date.startsWith(m)))), borderColor: css(col), backgroundColor: css(col), pointRadius: 3, spanGaps: true })) },
+      options: opts({ y: '% ครั้งที่พบ DRP', unit: '%', legend: true, yMax: 100 }) });
+    const tot = { visits: vs.length, withDrp: vs.filter(has).length, drp: vs.reduce((s, v) => s + (v.drps || []).length, 0) };
+    $('drp-tiles').innerHTML = tile('ครั้งที่พบเภสัช', fmt(tot.visits)) + tile('พบ DRP', fmt(tot.withDrp), '', tot.visits ? fmt(tot.withDrp / tot.visits * 100, 1) + '% ของครั้ง' : '') +
+      CL.map(([c]) => { const x = vs.filter((v) => v.clinic === c); return tile(c, x.length ? fmt(x.filter(has).length / x.length * 100, 1) + '%' : '—', '', `${fmt(x.filter(has).length)}/${fmt(x.length)} ครั้ง`); }).join('');
     const types = {};
-    vs.forEach((v) => (v.drps || []).forEach((d) => { const t = (d && d.type) || 'ไม่ระบุ'; types[t] = (types[t] || 0) + 1; }));
-    $('drp-types').innerHTML = Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t, n]) => `<span class="chip">${esc(t)} · ${fmt(n)}</span>`).join('');
-    return { visits: vs.length, drp: vs.reduce((s, v) => s + (v.drps || []).length, 0), withDrp: vs.filter(withDrp).length };
+    vs.forEach((v) => (v.drps || []).forEach((d) => { const t = String((d && d.type) || 'ไม่ระบุ').replace(/\s*\(.*\)\s*$/, ''); types[t] = (types[t] || 0) + 1; }));
+    const top = Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    $('drp-type-note').textContent = `${P.label} · ${fmt(tot.drp)} รายการ`;
+    hbars('drp-types', top.map(([t, n]) => ({ label: t, n, txt: fmt(n), color: css('--mark') })));
+    return tot;
   }
 
   // ── บริการ ──
   function drawWait(P) {
     const ms = P.months, w = ha.wait;
-    const sum = (k) => ms.reduce((s, m) => s + ((w[m] || {})[k] || 0), 0);
-    const n = sum('n'), rx = sum('rx'), le30 = sum('le30'), le15 = sum('le15');
-    $('wait-note').textContent = `${P.label}: ได้รับยาภายใน 30 นาที ${fmt(n ? le30 / n * 100 : null, 1)}% · ภายใน 15 นาที ${fmt(n ? le15 / n * 100 : null, 1)}% ` +
-      `(วัดได้ ${fmt(n)} จาก ${fmt(rx)} ใบสั่งยาที่จ่ายที่ห้องจ่ายยา) — นับจากเวลาส่งคิวมาห้องจ่ายยา ถึงเวลากดบันทึกจ่ายยาใน HOSxP; ใบที่ไม่ได้ส่งคิวผ่านระบบวัดไม่ได้`;
+    const n = sumM(w, P, 'n'), rx = sumM(w, P, 'rx'), le30 = sumM(w, P, 'le30'), le15 = sumM(w, P, 'le15');
+    const meds = ms.map((m) => (w[m] || {}).median).filter((x) => x != null);
+    $('wait-note').textContent = `นับจากเวลาส่งคิวมาห้องจ่ายยา ถึงเวลากดบันทึกจ่ายยาใน HOSxP · ใบที่ไม่ได้ส่งคิวผ่านระบบวัดไม่ได้`;
+    $('wait-tiles').innerHTML = tile('ได้รับยาภายใน 30 นาที', n ? fmt(le30 / n * 100, 1) + '%' : '—', n && le30 / n < .9 ? 'bad' : 'good') +
+      tile('ภายใน 15 นาที', n ? fmt(le15 / n * 100, 1) + '%' : '—') +
+      tile('มัธยฐานรายเดือน', meds.length ? `${fmt(Math.min(...meds), 1)}–${fmt(Math.max(...meds), 1)}` : '—', '', 'นาที') +
+      tile('วัดได้', fmt(n), '', `จาก ${fmt(rx)} ใบสั่งยา (${rx ? fmt(n / rx * 100, 0) : '—'}%)`);
     chart('ch-wait', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
-      { label: 'มัธยฐาน (นาที)', data: ms.map((m) => (w[m] || {}).median ?? null), borderColor: C.primary, backgroundColor: C.primary, tension: .25 },
-      { label: 'ร้อยละ 90 ได้รับยาภายใน (นาที)', data: ms.map((m) => (w[m] || {}).p90 ?? null), borderColor: C.gold, backgroundColor: C.gold, tension: .25 }] },
-      options: baseOpts('นาที') });
-    $('wait-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">วัดได้</th><th class="num">มัธยฐาน</th><th class="num">P90</th><th class="num">≤ 30 นาที</th></tr></thead><tbody>' +
-      ms.map((m) => { const x = w[m] || {}; return `<tr><td>${mLabel(m)}</td><td class="num">${fmt(x.n)}</td><td class="num">${fmt(x.median, 1)}</td><td class="num">${fmt(x.p90, 1)}</td><td class="num">${x.n ? fmt(x.le30 / x.n * 100, 1) + '%' : '—'}</td></tr>`; }).join('') + '</tbody>';
+      { label: 'มัธยฐาน', data: ms.map((m) => (w[m] || {}).median ?? null), borderColor: css('--s1'), backgroundColor: css('--s1'), pointRadius: 3 },
+      { label: '90% ได้รับยาภายใน', data: ms.map((m) => (w[m] || {}).p90 ?? null), borderColor: css('--s2'), backgroundColor: css('--s2'), pointRadius: 3 }] },
+      options: opts({ y: 'นาที', unit: ' นาที', legend: true }) });
     return { n, pct30: n ? le30 / n * 100 : null };
   }
 
-  // ── รายเคส (bridge) ──
+  // ── รายเคส ──
   function drawCases(P) {
-    if (!cases) { $('cases').innerHTML = '<p class="empty">เครื่องนี้อ่านรายเคสไม่ได้ (ต้องเปิดจากเครื่องที่ติดตั้ง HOSxP Bridge และรันโปรแกรมดึงตัวชี้วัด)</p>'; return; }
-    const al = (cases.allergy || []).filter((e) => inP(e.date, P) && !e.brandOnly);
-    const ras = (cases.RAS || []).filter((e) => inP(e.date, P));
-    const preg = (cases.PREG || []).filter((e) => inP(e.date, P));
-    const tbl = (title, head, rows) => `<h3>${title} <span class="note">(${rows.length})</span></h3>` + (rows.length
+    if (!cases) { $('cases').innerHTML = '<p class="empty">เครื่องนี้อ่านรายเคสไม่ได้ — ต้องเปิดจากเครื่องที่ติดตั้ง HOSxP Bridge และรันโปรแกรมดึงตัวชี้วัด</p>'; return; }
+    const q = state.q.trim().toLowerCase();
+    const hit = (e) => !q || JSON.stringify(e).toLowerCase().includes(q);
+    const al = (cases.allergy || []).filter((e) => inP(e.date, P) && !e.brandOnly && hit(e));
+    const ras = (cases.RAS || []).filter((e) => inP(e.date, P) && hit(e));
+    const preg = (cases.PREG || []).filter((e) => inP(e.date, P) && hit(e));
+    const tbl = (title, head, rows) => `<h3 style="font-size:14.5px;margin:14px 0 6px">${title} <span class="badge ${rows.length ? 'bad' : 'good'}">${rows.length}</span></h3>` + (rows.length
       ? `<div class="tbl-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<p class="empty">ไม่พบในช่วงนี้</p>');
     $('cases').innerHTML =
       tbl('จ่ายยาที่ผู้ป่วยมีประวัติแพ้', ['วันที่', 'HN', 'ชื่อ', 'ยาที่จ่าย', 'บันทึกแพ้', 'อาการที่บันทึก', 'VN / AN'],
-        al.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.name)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)} (${thDate(e.allergyDate)})</td><td>${esc(e.symptom)}</td><td>${esc(e.an || e.vn)}</td></tr>`)) +
+        al.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.name)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)}<div class="mini">${thDate(e.allergyDate)}</div></td><td>${esc(e.symptom)}</td><td>${esc(e.an || e.vn)}</td></tr>`)) +
       tbl('ผู้ป่วยความดันสูงที่ได้ RAS blockade 2 ชนิดร่วมกัน', ['วันที่', 'HN', 'อายุ', 'ยา', 'VN'],
         ras.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.age)}</td><td>${esc((e.drugs || []).join(', '))}</td><td>${esc(e.vn)}</td></tr>`)) +
       tbl('หญิงตั้งครรภ์ที่ได้รับยาห้ามใช้ (warfarin / statin / ergot)', ['วันที่', 'HN', 'อายุ', 'ยา', 'รหัสตั้งครรภ์ล่าสุด', 'VN'],
@@ -415,73 +650,177 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
     $('cases-note').textContent = `ข้อมูล ณ ${cases.generated ? thDate(cases.generated.slice(0, 10)) + ' ' + cases.generated.slice(11, 16) + ' น.' : '—'} · รายชื่อผู้ป่วยไม่ได้เก็บบนอินเทอร์เน็ต — แสดงเฉพาะเครื่องที่รันโปรแกรมดึงข้อมูลตัวชี้วัด`;
   }
 
-  // ── สรุป ──
-  function drawKpis(P, me, adr, mr, drp, wt) {
+  // ── ภาพรวม ──
+  function spark(vals, col, tgt) {
+    const xs = vals.map((v, i) => [i, v]).filter(([, v]) => v != null);
+    if (xs.length < 2) return '<svg class="spark"></svg>';
+    const all = xs.map(([, v]) => v).concat(tgt != null ? [tgt] : []);
+    const lo = Math.min(0, ...all), hi = Math.max(...all) || 1, W = 200, H = 30, n = vals.length - 1 || 1;
+    const X = (i) => (i / n) * (W - 4) + 2, Y = (v) => H - 3 - ((v - lo) / (hi - lo || 1)) * (H - 6);
+    const path = xs.map(([i, v], k) => `${k ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+    const last = xs[xs.length - 1];
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` +
+      (tgt != null ? `<line x1="0" x2="${W}" y1="${Y(tgt)}" y2="${Y(tgt)}" stroke="${css('--target')}" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>` : '') +
+      `<path d="${path}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` +
+      `<circle cx="${X(last[0])}" cy="${Y(last[1])}" r="2.5" fill="${col}"/></svg>`;
+  }
+  function tile(k, x, cls, y) { return `<div class="tile"><div class="k">${esc(k)}</div><div class="x ${cls || ''}">${x}</div>${y ? `<div class="mini">${esc(y)}</div>` : ''}</div>`; }
+  function hbars(id, rows) {
+    const max = Math.max(1, ...rows.map((r) => r.n));
+    $(id).innerHTML = rows.length ? rows.map((r) => `<div class="hbar" title="${esc(r.label)}: ${esc(r.txt)}"><span class="lab">${esc(r.label)}</span>` +
+      `<span class="t"><i style="width:${r.n / max * 100}%;background:${r.color}"></i></span><span class="n">${esc(r.txt)}</span></div>`).join('') : '<p class="empty">ไม่มีข้อมูลในช่วงนี้</p>';
+  }
+  function setCnt(id, n) { const el = $(id); if (!el) return; el.hidden = !n; el.textContent = n; }
+
+  function drawOverview(P, x) {
     const st = rduStats(P);
-    const al = P.months.reduce((s, m) => s + ((ha.allergy.months[m] || {}).n || 0), 0);
-    const k = (href, lbl, val, sub, cls) => `<a class="kpi ${cls || ''}" href="${href}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></a>`;
-    const opd = rate(me.opd, me.opdD), ipd = rate(me.ipd, me.ipdD);
+    $('score-big').innerHTML = `${st.passN}<small> / ${st.evalN}</small>`;
+    $('score-sub').innerHTML = st.evalN ? (st.passN >= st.min ? badge('good', `ผ่านเกณฑ์ (≥ ${st.min})`) : badge('bad', `ยังไม่ผ่านเกณฑ์ (≥ ${st.min})`)) : '';
+    $('score-note').textContent = `${P.label} · ${ha.rdu.editionName || ''}`;
+    $('score-dots').innerHTML = st.st.map(({ d, p }) => `<button type="button" class="dot ${stOf(p)}" data-code="${esc(d.code)}" title="${esc(d.no + '. ' + shortName(d))} — ${valTxt(d, rduValue(d, ha.rdu.values[d.code][P.key]))} (เป้า ${tgtTxt(d)})">${esc(d.no)}</button>`).join('');
+    document.querySelectorAll('.dot').forEach((b) => b.addEventListener('click', () => { state.rdu = b.dataset.code; show('rdu'); }));
+    const ms = P.months;
+    const k = (view, lbl, val, sub, st2, vals, tgt) => `<button type="button" class="kpi" data-go="${view}"><div class="lbl">${lbl}</div>` +
+      (st2 ? badge(st2, st2 === 'good' ? 'ถึงเป้า' : st2 === 'bad' ? 'ไม่ถึงเป้า' : '') : '') +
+      `<div class="val">${val}</div><div class="sub">${sub}</div>${spark(vals, st2 === 'bad' ? css('--bad') : css('--mark'), tgt)}</button>`;
+    const al = x.allergy, me = x.me, mr = x.mr, wt = x.wt, drp = x.drp, adr = x.adr;
+    const mrM = ms.map((m) => { const r = ha.medrec[m]; return r && r.admMeds ? r.doneMeds / r.admMeds * 100 : null; });
     $('kpis').innerHTML = [
-      k('#sec-rdu', 'RDU Hospital ผ่าน', `${st.passN}/${st.evalN}`, `เกณฑ์ผ่าน ≥ ${ha.rdu.passMin || 10} จาก ${st.total} ตัว`, st.evalN ? (st.passN >= (ha.rdu.passMin || 10) ? 'good' : 'bad') : ''),
-      k('#sec-safety', 'จ่ายยาที่มีประวัติแพ้', fmt(al), 'ครั้ง (เป้าหมาย 0)', al ? 'bad' : 'good'),
-      k('#sec-safety', 'ME OPD / 1,000 ใบสั่งยา', fmt(opd, 2), `${fmt(me.opd)} รายการ (เป้า ≤ 20)`, opd != null && opd > 20 ? 'bad' : ''),
-      k('#sec-safety', 'ME IPD / 1,000 วันนอน', fmt(ipd, 2), `${fmt(me.ipd)} รายการ (เป้า ≤ 10)`, ipd != null && ipd > 10 ? 'bad' : ''),
-      k('#sec-safety', 'ME ระดับ E–I', fmt(me.sev), 'รายการ (OPD + IPD + ER)', me.sev ? 'bad' : ''),
-      k('#sec-safety', 'ADR ที่รายงาน', fmt(adr.n), `ร้ายแรง ${fmt(adr.serious)} ราย`),
-      k('#sec-care', 'Med reconciliation', mr.admMeds ? fmt(mr.doneMeds / mr.admMeds * 100, 1) + '%' : '—', `ผู้ป่วยในที่มียาเดิม ${fmt(mr.doneMeds)}/${fmt(mr.admMeds)}`),
-      k('#sec-care', 'DRP ที่พบในคลินิก', fmt(drp.drp), `ใน ${fmt(drp.withDrp)} จาก ${fmt(drp.visits)} ครั้งที่พบเภสัช`),
-      k('#sec-service', 'รับยา OPD ภายใน 30 นาที', wt.pct30 == null ? '—' : fmt(wt.pct30, 1) + '%', `วัดได้ ${fmt(wt.n)} ใบสั่งยา`),
+      k('safety', 'จ่ายยาที่มีประวัติแพ้', fmt(al.n) + '<small> ครั้ง</small>', 'เป้าหมาย 0', al.n ? 'bad' : 'good', ms.map((m) => (ha.allergy.months[m] || {}).n || 0), 0),
+      k('safety', 'ME OPD', fmt(me.rOpd, 2), `ต่อ 1,000 ใบสั่งยา · เป้า ≤ 20`, me.rOpd == null ? '' : me.rOpd > 20 ? 'bad' : 'good', me.rows.map((r) => rate(r.opd, r.opdD)), 20),
+      k('safety', 'ME IPD', fmt(me.rIpd, 2), `ต่อ 1,000 วันนอน · เป้า ≤ 10`, me.rIpd == null ? '' : me.rIpd > 10 ? 'bad' : 'good', me.rows.map((r) => rate(r.ipd, r.ipdD)), 10),
+      k('safety', 'ADR ที่รายงาน', fmt(adr.n) + '<small> ราย</small>', `ร้ายแรง ${fmt(adr.serious)} ราย`, '', adr.byM.map((r) => r.n)),
+      k('care', 'Med reconciliation', mr.pm == null ? '—' : fmt(mr.pm, 1) + '<small>%</small>', `ผู้ป่วยในที่มียาเดิม ${fmt(mr.doneMeds)}/${fmt(mr.admMeds)}`, '', mrM),
+      k('care', 'DRP ในคลินิก', fmt(drp.drp) + '<small> รายการ</small>', `ใน ${fmt(drp.withDrp)} จาก ${fmt(drp.visits)} ครั้งที่พบเภสัช`, '',
+        ms.map((m) => clinicVisits.filter((v) => (v.date || '').startsWith(m)).reduce((s, v) => s + (v.drps || []).length, 0))),
+      k('service', 'รับยา OPD ภายใน 30 นาที', wt.pct30 == null ? '—' : fmt(wt.pct30, 1) + '<small>%</small>', `วัดได้ ${fmt(wt.n)} ใบสั่งยา`, '',
+        ms.map((m) => { const r = ha.wait[m]; return r && r.n ? r.le30 / r.n * 100 : null; })),
+      k('safety', 'ME ระดับ E–I', fmt(me.sev) + '<small> รายการ</small>', 'ถึงผู้ป่วยและเกิดอันตราย', me.sev ? 'bad' : 'good', me.rows.map((r) => r.sev), 0),
     ].join('');
+    document.querySelectorAll('.kpi').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
+    // ประเด็นที่ควรทบทวน
+    const items = [];
+    st.st.filter((s) => s.p === false).forEach(({ d }) => items.push({ cls: 'bad', go: 'rdu', code: d.code,
+      t: `RDU ข้อ ${d.no} ไม่ผ่าน: ${shortName(d)}`, d: `ผลงาน ${valTxt(d, rduValue(d, ha.rdu.values[d.code][P.key]))} · เป้า ${tgtTxt(d)}` }));
+    if (al.n) items.push({ cls: 'bad', go: 'safety', t: `จ่ายยาที่ผู้ป่วยมีประวัติแพ้ ${fmt(al.n)} ครั้ง`, d: 'ทบทวนรายเคสและระบบแจ้งเตือนแพ้ยา' });
+    if (me.rIpd != null && me.rIpd > 10) items.push({ cls: 'bad', go: 'safety', t: `ME IPD ${fmt(me.rIpd, 2)} ต่อ 1,000 วันนอน (เป้า ≤ 10)`, d: `${fmt(me.ipd)} รายการ` });
+    if (me.rOpd != null && me.rOpd > 20) items.push({ cls: 'bad', go: 'safety', t: `ME OPD ${fmt(me.rOpd, 2)} ต่อ 1,000 ใบสั่งยา (เป้า ≤ 20)`, d: `${fmt(me.opd)} รายการ` });
+    if (me.sev) items.push({ cls: 'bad', go: 'safety', t: `ME ระดับ E–I ${fmt(me.sev)} รายการ`, d: 'ความคลาดเคลื่อนที่ถึงผู้ป่วยและเกิดอันตราย' });
+    if (mr.pm != null && mr.pm < 50) items.push({ cls: 'warn', go: 'care', t: `Med reconciliation ${fmt(mr.pm, 1)}% ของผู้ป่วยในที่มียาเดิม`, d: `ยังไม่ได้ทำ ${fmt(mr.admMeds - mr.doneMeds)} ราย` });
+    if (adr.serious) items.push({ cls: 'warn', go: 'safety', t: `ADR ร้ายแรง ${fmt(adr.serious)} ราย`, d: `จากที่รายงานทั้งหมด ${fmt(adr.n)} ราย` });
+    $('alerts').innerHTML = items.length ? items.map((it) => `<button type="button" class="alert ${it.cls}" data-go="${it.go}" data-code="${esc(it.code || '')}">` +
+      `<span class="ic">${it.cls === 'bad' ? '✕' : '!'}</span><span><b>${esc(it.t)}</b><div class="d">${esc(it.d)}</div></span></button>`).join('')
+      : `<div class="alert good"><span class="ic">✓</span><span><b>ทุกตัวชี้วัดถึงเป้าในช่วงนี้</b></span></div>`;
+    document.querySelectorAll('.alert[data-go]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.code) state.rdu = b.dataset.code; show(b.dataset.go); }));
+    setCnt('cnt-safety', (al.n ? 1 : 0) + (me.rIpd > 10 ? 1 : 0) + (me.rOpd > 20 ? 1 : 0) + (me.sev ? 1 : 0));
   }
 
-  // ── chart helpers ──
-  function baseOpts(yTitle, stacked, yMax) {
-    return { responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Noto Sans Thai' } } } },
-      scales: { x: { stacked: !!stacked, grid: { display: false }, ticks: { font: { family: 'Noto Sans Thai', size: 11 } } },
-        y: { stacked: !!stacked, beginAtZero: true, max: yMax, title: { display: !!yTitle, text: yTitle, font: { family: 'Noto Sans Thai' } }, ticks: { precision: 0 } } } };
+  // ── charts ──
+  function opts({ y, unit = '', stacked, legend, yMax, small }) {
+    const grid = css('--grid'), t3 = css('--text-3'), t1 = css('--text');
+    return {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 6, right: 6 } },
+      elements: { line: { borderWidth: 2, tension: .3 }, point: { radius: 0, hoverRadius: 5, hitRadius: 12, borderWidth: 0 },
+        bar: { borderRadius: 4, borderSkipped: 'bottom', borderWidth: 0, maxBarThickness: 26 } },
+      datasets: { bar: { categoryPercentage: .7, barPercentage: .9 } },
+      plugins: {
+        legend: { display: !!legend, position: 'bottom', align: 'start', labels: { color: t3, usePointStyle: true, pointStyle: 'line', boxWidth: 18, font: { family: 'Noto Sans Thai', size: 12 } } },
+        tooltip: { backgroundColor: css('--surface'), titleColor: t3, bodyColor: t1, borderColor: css('--border'), borderWidth: 1, padding: 10, boxPadding: 4,
+          usePointStyle: true, titleFont: { family: 'Noto Sans Thai', size: 12 }, bodyFont: { family: 'Noto Sans Thai', size: 13, weight: '600' },
+          callbacks: { label: (c) => c.parsed.y == null ? null : ` ${fmt(c.parsed.y, Number.isInteger(c.parsed.y) ? 0 : 2)}${unit}  ${c.dataset.label}` } },
+      },
+      scales: {
+        x: { stacked: !!stacked, grid: { display: false }, border: { color: grid }, ticks: { color: t3, maxRotation: 0, autoSkip: true, autoSkipPadding: 8, font: { family: 'Noto Sans Thai', size: small ? 10 : 11 } } },
+        y: { stacked: !!stacked, beginAtZero: true, max: yMax, grid: { color: grid }, border: { display: false },
+          title: { display: !!y && !small, text: y, color: t3, font: { family: 'Noto Sans Thai', size: 11 } },
+          ticks: { color: t3, precision: 0, maxTicksLimit: small ? 4 : 6, font: { family: 'Noto Sans Thai', size: 11 } } },
+      },
+    };
   }
   function chart(id, cfg) {
-    if (charts[id]) charts[id].destroy();
     const el = $(id);
-    if (el) charts[id] = new Chart(el.getContext('2d'), cfg);
+    if (!el) return;
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(el.getContext('2d'), cfg);
+    const tv = $('tv-' + id);
+    if (tv) {  // ตารางแทนกราฟ (ปุ่ม "ตาราง")
+      const ds = cfg.data.datasets.filter((d) => d.label !== 'เป้าหมาย');
+      tv.innerHTML = `<table><thead><tr><th>เดือน</th>${ds.map((d) => `<th class="num">${esc(d.label)}</th>`).join('')}</tr></thead><tbody>` +
+        cfg.data.labels.map((l, i) => `<tr><td>${esc(l)}</td>${ds.map((d) => `<td class="num">${d.data[i] == null ? '—' : fmt(d.data[i], Number.isInteger(d.data[i]) ? 0 : 1)}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+    }
   }
 
-  // ── render ──
-  let last = {};
+  // ── render / navigation ──
   function render() {
-    if (!ha) return;
+    if (!ha || !state.fy) return;
     const P = period();
     drawRdu(P);
-    drawAllergy(P);
-    const me = drawMe(P), adr = drawAdr(P);
+    const allergy = drawAllergy(P), me = drawMe(P), adr = drawAdr(P);
     drawAde(P);
     const mr = drawMedrec(P), drp = drawDrp(P), wt = drawWait(P);
     drawCases(P);
-    drawKpis(P, me, adr, mr, drp, wt);
-    last = { P, me, adr, mr, drp, wt };
+    drawOverview(P, { allergy, me, adr, mr, drp, wt });
+    document.querySelectorAll('.view').forEach((v) => v.classList.remove('loading'));
+  }
+  function show(view) {
+    state.view = view;
+    document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.v === view)));
+    document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
+    try { history.replaceState(null, '', '#' + view); } catch (e) {}
+    if (view === 'rdu' && ha) drawRdu(period());
+    Object.values(charts).forEach((c) => c.resize());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function fillFy() {
+    const fys = [...new Set(ha.months.map(fyOf))].sort((a, b) => a - b);
+    const latest = ha.months[ha.months.length - 1];
+    if (!state.fy || !fys.includes(state.fy)) {  // ต้นปีงบ (ยังไม่ถึง 2 เดือน) เปิดที่ปีงบก่อนหน้า
+      const top = fys[fys.length - 1];
+      state.fy = fyMonths(top).filter((m) => m <= latest).length < 2 && fys.length > 1 ? fys[fys.length - 2] : top;
+    }
+    $('seg-fy').innerHTML = fys.map((f) => `<button type="button" data-fy="${f}" aria-pressed="${f === state.fy}">ปีงบ ${f}</button>`).join('');
+    document.querySelectorAll('#seg-fy button').forEach((b) => b.addEventListener('click', () => {
+      state.fy = +b.dataset.fy;
+      document.querySelectorAll('#seg-fy button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      render();
+    }));
   }
 
-  function fillFy() {
-    const fys = [...new Set(ha.months.map(fyOf))].sort((a, b) => b - a);
-    const cur = $('fy').value;
-    $('fy').innerHTML = fys.map((f) => `<option value="${f}">ปีงบ ${f}</option>`).join('');
-    // ต้นปีงบ (ยังไม่ถึง 2 เดือน) เปิดที่ปีงบก่อนหน้าเป็นค่าเริ่มต้น
-    const latest = ha.months[ha.months.length - 1];
-    const def = fyMonths(fys[0]).filter((m) => m <= latest).length < 2 && fys[1] ? fys[1] : fys[0];
-    $('fy').value = cur && fys.includes(+cur) ? cur : def;
-  }
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.v)));
+  document.querySelectorAll('#seg-half button').forEach((b) => b.addEventListener('click', () => {
+    state.half = b.dataset.h;
+    document.querySelectorAll('#seg-half button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  }));
+  document.querySelectorAll('[data-tbl]').forEach((b) => b.addEventListener('click', () => {
+    const card = $(b.dataset.tbl), on = !card.classList.contains('show-table');
+    card.classList.toggle('show-table', on);
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'กราฟ' : 'ตาราง';
+  }));
+  $('btn-brand').addEventListener('click', () => {
+    state.showBrand = !state.showBrand;
+    $('btn-brand').setAttribute('aria-pressed', String(state.showBrand));
+    $('btn-brand').textContent = state.showBrand ? 'ซ่อนที่ไม่นับ' : 'แสดงที่ไม่นับ';
+    if (ha) drawAllergy(period());
+  });
+  $('case-q').addEventListener('input', (e) => { state.q = e.target.value; if (ha) drawCases(period()); });
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq.addEventListener) mq.addEventListener('change', render);
+  const startView = (location.hash || '').slice(1);
+  if (['overview', 'rdu', 'safety', 'care', 'service', 'cases'].includes(startView)) show(startView);
 
   // ── Excel ──
-  function exportXlsx() {
+  $('btn-xlsx').addEventListener('click', () => {
     if (!ha || typeof XLSX === 'undefined') return;
     const P = period(), wb = XLSX.utils.book_new();
-    const add = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ ข้อมูล: 'ไม่มี' }]); XLSX.utils.book_append_sheet(wb, ws, name); };
-    const ms = fyMonths(P.fy).filter((m) => ha.months.includes(m));
+    const add = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ ข้อมูล: 'ไม่มี' }]), name);
     add('RDU', ha.rdu.defs.map((d) => {
       const o = { ข้อ: d.no, ตัวชี้วัด: d.name, เป้าหมาย: tgtTxt(d) };
       [`FY${P.fy}`, `FY${P.fy}H1`, `FY${P.fy}H2`].forEach((k) => { const x = ha.rdu.values[d.code][k]; const v = rduValue(d, x); o[k.replace('FY', 'ปีงบ ')] = v == null ? '' : +v.toFixed(2); o[k.replace('FY', 'ตัวตั้ง/ตัวหาร ')] = x ? (x.d != null ? `${x.n}/${x.d}` : `${x.n}`) : ''; });
-      ms.forEach((m) => { const v = rduValue(d, ha.rdu.values[d.code][m]); o[mLabel(m)] = v == null ? '' : +v.toFixed(2); });
+      fyMonths(P.fy).filter((m) => ha.months.includes(m)).forEach((m) => { const v = rduValue(d, ha.rdu.values[d.code][m]); o[mLabel(m)] = v == null ? '' : +v.toFixed(2); });
       o.สถานะ = d.scored ? ({ true: 'ผ่าน', false: 'ไม่ผ่าน' }[String(pass(d, rduValue(d, ha.rdu.values[d.code][`FY${P.fy}`])))] || '') : 'เฝ้าระวัง';
       return o;
     }));
@@ -489,20 +828,18 @@ details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
     add('ME', meMonthly(P).map((r) => ({ เดือน: r.m, ME_OPD: r.opd, ใบสั่งยา_OPD: r.opdD, อัตรา_OPD: rate(r.opd, r.opdD), ME_IPD: r.ipd, วันนอน: r.ipdD, อัตรา_IPD: rate(r.ipd, r.ipdD), ME_ER: r.er, ใบสั่งยา_ER: r.erD, อัตรา_ER: rate(r.er, r.erD), ระดับ_E_I: r.sev })));
     add('MedRec', P.months.map((m) => { const x = ha.medrec[m] || {}; return { เดือน: m, admit: x.adm || 0, ทำ_MedRec: x.done || 0, admit_มียาเดิม: x.admMeds || 0, ทำ_MedRec_มียาเดิม: x.doneMeds || 0 }; }));
     add('รอรับยา OPD', P.months.map((m) => { const x = ha.wait[m] || {}; return { เดือน: m, วัดได้: x.n || 0, ใบสั่งยาที่จ่าย: x.rx || 0, มัธยฐาน_นาที: x.median ?? '', P90_นาที: x.p90 ?? '', ภายใน30นาที: x.le30 || 0 }; }));
-    XLSX.writeFile(wb, `ตัวชี้วัดเภสัชกรรม_HA_${P.label.replace(/\s+/g, '_')}.xlsx`);
-  }
+    XLSX.writeFile(wb, `ตัวชี้วัดเภสัชกรรม_HA_${P.label.replace(/[\s()]+/g, '_')}.xlsx`);
+  });
 
   // ── load ──
-  $('fy').addEventListener('change', render);
-  $('half').addEventListener('change', render);
-  $('btn-xlsx').addEventListener('click', exportXlsx);
+  document.querySelectorAll('.view').forEach((v) => v.classList.add('loading'));
   try {
     if (!firebase.apps.length) firebase.initializeApp(config);
     const db = firebase.firestore();
     db.collection(COL).doc('pharmacy_ha').onSnapshot((snap) => {
       try { ha = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { ha = null; }
       if (!ha) { $('updated').textContent = 'ยังไม่มีข้อมูล — รอโปรแกรมดึงตัวชี้วัดจาก HOSxP รันรอบแรก'; return; }
-      $('updated').textContent = `อัปเดตจาก HOSxP ${thDate(ha.generated.slice(0, 10))} ${ha.generated.slice(11, 16)} น.`;
+      $('updated').textContent = `อัปเดตจาก HOSxP ${thDate(ha.generated.slice(0, 10))} ${ha.generated.slice(11, 16)} น. · ดึงอัตโนมัติทุกวัน`;
       fillFy();
       drawDrugGroups();
       render();
