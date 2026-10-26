@@ -518,20 +518,27 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
 
   // ── ความปลอดภัย ──
   function allergyStats(P) {
-    return { n: sumM(ha.allergy.months, P, 'n'), brand: sumM(ha.allergy.months, P, 'brand'), opd: sumM(ha.allergy.months, P, 'opd'), ipd: sumM(ha.allergy.months, P, 'ipd') };
+    const g = (k) => sumM(ha.allergy.months, P, k);
+    return { n: g('n'), brand: g('brand'), watch: g('watch'), unspec: g('unspec'), opd: g('opd'), ipd: g('ipd') };
   }
+  // ประเภทบันทึกแพ้ใน HOSxP → เหตุผลที่นับ/ไม่นับ
+  const CLS = { count: 'แพ้ยา — นับ', unspec: 'ไม่ระบุว่าแพ้ยาหรือเฝ้าระวัง — ควรแก้ใน HOSxP', watch: 'เฝ้าระวังการใช้ยา (ผลข้างเคียง) — ไม่นับ', brand: 'แพ้เฉพาะยี่ห้อ / ทนยาได้ — ไม่นับ' };
+  const clsOf = (e) => e.cls || (e.brandOnly ? 'brand' : 'count');
   function drawAllergy(P) {
     const a = ha.allergy, s = allergyStats(P), ms = P.trend;
-    $('allergy-note').textContent = `เป้าหมาย 0 · ตรวจจากบันทึกแพ้ยา ${fmt(a.allergies)} รายการ (ไม่นับ Type A) — จับคู่ชื่อยาไม่ได้ ${fmt(a.unmatched)} รายการ`;
-    $('allergy-tiles').innerHTML = tile('นับเป็นแพ้ยาซ้ำ', fmt(s.n), s.n ? 'bad' : 'good') + tile('OPD / IPD', `${fmt(s.opd)} / ${fmt(s.ipd)}`) + tile('แพ้เฉพาะยี่ห้อ / ทนได้ (ไม่นับ)', fmt(s.brand));
+    $('allergy-note').textContent = `เป้าหมาย 0 · นับเฉพาะที่ลงใน HOSxP เป็น "แพ้ยา" — ที่ลงเป็น "เฝ้าระวังการใช้ยา" (ผลข้างเคียง) สั่งต่อได้ ไม่นับ · ตรวจจากบันทึก ${fmt(a.allergies)} รายการ (ไม่นับ Type A) — จับคู่ชื่อยาไม่ได้ ${fmt(a.unmatched)} รายการ`;
+    $('allergy-tiles').innerHTML = tile('แพ้ยาซ้ำ (นับ)', fmt(s.n), s.n ? 'bad' : 'good', `OPD ${fmt(s.opd)} · IPD ${fmt(s.ipd)}`) +
+      tile('ไม่ระบุประเภท', fmt(s.unspec), s.unspec ? 'bad' : '', 'ควรแก้ใน HOSxP') +
+      tile('เฝ้าระวังการใช้ยา', fmt(s.watch), '', 'ผลข้างเคียง — ไม่นับ') + tile('แพ้เฉพาะยี่ห้อ / ทนได้', fmt(s.brand), '', 'ไม่นับ');
     chart('ch-allergy', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [
-      { label: 'นับเป็นแพ้ยาซ้ำ', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: css('--bad'), stack: 's' },
-      { label: 'แพ้เฉพาะยี่ห้อ / ทนได้', data: ms.map((m) => (a.months[m] || {}).brand || 0), backgroundColor: css('--mark-muted'), stack: 's' }] },
+      { label: 'แพ้ยาซ้ำ (นับ)', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: css('--bad'), stack: 's' },
+      { label: 'ไม่ระบุประเภท', data: ms.map((m) => (a.months[m] || {}).unspec || 0), backgroundColor: css('--target'), stack: 's' },
+      { label: 'เฝ้าระวัง / แพ้เฉพาะยี่ห้อ (ไม่นับ)', data: ms.map((m) => ((a.months[m] || {}).watch || 0) + ((a.months[m] || {}).brand || 0)), backgroundColor: css('--mark-muted'), stack: 's' }] },
       options: opts({ y: 'ครั้ง', stacked: true, unit: ' ครั้ง', legend: true }) });
-    const ev = a.events.filter((e) => inP(e.date, P) && (state.showBrand || !e.brandOnly)).slice().reverse();
+    const ev = a.events.filter((e) => inP(e.date, P) && (state.showBrand || ['count', 'unspec'].includes(clsOf(e)))).slice().reverse();
     $('allergy-table').innerHTML = ev.length ? '<thead><tr><th>วันที่จ่าย</th><th>ยาที่จ่าย</th><th>บันทึกแพ้</th><th>จุดบริการ</th></tr></thead><tbody>' +
-      ev.map((e) => `<tr${e.brandOnly ? ' style="color:var(--text-3)"' : ''}><td style="white-space:nowrap">${thDate(e.date)}</td><td>${esc(e.drug)}</td>` +
-        `<td>${esc(e.agent)}<div class="mini">บันทึก ${thDate(e.allergyDate)}${e.brandOnly ? ' · แพ้เฉพาะยี่ห้อ/ทนได้' : ''}</div></td><td>${esc(e.setting)}<div class="mini">${esc(e.dept)}</div></td></tr>`).join('') + '</tbody>'
+      ev.map((e) => `<tr${['watch', 'brand'].includes(clsOf(e)) ? ' style="color:var(--text-3)"' : ''}><td style="white-space:nowrap">${thDate(e.date)}</td><td>${esc(e.drug)}</td>` +
+        `<td>${esc(e.agent)}<div class="mini">บันทึก ${thDate(e.allergyDate)} · ${esc(CLS[clsOf(e)])}</div></td><td>${esc(e.setting)}<div class="mini">${esc(e.dept)}</div></td></tr>`).join('') + '</tbody>'
       : '<tbody><tr><td class="empty">ไม่พบในช่วงนี้ 🎉</td></tr></tbody>';
     return s;
   }
@@ -595,12 +602,13 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     const ms = P.trend, mr = ha.medrec;
     const t = { adm: sumM(mr, P, 'adm'), done: sumM(mr, P, 'done'), admMeds: sumM(mr, P, 'admMeds'), doneMeds: sumM(mr, P, 'doneMeds') };
     const pm = t.admMeds ? t.doneMeds / t.admMeds * 100 : null, pa = t.adm ? t.done / t.adm * 100 : null;
-    $('medrec-note').textContent = `นับจากบันทึก Medication reconciliation ใน HOSxP · "มียาเดิม" = มีประวัติรับยา OPD ใน ${ha.priorDays} วันก่อน admit`;
-    $('medrec-tiles').innerHTML = tile('ผู้ป่วยที่มียาเดิม', pm == null ? '—' : fmt(pm, 1) + '%', '', `${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} ราย`) +
-      tile('admit ทั้งหมด', pa == null ? '—' : fmt(pa, 1) + '%', '', `${fmt(t.done)} จาก ${fmt(t.adm)} ราย`) + tile('ยังไม่ได้ทำ (มียาเดิม)', fmt(t.admMeds - t.doneMeds), t.admMeds - t.doneMeds ? 'bad' : 'good', 'ราย');
+    $('medrec-note').textContent = `ห้องยาทำ Medication reconciliation ผู้ป่วยในทุกราย โดยลงในใบ MR (กระดาษ A4) ยังไม่ได้ลงใน HOSxP จนกว่าจะใช้ใบที่ซื้อไว้หมด — กราฟด้านล่างจึงเป็นเพียงสัดส่วนที่ "บันทึกในระบบ HOSxP" ไม่ใช่ผลงานจริง · "มียาเดิม" = มีประวัติรับยา OPD ใน ${ha.priorDays} วันก่อน admit`;
+    $('medrec-tiles').innerHTML = tile('admit ทั้งหมด', fmt(t.adm), '', 'ราย — ทำ MR ทุกรายบนใบ MR') + tile('มียาเดิม', fmt(t.admMeds), '', 'ราย') +
+      tile('บันทึกใน HOSxP (มียาเดิม)', pm == null ? '—' : fmt(pm, 1) + '%', '', `${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} ราย`) +
+      tile('บันทึกใน HOSxP (ทั้งหมด)', pa == null ? '—' : fmt(pa, 1) + '%', '', `${fmt(t.done)} จาก ${fmt(t.adm)} ราย`);
     chart('ch-medrec', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
-      { label: 'ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? +(x.doneMeds / x.admMeds * 100).toFixed(1) : null; }), borderColor: css('--mark'), backgroundColor: css('--mark'), pointRadius: 3 },
-      { label: 'admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? +(x.done / x.adm * 100).toFixed(1) : null; }), borderColor: css('--mark-muted'), backgroundColor: css('--mark-muted'), pointRadius: 3 }] },
+      { label: 'บันทึกใน HOSxP — ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? +(x.doneMeds / x.admMeds * 100).toFixed(1) : null; }), borderColor: css('--mark'), backgroundColor: css('--mark'), pointRadius: 3 },
+      { label: 'บันทึกใน HOSxP — admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? +(x.done / x.adm * 100).toFixed(1) : null; }), borderColor: css('--mark-muted'), backgroundColor: css('--mark-muted'), pointRadius: 3 }] },
       options: opts({ y: '%', unit: '%', legend: true }) });
     return { ...t, pm };
   }
@@ -647,14 +655,14 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     if (!cases) { $('cases').innerHTML = '<p class="empty">เครื่องนี้อ่านรายเคสไม่ได้ — ต้องเปิดจากเครื่องที่ติดตั้ง HOSxP Bridge และรันโปรแกรมดึงตัวชี้วัด</p>'; return; }
     const q = state.q.trim().toLowerCase();
     const hit = (e) => !q || JSON.stringify(e).toLowerCase().includes(q);
-    const al = (cases.allergy || []).filter((e) => inP(e.date, P) && !e.brandOnly && hit(e));
+    const al = (cases.allergy || []).filter((e) => inP(e.date, P) && ['count', 'unspec'].includes(clsOf(e)) && hit(e));
     const ras = (cases.RAS || []).filter((e) => inP(e.date, P) && hit(e));
     const preg = (cases.PREG || []).filter((e) => inP(e.date, P) && hit(e));
     const tbl = (title, head, rows) => `<h3 style="font-size:14.5px;margin:14px 0 6px">${title} <span class="badge ${rows.length ? 'bad' : 'good'}">${rows.length}</span></h3>` + (rows.length
       ? `<div class="tbl-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<p class="empty">ไม่พบในช่วงนี้</p>');
     $('cases').innerHTML =
       tbl('จ่ายยาที่ผู้ป่วยมีประวัติแพ้', ['วันที่', 'HN', 'ชื่อ', 'ยาที่จ่าย', 'บันทึกแพ้', 'อาการที่บันทึก', 'VN / AN'],
-        al.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.name)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)}<div class="mini">${thDate(e.allergyDate)}</div></td><td>${esc(e.symptom)}</td><td>${esc(e.an || e.vn)}</td></tr>`)) +
+        al.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.name)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)}<div class="mini">${thDate(e.allergyDate)} · ${esc(CLS[clsOf(e)])}</div></td><td>${esc(e.symptom)}</td><td>${esc(e.an || e.vn)}</td></tr>`)) +
       tbl('ผู้ป่วยความดันสูงที่ได้ RAS blockade 2 ชนิดร่วมกัน', ['วันที่', 'HN', 'อายุ', 'ยา', 'VN'],
         ras.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.age)}</td><td>${esc((e.drugs || []).join(', '))}</td><td>${esc(e.vn)}</td></tr>`)) +
       tbl('หญิงตั้งครรภ์ที่ได้รับยาห้ามใช้ (warfarin / statin / ergot)', ['วันที่', 'HN', 'อายุ', 'ยา', 'รหัสตั้งครรภ์ล่าสุด', 'VN'],
@@ -702,7 +710,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
       k('safety', 'ME OPD', fmt(me.rOpd, 2), `ต่อ 1,000 ใบสั่งยา · เป้า ≤ 20`, me.rOpd == null ? '' : me.rOpd > 20 ? 'bad' : 'good', meTrend.map((r) => rate(r.opd, r.opdD)), 20),
       k('safety', 'ME IPD', fmt(me.rIpd, 2), `ต่อ 1,000 วันนอน · เป้า ≤ 10`, me.rIpd == null ? '' : me.rIpd > 10 ? 'bad' : 'good', meTrend.map((r) => rate(r.ipd, r.ipdD)), 10),
       k('safety', 'ADR ที่รายงาน', fmt(adr.n) + '<small> ราย</small>', `ร้ายแรง ${fmt(adr.serious)} ราย`, '', adr.byM.map((r) => r.n)),
-      k('care', 'Med reconciliation', mr.pm == null ? '—' : fmt(mr.pm, 1) + '<small>%</small>', `ผู้ป่วยในที่มียาเดิม ${fmt(mr.doneMeds)}/${fmt(mr.admMeds)}`, '', mrM),
+      k('care', 'Med reconciliation', 'ทุกราย', `${fmt(mr.adm)} admit · ลงใบ MR กระดาษ (ใน HOSxP ${mr.pm == null ? '—' : fmt(mr.pm, 1) + '%'})`, '', mrM),
       k('care', 'DRP ในคลินิก', fmt(drp.drp) + '<small> รายการ</small>', `ใน ${fmt(drp.withDrp)} จาก ${fmt(drp.visits)} ครั้งที่พบเภสัช`, '',
         ms.map((m) => clinicVisits.filter((v) => (v.date || '').startsWith(m)).reduce((s, v) => s + (v.drps || []).length, 0))),
       k('service', 'รับยา OPD ภายใน 30 นาที', wt.pct30 == null ? '—' : fmt(wt.pct30, 1) + '<small>%</small>', `วัดได้ ${fmt(wt.n)} ใบสั่งยา`, '',
@@ -715,10 +723,10 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     st.st.filter((s) => s.p === false).forEach(({ d }) => items.push({ cls: 'bad', go: 'rdu', code: d.code,
       t: `RDU ข้อ ${d.no} ไม่ผ่าน: ${shortName(d)}`, d: `ผลงาน ${valTxt(d, rduValue(d, ha.rdu.values[d.code][P.key]))} · เป้า ${tgtTxt(d)}` }));
     if (al.n) items.push({ cls: 'bad', go: 'safety', t: `จ่ายยาที่ผู้ป่วยมีประวัติแพ้ ${fmt(al.n)} ครั้ง`, d: 'ทบทวนรายเคสและระบบแจ้งเตือนแพ้ยา' });
+    if (al.unspec) items.push({ cls: 'warn', go: 'safety', t: `บันทึกแพ้ยาที่ไม่ระบุว่า "แพ้ยา" หรือ "เฝ้าระวัง" แล้วมีการจ่ายยานั้น ${fmt(al.unspec)} ครั้ง`, d: 'แก้ประเภทใน HOSxP เพื่อให้นับถูกต้อง' });
     if (me.rIpd != null && me.rIpd > 10) items.push({ cls: 'bad', go: 'safety', t: `ME IPD ${fmt(me.rIpd, 2)} ต่อ 1,000 วันนอน (เป้า ≤ 10)`, d: `${fmt(me.ipd)} รายการ` });
     if (me.rOpd != null && me.rOpd > 20) items.push({ cls: 'bad', go: 'safety', t: `ME OPD ${fmt(me.rOpd, 2)} ต่อ 1,000 ใบสั่งยา (เป้า ≤ 20)`, d: `${fmt(me.opd)} รายการ` });
     if (me.sev) items.push({ cls: 'bad', go: 'safety', t: `ME ระดับ E–I ${fmt(me.sev)} รายการ`, d: 'ความคลาดเคลื่อนที่ถึงผู้ป่วยและเกิดอันตราย' });
-    if (mr.pm != null && mr.pm < 50) items.push({ cls: 'warn', go: 'care', t: `Med reconciliation ${fmt(mr.pm, 1)}% ของผู้ป่วยในที่มียาเดิม`, d: `ยังไม่ได้ทำ ${fmt(mr.admMeds - mr.doneMeds)} ราย` });
     if (adr.serious) items.push({ cls: 'warn', go: 'safety', t: `ADR ร้ายแรง ${fmt(adr.serious)} ราย`, d: `จากที่รายงานทั้งหมด ${fmt(adr.n)} ราย` });
     $('alerts').innerHTML = items.length ? items.map((it) => `<button type="button" class="alert ${it.cls}" data-go="${it.go}" data-code="${esc(it.code || '')}">` +
       `<span class="ic">${it.cls === 'bad' ? '✕' : '!'}</span><span><b>${esc(it.t)}</b><div class="d">${esc(it.d)}</div></span></button>`).join('')
@@ -867,9 +875,9 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
       o.สถานะ = d.scored ? ({ true: 'ผ่าน', false: 'ไม่ผ่าน' }[String(pass(d, rduValue(d, ha.rdu.values[d.code][`FY${P.fy}`])))] || '') : 'เฝ้าระวัง';
       return o;
     }));
-    add('แพ้ยาซ้ำ', ha.allergy.events.filter((e) => inP(e.date, P)).map((e) => ({ วันที่จ่าย: e.date, ยา: e.drug, บันทึกแพ้: e.agent, บันทึกแพ้เมื่อ: e.allergyDate, จุดบริการ: `${e.setting} ${e.dept}`, นับ: e.brandOnly ? 'ไม่นับ (แพ้เฉพาะยี่ห้อ/ทนได้)' : 'นับ' })));
+    add('แพ้ยาซ้ำ', ha.allergy.events.filter((e) => inP(e.date, P)).map((e) => ({ วันที่จ่าย: e.date, ยา: e.drug, บันทึกแพ้: e.agent, บันทึกแพ้เมื่อ: e.allergyDate, จุดบริการ: `${e.setting} ${e.dept}`, ประเภท: CLS[clsOf(e)] })));
     add('ME', meMonthly(P.months).map((r) => ({ เดือน: r.m, ME_OPD: r.opd, ใบสั่งยา_OPD: r.opdD, อัตรา_OPD: rate(r.opd, r.opdD), ME_IPD: r.ipd, วันนอน: r.ipdD, อัตรา_IPD: rate(r.ipd, r.ipdD), ME_ER: r.er, ใบสั่งยา_ER: r.erD, อัตรา_ER: rate(r.er, r.erD), ระดับ_E_I: r.sev })));
-    add('MedRec', P.months.map((m) => { const x = ha.medrec[m] || {}; return { เดือน: m, admit: x.adm || 0, ทำ_MedRec: x.done || 0, admit_มียาเดิม: x.admMeds || 0, ทำ_MedRec_มียาเดิม: x.doneMeds || 0 }; }));
+    add('MedRec', P.months.map((m) => { const x = ha.medrec[m] || {}; return { เดือน: m, admit: x.adm || 0, หมายเหตุ: 'ทำ MR ทุกรายบนใบ MR กระดาษ', บันทึกใน_HOSxP: x.done || 0, admit_มียาเดิม: x.admMeds || 0, บันทึกใน_HOSxP_มียาเดิม: x.doneMeds || 0 }; }));
     add('รอรับยา OPD', P.months.map((m) => { const x = ha.wait[m] || {}; return { เดือน: m, วัดได้: x.n || 0, ใบสั่งยาที่จ่าย: x.rx || 0, มัธยฐาน_นาที: x.median ?? '', P90_นาที: x.p90 ?? '', ภายใน30นาที: x.le30 || 0 }; }));
     XLSX.writeFile(wb, `ตัวชี้วัดเภสัชกรรม_HA_${P.label.replace(/[\s()]+/g, '_')}.xlsx`);
   });

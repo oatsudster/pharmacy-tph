@@ -62,6 +62,7 @@ NAME_RULES = [
 ]
 # บันทึกแพ้ที่ระบุว่าแพ้เฉพาะยี่ห้อ / ยี่ห้ออื่นกินได้ / เคยได้ยาแล้วไม่มีอาการ → ไม่นับเป็นแพ้ยาซ้ำ (แสดงแยก)
 BRAND_ONLY = re.compile(r'ยี่ห้อ|เฉพาะ|กินได้|ทานได้|ใช้ได้|สามารถ|ไม่มีอาการ|ไม่แพ้|บริษัท|\(R\)|®')
+CLS_RANK = {'count': 0, 'unspec': 1, 'brand': 2, 'watch': 3}
 # ชื่อกลุ่มยาที่บันทึกแพ้ (agent) → ATC ทั้งกลุ่ม
 ALLERGY_CLASSES = [
     (r'penicillin|penicilin', ('J01C',)),
@@ -503,7 +504,7 @@ class Rdu:
 
 # ── แพ้ยาซ้ำ ────────────────────────────────────────────────────────────────────
 def allergy_repeat(db, atc_map, syn, keys, since):
-    rows = hx.q(db, "SELECT a.hn, a.agent, DATE_FORMAT(a.report_date,'%%Y-%%m-%%d') d, a.opd_allergy_type_id t, a.symptom, "
+    rows = hx.q(db, "SELECT a.hn, a.agent, DATE_FORMAT(a.report_date,'%%Y-%%m-%%d') d, a.opd_allergy_type_id t, a.opd_allergy_alert_type_id al, a.symptom, "
                     "TRIM(CONCAT(IFNULL(p.pname,''),IFNULL(p.fname,''),' ',IFNULL(p.lname,''))) ptname FROM opd_allergy a "
                     "LEFT JOIN patient p ON p.hn=a.hn WHERE IFNULL(a.allergy_cancel_status,'')<>'Y' "
                     "AND IFNULL(a.opd_allergy_type_id,0)<>1 AND a.agent IS NOT NULL AND a.agent<>''", ())
@@ -511,7 +512,7 @@ def allergy_repeat(db, atc_map, syn, keys, since):
     for ic, d in atc_map.items():
         for k in d['subst']:
             by_subst[k].add(ic)
-    pairs = defaultdict(list)  # hn → [(icodes, agent, report_date, symptom, ptname)]
+    pairs = defaultdict(list)  # hn → [(icodes, agent, report_date, symptom, ptname, cls)]
     unmatched = 0
     for r in rows:
         agent, hn = s(r['agent']).strip(), s(r['hn'])
@@ -525,8 +526,10 @@ def allergy_repeat(db, atc_map, syn, keys, since):
         if not ics:
             unmatched += 1
             continue
-        brand = bool(BRAND_ONLY.search(agent))
-        pairs[hn].append((ics, agent, s(r['d']) or '0000-00-00', s(r['symptom']), s(r['ptname']), brand))
+        # ประเภทบันทึกใน HOSxP: 1 = แพ้ยา (นับ), 2 = เฝ้าระวังการใช้ยา (ผลข้างเคียง — สั่งต่อได้ ไม่นับ), ว่าง = ไม่ระบุ (ไม่นับ ให้แก้ข้อมูล)
+        al = s(r['al'])
+        cls = 'watch' if al == '2' else 'brand' if BRAND_ONLY.search(agent) else 'count' if al == '1' else 'unspec'
+        pairs[hn].append((ics, agent, s(r['d']) or '0000-00-00', s(r['symptom']), s(r['ptname']), cls))
     events = {}
     hns = list(pairs)
     all_ics = sorted({ic for v in pairs.values() for p in v for ic in p[0]})
@@ -538,14 +541,15 @@ def allergy_repeat(db, atc_map, syn, keys, since):
                           f"WHERE o.hn IN ({ph}) AND o.icode IN ({ph2}) AND o.qty>0 AND IFNULL(o.rxdate,o.vstdate)>=%s",
                       (*chunk, *all_ics, since)):
             hn, ic, d = s(r['hn']), s(r['icode']), s(r['d'])
-            for ics, agent, rd, sym, name, brand in pairs[hn]:
-                if ic in ics and d > rd:
-                    key = (hn, ic, d)
-                    if key not in events:
-                        events[key] = {'hn': hn, 'name': name, 'date': d, 'icode': ic, 'drug': atc_map[ic]['name'],
-                                       'agent': agent, 'allergyDate': rd, 'symptom': sym, 'vn': s(r['vn']), 'an': s(r['an']),
-                                       'setting': 'IPD' if s(r['an']) else 'OPD', 'dept': s(r['department']), 'brandOnly': brand}
-                    break
+            hits = [p for p in pairs[hn] if ic in p[0] and d > p[2]]
+            if not hits:
+                continue
+            ics, agent, rd, sym, name, cls = min(hits, key=lambda p: CLS_RANK[p[5]])  # มีบันทึก "แพ้ยา" ตัวไหนตรง → นับ
+            key = (hn, ic, d)
+            if key not in events or CLS_RANK[cls] < CLS_RANK[events[key]['cls']]:
+                events[key] = {'hn': hn, 'name': name, 'date': d, 'icode': ic, 'drug': atc_map[ic]['name'],
+                               'agent': agent, 'allergyDate': rd, 'symptom': sym, 'vn': s(r['vn']), 'an': s(r['an']),
+                               'setting': 'IPD' if s(r['an']) else 'OPD', 'dept': s(r['department']), 'cls': cls}
     return sorted(events.values(), key=lambda e: (e['date'], e['hn'])), unmatched, len(rows)
 
 
@@ -671,11 +675,11 @@ def compute(db):
     wt = wait_times(db, START_MONTH + '-01', b)
     log(f'แพ้ยาซ้ำ {len(allergy_events)} ครั้ง, med rec {sum(v["adm"] for v in mr.values())} admit, '
         f'รอรับยา {sum(v["n"] for v in wt.values()):,} ใบ ({time.time() - t1:.0f} วิ)')
-    allergy_month = defaultdict(lambda: {'n': 0, 'opd': 0, 'ipd': 0, 'brand': 0})
+    allergy_month = defaultdict(lambda: {'n': 0, 'opd': 0, 'ipd': 0, 'brand': 0, 'watch': 0, 'unspec': 0})
     for e in allergy_events:
         x = allergy_month[e['date'][:7]]
-        if e['brandOnly']:
-            x['brand'] += 1
+        if e['cls'] != 'count':
+            x[e['cls']] += 1
             continue
         x['n'] += 1
         x['ipd' if e['setting'] == 'IPD' else 'opd'] += 1
@@ -685,7 +689,7 @@ def compute(db):
                                     'editionName': edition.get('edition_name', ''), 'passText': edition.get('pass_rule_text', ''),
                                     'passMin': int(edition.get('pass_min_count') or 0)},
         'allergy': {'months': dict(allergy_month), 'allergies': n_allergy, 'unmatched': unmatched,
-                    'events': [{k: e[k] for k in ('date', 'drug', 'agent', 'allergyDate', 'setting', 'dept', 'brandOnly')}
+                    'events': [{k: e[k] for k in ('date', 'drug', 'agent', 'allergyDate', 'setting', 'dept', 'cls')}
                                for e in allergy_events]},
         'medrec': mr, 'wait': wt, 'priorDays': MEDREC_PRIOR_DAYS,
     }
