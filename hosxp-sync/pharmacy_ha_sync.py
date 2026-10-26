@@ -296,8 +296,9 @@ def pull(db, a, b, need_sets, sets, drug_any, gi_union, ab_icodes):
             v['dx'].append(c)
             if s(r['diagtype']) == '1':
                 v['pdx'].append(c)
+    # จำนวน 0 = แพทย์คีย์ไว้กันลืม/สั่งหยุด (วิธีใช้ "off") ไม่ได้จ่ายจริง → ไม่นับทุกตัวชี้วัด
     for r in hx.q(db, "SELECT vn, icode, SUM(qty) q FROM opitemrece WHERE vstdate>=%s AND vstdate<%s AND vn IS NOT NULL "
-                      "AND vn<>'' AND icode LIKE '1%%' GROUP BY vn, icode", (a, b)):
+                      "AND vn<>'' AND icode LIKE '1%%' GROUP BY vn, icode HAVING SUM(qty)>0", (a, b)):
         v, ic = opd.get(s(r['vn'])), s(r['icode'])
         if v and ic in drug_any:
             v['items'] += 1
@@ -317,7 +318,7 @@ def pull(db, a, b, need_sets, sets, drug_any, gi_union, ab_icodes):
                 ipd[s(r['an'])]['dx'].append(s(r['icd10']).upper())
             if ab_icodes:
                 ph2 = ','.join(['%s'] * len(ab_icodes))
-                for r in hx.q(db, f"SELECT DISTINCT an FROM opitemrece WHERE an IN ({ph}) AND icode IN ({ph2})",
+                for r in hx.q(db, f"SELECT DISTINCT an FROM opitemrece WHERE an IN ({ph}) AND icode IN ({ph2}) AND qty>0",
                               (*chunk, *ab_icodes)):
                     ipd[s(r['an'])]['ab'] = True
     egfr = []
@@ -531,7 +532,7 @@ def allergy_repeat(db, atc_map, syn, keys, since):
         ph, ph2 = ','.join(['%s'] * len(chunk)), ','.join(['%s'] * len(all_ics))
         for r in hx.q(db, f"SELECT o.hn, o.vn, o.an, o.icode, DATE_FORMAT(IFNULL(o.rxdate,o.vstdate),'%%Y-%%m-%%d') d, "
                           f"k.department FROM opitemrece o LEFT JOIN kskdepartment k ON k.depcode=o.dep_code "
-                          f"WHERE o.hn IN ({ph}) AND o.icode IN ({ph2}) AND IFNULL(o.rxdate,o.vstdate)>=%s",
+                          f"WHERE o.hn IN ({ph}) AND o.icode IN ({ph2}) AND o.qty>0 AND IFNULL(o.rxdate,o.vstdate)>=%s",
                       (*chunk, *all_ics, since)):
             hn, ic, d = s(r['hn']), s(r['icode']), s(r['d'])
             for ics, agent, rd, sym, name, brand in pairs[hn]:
@@ -564,7 +565,7 @@ def medrec(db, a, b):
         chunk = hns[i:i + 400]
         ph = ','.join(['%s'] * len(chunk))
         for r in hx.q(db, f"SELECT hn, DATE_FORMAT(vstdate,'%%Y-%%m-%%d') d FROM opitemrece WHERE hn IN ({ph}) "
-                          f"AND vstdate>=%s AND vstdate<%s AND vn IS NOT NULL AND vn<>'' AND icode LIKE '1%%' GROUP BY hn, vstdate",
+                          f"AND vstdate>=%s AND vstdate<%s AND vn IS NOT NULL AND vn<>'' AND icode LIKE '1%%' AND qty>0 GROUP BY hn, vstdate",
                       (*chunk, add_days(a, -MEDREC_PRIOR_DAYS), b)):
             prior[s(r['hn'])].add(s(r['d']))
     out = defaultdict(lambda: {'adm': 0, 'done': 0, 'admMeds': 0, 'doneMeds': 0})
