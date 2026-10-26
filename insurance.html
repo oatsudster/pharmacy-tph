@@ -189,6 +189,18 @@ td small { display: block; color: var(--text-light); }
     <details class="hc-detail"><summary>ไฟล์ผลงานเคลมที่บันทึกไว้ (ยอดสะสมของ รพ. แต่ละฉบับ)</summary><div class="tbl"><table id="rev-hist" style="min-width:600px"></table></div></details>
   </section>
 
+  <section class="card" id="smt" hidden>
+    <h2 id="smt-title">เงินโอนจริงจาก สปสช.</h2>
+    <p class="note" id="smt-note"></p>
+    <div class="kpis" id="smt-kpis" style="margin-bottom:12px"></div>
+    <div class="chartbox"><canvas id="c-smt"></canvas></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="tbl"><table id="smt-fund" style="min-width:420px"></table></div>
+      <div class="tbl"><table id="smt-ip" style="min-width:300px"></table></div>
+    </div>
+    <details class="hc-detail"><summary>รายการที่ถูกชะลอการโอน / หัก</summary><div class="tbl"><table id="smt-ded" style="min-width:600px"></table></div></details>
+  </section>
+
   <section>
     <div class="kpis" id="kpis"></div>
   </section>
@@ -358,6 +370,12 @@ td small { display: block; color: var(--text-light); }
     // คำทั่วไปในหน้า
     MEDIAN: ['มัธยฐาน', 'ค่ากลางของกลุ่ม (เรียงแล้วอยู่ตรงกลาง) ไม่ถูกดึงด้วย รพ. ที่สูงหรือต่ำผิดปกติ', 'ใช้เทียบกับ รพช.ขนาดเล็ก 10 แห่ง'],
     COMMON: ['Common Diseases and Symptoms', 'กลุ่มอาการพื้นฐาน 10 กลุ่ม (หวัด ปวดกล้ามเนื้อ ท้องอืด ฯลฯ) ที่กระทรวงให้ใช้ยาสมุนไพรแทนยาแผนปัจจุบัน', 'ตัวชี้วัดแผนไทยข้อ 14'],
+    SMT: ['Smart Money Transfer (smt.nhso.go.th)', 'รายงานการโอนเงินจาก สปสช. เข้าบัญชี รพ. ทุกงวดทุกกองทุน — งานประกันใช้ตรวจว่าเงินที่เรียกเก็บโอนมาครบหรือไม่', 'หน้านี้ดึงให้อัตโนมัติวันละครั้ง (รหัส รพ. 11339)'],
+    AdjRW: ['ค่าน้ำหนักสัมพัทธ์ที่ปรับตามวันนอน', 'RW ที่ปรับตามวันนอนจริง (นอนสั้นมากลดลง นอนเกินจุดตัด OT เพิ่มขึ้น) — เงินผู้ป่วยในบัตรทอง = AdjRW × อัตราจ่าย', 'แพทย์, coder'],
+    'ปรับลดค่าแรง': ['หักเงินเดือนจากค่าผู้ป่วยใน', 'อัตราผู้ป่วยในในเขต 8,350 บาท/AdjRW เป็นยอด "ก่อนปรับลดค่าแรง" — รพ.รัฐถูกหักส่วนเงินเดือนที่จ่ายผ่านส่วนกลางแล้ว จึงได้เงินสดจริงราว 3,500–3,700 บาท/AdjRW (ข้ามเขต 9,600 บาท ไม่หัก)', 'สปสช. (เอกสารประชุมเขต 11 พ.ย. 68)'],
+    'ประกันรายรับ': ['ประกันรายรับตามเกณฑ์ สธ.', 'เงินที่ สป.สธ. เติมให้ รพ. เมื่อรายรับจากผู้ป่วยใน/นอก/PP ต่ำกว่าเกณฑ์ (เช่น "งบ IP เติมตามเกณฑ์ สธ.", "ปิดยอดประกันรายรับ") — ไม่ได้มาจากการเคลมรายราย', 'สป.สธ. / สปสช. — ถามสูตรจากงานประกัน', true],
+    REP: ['REP ตอบกลับ (e-Claim)', 'ไฟล์ผลการตรวจข้อมูลที่ส่งเบิกรายราย — sheet "Data sheet0" บอกรายการที่จ่าย 0 บาทพร้อมเหตุผล ใช้แก้แล้วอุทธรณ์', 'งานประกัน'],
+    IMC: ['ฟื้นฟูสมรรถภาพผู้ป่วยระยะกลาง (Intermediate care)', 'stroke, บาดเจ็บสมอง/ไขสันหลัง, สะโพกหักอายุ ≥ 50 ปี — กายภาพ 450 บาท/ครั้ง ไม่เกิน 20 ครั้งใน 6 เดือน เบิกผ่าน Disability Portal', 'กายภาพบำบัด, หอผู้ป่วย'],
     EST: ['ประมาณการ', 'ตัวเลขที่ยังไม่มีไฟล์ยืนยัน คำนวณจากจำนวนบริการใน HOSxP × อัตราที่เคยได้จริง — จะถูกแทนด้วยยอดจริงเมื่อมีไฟล์ใหม่', ''],
   };
   const gl = (k) => GLOSS[k] || null;
@@ -395,6 +413,7 @@ td small { display: block; color: var(--text-light); }
     ['ติดตาม LGO ที่ถูกปฏิเสธ', 'ยอดเรียกเก็บ LGO (การ์ดด้านบน)', 60000, 'งานประกัน'],
     ['ยา Clopidogrel ที่มีสิทธิเคลม', 'เบิกได้เม็ดละ 3 บาท = ราคาทุน (เท่าทุน) · ต.ค.–ส.ค. จ่าย UC/WEL OPD 9,933 เม็ด เบิกได้ 8,488 เม็ด — เพิ่มได้เฉพาะเม็ดที่ยังไม่ได้เบิก', 5000, 'ห้องยา, งานประกัน'],
     ['Palliative care', 'ผู้ป่วย Z51.5 (การ์ดด้านบน)', 50000, 'ทีม PC'],
+    ['กายภาพฟื้นฟูระยะกลาง (IMC) 450 บาท/ครั้ง', 'ปีงบ 69 ได้แล้ว 132,474 บาท (SMT) · ผู้ป่วยใน stroke/บาดเจ็บสมอง/สะโพกหักที่เข้าเกณฑ์ 27 ราย — นัดกายภาพให้ครบ 20 ครั้ง', 50000, 'กายภาพ, หอผู้ป่วย'],
     ['ข. เพิ่มบริการที่ สปสช. จ่ายแยก'],
     ['คัดกรองไวรัสตับอักเสบ B/C', 'ตาราง "ได้ต่ำกว่ากลุ่ม" (HEP_B/HEP_C)', 190000, 'Lab, PCU, อสม.'],
     ['งานแม่และเด็ก (ANC/PNC/FP/UPT/Fluoride)', 'ตาราง "ได้ต่ำกว่ากลุ่ม" · ยาเสริมธาตุเหล็กเด็ก (IRON) เบิกได้เฉพาะที่จ่ายยาจริง ผู้ปกครองบางรายไม่รับยา จึงไม่นับส่วนนี้', 135000, 'งาน MCH'],
@@ -718,7 +737,73 @@ td small { display: block; color: var(--text-light); }
   }
 
   let revInfo = null, sumArgs = null;
-  function drawRevenue() { revInfo = null; drawRevenueInner(); drawSummary(); }
+  function drawRevenue() { revInfo = null; drawRevenueInner(); drawSmt(); drawSummary(); }
+
+  // ---------- เงินโอนจริงจาก สปสช. (SMT): insurance_smt.json = รายการโอนรายงวดของ รพ. ดึงวันละครั้งโดย insurance-sync ----------
+  // แบ่งปีงบตามวันที่โอน (เหมือนไฟล์ Excel ที่ทีมประกัน export) — ต้น ต.ค. มักเป็นรายการปิดยอดของปีงบก่อน
+  let smt = null, smtInfo = null;
+  const SMT_IP = 'กองทุนผู้ป่วยใน';
+  const smtIpCat = (ref, fy) => {  // งวด YYMM_IP: ปีงบของงวด < ปีงบที่ดู = ปรับ/หักคืนของปีก่อน
+    const m = ref.match(/^(\d{2})(\d{2})_IP/);
+    if (m) return 2500 + +m[1] + (+m[2] >= 10 ? 1 : 0) < fy ? 'old' : ref.includes('อุทธรณ์') ? 'appeal' : 'drg';
+    if (ref.includes('เติม')) return 'topup';
+    if (ref.includes('ประกันรายรับ')) return 'guarantee';
+    if (ref.includes('ล่วงหน้า')) return 'advance';
+    if (/ปี\s*25\d\d|Rerun/.test(ref) && !ref.includes(String(fy))) return 'old';
+    if (ref.includes('สป.สธ.')) return 'oppp';
+    return 'other';
+  };
+  const SMT_IP_LBL = { drg: 'ค่า DRG รายงวด (YYMM_IP)', topup: 'งบ IP เติมตามเกณฑ์ สธ.', guarantee: 'ปิดยอดประกันรายรับ', advance: 'จัดสรรล่วงหน้า (อาจถูกหักคืน)',
+    oppp: 'OP/PP สป.สธ. ที่โอนผ่านกองทุน IP', appeal: 'อุทธรณ์/ปรับ DRG ปีนี้', old: 'หักคืน/ปรับของปีงบก่อน', other: 'อื่นๆ' };
+  function drawSmt() {
+    const box = document.getElementById('smt');
+    smtInfo = null;
+    if (!smt || !fy) { box.hidden = true; return; }
+    const a = fyStart(fy), b = fyEnd(fy);
+    // cols: date, batch, ref, fund, source, amount, wait, debt, odbt, total
+    const R = smt.rows.filter((r) => r[0] >= a && r[0] <= b);
+    if (!R.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const S = (A, i) => A.reduce((s, r) => s + r[i], 0);
+    const amt = S(R, 5), wait = S(R, 6), debt = S(R, 7), net = S(R, 9);
+    const ip = R.filter((r) => r[3] === SMT_IP), cat = {};
+    ip.forEach((r) => { const c = smtIpCat(r[2], fy); cat[c] = (cat[c] || 0) + r[9]; });
+    const ipNet = S(ip, 9);
+    smtInfo = { net, ipNet, drg: cat.drg || 0, extra: (cat.topup || 0) + (cat.guarantee || 0) + (cat.advance || 0), advance: cat.advance || 0 };
+    const last = R[R.length - 1][0];
+    document.getElementById('smt-title').textContent = `เงินโอนจริงจาก สปสช. ปีงบ ${fy}`;
+    document.getElementById('smt-note').innerHTML = `จาก ${term('SMT', 'SMT')} (smt.nhso.go.th รหัส ${esc(smt.hcode)}) แบ่งปีงบตามวันที่โอน ${thDate(a)} – ${thDate(b)} · โอนล่าสุด ${thDate(last)} · ดึงข้อมูลเมื่อ ${esc(new Date(smt.fetched).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }))} · รวมทุกกองทุนรวมเหมาจ่ายรายหัว (ต่างจากการ์ดด้านบนที่มีเฉพาะไฟล์เคลม) · ไม่มีรายผู้ป่วย — ตัดลูกหนี้รายตัวใช้ REP/Statement ใน e-Claim`;
+    const k = [
+      { l: 'ยอดจัดสรร', n: fmt(amt) + ' บาท', s: R.length + ' รายการโอน' },
+      { l: 'ชะลอการโอน + หัก', n: fmt(wait + debt) + ' บาท', s: 'ชะลอ ' + fmt(wait) + ' · หัก ' + fmt(debt), w: true },
+      { l: 'โอนเข้าบัญชีสุทธิ', n: (net / 1e6).toFixed(2) + ' ล้านบาท', s: 'จัดสรร − ชะลอ − หัก' },
+      { g: 'IP_DRG', l: 'กองทุนผู้ป่วยใน UC สุทธิ', n: (ipNet / 1e6).toFixed(2) + ' ล้านบาท', s: 'ค่า DRG ' + fmt(cat.drg) + ' · เงินเติม/ประกันรายรับ ' + fmt(smtInfo.extra) },
+    ];
+    document.getElementById('smt-kpis').innerHTML = k.map((x) => `<div class="kpi${x.w ? ' warn' : ''}"><span class="l">${esc(x.l)}${qm(x.g)}</span><span class="n">${esc(x.n)}</span><span class="s">${esc(x.s)}</span></div>`).join('');
+
+    // กราฟรายเดือน: กองทุนใหญ่ 4 อันดับ + อื่นๆ (ยอดสุทธิ)
+    const byFund = {};
+    R.forEach((r) => { byFund[r[3]] = (byFund[r[3]] || 0) + r[9]; });
+    const top = Object.keys(byFund).sort((x, y) => byFund[y] - byFund[x]).slice(0, 4);
+    const ms = []; for (let d = new Date(a + 'T00:00:00'); d <= new Date(last + 'T00:00:00'); d.setMonth(d.getMonth() + 1)) ms.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+    const pal = [C.primary, C.gold, C.blue, C.peer, C.muted];
+    const series = top.concat(['อื่นๆ']).map((f, i) => ({ label: f.replace(/^กองทุน/, ''), backgroundColor: pal[i], borderRadius: 3, stack: 's',
+      data: ms.map((m) => Math.round(R.filter((r) => r[0].startsWith(m) && (f === 'อื่นๆ' ? !top.includes(r[3]) : r[3] === f)).reduce((s, r) => s + r[9], 0))) }));
+    chart('c-smt', { type: 'bar', data: { labels: ms.map(mLabel), datasets: series }, options: baseOpts({
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)} บาท`, footer: (it) => 'รวม ' + fmt(it.reduce((s, c) => s + c.raw, 0)) + ' บาท' } } },
+      scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: (v) => fmt(v) } } } }) });
+
+    const funds = Object.keys(byFund).sort((x, y) => byFund[y] - byFund[x]);
+    document.getElementById('smt-fund').innerHTML = '<thead><tr><th>กองทุน</th><th class="num">จัดสรร</th><th class="num">ชะลอ+หัก</th><th class="num">สุทธิ</th></tr></thead><tbody>'
+      + funds.map((f) => { const F = R.filter((r) => r[3] === f); return `<tr><td>${esc(f)}<small>${F.length} รายการ</small></td><td class="num">${fmt(S(F, 5))}</td><td class="num">${fmt(S(F, 6) + S(F, 7)) || '–'}</td><td class="num"><b>${fmt(S(F, 9))}</b></td></tr>`; }).join('')
+      + `</tbody><tfoot><tr><td><b>รวม</b></td><td class="num"><b>${fmt(amt)}</b></td><td class="num"><b>${fmt(wait + debt)}</b></td><td class="num"><b>${fmt(net)}</b></td></tr></tfoot>`;
+    document.getElementById('smt-ip').innerHTML = '<thead><tr><th>กองทุนผู้ป่วยใน UC แยกตามที่มา</th><th class="num">สุทธิ (บาท)</th></tr></thead><tbody>'
+      + Object.keys(SMT_IP_LBL).filter((c) => cat[c]).map((c) => `<tr><td>${esc(SMT_IP_LBL[c])}</td><td class="num">${fmt(cat[c])}</td></tr>`).join('')
+      + `</tbody><tfoot><tr><td><b>รวม</b></td><td class="num"><b>${fmt(ipNet)}</b></td></tr></tfoot>`;
+    const D = R.filter((r) => r[6] || r[7]).sort((x, y) => (y[6] + y[7]) - (x[6] + x[7]));
+    document.getElementById('smt-ded').innerHTML = '<thead><tr><th>วันที่โอน</th><th>งวด/เลขที่</th><th>กองทุน</th><th class="num">ชะลอ</th><th class="num">หัก</th></tr></thead><tbody>'
+      + D.map((r) => `<tr><td>${thDate(r[0])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td class="num">${r[6] ? fmt(r[6]) : '–'}</td><td class="num">${r[7] ? fmt(r[7]) : '–'}</td></tr>`).join('') + '</tbody>';
+  }
   function drawRevenueInner() {
     const box = document.getElementById('rev');
     if (!monthly || !province || !province.history || !fy) { box.hidden = true; return; }
@@ -793,6 +878,11 @@ td small { display: block; color: var(--text-light); }
         + (v.full ? '' : ` · ถ้าอัตรานี้คงที่ ทั้งปีงบน่าจะได้ ~${mb(v.proj)}`));
       const top = v.rows.map((r) => ({ it: r.it, t: r.conf + r.est })).sort((a, b) => b.t - a.t).slice(0, 3);
       add('ℹ️', 'เงินก้อนใหญ่ที่สุดมาจาก ' + top.map((r) => `${term(r.it, lbl(r.it))} ${pct(r.t / v.tot)}`).join(' · '));
+    }
+    if (smtInfo) {
+      const s = smtInfo;
+      add('ℹ️', `<b>${term('SMT', 'สปสช. โอนเงินเข้า รพ.')} ปีงบ ${fy} แล้ว ${mb(s.net)}</b> (ทุกกองทุน สุทธิหลังหัก) · กองทุนผู้ป่วยใน ${mb(s.ipNet)} = ค่า DRG ${mb(s.drg)} + เงินเติม/ประกันรายรับ ${mb(s.extra)}`
+        + (s.advance ? ` (รวมจัดสรรล่วงหน้า ${mb(s.advance)} ที่อาจถูกหักคืน)` : ''));
     }
     // ผู้ป่วยใน: เดือนที่ยังไม่ครบ/ยังไม่ลงรหัส ไม่นับเรื่องคุณภาพข้อมูล
     const done = R.filter((r) => !r.partial), sum = (A, f) => A.reduce((s, r) => s + (f(r) || 0), 0);
@@ -958,6 +1048,10 @@ td small { display: block; color: var(--text-light); }
       drawMonthly();
       drawRun();
     }, (e) => { status.textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; });
+    db.collection(COL).doc('insurance_smt').onSnapshot((snap) => {
+      try { smt = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { smt = null; }
+      drawSmt(); drawSummary();
+    }, () => {});
     db.collection(COL).doc('insurance_herb_rx').onSnapshot((snap) => { try { herbRx = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { herbRx = null; } drawRx(); }, () => {});
 
     // ปุ่มประมวลผลทันที: เขียน run_request แล้วสคริปต์ insurance-sync (เช็คทุก 5 นาที) จะดึงจาก HOSxP ใหม่ทั้งหมด
