@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com http://127.0.0.1:8765; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตัวชี้วัดงานเภสัชกรรม (HA) — รพ.ถ้ำพรรณรา</title>
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/esc-html.js"></script>
+<script src="lib/chart.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<script src="lib/clinic-store.js"></script>
+<script src="lib/hosxp-db.js"></script>
+<style>
+:root {
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE;
+  --gold: #C49A22; --gold-light: #FBF3DC;
+  --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+  --danger: #b91c1c; --danger-light: #fdecec; --ok: #15803d; --ok-light: #e8f5ec;
+  --muted: #D3DDD6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; font-variant-numeric: tabular-nums; }
+.topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+.topbar a, .topbar button { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 13px; border: 0; cursor: pointer; }
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar .sub { font-size: 12px; opacity: .8; }
+.topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.topbar select { font: inherit; font-size: 13px; border-radius: 8px; border: 0; padding: 5px 8px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.card h2 { font-size: 16px; margin: 0 0 2px; color: var(--primary-dark); }
+.card h3 { font-size: 14.5px; margin: 14px 0 4px; color: var(--primary-dark); }
+.note { font-size: 12.5px; color: var(--text-light); margin: 0 0 10px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; text-decoration: none; color: inherit; display: block; }
+.kpi:hover { border-color: var(--primary); }
+.kpi .lbl { font-size: 12.5px; color: var(--text-mid); }
+.kpi .val { font-size: 24px; font-weight: 700; color: var(--primary-dark); line-height: 1.3; }
+.kpi .sub { font-size: 12px; color: var(--text-light); }
+.kpi.bad .val { color: var(--danger); }
+.kpi.good .val { color: var(--ok); }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+tr.sel td { background: var(--gold-light); }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: #f6faf7; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
+.pill.ok { background: var(--ok-light); color: var(--ok); }
+.pill.bad { background: var(--danger-light); color: var(--danger); }
+.pill.na { background: #eef1ef; color: var(--text-light); }
+.pill.info { background: var(--gold-light); color: #7a5c0e; }
+.chart-box { position: relative; height: 240px; margin-top: 10px; }
+.def { font-size: 12.5px; color: var(--text-mid); background: #f8fbf9; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+details summary { cursor: pointer; color: var(--primary); font-size: 13.5px; }
+.empty { color: var(--text-light); font-size: 13.5px; padding: 8px 0; }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--primary); color: var(--primary); background: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+.btn:hover { background: var(--primary-light); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 12px; background: #eef4f0; border-radius: 8px; padding: 2px 8px; }
+.warn { background: var(--gold-light); border: 1px solid #ecd9a0; color: #6b4f0b; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+@media (max-width: 640px) {
+  .wrap { padding: 10px; }
+  .topbar h1 { font-size: 16px; }
+  .kpi .val { font-size: 20px; }
+}
+@media print {
+  .topbar { position: static; }
+  .topbar .right, .no-print { display: none !important; }
+  body { background: #fff; }
+  .card { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← หน้าหลัก</a>
+  <div>
+    <h1>ตัวชี้วัดงานเภสัชกรรม (HA)</h1>
+    <div class="sub" id="updated">กำลังโหลด…</div>
+  </div>
+  <div class="right">
+    <select id="fy" aria-label="ปีงบประมาณ"></select>
+    <select id="half" aria-label="ช่วงเวลา">
+      <option value="">ทั้งปีงบ</option>
+      <option value="H1">ครึ่งปีแรก (ต.ค.–มี.ค.)</option>
+      <option value="H2">ครึ่งปีหลัง (เม.ย.–ก.ย.)</option>
+    </select>
+    <button id="btn-xlsx" type="button">⬇ Excel</button>
+    <button type="button" onclick="window.print()">🖨 พิมพ์</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>ภาพรวม</h2>
+    <p class="note" id="sum-note">ตัวเลขดึงจาก HOSxP อัตโนมัติทุกวัน และจากบันทึกในระบบ ME / ADR / คลินิก ของห้องยา — กดการ์ดเพื่อไปที่หัวข้อ</p>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="card" id="sec-rdu">
+    <h2>การใช้ยาอย่างสมเหตุผล (RDU Hospital)</h2>
+    <p class="note" id="rdu-note"></p>
+    <div class="tbl-wrap"><table id="rdu-table"></table></div>
+    <div id="rdu-detail"></div>
+    <h3>ตัวชี้วัดเฝ้าระวัง (ไม่คิดคะแนน)</h3>
+    <div class="tbl-wrap"><table id="watch-table"></table></div>
+    <details style="margin-top:10px">
+      <summary>รายการยาที่นับในแต่ละกลุ่ม (ตรวจการจับคู่ยา → ATC)</summary>
+      <p class="note" style="margin-top:6px">รายการยาของ รพ. ยังไม่ได้ใส่รหัส ATC ใน HOSxP ระบบจึงจับคู่จากชื่อยา ถ้าพบยาที่จัดกลุ่มผิด แจ้งแก้ได้ที่ hosxp-sync/ha_atc_overrides.json</p>
+      <div id="drug-groups"></div>
+    </details>
+  </div>
+
+  <div class="card" id="sec-safety">
+    <h2>ความปลอดภัยด้านยา</h2>
+    <div class="grid2">
+      <div>
+        <h3>จ่ายยาที่ผู้ป่วยมีประวัติแพ้ (เป้าหมาย 0)</h3>
+        <p class="note" id="allergy-note"></p>
+        <div class="chart-box"><canvas id="ch-allergy"></canvas></div>
+      </div>
+      <div>
+        <h3>Medication error (ต่อ 1,000)</h3>
+        <p class="note">OPD ต่อ 1,000 ใบสั่งยา (เป้า ≤ 20) · IPD ต่อ 1,000 วันนอน (เป้า ≤ 10) · ER ต่อ 1,000 ใบสั่งยา — ข้อมูลเดียวกับ <a href="ME_Dashboard.html">ME Dashboard</a></p>
+        <div class="tbl-wrap"><table id="me-table"></table></div>
+      </div>
+    </div>
+    <h3>รายการที่จ่ายยาซึ่งผู้ป่วยมีประวัติแพ้</h3>
+    <p class="note" id="allergy-cases-note"></p>
+    <div class="tbl-wrap"><table id="allergy-table"></table></div>
+    <div class="grid2" style="margin-top:6px">
+      <div>
+        <h3>ADR ที่รายงาน</h3>
+        <p class="note">จากระบบรายงาน ADR (<a href="adr.html">เปิดหน้า ADR</a>)</p>
+        <div class="tbl-wrap"><table id="adr-table"></table></div>
+      </div>
+      <div>
+        <h3>ADE trigger จากรหัสโรค</h3>
+        <p class="note">ครั้งที่มีรหัส ICD-10 ที่บ่งชี้เหตุการณ์ไม่พึงประสงค์จากยา — ใช้ค้นหาเคสมาทบทวน</p>
+        <div class="tbl-wrap"><table id="ade-table"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="sec-care">
+    <h2>การบริบาลทางเภสัชกรรม</h2>
+    <div class="grid2">
+      <div>
+        <h3>Medication reconciliation ผู้ป่วยใน</h3>
+        <p class="note" id="medrec-note"></p>
+        <div class="chart-box"><canvas id="ch-medrec"></canvas></div>
+      </div>
+      <div>
+        <h3>ปัญหาจากการใช้ยา (DRP) ในคลินิกโรคเรื้อรัง</h3>
+        <p class="note">จากบันทึกคลินิก DM / HT / COPD (<a href="clinic.html">เปิดหน้าคลินิก</a>)</p>
+        <div class="tbl-wrap"><table id="drp-table"></table></div>
+        <div class="chips" id="drp-types"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="sec-service">
+    <h2>ระยะเวลารอรับยาผู้ป่วยนอก</h2>
+    <p class="note" id="wait-note"></p>
+    <div class="grid2">
+      <div class="chart-box"><canvas id="ch-wait"></canvas></div>
+      <div class="tbl-wrap"><table id="wait-table"></table></div>
+    </div>
+  </div>
+
+  <div class="card no-print" id="sec-cases">
+    <h2>รายเคสที่ต้องทบทวน (เฉพาะเครื่องใน รพ.)</h2>
+    <p class="note" id="cases-note">รายชื่อผู้ป่วยไม่ได้เก็บบนอินเทอร์เน็ต — แสดงเฉพาะเครื่องที่รันโปรแกรมดึงข้อมูลตัวชี้วัด (ผ่าน HOSxP Bridge)</p>
+    <div id="cases"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const config = {
+    apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE",
+    authDomain: "pharmacy-tph.firebaseapp.com",
+    projectId: "pharmacy-tph",
+    storageBucket: "pharmacy-tph.firebasestorage.app",
+    messagingSenderId: "617328257113",
+    appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+  };
+  const COL = 'pharmacy_tph';
+  const C = { primary: '#1A5E38', gold: '#C49A22', muted: '#B9C9BE', danger: '#b91c1c', mid: '#3D5A47' };
+  const TH_M = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const esc = window.escHtml || ((s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+  const fmt = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const mLabel = (m) => TH_M[+m.slice(5, 7)] + ' ' + String(+m.slice(0, 4) + 543).slice(-2);
+  const thDate = (iso) => iso ? `${+iso.slice(8, 10)} ${TH_M[+iso.slice(5, 7)]} ${String(+iso.slice(0, 4) + 543).slice(-2)}` : '';
+  const fyOf = (m) => +m.slice(0, 4) + 543 + (+m.slice(5, 7) >= 10 ? 1 : 0);
+  const $ = (id) => document.getElementById(id);
+
+  let ha = null, hxRecs = [], erRecs = [], denom = {}, adrRecs = [], clinicVisits = [], cases = null;
+  const charts = {};
+  let selRdu = 'RI';
+
+  // ── ช่วงเวลา ──
+  function fyMonths(fy) {
+    const y = fy - 543, out = [];
+    for (let i = 0; i < 12; i++) { const mo = (9 + i) % 12 + 1, yy = mo >= 10 ? y - 1 : y; out.push(`${yy}-${String(mo).padStart(2, '0')}`); }
+    return out;
+  }
+  function period() {
+    const fy = +$('fy').value, half = $('half').value;
+    const last = ha ? ha.months[ha.months.length - 1] : new Date().toISOString().slice(0, 7);
+    let ms = fyMonths(fy).filter((m) => m <= last);
+    if (half === 'H1') ms = ms.filter((m) => +m.slice(5) >= 10 || +m.slice(5) <= 3);
+    if (half === 'H2') ms = ms.filter((m) => +m.slice(5) >= 4 && +m.slice(5) <= 9);
+    return { fy, half, key: `FY${fy}${half}`, months: ms, label: `ปีงบ ${fy}${half === 'H1' ? ' ครึ่งปีแรก' : half === 'H2' ? ' ครึ่งปีหลัง' : ''}` };
+  }
+  const inP = (date, P) => !!date && P.months.includes(String(date).slice(0, 7));
+
+  // ── RDU ──
+  function rduValue(def, x) {
+    if (!x) return null;
+    if (def.kind === 'COUNT' || def.kind === 'TRIGGER') return x.n;
+    if (!x.d) return null;
+    return def.kind === 'MEAN' ? x.n / x.d : x.n / x.d * def.mult;
+  }
+  function pass(def, v) {
+    if (v == null || def.target == null || !def.op) return null;
+    const t = def.target;
+    return { '<=': v <= t, '>=': v >= t, '<': v < t, '>': v > t, '=': v === t }[def.op];
+  }
+  const unitTxt = (def) => def.kind === 'COUNT' ? ' คน' : def.kind === 'MEAN' ? ' รายการ' : def.kind === 'TRIGGER' ? ' ครั้ง' : '%';
+  const valTxt = (def, v) => v == null ? '—' : (def.kind === 'COUNT' || def.kind === 'TRIGGER') ? fmt(v) + unitTxt(def) : fmt(v, def.kind === 'MEAN' ? 2 : 1) + unitTxt(def);
+  const tgtTxt = (def) => def.target == null ? '—' : `${def.op.replace('<=', '≤').replace('>=', '≥')} ${fmt(def.target, def.target % 1 ? 1 : 0)}${unitTxt(def)}`;
+  const statusPill = (p) => p == null ? '<span class="pill na">ไม่มีข้อมูล</span>' : p ? '<span class="pill ok">ผ่าน</span>' : '<span class="pill bad">ไม่ผ่าน</span>';
+
+  function rduStats(P) {
+    const defs = ha.rdu.defs.filter((d) => d.scored);
+    let passN = 0, evalN = 0;
+    defs.forEach((d) => { const p = pass(d, rduValue(d, ha.rdu.values[d.code][P.key])); if (p != null) { evalN++; if (p) passN++; } });
+    return { passN, evalN, total: defs.length };
+  }
+
+  function drawRdu(P) {
+    const st = rduStats(P);
+    $('rdu-note').textContent = `${ha.rdu.editionName || 'RDU Hospital'} — ${P.label}: ผ่าน ${st.passN} จาก ${st.evalN} ตัวที่มีข้อมูล` +
+      (ha.rdu.passText ? ` · เกณฑ์: ${ha.rdu.passText}` : '') + ' · นิยาม รหัสโรค กลุ่มยา และเป้าหมาย ใช้ตามตาราง RDU ใน HOSxP · กดแถวเพื่อดูแนวโน้มรายเดือน';
+    const row = (d) => {
+      const x = ha.rdu.values[d.code][P.key] || {}, v = rduValue(d, x);
+      const nd = x.d != null ? `${fmt(x.n)} / ${fmt(x.d)}` : fmt(x.n);
+      return `<tr class="click${d.code === selRdu ? ' sel' : ''}" data-code="${esc(d.code)}"><td>${esc(d.no)}</td><td>${esc(d.name)}</td>` +
+        `<td class="num">${tgtTxt(d)}</td><td class="num"><b>${valTxt(d, v)}</b></td><td class="num">${nd}</td><td>${statusPill(pass(d, v))}</td></tr>`;
+    };
+    $('rdu-table').innerHTML = '<thead><tr><th>#</th><th>ตัวชี้วัด</th><th class="num">เป้าหมาย</th><th class="num">ผลงาน</th><th class="num">ตัวตั้ง / ตัวหาร</th><th>สถานะ</th></tr></thead><tbody>' +
+      ha.rdu.defs.filter((d) => d.scored).map(row).join('') + '</tbody>';
+    const watch = ha.rdu.defs.filter((d) => !d.scored && d.kind !== 'TRIGGER');
+    $('watch-table').innerHTML = '<thead><tr><th>#</th><th>ตัวชี้วัด</th><th class="num">ค่าอ้างอิง</th><th class="num">ผลงาน</th><th class="num">ตัวตั้ง / ตัวหาร</th><th></th></tr></thead><tbody>' +
+      watch.map(row).join('') + '</tbody>';
+    document.querySelectorAll('#rdu-table tr.click, #watch-table tr.click').forEach((tr) => tr.addEventListener('click', () => { selRdu = tr.dataset.code; drawRdu(P); }));
+    drawRduDetail(P);
+  }
+
+  function drawRduDetail(P) {
+    const d = ha.rdu.defs.find((x) => x.code === selRdu);
+    if (!d) { $('rdu-detail').innerHTML = ''; return; }
+    $('rdu-detail').innerHTML = `<div class="chart-box"><canvas id="ch-rdu"></canvas></div>` +
+      `<div class="def"><b>${esc(d.no)}. ${esc(d.name)}</b><br>ตัวตั้ง: ${esc(d.num)}<br>ตัวหาร: ${esc(d.den)}` +
+      (d.def ? `<br><span style="color:var(--text-light)">${esc(d.def)}</span>` : '') +
+      (d.unit === 'PATIENT' ? '<br><span style="color:var(--text-light)">นับเป็นจำนวนผู้ป่วย (HN) — ค่าทั้งปีจึงไม่เท่ากับผลรวมรายเดือน</span>' : '') + '</div>';
+    const ms = fyMonths(P.fy).filter((m) => ha.months.includes(m));
+    const vals = ms.map((m) => rduValue(d, ha.rdu.values[d.code][m]));
+    const ds = [{ type: d.kind === 'COUNT' ? 'bar' : 'line', label: d.kind === 'COUNT' ? 'จำนวน' : 'ผลงานรายเดือน', data: vals, borderColor: C.primary, backgroundColor: C.primary, tension: .25, spanGaps: true, pointRadius: 3 }];
+    if (d.target != null) ds.push({ type: 'line', label: 'เป้าหมาย', data: ms.map(() => d.target), borderColor: C.gold, borderDash: [6, 4], pointRadius: 0, fill: false });
+    chart('ch-rdu', { type: 'line', data: { labels: ms.map(mLabel), datasets: ds }, options: baseOpts(d.kind === 'COUNT' ? 'คน' : d.kind === 'MEAN' ? 'รายการ/ครั้ง' : '%') });
+  }
+
+  function drawDrugGroups() {
+    const NAMES = { 'RDU-AB-J01': 'ยาปฏิชีวนะ (J01)', 'RDU-RAS': 'RAS blockade', 'RDU-NSAID': 'NSAIDs', 'RDU-NSAID-DUP': 'NSAIDs (ซ้ำซ้อน)',
+      'RDU-METFORMIN': 'Metformin', 'RDU-ICS': 'Inhaled corticosteroid', 'RDU-LA-BZD': 'Long-acting benzodiazepine',
+      'RDU-NSAH': 'Antihistamine ชนิดไม่ง่วง', 'RDU-PREG-X': 'ยาห้ามใช้ในหญิงตั้งครรภ์' };
+    $('drug-groups').innerHTML = Object.entries(ha.rdu.drugGroups).map(([g, xs]) =>
+      `<div style="margin-top:8px"><b style="font-size:13.5px">${esc(NAMES[g] || g)}</b> <span class="note">(${xs.length})</span>` +
+      `<div class="chips">${xs.map((x) => `<span class="chip">${esc(x)}</span>`).join('') || '<span class="empty">ไม่พบยาใน รพ.</span>'}</div></div>`).join('');
+  }
+
+  // ── ความปลอดภัย ──
+  function drawAllergy(P) {
+    const a = ha.allergy, ms = P.months;
+    const n = ms.reduce((s, m) => s + ((a.months[m] || {}).n || 0), 0);
+    const br = ms.reduce((s, m) => s + ((a.months[m] || {}).brand || 0), 0);
+    $('allergy-note').textContent = `${P.label}: ${fmt(n)} ครั้ง (ไม่นับอีก ${fmt(br)} ครั้งที่บันทึกว่าแพ้เฉพาะยี่ห้อ / เคยได้ยาแล้วไม่มีอาการ) · ` +
+      `ตรวจจากบันทึกแพ้ยา ${fmt(a.allergies)} รายการ (ไม่นับ Type A) — จับคู่ชื่อยาไม่ได้ ${fmt(a.unmatched)} รายการ`;
+    chart('ch-allergy', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [
+      { label: 'นับเป็นแพ้ยาซ้ำ', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: C.danger, stack: 's' },
+      { label: 'แพ้เฉพาะยี่ห้อ / ทนยาได้', data: ms.map((m) => (a.months[m] || {}).brand || 0), backgroundColor: C.muted, stack: 's' }] },
+      options: baseOpts('ครั้ง', true) });
+    const ev = a.events.filter((e) => inP(e.date, P));
+    $('allergy-cases-note').textContent = ev.length ? `${P.label} — HN และชื่อผู้ป่วยดูได้ในหัวข้อรายเคสด้านล่าง (เครื่องใน รพ.)` : '';
+    $('allergy-table').innerHTML = ev.length ? '<thead><tr><th>วันที่จ่าย</th><th>ยาที่จ่าย</th><th>บันทึกแพ้</th><th>บันทึกแพ้เมื่อ</th><th>จุดบริการ</th><th></th></tr></thead><tbody>' +
+      ev.map((e) => `<tr${e.brandOnly ? ' style="color:var(--text-light)"' : ''}><td>${thDate(e.date)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)}</td><td>${thDate(e.allergyDate)}</td>` +
+        `<td>${esc(e.setting)} · ${esc(e.dept)}</td><td>${e.brandOnly ? '<span class="pill na">แพ้เฉพาะยี่ห้อ/ทนได้</span>' : '<span class="pill bad">ทบทวน</span>'}</td></tr>`).join('') + '</tbody>'
+      : '<tbody><tr><td class="empty">ไม่พบในช่วงนี้</td></tr></tbody>';
+  }
+
+  function meMonthly(P) {
+    const rx = {};  // ER ใบสั่งยาต่อวัน: ค่าที่กรอกเองชนะค่าอัตโนมัติ (ตรงกับ ME Dashboard)
+    const manual = {}, auto = {};
+    erRecs.forEach((r) => { if ((r.rxDaily || 0) > 0) { const t = r.rxAuto ? auto : manual; if (r.rxDaily > (t[r.date] || 0)) t[r.date] = r.rxDaily; } });
+    Object.assign(rx, auto, manual);
+    return P.months.map((m) => {
+      const opd = hxRecs.filter((r) => r.dept === 'OPD' && (r.date || '').startsWith(m));
+      const ipd = hxRecs.filter((r) => r.dept === 'IPD' && (r.date || '').startsWith(m));
+      const er = erRecs.filter((r) => r.hasME !== false && (r.orderDate || r.date || '').startsWith(m));
+      const erRx = Object.entries(rx).filter(([d]) => d.startsWith(m)).reduce((s, [, v]) => s + v, 0);
+      const sev = [...opd, ...ipd, ...er].filter((r) => 'EFGHI'.includes(r.severity || '-')).length;
+      return { m, opd: opd.length, opdD: denom[m + '_OPD'] || 0, ipd: ipd.length, ipdD: denom[m + '_IPD'] || 0, er: er.length, erD: erRx, sev };
+    });
+  }
+  const rate = (n, d) => d ? n / d * 1000 : null;
+
+  function drawMe(P) {
+    const rows = meMonthly(P);
+    const tot = rows.reduce((t, r) => { Object.keys(t).forEach((k) => { t[k] += r[k]; }); return t; }, { opd: 0, opdD: 0, ipd: 0, ipdD: 0, er: 0, erD: 0, sev: 0 });
+    const cell = (n, d, std) => { const v = rate(n, d); return `<td class="num"${v != null && std && v > std ? ' style="color:var(--danger)"' : ''}>${v == null ? '—' : fmt(v, 2)}<br><span style="font-size:11px;color:var(--text-light)">${fmt(n)}/${fmt(d)}</span></td>`; };
+    $('me-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">OPD</th><th class="num">IPD</th><th class="num">ER</th><th class="num">ระดับ E–I</th></tr></thead><tbody>' +
+      rows.map((r) => `<tr><td>${mLabel(r.m)}</td>${cell(r.opd, r.opdD, 20)}${cell(r.ipd, r.ipdD, 10)}${cell(r.er, r.erD)}<td class="num">${fmt(r.sev)}</td></tr>`).join('') +
+      `<tr style="font-weight:700"><td>รวม</td>${cell(tot.opd, tot.opdD, 20)}${cell(tot.ipd, tot.ipdD, 10)}${cell(tot.er, tot.erD)}<td class="num">${fmt(tot.sev)}</td></tr></tbody>`;
+    return tot;
+  }
+
+  function drawAdr(P) {
+    const recs = adrRecs.filter((r) => inP(r.date, P));
+    const serious = (r) => /^ร้ายแรง/.test(r.severity || '');
+    const byM = P.months.map((m) => { const x = recs.filter((r) => r.date.startsWith(m)); return { m, n: x.length, s: x.filter(serious).length }; });
+    $('adr-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">รายงาน</th><th class="num">ร้ายแรง</th></tr></thead><tbody>' +
+      byM.map((r) => `<tr><td>${mLabel(r.m)}</td><td class="num">${fmt(r.n)}</td><td class="num">${fmt(r.s)}</td></tr>`).join('') +
+      `<tr style="font-weight:700"><td>รวม</td><td class="num">${fmt(recs.length)}</td><td class="num">${fmt(recs.filter(serious).length)}</td></tr></tbody>`;
+    return { n: recs.length, serious: recs.filter(serious).length };
+  }
+
+  function drawAde(P) {
+    const defs = ha.rdu.defs.filter((d) => d.kind === 'TRIGGER');
+    $('ade-table').innerHTML = '<thead><tr><th>Trigger</th><th class="num">ครั้ง</th></tr></thead><tbody>' +
+      defs.map((d) => `<tr><td>${esc(d.name.replace('ADE trigger: ', ''))}</td><td class="num">${fmt((ha.rdu.values[d.code][P.key] || {}).n)}</td></tr>`).join('') + '</tbody>';
+  }
+
+  // ── บริบาลทางเภสัชกรรม ──
+  function drawMedrec(P) {
+    const ms = P.months, mr = ha.medrec;
+    const sum = (k) => ms.reduce((s, m) => s + ((mr[m] || {})[k] || 0), 0);
+    const t = { adm: sum('adm'), done: sum('done'), admMeds: sum('admMeds'), doneMeds: sum('doneMeds') };
+    $('medrec-note').textContent = `${P.label}: ทำ ${fmt(t.done)} จาก ${fmt(t.adm)} admit (${fmt(t.adm ? t.done / t.adm * 100 : null, 1)}%) · ` +
+      `เฉพาะผู้ป่วยที่มีประวัติรับยา OPD ใน ${ha.priorDays} วันก่อน admit: ${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} (${fmt(t.admMeds ? t.doneMeds / t.admMeds * 100 : null, 1)}%) — นับจากบันทึก Medication reconciliation ใน HOSxP`;
+    chart('ch-medrec', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
+      { label: 'ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? x.doneMeds / x.admMeds * 100 : null; }), borderColor: C.primary, backgroundColor: C.primary, tension: .25 },
+      { label: 'admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? x.done / x.adm * 100 : null; }), borderColor: C.muted, backgroundColor: C.muted, tension: .25 }] },
+      options: baseOpts('%', false, 100) });
+    return t;
+  }
+
+  function drawDrp(P) {
+    const vs = clinicVisits.filter((v) => inP(v.date, P));
+    const withDrp = (v) => Array.isArray(v.drps) && v.drps.length > 0;
+    const clinics = ['DM', 'HT', 'COPD'];
+    const row = (label, xs) => `<tr><td>${label}</td><td class="num">${fmt(xs.length)}</td><td class="num">${fmt(xs.filter(withDrp).length)}</td>` +
+      `<td class="num">${fmt(xs.reduce((s, v) => s + (v.drps || []).length, 0))}</td><td class="num">${xs.length ? fmt(xs.filter(withDrp).length / xs.length * 100, 1) + '%' : '—'}</td></tr>`;
+    $('drp-table').innerHTML = '<thead><tr><th>คลินิก</th><th class="num">ครั้งที่พบเภสัช</th><th class="num">ครั้งที่พบ DRP</th><th class="num">จำนวน DRP</th><th class="num">ร้อยละ</th></tr></thead><tbody>' +
+      clinics.map((c) => row(c, vs.filter((v) => v.clinic === c))).join('') + `<tr style="font-weight:700">${row('รวม', vs).slice(4)}</tbody>`;
+    const types = {};
+    vs.forEach((v) => (v.drps || []).forEach((d) => { const t = (d && d.type) || 'ไม่ระบุ'; types[t] = (types[t] || 0) + 1; }));
+    $('drp-types').innerHTML = Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t, n]) => `<span class="chip">${esc(t)} · ${fmt(n)}</span>`).join('');
+    return { visits: vs.length, drp: vs.reduce((s, v) => s + (v.drps || []).length, 0), withDrp: vs.filter(withDrp).length };
+  }
+
+  // ── บริการ ──
+  function drawWait(P) {
+    const ms = P.months, w = ha.wait;
+    const sum = (k) => ms.reduce((s, m) => s + ((w[m] || {})[k] || 0), 0);
+    const n = sum('n'), rx = sum('rx'), le30 = sum('le30'), le15 = sum('le15');
+    $('wait-note').textContent = `${P.label}: ได้รับยาภายใน 30 นาที ${fmt(n ? le30 / n * 100 : null, 1)}% · ภายใน 15 นาที ${fmt(n ? le15 / n * 100 : null, 1)}% ` +
+      `(วัดได้ ${fmt(n)} จาก ${fmt(rx)} ใบสั่งยาที่จ่ายที่ห้องจ่ายยา) — นับจากเวลาส่งคิวมาห้องจ่ายยา ถึงเวลากดบันทึกจ่ายยาใน HOSxP; ใบที่ไม่ได้ส่งคิวผ่านระบบวัดไม่ได้`;
+    chart('ch-wait', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
+      { label: 'มัธยฐาน (นาที)', data: ms.map((m) => (w[m] || {}).median ?? null), borderColor: C.primary, backgroundColor: C.primary, tension: .25 },
+      { label: 'ร้อยละ 90 ได้รับยาภายใน (นาที)', data: ms.map((m) => (w[m] || {}).p90 ?? null), borderColor: C.gold, backgroundColor: C.gold, tension: .25 }] },
+      options: baseOpts('นาที') });
+    $('wait-table').innerHTML = '<thead><tr><th>เดือน</th><th class="num">วัดได้</th><th class="num">มัธยฐาน</th><th class="num">P90</th><th class="num">≤ 30 นาที</th></tr></thead><tbody>' +
+      ms.map((m) => { const x = w[m] || {}; return `<tr><td>${mLabel(m)}</td><td class="num">${fmt(x.n)}</td><td class="num">${fmt(x.median, 1)}</td><td class="num">${fmt(x.p90, 1)}</td><td class="num">${x.n ? fmt(x.le30 / x.n * 100, 1) + '%' : '—'}</td></tr>`; }).join('') + '</tbody>';
+    return { n, pct30: n ? le30 / n * 100 : null };
+  }
+
+  // ── รายเคส (bridge) ──
+  function drawCases(P) {
+    if (!cases) { $('cases').innerHTML = '<p class="empty">เครื่องนี้อ่านรายเคสไม่ได้ (ต้องเปิดจากเครื่องที่ติดตั้ง HOSxP Bridge และรันโปรแกรมดึงตัวชี้วัด)</p>'; return; }
+    const al = (cases.allergy || []).filter((e) => inP(e.date, P) && !e.brandOnly);
+    const ras = (cases.RAS || []).filter((e) => inP(e.date, P));
+    const preg = (cases.PREG || []).filter((e) => inP(e.date, P));
+    const tbl = (title, head, rows) => `<h3>${title} <span class="note">(${rows.length})</span></h3>` + (rows.length
+      ? `<div class="tbl-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<p class="empty">ไม่พบในช่วงนี้</p>');
+    $('cases').innerHTML =
+      tbl('จ่ายยาที่ผู้ป่วยมีประวัติแพ้', ['วันที่', 'HN', 'ชื่อ', 'ยาที่จ่าย', 'บันทึกแพ้', 'อาการที่บันทึก', 'VN / AN'],
+        al.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.name)}</td><td>${esc(e.drug)}</td><td>${esc(e.agent)} (${thDate(e.allergyDate)})</td><td>${esc(e.symptom)}</td><td>${esc(e.an || e.vn)}</td></tr>`)) +
+      tbl('ผู้ป่วยความดันสูงที่ได้ RAS blockade 2 ชนิดร่วมกัน', ['วันที่', 'HN', 'อายุ', 'ยา', 'VN'],
+        ras.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.age)}</td><td>${esc((e.drugs || []).join(', '))}</td><td>${esc(e.vn)}</td></tr>`)) +
+      tbl('หญิงตั้งครรภ์ที่ได้รับยาห้ามใช้ (warfarin / statin / ergot)', ['วันที่', 'HN', 'อายุ', 'ยา', 'รหัสตั้งครรภ์ล่าสุด', 'VN'],
+        preg.map((e) => `<tr><td>${thDate(e.date)}</td><td>${esc(e.hn)}</td><td>${esc(e.age)}</td><td>${esc((e.drugs || []).join(', '))}</td><td>${thDate(e.pregDx)}</td><td>${esc(e.vn)}</td></tr>`));
+    $('cases-note').textContent = `ข้อมูล ณ ${cases.generated ? thDate(cases.generated.slice(0, 10)) + ' ' + cases.generated.slice(11, 16) + ' น.' : '—'} · รายชื่อผู้ป่วยไม่ได้เก็บบนอินเทอร์เน็ต — แสดงเฉพาะเครื่องที่รันโปรแกรมดึงข้อมูลตัวชี้วัด`;
+  }
+
+  // ── สรุป ──
+  function drawKpis(P, me, adr, mr, drp, wt) {
+    const st = rduStats(P);
+    const al = P.months.reduce((s, m) => s + ((ha.allergy.months[m] || {}).n || 0), 0);
+    const k = (href, lbl, val, sub, cls) => `<a class="kpi ${cls || ''}" href="${href}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></a>`;
+    const opd = rate(me.opd, me.opdD), ipd = rate(me.ipd, me.ipdD);
+    $('kpis').innerHTML = [
+      k('#sec-rdu', 'RDU Hospital ผ่าน', `${st.passN}/${st.evalN}`, `เกณฑ์ผ่าน ≥ ${ha.rdu.passMin || 10} จาก ${st.total} ตัว`, st.evalN ? (st.passN >= (ha.rdu.passMin || 10) ? 'good' : 'bad') : ''),
+      k('#sec-safety', 'จ่ายยาที่มีประวัติแพ้', fmt(al), 'ครั้ง (เป้าหมาย 0)', al ? 'bad' : 'good'),
+      k('#sec-safety', 'ME OPD / 1,000 ใบสั่งยา', fmt(opd, 2), `${fmt(me.opd)} รายการ (เป้า ≤ 20)`, opd != null && opd > 20 ? 'bad' : ''),
+      k('#sec-safety', 'ME IPD / 1,000 วันนอน', fmt(ipd, 2), `${fmt(me.ipd)} รายการ (เป้า ≤ 10)`, ipd != null && ipd > 10 ? 'bad' : ''),
+      k('#sec-safety', 'ME ระดับ E–I', fmt(me.sev), 'รายการ (OPD + IPD + ER)', me.sev ? 'bad' : ''),
+      k('#sec-safety', 'ADR ที่รายงาน', fmt(adr.n), `ร้ายแรง ${fmt(adr.serious)} ราย`),
+      k('#sec-care', 'Med reconciliation', mr.admMeds ? fmt(mr.doneMeds / mr.admMeds * 100, 1) + '%' : '—', `ผู้ป่วยในที่มียาเดิม ${fmt(mr.doneMeds)}/${fmt(mr.admMeds)}`),
+      k('#sec-care', 'DRP ที่พบในคลินิก', fmt(drp.drp), `ใน ${fmt(drp.withDrp)} จาก ${fmt(drp.visits)} ครั้งที่พบเภสัช`),
+      k('#sec-service', 'รับยา OPD ภายใน 30 นาที', wt.pct30 == null ? '—' : fmt(wt.pct30, 1) + '%', `วัดได้ ${fmt(wt.n)} ใบสั่งยา`),
+    ].join('');
+  }
+
+  // ── chart helpers ──
+  function baseOpts(yTitle, stacked, yMax) {
+    return { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Noto Sans Thai' } } } },
+      scales: { x: { stacked: !!stacked, grid: { display: false }, ticks: { font: { family: 'Noto Sans Thai', size: 11 } } },
+        y: { stacked: !!stacked, beginAtZero: true, max: yMax, title: { display: !!yTitle, text: yTitle, font: { family: 'Noto Sans Thai' } }, ticks: { precision: 0 } } } };
+  }
+  function chart(id, cfg) {
+    if (charts[id]) charts[id].destroy();
+    const el = $(id);
+    if (el) charts[id] = new Chart(el.getContext('2d'), cfg);
+  }
+
+  // ── render ──
+  let last = {};
+  function render() {
+    if (!ha) return;
+    const P = period();
+    drawRdu(P);
+    drawAllergy(P);
+    const me = drawMe(P), adr = drawAdr(P);
+    drawAde(P);
+    const mr = drawMedrec(P), drp = drawDrp(P), wt = drawWait(P);
+    drawCases(P);
+    drawKpis(P, me, adr, mr, drp, wt);
+    last = { P, me, adr, mr, drp, wt };
+  }
+
+  function fillFy() {
+    const fys = [...new Set(ha.months.map(fyOf))].sort((a, b) => b - a);
+    const cur = $('fy').value;
+    $('fy').innerHTML = fys.map((f) => `<option value="${f}">ปีงบ ${f}</option>`).join('');
+    // ต้นปีงบ (ยังไม่ถึง 2 เดือน) เปิดที่ปีงบก่อนหน้าเป็นค่าเริ่มต้น
+    const latest = ha.months[ha.months.length - 1];
+    const def = fyMonths(fys[0]).filter((m) => m <= latest).length < 2 && fys[1] ? fys[1] : fys[0];
+    $('fy').value = cur && fys.includes(+cur) ? cur : def;
+  }
+
+  // ── Excel ──
+  function exportXlsx() {
+    if (!ha || typeof XLSX === 'undefined') return;
+    const P = period(), wb = XLSX.utils.book_new();
+    const add = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ ข้อมูล: 'ไม่มี' }]); XLSX.utils.book_append_sheet(wb, ws, name); };
+    const ms = fyMonths(P.fy).filter((m) => ha.months.includes(m));
+    add('RDU', ha.rdu.defs.map((d) => {
+      const o = { ข้อ: d.no, ตัวชี้วัด: d.name, เป้าหมาย: tgtTxt(d) };
+      [`FY${P.fy}`, `FY${P.fy}H1`, `FY${P.fy}H2`].forEach((k) => { const x = ha.rdu.values[d.code][k]; const v = rduValue(d, x); o[k.replace('FY', 'ปีงบ ')] = v == null ? '' : +v.toFixed(2); o[k.replace('FY', 'ตัวตั้ง/ตัวหาร ')] = x ? (x.d != null ? `${x.n}/${x.d}` : `${x.n}`) : ''; });
+      ms.forEach((m) => { const v = rduValue(d, ha.rdu.values[d.code][m]); o[mLabel(m)] = v == null ? '' : +v.toFixed(2); });
+      o.สถานะ = d.scored ? ({ true: 'ผ่าน', false: 'ไม่ผ่าน' }[String(pass(d, rduValue(d, ha.rdu.values[d.code][`FY${P.fy}`])))] || '') : 'เฝ้าระวัง';
+      return o;
+    }));
+    add('แพ้ยาซ้ำ', ha.allergy.events.filter((e) => inP(e.date, P)).map((e) => ({ วันที่จ่าย: e.date, ยา: e.drug, บันทึกแพ้: e.agent, บันทึกแพ้เมื่อ: e.allergyDate, จุดบริการ: `${e.setting} ${e.dept}`, นับ: e.brandOnly ? 'ไม่นับ (แพ้เฉพาะยี่ห้อ/ทนได้)' : 'นับ' })));
+    add('ME', meMonthly(P).map((r) => ({ เดือน: r.m, ME_OPD: r.opd, ใบสั่งยา_OPD: r.opdD, อัตรา_OPD: rate(r.opd, r.opdD), ME_IPD: r.ipd, วันนอน: r.ipdD, อัตรา_IPD: rate(r.ipd, r.ipdD), ME_ER: r.er, ใบสั่งยา_ER: r.erD, อัตรา_ER: rate(r.er, r.erD), ระดับ_E_I: r.sev })));
+    add('MedRec', P.months.map((m) => { const x = ha.medrec[m] || {}; return { เดือน: m, admit: x.adm || 0, ทำ_MedRec: x.done || 0, admit_มียาเดิม: x.admMeds || 0, ทำ_MedRec_มียาเดิม: x.doneMeds || 0 }; }));
+    add('รอรับยา OPD', P.months.map((m) => { const x = ha.wait[m] || {}; return { เดือน: m, วัดได้: x.n || 0, ใบสั่งยาที่จ่าย: x.rx || 0, มัธยฐาน_นาที: x.median ?? '', P90_นาที: x.p90 ?? '', ภายใน30นาที: x.le30 || 0 }; }));
+    XLSX.writeFile(wb, `ตัวชี้วัดเภสัชกรรม_HA_${P.label.replace(/\s+/g, '_')}.xlsx`);
+  }
+
+  // ── load ──
+  $('fy').addEventListener('change', render);
+  $('half').addEventListener('change', render);
+  $('btn-xlsx').addEventListener('click', exportXlsx);
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    const db = firebase.firestore();
+    db.collection(COL).doc('pharmacy_ha').onSnapshot((snap) => {
+      try { ha = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { ha = null; }
+      if (!ha) { $('updated').textContent = 'ยังไม่มีข้อมูล — รอโปรแกรมดึงตัวชี้วัดจาก HOSxP รันรอบแรก'; return; }
+      $('updated').textContent = `อัปเดตจาก HOSxP ${thDate(ha.generated.slice(0, 10))} ${ha.generated.slice(11, 16)} น.`;
+      fillFy();
+      drawDrugGroups();
+      render();
+    }, (e) => { $('updated').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; });
+    const watch = (doc, fn) => db.collection(COL).doc(doc).onSnapshot((s) => { fn(s.exists ? s.data() : {}); render(); }, () => {});
+    watch('hosxp_records', (d) => { hxRecs = d.records || []; });
+    watch('er_records', (d) => { erRecs = d.records || []; });
+    watch('hosxp_denom', (d) => { denom = d.data || {}; });
+    watch('adr_records', (d) => { adrRecs = d.records || []; });
+    if (window.ClinicStore) ClinicStore.watch(db, (x) => { clinicVisits = x.visits || []; render(); }, () => {});
+  } catch (e) {
+    $('updated').textContent = 'เชื่อมต่อฐานข้อมูลไม่สำเร็จ';
+  }
+  if (window.tphHosxp && tphHosxp.haCases) tphHosxp.haCases().then((j) => { cases = j && j.data ? j.data : null; render(); });
+})();
+</script>
+</body>
+</html>

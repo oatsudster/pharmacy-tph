@@ -1,0 +1,4 @@
+{
+  "_readme": "แก้การจับคู่ยา → ATC ของ pharmacy_ha_sync.py รายตัว: \"icode\": {\"atc\": [\"J01CA04\"], \"route\": \"ORAL\"} (route: ORAL / INJ / INHAL / EYE_EAR / SKIN / NASAL / RECTAL) — ดูผลจับคู่ทั้งหมดด้วย python pharmacy_ha_sync.py --atc-report",
+  "icode": {}
+}

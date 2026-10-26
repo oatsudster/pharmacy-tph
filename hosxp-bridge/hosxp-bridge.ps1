@@ -785,7 +785,15 @@ function ApptFromDb($hn) {
   } catch { return $false }
 }
 
+function DbHaCases {
+  # รายเคสตัวชี้วัด HA (แพ้ยาซ้ำ / RAS 2 ชนิด / ยาห้ามใช้ในหญิงตั้งครรภ์) ที่ pharmacy_ha_sync.py เขียนไว้ในเครื่องนี้
+  $f = Join-Path $env:LOCALAPPDATA 'HOSxPBridge\ha-cases.json'
+  if (-not (Test-Path $f)) { return '{"ok":false,"error":"เครื่องนี้ไม่ได้รัน pharmacy_ha_sync.py"}' }
+  '{"ok":true,"data":' + [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8) + '}'
+}
+
 function DbEndpoint($path) {
+  if ($path -like '/db/hacases*') { return DbHaCases }
   # endpoint ที่ไม่ใช้ HN
   if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*' -or $path -like '/db/mrdict*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
