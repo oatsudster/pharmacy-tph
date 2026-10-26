@@ -33,6 +33,7 @@ EDITION = 'FY2566'
 SCORED = ['RI', 'AD', 'FTW', 'APL', 'RAS', 'NSAID-CKD', 'METFORMIN', 'NSAID-DUP', 'ICS', 'LA-BZD', 'NSAH', 'PREG']
 WATCH = ['M-DRUGS-PER-VISIT', 'M-NLEM-SHARE', 'M-ADE-STEROID', 'M-ADE-NSAID-GIB', 'M-ADE-AKI', 'M-ADE-ALLERGY',
          'M-ADE-WARFARIN-BLEED']
+PREG_END_SET = 'RDU-LABOUR-ABORTION-ICD10'
 HOSPITAL_LEVEL = 'F2'  # รพช. ขนาดกลาง — ใช้เลือกเป้าหมายจาก target_by_level (F1-F3 เป้าเท่ากันทุกตัว)
 EGFR_LAB = '3189'
 PHARMACY_DEP = '030'
@@ -470,7 +471,9 @@ class Rdu:
         return {'n': n, 'd': d}
 
     def preg(self, ind, months, collect=False):
-        preg_set, deliv = self.sets.get(ind['denom_code_set'], []), self.sets.get(ind['denom_exclude_code_set'], [])
+        # การตั้งครรภ์สิ้นสุด: คลอด (O80, Z37) + แท้ง/คลอดทุกแบบ (O00-O08, O60-O84) — มีแท้งแล้วไม่นับว่ายังตั้งครรภ์
+        preg_set = self.sets.get(ind['denom_code_set'], [])
+        deliv = self.sets.get(ind['denom_exclude_code_set'], []) + self.sets.get(PREG_END_SET, [])
         gx = self.gic.get(ind['numer_drug_group'], {})
         preg_dates, deliv_dates = defaultdict(list), defaultdict(list)
         for v in self.opd.values():
@@ -624,7 +627,7 @@ def compute(db):
     used_groups = {ind[k] for ind in inds.values() for k in ('denom_drug_group', 'numer_drug_group') if ind[k]}
     gi_union = {ic for g in used_groups for ic in gic.get(g, {})}
     need_sets = {ind[k] for ind in inds.values() for k in ('denom_code_set', 'numer_code_set', 'denom_exclude_code_set',
-                                                            'lab_alt_code_set') if ind[k]} | {'RDU-MECH-VALVE-ICD10'}
+                                                            'lab_alt_code_set') if ind[k]} | {'RDU-MECH-VALVE-ICD10', PREG_END_SET}
     a = add_days(START_MONTH + '-01', -LOOKBACK_DAYS)
     b = next_month(last) + '-01'
     opd, ipd, egfr = pull(db, a, b, need_sets, sets, atc_map, gi_union, sorted(gic.get('RDU-AB-J01', {})))
