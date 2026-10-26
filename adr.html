@@ -762,6 +762,7 @@ let records = JSON.parse(localStorage.getItem('adr_records') || '[]');
 let currentTab = 'all';
 let editingId = null;
 let charts = {};
+let yearFilterInit = false;
 
 // ═══ HELPERS ════════════════════════════════════════════════════
 function toggleHxManual() {
@@ -852,7 +853,35 @@ function buildYearFilter() {
   const el = document.getElementById('fil-year');
   const cur = el.value;
   el.innerHTML = '<option value="">ทุกปี</option>' + years.map(y=>`<option ${String(y)===cur?'selected':''}>${y}</option>`).join('');
-  if (!el.value && years.length) el.value = years[0];
+  // เลือกปีล่าสุดให้ครั้งแรกที่มีข้อมูลเท่านั้น — หลังจากนั้นผู้ใช้เลือก "ทุกปี" ได้ (เดิมรีเซ็ตกลับปีล่าสุดทุกครั้ง)
+  if (!yearFilterInit && years.length) { el.value = years[0]; yearFilterInit = true; }
+}
+
+// ═══ ชื่อยามาตรฐาน ═══════════════════════════════════════════════
+// drugStd มาจาก hosxp-sync/hosxp_monthly_sync.py: จับคู่ชื่อยาที่ลงไว้กับประวัติยาของผู้ป่วย (1 ปีก่อนรายงาน) / รายการยาใน HOSxP
+// ยังไม่ได้จับคู่ (เพิ่งเพิ่ม/แก้ชื่อยา) → ตัดรูปแบบยา ขนาดยา ชื่อการค้า จากข้อความเอง — ต้องตรงกับ ADR_DRUG_ALIAS ใน Python
+const ADR_DRUG_ALIAS = { benzhexol:'Trihexyphenidyl', trihexyphenedyl:'Trihexyphenidyl', augmentin:'Amoxicillin/Clavulanate',
+  brufen:'Ibuprofen', voltaren:'Diclofenac', fenac:'Diclofenac', leftose:'Lysozyme', norvas:'Amlodipine', tramal:'Tramadol',
+  zocor:'Simvastatin', glucophage:'Metformin', minidiab:'Glipizide', bactrim:'Co-trimoxazole', cotrimoxazole:'Co-trimoxazole',
+  'c-trimoxazole':'Co-trimoxazole', ceftrixone:'Ceftriaxone', neoxen:'Naproxen', zyloric:'Allopurinol' };
+const ADR_DRUG_STOP = new Set(['tab','tabs','tablet','tablets','cap','caps','capsule','capsules','inj','injection','syr','syrup',
+  'susp','suspension','cream','oint','sol','solution','drop','drops','vial','amp','dry','chloride','hydrochloride','maleate',
+  'sodium','potassium','calcium','stat','hcl']);
+function adrDrugTokens(text) {
+  let t = String(text || '').toLowerCase().replace(/^\s*\((?:tab|cap|inj|syr|sol|pwd|cream|oint|iv|mdi|lot|supp)[^)]*\)\s*/, '');
+  t = t.replace(/\[[^\]]*\]|\(\d+\)/g, ' ');
+  return (t.match(/[a-z][a-z-]{3,}/g) || []).filter(w => !ADR_DRUG_STOP.has(w));
+}
+function adrDrugItems(r) {
+  const drug = String(r.drug || '').trim();
+  if (!drug) return [];
+  if (r.drugStd && r.drugStd.from === drug && Array.isArray(r.drugStd.items)) return r.drugStd.items;
+  return drug.split(/[,\n;]/).map(p => p.trim()).filter(Boolean).map(p => {
+    const tk = adrDrugTokens(p);
+    const generic = tk.map(w => ADR_DRUG_ALIAS[w]).find(Boolean) || (tk[0] ? tk[0][0].toUpperCase() + tk[0].slice(1) : p);
+    const st = (p.match(/(\d+(?:\.\d+)?)\s*(mg|g|mcg|%|u|iu)(?![a-z])/i) || [])[0];
+    return { generic, label: st ? generic + ' ' + st.replace(/\s+/, ' ') : generic, icode: '', hxName: '', src: 'text' };
+  });
 }
 
 // ═══ TYPE CHANGE ════════════════════════════════════════════════
@@ -1095,7 +1124,7 @@ function getFiltered(base) {
     if (year && String(fi.year)!==year) return false;
     if (month && fi.month!==month) return false;
     if (sev && r.severity!==sev) return false;
-    if (q && ![r.hn,r.name,r.drug,r.symptom].some(f=>String(f||'').toLowerCase().includes(q))) return false;
+    if (q && ![r.hn,r.name,r.drug,r.symptom,...adrDrugItems(r).map(d=>d.generic)].some(f=>String(f||'').toLowerCase().includes(q))) return false;
     return true;
   });
 }
@@ -1209,8 +1238,16 @@ function renderCharts(recs) {
   }
 
   // Drug top 8
-  const dCounts = {};
-  recs.forEach(r => { if(r.drug) dCounts[r.drug]=(dCounts[r.drug]||0)+1; });
+  // นับตามชื่อสามัญ (Enalapril 5 mg / Enalapril / (tab.) eNAlapril 5 mg. = Enalapril) — tooltip แยกขนาดยา
+  const dCounts = {}, dLabels = {};
+  recs.forEach(r => {
+    const seen = new Set();
+    adrDrugItems(r).forEach(d => {
+      const k = d.generic; if (!k || seen.has(k)) return; seen.add(k);
+      dCounts[k] = (dCounts[k]||0)+1;
+      (dLabels[k] = dLabels[k] || {})[d.label] = (dLabels[k][d.label]||0)+1;
+    });
+  });
   const topD = Object.entries(dCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
 
   const dCtx = document.getElementById('chart-drug').getContext('2d');
@@ -1223,7 +1260,7 @@ function renderCharts(recs) {
     charts.drug = new Chart(dCtx, {
       type:'bar',
       data:{ labels:topD.map(([d])=>d.length>22?d.slice(0,20)+'…':d), datasets:[{ label:'จำนวน', data:topD.map(([,c])=>c), backgroundColor:'rgba(196,154,34,0.75)', borderRadius:3 }] },
-      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>topD[items[0].dataIndex][0],label:item=>item.raw+' รายการ ('+(recs.length?item.raw/recs.length*100:0).toFixed(1)+'% ของ '+recs.length+' รายการ)'}}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>topD[items[0].dataIndex][0],label:item=>item.raw+' รายการ ('+(recs.length?item.raw/recs.length*100:0).toFixed(1)+'% ของ '+recs.length+' รายการ)',afterLabel:item=>{const l=dLabels[topD[item.dataIndex][0]]||{};const e=Object.entries(l).sort((a,b)=>b[1]-a[1]);return e.length>1||(e[0]&&e[0][0]!==topD[item.dataIndex][0])?e.map(([k,c])=>'  · '+k+' '+c):'';}}}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
     });
   }
 }
@@ -1263,7 +1300,7 @@ function renderTable(fRecs) {
             <td style="white-space:nowrap">${thDate(r.date)}${r.hosxp ? '<span class="hd-flag" title="มีรายละเอียดจาก HOSxP — กด ✏️ เพื่อดู">🗄</span>' : ''}</td>
             <td><strong>${escHtml(r.hn||'-')}</strong>${r.name?`<br><small style="color:var(--text-light)">${escHtml(r.name)}</small>`:''}</td>
 
-            <td>${escHtml(r.drug||'-')}</td>
+            <td${(()=>{const s=adrDrugItems(r).filter(d=>d.src!=='text');return s.length?` title="${escHtml('HOSxP: '+s.map(d=>d.hxName+(d.src==='history'?' (ประวัติยาผู้ป่วย)':' (รายการยาในระบบ)')).join(', '))}"`:'';})()}>${escHtml(r.drug||'-')}</td>
             <td>${typeBadge(r.type)}</td>
             <td>${r.symptom ? escHtml(r.symptom) + (r.symptomAI ? ' <span class="badge" style="background:#e0e7ff;color:#3730a3">🤖 AI</span>' : '') : '<span class="badge badge-warn">⚠️ ยังไม่ระบุ</span>'}</td>
             <td>${sevBadge(r.severity)}</td>

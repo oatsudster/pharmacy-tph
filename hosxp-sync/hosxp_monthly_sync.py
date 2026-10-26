@@ -363,6 +363,114 @@ def merge_adr(records, items):
     return added, linked, new
 
 
+# ── ชื่อยาที่สงสัยใน ADR → รายการยาใน HOSxP (กราฟยาที่พบบ่อยนับตามชื่อสามัญ ไม่แยก "Enalapril 5 mg" กับ "Enalapril") ──
+# ต้องตรงกับ ADR_DRUG_ALIAS / adrDrugTokens ใน adr.html
+ADR_DRUG_ALIAS = {'benzhexol': 'Trihexyphenidyl', 'trihexyphenedyl': 'Trihexyphenidyl', 'augmentin': 'Amoxicillin/Clavulanate',
+                  'brufen': 'Ibuprofen', 'voltaren': 'Diclofenac', 'fenac': 'Diclofenac', 'leftose': 'Lysozyme',
+                  'norvas': 'Amlodipine', 'tramal': 'Tramadol', 'zocor': 'Simvastatin', 'glucophage': 'Metformin',
+                  'minidiab': 'Glipizide', 'bactrim': 'Co-trimoxazole', 'cotrimoxazole': 'Co-trimoxazole',
+                  'c-trimoxazole': 'Co-trimoxazole', 'ceftrixone': 'Ceftriaxone', 'neoxen': 'Naproxen', 'zyloric': 'Allopurinol'}
+ADR_DRUG_STOP = {'tab', 'tabs', 'tablet', 'tablets', 'cap', 'caps', 'capsule', 'capsules', 'inj', 'injection', 'syr', 'syrup',
+                 'susp', 'suspension', 'cream', 'oint', 'sol', 'solution', 'drop', 'drops', 'vial', 'amp', 'dry', 'chloride',
+                 'hydrochloride', 'maleate', 'sodium', 'potassium', 'calcium', 'stat', 'hcl'}
+
+
+def adr_drug_tokens(text):
+    """ข้อความชื่อยา → คำหลัก (ตัดรูปแบบยา [5] (tab.) ขนาดยา และคำทั่วไป) เช่น '(tab.) eNAlapril 5 mg.' → ['enalapril']"""
+    t = re.sub(r'^\s*\((?:tab|cap|inj|syr|sol|pwd|cream|oint|iv|mdi|lot|supp)[^)]*\)\s*', '', (text or '').lower())
+    t = re.sub(r'\[[^\]]*\]|\(\d+\)', ' ', t)
+    return [w for w in re.findall(r'[a-z][a-z-]{3,}', t) if w not in ADR_DRUG_STOP]
+
+
+def adr_generic(tokens):
+    for w in tokens:
+        if w in ADR_DRUG_ALIAS:
+            return ADR_DRUG_ALIAS[w]
+    return tokens[0].capitalize() if tokens else ''
+
+
+def adr_strength(text):
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(mg|g|mcg|%|u|iu)(?![a-z])', (text or '').lower())
+    return (float(m.group(1)), m.group(2)) if m else None
+
+
+def adr_item_label(generic, it):
+    st = re.sub(r'\.$', '', s(it.get('strength')).strip())
+    return f'{generic} {st}'.strip() if st and st != '-' else generic
+
+
+def resolve_adr_drug(db, hn, date, text, master):
+    """ยา 1 ตัว → {generic, label, icode, hxName, src}: ก่อนอื่นดูยาที่ผู้ป่วยได้รับใน 1 ปีก่อนรายงาน (opitemrece)
+    ชื่อตรง (+ขนาดตรงถ้าระบุ) เลือกที่จ่ายล่าสุด · ไม่มีประวัติ ใช้รายการยาในระบบ (drugitems) ที่ขนาดตรง/มีขนาดเดียว"""
+    tokens = adr_drug_tokens(text)
+    generic = adr_generic(tokens)
+    out = {'generic': generic, 'label': generic, 'icode': '', 'hxName': '', 'src': 'text'}
+    if not tokens:
+        out['generic'] = out['label'] = (text or '').strip()
+        return out
+    keys = set(tokens) | {k for k, v in ADR_DRUG_ALIAS.items() if v == generic} | {generic.lower()}
+
+    def hit(it):
+        name = (s(it.get('name')) + ' ' + s(it.get('generic_name'))).lower()
+        return any(k in name for k in keys)
+
+    want = adr_strength(text)
+
+    def same_st(it):
+        return want is not None and adr_strength(s(it.get('strength'))) == want
+
+    hist = []
+    if hn and re.match(r'^\d{4}-\d{2}-\d{2}$', date or ''):
+        d1 = (dt.date.fromisoformat(date) - dt.timedelta(days=365)).isoformat()
+        hist = q(db, """SELECT o.icode, MAX(o.vstdate) last, d.name, d.strength, d.generic_name FROM opitemrece o
+            JOIN drugitems d ON d.icode=o.icode WHERE o.hn=%s AND o.vstdate>=%s AND o.vstdate<=%s AND o.icode LIKE '1%%'
+            GROUP BY o.icode, d.name, d.strength, d.generic_name""", (hn, d1, date))
+    cand = [it for it in hist if hit(it)]
+    pick = None
+    if cand:
+        cand.sort(key=lambda it: s(it['last']), reverse=True)
+        pick = next((it for it in cand if same_st(it)), None) or (cand[0] if want is None else None)
+        if pick:
+            out['src'] = 'history'
+    if pick is None:
+        mc = [it for it in master if hit(it)]
+        pick = next((it for it in mc if same_st(it) and it['istatus'] == 'Y'), None) or next((it for it in mc if same_st(it)), None)
+        if pick is None and want is None:
+            act = [it for it in mc if it['istatus'] == 'Y']
+            pick = act[0] if len(act) == 1 else None
+        if pick:
+            out['src'] = 'master'
+    if pick:
+        out.update(icode=s(pick['icode']), hxName=f"{s(pick['name'])} {s(pick['strength'])}".strip(),
+                   label=adr_item_label(generic, pick))
+    return out
+
+
+def resolve_adr_drugs(db, dry, force=False):
+    """ทุกรอบ: รายการ ADR ที่ยังไม่มี drugStd (หรือแก้ชื่อยาหลังจับคู่) → จับคู่กับประวัติยา/รายการยาใน HOSxP"""
+    master = q(db, "SELECT icode, name, strength, generic_name, istatus FROM drugitems WHERE icode LIKE '1%%'")
+
+    def mut(f):
+        n = 0
+        for r in f.get('records', []):
+            drug = s(r.get('drug')).strip()
+            ds = r.get('drugStd')
+            if not drug or (not force and isinstance(ds, dict) and ds.get('from') == drug):
+                continue
+            parts = [p.strip() for p in re.split(r'[,\n;]', drug) if p.strip()]
+            items = [resolve_adr_drug(db, s(r.get('hn')).strip(), s(r.get('date')), p, master) for p in parts]
+            new = {'from': drug, 'items': items}
+            if ds != new:
+                r['drugStd'] = new
+                n += 1
+        return {'changed': bool(n), 'n': n}
+
+    res = update_doc('adr_records', mut, dry)
+    if res['n']:
+        log(f'ADR จับคู่ชื่อยากับ HOSxP {res["n"]} รายการ' + (' [dry-run ไม่ได้เขียน]' if dry else ''))
+    return res
+
+
 def base36(n):
     d = string.digits + string.ascii_lowercase
     out = ''
@@ -786,6 +894,7 @@ def main():
     ap.add_argument('--er-from', default=ER_RX_START, help='เติมใบสั่งยา ER ที่ขาดตั้งแต่วันนี้ (YYYY-MM-DD)')
     ap.add_argument('--ht-from', default=HT_PM_START, help='เติมจำนวนคนไข้ HT บ่ายตั้งแต่วันนี้ (YYYY-MM-DD; คิดย้อนหลังสูงสุด 14 วัน)')
     ap.add_argument('--counsel-from', default=COUNSEL_START, help='ดึง DRP จาก COUNSELLING ตั้งแต่วันนี้ (YYYY-MM-DD; ย้อนหลังสูงสุด 14 วัน)')
+    ap.add_argument('--adr-drugs-all', action='store_true', help='จับคู่ชื่อยา ADR กับ HOSxP ใหม่ทุกรายการ')
     args = ap.parse_args()
 
     today = dt.date.today()
@@ -830,6 +939,10 @@ def main():
                 done[m] = dt.datetime.now().isoformat(timespec='seconds')
                 with open(STATE_FILE, 'w', encoding='utf-8') as f:
                     json.dump(state, f, ensure_ascii=False, indent=1)
+        try:  # หลังดึงรายเดือน: รายการใหม่/ที่แก้ชื่อยาในหน้าเว็บได้ชื่อยามาตรฐานด้วย
+            resolve_adr_drugs(db, args.dry_run, args.adr_drugs_all)
+        except Exception as e:  # noqa: BLE001
+            log(f'ADR จับคู่ชื่อยา ผิดพลาด: {type(e).__name__}: {e}')
         db.close()
     except Exception as e:  # noqa: BLE001
         log(f'ผิดพลาด: {type(e).__name__}: {e}')
