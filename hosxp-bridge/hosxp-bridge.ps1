@@ -298,6 +298,11 @@ function DbNightMeds($path) {
     "o.dep_code, k.department, o.staff, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
     "TRIM(IF(o.sp_use IS NOT NULL AND o.sp_use<>'', CONCAT_WS(' ', sp.name1, sp.name2, sp.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text, " +
     "u.iperday, u.iperdose, " +
+    # ฉลากติดขวดน้ำเกลือ 1000 ml (แบบสติกเกอร์ยา HOSxP — StickerDetailReport.rtm เหมือน DbRxSticker)
+    "IF(od.usage_lock='Y', od.usage_line1, IF(o.sp_use<>'', sp.name1, u.name1)) AS line1, " +
+    "IF(od.usage_lock='Y', od.usage_line2, IF(o.sp_use<>'', sp.name2, u.name2)) AS line2, " +
+    "IF(od.usage_lock='Y', od.usage_line3, IF(o.sp_use<>'', sp.name3, u.name3)) AS line3, " +
+    "TRIM(IFNULL(d.name_print,'')) AS name_print, d.thai_name, d.therapeutic, h.hinttext, ov.oqueue, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, p.sex, " +
     "TIMESTAMPDIFF(MONTH, p.birthday, o.rxdate) AS age_m, s.bw, s.height, s.pregnancy, s.egfr, " +
     "DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward " +
@@ -305,6 +310,8 @@ function DbNightMeds($path) {
     "LEFT JOIN drugusage u ON u.drugusage=o.drugusage LEFT JOIN sp_use sp ON sp.sp_use=o.sp_use " +
     "LEFT JOIN kskdepartment k ON k.depcode=o.dep_code LEFT JOIN ipt i ON i.an=o.an LEFT JOIN ward w ON w.ward=i.ward " +
     "LEFT JOIN opdscreen s ON s.vn=IF(o.vn IS NULL OR o.vn='', i.vn, o.vn) " +
+    "LEFT JOIN opi_dispense od ON od.hos_guid=o.hos_guid LEFT JOIN drughint h ON h.hc=d.hintcode AND IFNULL(d.hintcode,'')<>'' " +
+    "LEFT JOIN ovst ov ON ov.vn=o.vn " +
     "WHERE o.rxdate IN ('$d0','$d1') AND ((o.rxdate='$d0' AND o.rxtime>='$from') OR (o.rxdate='$d1' AND o.rxtime<'$to')) " +
     "ORDER BY o.rxdate, o.rxtime, o.hn, o.item_no LIMIT 5000")
   $items = @($rows | ForEach-Object {
@@ -312,7 +319,9 @@ function DbNightMeds($path) {
       dep = $_['dep_code']; depName = $_['department']; staff = $_['staff']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
       units = $_['units']; form = $_['dosageform']; qty = $_['qty']; usage = $_['usage_text']; iperday = $_['iperday']; iperdose = $_['iperdose']
       sex = $_['sex']; ageM = $_['age_m']; bw = $_['bw']; height = $_['height']; pregnancy = $_['pregnancy']; egfr = $_['egfr']
-      regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward'] }
+      regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']
+      line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3']; namePrint = $_['name_print']; thaiName = $_['thai_name']
+      therapeutic = $_['therapeutic']; hint = $_['hinttext']; queue = $_['oqueue'] }
   })
   # ผู้ป่วยที่มา ER ช่วงเวรทุกคน รวมคนที่ไม่มียา (มีแต่ค่าธรรมเนียม/ADVICE) — ใบสั่งยาทุกใบต้องนับลง ME ER
   $er = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, k.department, " +

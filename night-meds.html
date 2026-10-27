@@ -97,6 +97,15 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 .sticker .al { font-size: 7pt; line-height: 1.2; font-weight: 700; border: .3mm solid #000; padding: .4mm .8mm; margin-bottom: .6mm; max-height: 9mm; overflow: hidden; }
 .sticker .ft { margin-top: auto; font-size: 6.5pt; color: #333; text-align: right; }
 
+/* ── ฉลากติดขวดน้ำเกลือ 1000 ml: แบบสติกเกอร์ยา HOSxP (rx-sticker.html) ย้ายมาอยู่กลางดวง 9×6 ── */
+.stk { position: relative; width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; }
+.stk:last-child { page-break-after: auto; break-after: auto; }
+.stk > div { position: absolute; white-space: nowrap; overflow: visible; line-height: 1.15; }
+.stk .bw { font-family: 'BrowalliaUPC', 'Browallia New', 'Sarabun', sans-serif; }
+.stk .th { font-family: Tahoma, 'Noto Sans Thai', sans-serif; }
+.stk .c { text-align: center; } .stk .r { text-align: right; } .stk .b { font-weight: 700; }
+.badge.nss { background: #e0f2fe; border-color: #7dd3fc; }
+
 /* ── สรุปรวม A4 ── */
 .sum-print h3 { font-size: 13pt; margin: 0 0 2mm; }
 .sum-print .sub { font-size: 9pt; margin-bottom: 3mm; }
@@ -142,6 +151,7 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
       <label><input type="checkbox" id="opt-vaccine" onchange="reclassify()"> รวมวัคซีน/เซรุ่ม</label>
       <label><input type="checkbox" id="opt-alert-only" onchange="render()"> แสดงเฉพาะใบสั่งที่มีแจ้งเตือน</label>
       <label><input type="checkbox" id="opt-sticker-alert" checked> พิมพ์คำเตือนบนสติกเกอร์</label>
+      <label title="พิมพ์ต่อท้ายตอนกดพิมพ์สติกเกอร์ทุกคน / พิมพ์สรุปรวม — ขวดละ 1 ดวง"><input type="checkbox" id="opt-nss" checked> พิมพ์ฉลากน้ำเกลือ 1000 ml + วิธีใช้ (ติดขวด)</label>
     </div>
   </div>
 
@@ -353,6 +363,7 @@ function render() {
         ${p.an ? `<span class="badge ipd">admit AN ${escHtml(p.an)}${p.regtime ? ' · ' + escHtml(p.regtime) + ' น.' : ''}${p.ward ? ' · ' + escHtml(p.ward) : ''}</span>`
                : `<span class="badge">OPD · ${escHtml(p.dep || '')}</span>`}
         <span class="meta">${escHtml(thD(p.first.slice(0, 10)))} ${escHtml(p.first.slice(11))} น.</span>
+        ${nssCount(p) ? `<span class="badge nss">🏷 ฉลากน้ำเกลือ ${nssCount(p)} ดวง</span>` : ''}
         <label><input type="checkbox" ${has && !NO_STICKER[p.key] ? 'checked' : ''} ${has ? '' : 'disabled'}
           onchange="NO_STICKER[${escHtml(JSON.stringify(p.key))}]=!this.checked"> พิมพ์สติกเกอร์</label>
       </div>`;
@@ -419,7 +430,44 @@ function printStickers(onlyKeys) {
       <div class="ft">ยาที่ใช้ไป เวรบ่าย-ดึก · คืนรถยา</div>
     </div>`).join('');
   }).join('');
-  doPrint(html, '@page { size: 90mm 60mm; margin: 0; }');
+  doPrint(html + nssLabels(pts), '@page { size: 90mm 60mm; margin: 0; }');
+}
+// ── ฉลากติดขวดน้ำเกลือ 1000 ml (ขวดละดวง) — ตำแหน่ง/ตัวอักษรตาม stickerHtml ใน rx-sticker.html (StickerDetailReport.rtm ของ HOSxP)
+// แต่เลื่อนซ้าย 4.7 มม. ให้อยู่กลางดวง 90 มม. (ขอบซ้าย-ขวาราว 6 มม.) · วันที่/เวลา = เวลาที่สั่ง ไม่ใช่เวลาพิมพ์
+const isNss1000 = x => x.include && RE_NSS.test(String(x.drug || '')) && /1,?000/.test(String(x.units || ''));
+const nssCount = p => p.items.filter(isNss1000).reduce((n, x) => n + Math.max(0, Math.round(+x.qty || 0)), 0);
+function nssLabels(pts) {
+  if (!document.getElementById('opt-nss').checked) return '';
+  return pts.map(p => {
+    const list = [];
+    p.items.filter(isNss1000).forEach(x => { for (let c = 0; c < Math.round(+x.qty || 0); c++) list.push(x); });
+    return list.map((x, i) => nssLabelHtml(p, x, i + 1, list.length)).join('');
+  }).join('');
+}
+function nssLabelHtml(p, it, idx, total) {
+  // bridge เก่ายังไม่ส่ง line1-3 → ใช้ข้อความวิธีใช้รวมบรรทัดเดียว (ย่อตัวอักษรเอง)
+  const L = 'line1' in it ? [it.line1, it.line2, it.line3].map(x => String(x || '').trim()) : [String(it.usage || '').trim(), '', ''];
+  const s = (st, cls, txt) => `<div class="${cls}" style="${st}">${escHtml(txt)}</div>`;
+  const pos = (l, t, w, h, fs) => `left:${(l - 4.7).toFixed(2)}mm;top:${t}mm;width:${w}mm;height:${h}mm;font-size:${fs}pt;`;
+  const name = it.namePrint || [it.drug, it.strength, it.units].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  const alts = it.namePrint ? [name] : [...new Set([name, [it.drug, it.strength, shortUnit(it.units)].filter(Boolean).join(' '), drugLabel(it)])];
+  const use = (top, txt) => s(pos(10.58, top, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;white-space:pre;', 'bw c b fit', txt);
+  return `<div class="stk">` +
+    s(pos(10.58, 1.32, 78.3, 4.4, 11), 'bw c', 'กลุ่มงานเภสัชกรรม โทร. 075-306239  ต่อ 112') +
+    s(pos(78, 1.32, 10.9, 4.4, 10), 'th r', `${idx}/${total}`) +
+    s(pos(10.58, 5.03, 60, 6.1, 14), 'bw c', `วันที่ ${thD(it.date)} ${it.time} น.`) +
+    s(pos(64.7, 5.82, 24.2, 6.1, 14), 'bw r fit', it.queue ? `คิว : ${it.queue}` : p.an ? `AN ${p.an}` : '') +
+    s(pos(10.58, 10.85, 4.6, 6.6, 14), 'bw b', 'ชื่อ') +
+    s(pos(15.35, 10.85, 41.5, 6.1, 14), 'bw b fit', p.name || '') +
+    `<div class="th b" style="${pos(57.15, 11.9, 31.75, 4.9, 11)}display:flex;justify-content:space-between"><span>HN</span><span>${escHtml(p.hn || '')}</span></div>` +
+    `<div style="left:5.88mm;top:16.4mm;width:76.73mm;border-top:.27mm solid #000"></div>` +
+    `<div class="th b fit" data-alts="${escHtml(JSON.stringify(alts))}" style="${pos(10.58, 17.2, 67.2, 5.3, 11)}">${escHtml(name)}</div>` +
+    s(pos(78, 17.2, 10.9, 4.5, 10), 'th r', '#' + fmtQty(it.qty)) +
+    use(23.2, L[0]) + use(28.9, L[1]) + use(34.6, L[2]) +
+    s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
+    s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '') +
+    `<div class="th fit" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
+    '</div>';
 }
 // ข้อความเตือนบนสติกเกอร์: ตัดรายละเอียดในวงเล็บ (ชื่อยายาวๆ) ให้เหลือใจความ แล้วจำกัดความยาว
 function stickerText(t) {
@@ -442,11 +490,22 @@ function printSummary() {
       <table>${pr.map(r => `<tr><td>${escHtml(r.label)}</td><td class="q">${escHtml(fmtQty(r.qty))} ${escHtml(shortUnit(r.units))}</td></tr>`).join('')}</table>
       <div class="ft">ยา ${rows.length} รายการ · กลุ่มงานเภสัชกรรม</div>
     </div>`).join('');
-  doPrint(html, '@page { size: 90mm 60mm; margin: 0; }');
+  doPrint(html + nssLabels(patients()), '@page { size: 90mm 60mm; margin: 0; }');
 }
 function doPrint(html, pageCss) {
-  document.getElementById('print-area').innerHTML = html;
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html;
   document.getElementById('page-size').textContent = pageCss;
+  // ฉลากน้ำเกลือ: ข้อความยาวเกินช่อง → ลองชื่อสั้นลง แล้วลดตัวอักษรจนพอดี (วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว)
+  if (pa.querySelector('.fit')) {
+    pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+    pa.querySelectorAll('.fit').forEach(el => {
+      if (el.dataset.alts) for (const t of JSON.parse(el.dataset.alts)) { el.textContent = t; if (el.scrollWidth <= el.clientWidth + 1) break; }
+      let fs = parseFloat(el.style.fontSize);
+      while (el.scrollWidth > el.clientWidth + 1 && fs > 6) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
+    });
+    pa.style.cssText = '';
+  }
   setTimeout(() => window.print(), 50);
 }
 
