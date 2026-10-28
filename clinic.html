@@ -573,7 +573,7 @@ const DashUX = {
   <div class="topbar-btns">
     <button class="tbtn" onclick="expModalOpen(f=>expFilter(visitRecords,f).length)">📊 Export รายงาน</button>
     <button class="tbtn" onclick="exportJSON()">💾 Backup</button>
-    <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — วาง DRP ที่พิมพ์ใน HOSxP แล้วบันทึกได้เลย ไม่ต้องสลับหน้า">🩺 บันทึกคลินิก (ลอย)</button>
+    <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — กรอกยาที่คนไข้นำกลับมาแล้วบันทึก (DRP ดึงจาก COUNSELLING ใน HOSxP ให้เอง)">🩺 บันทึกคลินิก (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('tech')" title="สำหรับ จพ. — หน้าต่างเล็กลอยอยู่เหนือ HosXP ดูยาคงเหลือและคำนวณจำนวนเม็ดที่ต้อง key จนถึงวันนัด (ปุ่มลัด Alt+2 · จาก HOSxP กด Ctrl+Alt+J)">🪟 ยาคงเหลือ จพ. (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('rph')" title="สำหรับเภสัชกรตอนจ่ายยา — จำนวนที่ต้องจ่ายแยกเป็นซอง/แผง (prepack) + Smart Pharmacy: แจ้งยาที่แพทย์ปรับจาก visit ก่อน และตรวจความเหมาะสมกับค่า lab (ปุ่มลัด Alt+1 · จาก HOSxP กด Ctrl+Alt+P)">💊 จ่ายยา เภสัชกร (ลอย)</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
@@ -2256,9 +2256,9 @@ async function pollHosxpBridge() {
 }
 
 // ── หน้าต่างลอย "บันทึกคลินิก" ───────────────────────────
-// วางทับข้าง HOSxP ตอนลงคลินิก: เภสัชพิมพ์ DRP ใน HOSxP → Ctrl+A, Ctrl+C → กด "วางจาก HOSxP" → ตรวจ → บันทึก
-// หน้าต่างนี้เป็นแค่มุมมองย่อของฟอร์มบันทึกในหน้าหลัก อ่าน/เขียนฟอร์มหลักตรงๆ แล้วใช้ applyHosxpPaste / submitVisit ตัวเดิม
-// จะได้ไม่มีตรรกะแยก DRP หรือการบันทึกซ้ำสองชุด
+// วางทับข้าง HOSxP ตอนลงคลินิก: กรอกยาที่คนไข้นำกลับมา + เช็คลิสต์ → บันทึก
+// DRP ไม่ต้องวางแล้ว เภสัชพิมพ์ใน COUNSELLING ของ HOSxP แล้ว hosxp_monthly_sync.py ดึงมาเติมในบันทึกเดียวกัน (HN + วันที่) ทุกวัน
+// หน้าต่างนี้เป็นแค่มุมมองย่อของฟอร์มบันทึกในหน้าหลัก อ่าน/เขียนฟอร์มหลักตรงๆ แล้วใช้ submitVisit ตัวเดิม
 let clinicWin = null, clinicBridgeHn = '', clinicPendingHn = null;
 const FC_CSS = FLOAT_CSS + `
   select,textarea{font:inherit;padding:6px 8px;border:1.5px solid #D6E4DA;border-radius:7px;background:#fff;min-width:0}
@@ -2326,7 +2326,7 @@ async function openFloatClinic() {
     <div id="fc-switch" class="alert"></div>
     <div id="fc-hist" class="info"></div>
     <div id="fc-body">
-      <!-- เรียงตามลำดับงานจริง: นับยาที่คนไข้นำมาก่อน แล้วค่อยพิมพ์ DRP ใน HOSxP มาวาง -->
+      <!-- DRP ไม่ต้องวางที่นี่แล้ว: ระบบดึงจาก COUNSELLING น้อยกว่า 30 นาทีใน HOSxP มาเติมให้เอง (hosxp_monthly_sync.py ทุกวัน) -->
       <div class="box">
         <div class="sec">📦 ยาที่คนไข้นำกลับมา <span class="muted">(กรอกที่นี่ ไม่ต้องพิมพ์ใน HOSxP)</span></div>
         <div class="row" id="fc-lo-chips"></div>
@@ -2339,13 +2339,7 @@ async function openFloatClinic() {
         </div>
         <div class="sugg" id="fc-sugg"></div>
       </div>
-      <div class="box">
-        <div class="sec">💬 DRP <span class="muted">(พิมพ์ใน COUNSELLING ของ HOSxP → Ctrl+A, Ctrl+C)</span></div>
-        <button id="fc-paste" class="big primary">📋 วางจาก HOSxP</button>
-        <textarea id="fc-text" rows="2" placeholder="หรือคลิกที่นี่แล้วกด Ctrl+V"></textarea>
-        <div id="fc-parse" class="info" style="margin-top:6px"></div>
-        <div id="fc-list"></div>
-      </div>
+      <div class="muted">💬 DRP: พิมพ์ใน COUNSELLING ของ HOSxP ตามปกติ — ระบบดึงมาเติมให้ในวันถัดไป</div>
     </div>
     <div class="row checks" style="margin-top:8px">
       <label><input type="checkbox" data-chk="chk-adherence"> กินยาถูกต้อง</label>
@@ -2367,19 +2361,9 @@ async function openFloatClinic() {
     onHnLookup(); renderFloatClinic();
   });
   d.getElementById('fc-name').addEventListener('input', e => { main('f-name').value = e.target.value; });
-  d.getElementById('fc-paste').addEventListener('click', async () => {
-    let txt = '';
-    try { txt = await navigator.clipboard.readText(); }
-    catch (e) { fcMsg('อ่านคลิปบอร์ดไม่ได้ — คลิกช่องด้านล่างแล้วกด Ctrl+V แทน'); d.getElementById('fc-text').focus(); return; }
-    d.getElementById('fc-text').value = txt;
-    fcApplyText(txt);
-  });
-  d.getElementById('fc-text').addEventListener('paste', e => setTimeout(() => fcApplyText(e.target.value), 0));
   d.getElementById('fc-body').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.rmDrp != null) { main('drp-list').children[+b.dataset.rmDrp].remove(); refreshHxNote(); }
-    else if (b.dataset.rmLo != null) { main('lo-list').children[+b.dataset.rmLo].remove(); updateLoTotal(); }
-    else if (b.dataset.rmQuick != null) toggleQuickDrp(false);
+    if (b.dataset.rmLo != null) { main('lo-list').children[+b.dataset.rmLo].remove(); updateLoTotal(); }
     else if (b.dataset.drug != null) { fcAddLeftover(b.dataset.drug, ''); return; }
     else if (b.id === 'fc-lo-add') { fcAddFromInputs(); return; }
     else return;
@@ -2447,7 +2431,6 @@ async function openFloatClinic() {
     const n = visitRecords.length, hn = main('f-hn').value.trim(), name = main('f-name').value.trim();
     submitVisit();
     if (visitRecords.length > n) {
-      d.getElementById('fc-text').value = '';
       clinicPendingHn = null;
       renderFloatClinic();
       fcMsg(`✅ บันทึก ${hn || name} แล้ว`, true);
@@ -2468,15 +2451,6 @@ function fcMsg(text, ok) {
   if (!clinicWin || clinicWin.closed) return;
   const el = clinicWin.document.getElementById('fc-msg');
   el.textContent = text || ''; el.classList.toggle('ok', !!ok);
-}
-
-async function fcApplyText(txt) {
-  document.getElementById('hx-paste').value = txt;
-  fcMsg('');
-  await applyHosxpPaste();
-  // addLoRow โฟกัสช่องในหน้าหลัก ดึงโฟกัสคีย์บอร์ดกลับมาที่หน้าต่างลอย
-  if (clinicWin && !clinicWin.closed) clinicWin.focus();
-  renderFloatClinic();
 }
 
 // ยาเหลือที่คนไข้คนนี้เคยนำกลับมา (3 ครั้งล่าสุด) เป็นปุ่มลัด คนไข้โรคเรื้อรังได้ยาชุดเดิมเกือบทุกครั้ง
@@ -2834,7 +2808,6 @@ function renderFloatClinic() {
   ['hn', 'name'].forEach(k => { const el = d.getElementById('fc-' + k); if (d.activeElement !== el) el.value = main('f-' + k).value; });
   const hist = main('hn-history-box');
   d.getElementById('fc-hist').innerHTML = hist.style.display === 'none' ? '' : hist.innerHTML;
-  d.getElementById('fc-parse').innerHTML = main('hx-paste-result').innerHTML;
 
   const sw = d.getElementById('fc-switch');
   sw.innerHTML = clinicPendingHn
@@ -2843,17 +2816,6 @@ function renderFloatClinic() {
     : '';
   if (clinicPendingHn) d.getElementById('fc-switch-go').onclick = () => { const p = clinicPendingHn; clearForm(); fcSetPatient(p.hn, p.name); };
 
-  const drpRows = [...main('drp-list').children];
-  let html = drpRows.map((row, i) => {
-    const type = row.querySelector('.drp-type').value;
-    if (!type) return '';
-    const cs = row.querySelector('.drp-cause'), cn = row.querySelector('.drp-cause-note');
-    const cause = cs.style.display !== 'none' ? cs.value : '';
-    const note = cn.style.display !== 'none' ? cn.value.trim() : '';
-    const why = cause && cause !== 'อื่นๆ' ? cause : note;
-    return `<div class="it"><span>${escHtml(type.startsWith('อื่นๆ') ? 'อื่นๆ' : drpShortName(type))}${why ? ` · <i>${escHtml(why)}</i>` : ''}</span><button class="x" data-rm-drp="${i}">✕</button></div>`;
-  }).join('');
-  if (quickDrpActive) html += `<div class="it"><span>มียาเหลือสะสม</span><button class="x" data-rm-quick>✕</button></div>`;
   const loRows = [...main('lo-list').children].map((row, i) => {
     const drug = row.querySelector('.lo-drug').value.trim(), qty = row.querySelector('.lo-qty').value;
     if (!drug && !qty) return '';
@@ -2863,7 +2825,6 @@ function renderFloatClinic() {
       `<td class="tot">${escHtml(row.querySelector('.lo-total-display').textContent)}</td>` +
       `<td><button class="x" data-rm-lo="${i}">✕</button></td></tr>`;
   }).join('');
-  d.getElementById('fc-list').innerHTML = html || '<div class="empty">ยังไม่มี DRP</div>';
   const total = main('lo-total').textContent;
   d.getElementById('fc-lo-table').innerHTML = loRows
     ? `<table><tr><th>ยา</th><th>จำนวน</th><th>หน่วย</th><th>มูลค่า</th><th></th></tr>${loRows}</table>` +

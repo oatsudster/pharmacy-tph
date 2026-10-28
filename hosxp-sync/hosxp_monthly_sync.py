@@ -690,7 +690,7 @@ def fill_ht_pm(db, d_from, dry):
 # ── DRP จาก COUNSELLING ใน HOSxP → clinic_YYYY-MM ────────────────────────────────
 # เภสัชพิมพ์ DRP ในช่องวิธีใช้ของรายการ "COUNSELLING น้อยกว่า 30 นาที" (icode 3000589) ข้อความอยู่ใน opi_dispense.usage_line1-4
 # ทุกรอบดึงย้อนหลัง 14 วัน (ถึงเมื่อวาน ให้เภสัชลงหน้าคลินิกเองในวันนั้นก่อน):
-#   - มีบันทึกคลินิก HN+วันเดียวกันแล้ว → แนบข้อความ HOSxP (hxNote) และเติม DRP เฉพาะรายการที่ยังไม่มี DRP
+#   - มีบันทึกคลินิก HN+วันเดียวกันแล้ว → แนบข้อความ HOSxP (hxNote) และเติม DRP เมื่อยังไม่มี DRP หรือมีแค่ "มียาเหลือสะสม" (ระบบติ๊กให้เอง)
 #   - ยังไม่มี → เพิ่มบันทึกใหม่ id 'hx<vn>' (source 'hosxp') — ถ้าเภสัชลบทิ้งแล้ว (deletedVisitIds) ไม่เพิ่มกลับ
 # ข้ามข้อความที่ซ้ำกับครั้งก่อนของ HN เดียวกัน: แพทย์ re-med ใบสั่งยาเก่าแล้วรายการ COUNSELLING ติดมาด้วย
 COUNSEL_ICODE = '3000589'
@@ -851,8 +851,13 @@ def fill_counsel_drp(db, d_from, dry):
                     if v.get('hxNote'):
                         continue
                     v['hxNote'], v['hxVn'] = r['t'], vn
-                    if drps and not v.get('drps'):
-                        v['drps'], v['drpAuto'] = drps, True
+                    # บันทึกจากหน้าต่างลอยไม่มีช่อง DRP แล้ว มีได้แค่ "มียาเหลือสะสม" ที่ระบบติ๊กให้เองเมื่อมียาเหลือ
+                    # เติม DRP จาก COUNSELLING เมื่อยังไม่มี DRP อื่น — ถ้าเภสัชกรเลือกประเภทเองแล้ว (ฟอร์มเต็ม) ไม่เติมทับ
+                    # เพราะตัวจัดประเภทคำหลักอาจได้ประเภทใกล้เคียงแต่ไม่ตรง (ผิดขนาด vs ผิดวิธีใช้) กลายเป็น DRP ซ้ำ
+                    cur = v.get('drps') or []
+                    if drps and all(x.get('type') == DRP_FULL['LO'] for x in cur):
+                        v['drps'] = cur + [x for x in drps if x['type'] != DRP_FULL['LO']] if cur else drps
+                        v['drpAuto'] = True
                     patched.append(f"{r['hn']}/{d}")
                     continue
                 rid = 'hx' + (vn or f"{r['hn']}{d.replace('-', '')}")
