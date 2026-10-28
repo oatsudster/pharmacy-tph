@@ -51,6 +51,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 .tbtn{padding:6px 11px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-mid);
   font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
 .tbtn:hover{border-color:var(--primary);color:var(--primary);}
+.topbar-title{white-space:nowrap;}
+/* laptop widths (MacBook ~1400px): buttons drop to a second row instead of overflowing the page */
+@media (max-width:1600px){
+  .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding-top:8px;padding-bottom:8px;row-gap:6px;}
+  .topbar-btns{flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;}
+  .topbar-btns .tbtn{min-height:34px;}
+}
 
 .view-bar{display:flex;background:var(--surface);border-bottom:2px solid var(--border);padding:0 20px;flex-shrink:0;gap:4px;}
 .view-btn{padding:13px 24px;font-size:15px;font-weight:700;cursor:pointer;border:none;background:none;
