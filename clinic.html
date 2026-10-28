@@ -3374,8 +3374,13 @@ function renderFloatLeftover() {
 
   const recs = visitRecords.filter(r => (r.hn||'').trim() === hn).sort((a,b) => (b.created||0) - (a.created||0));
   const name = (recs[0] && recs[0].name) || ((patientIndex().get(hn) || {}).name) || '';
-  const withLo = recs.find(r => r.leftovers && r.leftovers.length);
+  // หักเฉพาะยาเหลือที่บันทึกของวันนี้ — ยาเหลือของ visit ก่อนถูกหักไปตอนจ่ายยา visit นั้นแล้ว
+  // (เดิมหาบันทึกล่าสุดที่ "มี" ยาเหลือ ทำให้ข้ามบันทึกวันนี้ที่ไม่มียาเหลือ แล้วไปหักยาเหลือของ visit เก่าแทน)
+  const todayIso = thToISO(todayTH());
+  const todayRecs = recs.filter(r => r.date === todayIso);
+  const withLo = todayRecs.find(r => r.leftovers && r.leftovers.length);
   const los = withLo ? withLo.leftovers : [];
+  const lastOld = !todayRecs.length ? recs.find(r => r.leftovers && r.leftovers.length) : null;
   const order =floatOrder && floatOrder.hn === hn ? floatOrder.rows : null;
 
   // แถว = ยาในใบสั่งยา HOSxP (จับคู่กับยาเหลือ) + ยาเหลือที่ไม่พบในใบสั่งยา
@@ -3413,9 +3418,10 @@ function renderFloatLeftover() {
   });
 
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
-      ${withLo ? (() => { const isToday = withLo.date === thToISO(todayTH());
-        return `<div class="${isToday ? 'muted' : 'warn'}">${isToday ? '✅' : '⚠️'} บันทึกยาคงเหลือเมื่อ ${escHtml(thDate(withLo.date))} ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})${isToday ? '' : ' — ไม่ใช่ของวันนี้'}</div>`; })()
-        : `<div class="muted">📭 ${recs.length ? 'ไม่มีบันทึกยาคงเหลือ' : 'ยังไม่มีบันทึกของ HN นี้'} — คิดเต็มจำนวน (ถือว่าไม่มียาเหลือ)</div>`}
+      ${withLo ? `<div class="muted">✅ บันทึกยาคงเหลือวันนี้ ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})</div>`
+        : todayRecs.length ? `<div class="muted">📭 วันนี้เภสัชกรบันทึกแล้ว — ไม่มียาเหลือ · คิดเต็มจำนวน</div>`
+        : `<div class="warn">📭 ${recs.length ? 'ยังไม่มีบันทึกของวันนี้' : 'ยังไม่มีบันทึกของ HN นี้'} — คิดเต็มจำนวน (ถือว่าไม่มียาเหลือ)${lastOld
+            ? `<div class="muted" style="font-weight:400">ยาเหลือ visit ก่อน (${escHtml(thDate(lastOld.date))}) ไม่นำมาหัก: ${escHtml(lastOld.leftovers.map(l => `${cleanDrugName(l.drug)} ${+l.qty || 0} ${l.unit || ''}`.trim()).join(', '))}</div>` : ''}</div>`}
     </div><div id="fl-ocr"></div>
     <div class="empty paused-msg">⏸ ไม่ได้อยู่หน้าบันทึกจ่ายยาใน HOSxP<br>จะแสดงการคำนวณเมื่อกลับไปหน้าบันทึกจ่ายยา</div>`;
   const loOnlyNote = loOnly.length ? `<div class="muted" style="margin-top:6px">📦 ยาเหลือตามบันทึกที่ไม่มีในใบสั่งยาวันนี้ (ไม่ต้องจ่าย): ${escHtml(loOnly.join(', '))}</div>` : '';
