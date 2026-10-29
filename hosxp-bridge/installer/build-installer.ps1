@@ -4,10 +4,12 @@
 # -Zip: สร้าง output\HOSxPBridge-noexe.zip แทน (เครื่อง รพ. ที่บล็อก exe) พร้อม db.json จาก -DbJson
 #   (ค่าเริ่มต้น %LOCALAPPDATA%\HOSxPBridge\db.json) — zip มีรหัสฐานข้อมูล ห้าม commit/อัปโหลด แจกในเครือข่าย รพ. เท่านั้น
 #   exe ที่ commit ไว้ใน repo ไม่มี db.json เสมอ
+# -Zip -Public: hosxp-bridge\HOSxPBridge-update.zip ไม่มี db.json (commit/ขึ้นเว็บได้) — ให้เครื่องที่ลง bridge รุ่นเก่าไว้แล้ว
+#   ดาวน์โหลดจากปุ่มในหน้าเว็บมาลงทับครั้งเดียว install.ps1 ไม่ลบ db.json เดิมในเครื่อง ต่อจากนั้นอัปเดตเองจากเว็บ
 # -Mac: สร้าง output\HOSxPBridge-mac.zip (MacBook) พร้อม db.json และ PowerShell 7 สำหรับ Apple Silicon
 #   (เก็บ tarball ไว้ที่ output\cache ดาวน์โหลดครั้งเดียว) — zip ทำด้วย Python เพื่อให้ไฟล์ .command/.sh มีสิทธิ์รัน (chmod 755)
 #   ติดตั้งครั้งเดียว หลังจากนั้นหน้าเว็บอัปเดต bridge ให้เองเหมือน Windows
-param([switch]$Zip, [switch]$Mac, [string]$DbJson = (Join-Path $env:LOCALAPPDATA 'HOSxPBridge\db.json'))
+param([switch]$Zip, [switch]$Public, [switch]$Mac, [string]$DbJson = (Join-Path $env:LOCALAPPDATA 'HOSxPBridge\db.json'))
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $bridgeDir = Split-Path $here
@@ -73,8 +75,11 @@ Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint-setup.bat') $stage
 
 if ($Zip) {
   Copy-Item (Join-Path $here 'README.txt') $stage
-  if (Test-Path $DbJson) { Copy-Item $DbJson (Join-Path $stage 'db.json') } else { Write-Warning "ไม่พบ $DbJson — zip จะไม่มี db.json (ใช้ OCR)" }
-  $zipOut = Join-Path (Split-Path $bridgeDir) 'output\HOSxPBridge-noexe.zip'
+  if ($Public) { $zipOut = Join-Path $bridgeDir 'HOSxPBridge-update.zip' }
+  else {
+    if (Test-Path $DbJson) { Copy-Item $DbJson (Join-Path $stage 'db.json') } else { Write-Warning "ไม่พบ $DbJson — zip จะไม่มี db.json (ใช้ OCR)" }
+    $zipOut = Join-Path (Split-Path $bridgeDir) 'output\HOSxPBridge-noexe.zip'
+  }
   New-Item -ItemType Directory -Force (Split-Path $zipOut) | Out-Null
   Remove-Item $zipOut -Force -ErrorAction SilentlyContinue
   Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipOut

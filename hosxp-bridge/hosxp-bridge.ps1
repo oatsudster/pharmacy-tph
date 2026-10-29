@@ -1410,9 +1410,16 @@ $CLINIC_TITLE = 'งานเภสัชกรรมคลินิก'        
 $FLOAT_TITLES = @{ rph = 'จ่ายยา (เภสัชกร)'; tech = 'ยาคงเหลือ (จพ.)' }   # <title> ของหน้าต่างลอยแต่ละแบบ
 $HOTKEYS = @{ 1 = 'rph'; 2 = 'tech' }
 # 0x4003 = Ctrl+Alt (+ ไม่ยิงซ้ำตอนกดค้าง), 0x50 = P, 0x4A = J
-foreach ($hk in @(@(1, 0x50, 'Ctrl+Alt+P'), @(2, 0x4A, 'Ctrl+Alt+J'))) {
-  if (-not [HxWin]::RegisterHotKey([IntPtr]::Zero, $hk[0], 0x4003, $hk[1])) { Write-Host "ลงทะเบียนปุ่มลัด $($hk[2]) ไม่ได้ (โปรแกรมอื่นใช้อยู่)" }
+# ลงไม่ได้ให้ลองใหม่ในลูปหลักทุก 5 วินาที — ตอนอัปเดตตัวเอง ตัวเก่ายังถือปุ่มลัดอยู่จนกว่าตัวใหม่จะเปิดพอร์ตได้แล้วตัวเก่าจึงปิด
+$hkPending = @(@(1, 0x50, 'Ctrl+Alt+P'), @(2, 0x4A, 'Ctrl+Alt+J'))
+function RegisterHotkeys([bool]$report) {
+  $script:hkPending = @($script:hkPending | Where-Object {
+    $ok = [HxWin]::RegisterHotKey([IntPtr]::Zero, $_[0], 0x4003, $_[1])
+    if (-not $ok -and $report) { Write-Host "ลงทะเบียนปุ่มลัด $($_[2]) ไม่ได้ (โปรแกรมอื่นใช้อยู่) — จะลองใหม่เรื่อยๆ" }
+    -not $ok })
 }
+RegisterHotkeys $true
+$nextHk = (Get-Date).AddSeconds(5)
 $tabCond = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::TabItem)
 function OnHotkey($mode) {
   $state.hotkey = $mode; $state.hotkeySeq++; $state.hotkeyTs = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
@@ -1441,6 +1448,7 @@ while ($true) {
     while (($hk = [HxWin]::PollHotkey())) { if ($HOTKEYS.ContainsKey($hk)) { try { OnHotkey $HOTKEYS[$hk] } catch { Write-Host "ปุ่มลัด: $_" } } }
     if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
     if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
+    if ($hkPending.Count -and (Get-Date) -ge $nextHk) { RegisterHotkeys $false; $nextHk = (Get-Date).AddSeconds(5) }
   } else {
     if ((Get-Date) -ge $nextMacPoll) { try { MacUpdateState } catch {}; $nextMacPoll = (Get-Date).AddSeconds(2) }
     $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
