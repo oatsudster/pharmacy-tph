@@ -60,7 +60,8 @@
 #   /version[?check=1] — เวอร์ชันของ bridge เครื่องนี้ (check=1 = เทียบกับไฟล์ล่าสุดบนเว็บด้วย)
 #   /update  — ดาวน์โหลดไฟล์ bridge ล่าสุดจากเว็บ (UPDATE_BASE) แทนของเดิม แล้วเปิดตัวใหม่เอง — ปุ่ม "อัปเดต Bridge" ในหน้าเว็บ
 #
-# Mac (pwsh 7, HOSxP รันใน Wine): อ่านหน้าจอไม่ได้ ใช้ได้เฉพาะ /db/* /version /update — ติดตั้งด้วย mac/Install HOSxP Bridge.command
+# Mac (pwsh 7, HOSxP รันใน Wine): อ่านหน้าจอไม่ได้ — HN มาจากฐานข้อมูลแทน (คนไข้ที่เครื่องนี้เปิด Patient EMR ล่าสุด, MacUpdateState)
+#   /current มี pc = ชื่อเครื่องใน HOSxP ที่ใช้หา — ติดตั้งด้วย mac/Install HOSxP Bridge.command
 
 $PORT = if ($env:HXB_PORT) { [int]$env:HXB_PORT } else { 8765 }
 $ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ
@@ -816,6 +817,58 @@ function ApptFromDb($hn) {
   } catch { return $false }
 }
 
+# ── Mac (อ่านหน้าจอไม่ได้): คนไข้ที่เครื่องนี้เปิดใน Patient EMR ล่าสุด จากฐานข้อมูล ─────────────────────────
+# HOSxP เขียน patient_emr_log (เวลา ผู้ใช้ ชื่อเครื่อง HN) ทุกครั้งที่เปิด Patient EMR — ชื่อเครื่องของ HOSxP ใน Wine
+# (เช่น "MAC") หาจาก onlineuser ที่ login ล่าสุดจาก IP ของเครื่องนี้ หรือกำหนดเองใน hosxp-computer.txt
+# เปิด EMR คนใหม่ = เปลี่ยนคนไข้ ปิด EMR แล้วคงคนล่าสุดไว้ (เหมือนบน Windows) — ข้ามวันแล้วล้าง
+$macPc = ''; $macPcAt = [DateTime]::MinValue; $macEmrId = 0; $nextMacPoll = [DateTime]::MinValue
+function LocalIps {
+  @([System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() |
+    Where-Object { $_.OperationalStatus -eq 'Up' } |
+    ForEach-Object { $_.GetIPProperties().UnicastAddresses } |
+    Where-Object { $_.Address.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_.Address) } |
+    ForEach-Object { $_.Address.ToString() })
+}
+function MacComputer {
+  $f = Join-Path $PSScriptRoot 'hosxp-computer.txt'
+  if (Test-Path $f) { return (Get-Content $f -Raw -Encoding UTF8).Trim() }
+  if ($script:macPc -and (Get-Date) -lt $script:macPcAt) { return $script:macPc }
+  $ips = @(LocalIps | Where-Object { $_ -match '^[\d.]+$' })
+  $script:macPcAt = (Get-Date).AddSeconds(60)
+  if (-not $ips.Count) { return $script:macPc }
+  $r = DbQuery ("SELECT computername FROM onlineuser WHERE ip_address IN ('" + ($ips -join "','") + "') " +
+    "AND computername<>'' ORDER BY ksklogintime DESC LIMIT 1")
+  if ($r.Count) { $script:macPc = [string]$r[0]['computername'] }
+  $script:macPc
+}
+function MacUpdateState {
+  $state.ok = [bool]$db
+  if (-not $db) { return }
+  $pc = MacComputer
+  $state.pc = $pc
+  if (-not $pc) { return }
+  # ตารางไม่มี index ตามเครื่อง/เวลา — ไล่จาก id ล่าสุดย้อนไปไม่เกิน 20000 แถว (ประมาณ 1-2 สัปดาห์)
+  if (-not $script:macEmrId) { $m = DbQuery 'SELECT MAX(patient_emr_log_id) AS m FROM patient_emr_log'; $script:macEmrId = [int]$m[0]['m'] - 20000 }
+  $pcSql = $pc -replace "[^\w\-. ]", ''
+  $r = DbQuery ("SELECT l.patient_emr_log_id AS id, l.hn, DATE_FORMAT(l.access_datetime,'%Y-%m-%d') AS d, " +
+    "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS name " +
+    "FROM patient_emr_log l LEFT JOIN patient p ON p.hn=l.hn " +
+    "WHERE l.patient_emr_log_id > $($script:macEmrId) AND l.computer='$pcSql' ORDER BY l.patient_emr_log_id DESC LIMIT 1")
+  $today = (Get-Date).ToString('yyyy-MM-dd')
+  if ($r.Count) {
+    $script:macEmrId = [int]$r[0]['id']
+    $hn = [HxDb]::Digits($r[0]['hn'])
+    if ($r[0]['d'] -eq $today -and $hn) {
+      $state.emrHn = $hn; $state.emrName = [string]$r[0]['name']
+      $state.hn = $hn; $state.name = $state.emrName; $state.emrDate = $today
+    }
+  }
+  if ($state.emrDate -and $state.emrDate -ne $today) { $state.emrHn = ''; $state.emrName = ''; $state.hn = ''; $state.name = ''; $state.emrDate = '' }
+  # หน้าต่างลอยจ่ายยา/ยาคงเหลือ: ใบสั่งยาและวันนัดมาจากฐานข้อมูลอยู่แล้ว ถือว่าอยู่หน้าจ่ายยาตลอด
+  $state.active = [bool]$state.hn
+  if ($state.hn) { [void](ApptFromDb $state.hn) }
+}
+
 function DbHaCases {
   # รายเคสตัวชี้วัด HA (แพ้ยาซ้ำ / RAS 2 ชนิด / ยาห้ามใช้ในหญิงตั้งครรภ์) ที่ pharmacy_ha_sync.py เขียนไว้ในเครื่องนี้
   $f = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'HOSxPBridge\ha-cases.json' } else { Join-Path $PSScriptRoot 'ha-cases.json' }
@@ -1388,7 +1441,10 @@ while ($true) {
     while (($hk = [HxWin]::PollHotkey())) { if ($HOTKEYS.ContainsKey($hk)) { try { OnHotkey $HOTKEYS[$hk] } catch { Write-Host "ปุ่มลัด: $_" } } }
     if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
     if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
-  } else { $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
+  } else {
+    if ((Get-Date) -ge $nextMacPoll) { try { MacUpdateState } catch {}; $nextMacPoll = (Get-Date).AddSeconds(2) }
+    $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
+  }
   while ($listener.Pending()) { try { Respond $listener.AcceptTcpClient() } catch {} }
   if ($restartAfter) { RestartAfterUpdate }
   Start-Sleep -Milliseconds 100
