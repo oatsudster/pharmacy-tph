@@ -5,6 +5,9 @@
 //   /check          สั่งรัน workflow expiry-telegram-notify.yml ทันที (สรุปยาใกล้หมดอายุ ≤90 วันทั้งหมด)
 //   /search <ชื่อยา>  ค้นหายาตามชื่อ ตอบทันทีจากข้อมูลสด (ไม่ผ่าน workflow)
 //   /help           แสดงคำสั่งทั้งหมด
+//
+// Cron trigger (wrangler.toml) สั่งรัน workflow เดียวกันทุกวัน 08:30 น. ไทย —
+// ใช้แทน schedule ของ GitHub Actions ที่ดีเลย์ไม่แน่นอน (บางวันช้าไปถึงเที่ยง-บ่ายโมง)
 
 const FIREBASE_API_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE';
 const PROJECT_ID = 'pharmacy-tph';
@@ -48,7 +51,32 @@ export default {
 
     return new Response('OK');
   },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      dispatchWorkflow(env).then(async (res) => {
+        if (!res.ok) {
+          console.error('scheduled dispatch failed', res.status, await res.text().catch(() => ''));
+        }
+      })
+    );
+  },
 };
+
+function dispatchWorkflow(env) {
+  return fetch(
+    `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'expiry-telegram-webhook',
+      },
+      body: JSON.stringify({ ref: 'main' }),
+    }
+  );
+}
 
 async function handleHelp(env, chatId) {
   const text =
@@ -71,18 +99,7 @@ async function handleCheck(env, chatId) {
 
   await replyTelegram(env, chatId, '🔎 กำลังตรวจสอบรายการยาใกล้หมดอายุ รอสักครู่...');
 
-  const dispatchRes = await fetch(
-    `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'expiry-telegram-webhook',
-      },
-      body: JSON.stringify({ ref: 'main' }),
-    }
-  );
+  const dispatchRes = await dispatchWorkflow(env);
 
   if (!dispatchRes.ok) {
     const errText = await dispatchRes.text().catch(() => '');

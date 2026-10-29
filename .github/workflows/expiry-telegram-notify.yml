@@ -1,31 +1,16 @@
 name: แจ้งเตือนยาใกล้หมดอายุ (Telegram)
 
 on:
-  schedule:
-    # เวลาหน่วงของ GitHub Actions scheduled cron ไม่คงที่ (เคยช้า ~3-3.5 ชม. บางวันแค่ ~1 ชม.)
-    # จึงยิงหลายรอบคร่อมช่วง 07:30-08:45 น. ไทย แล้วให้สคริปต์เป็นคนตัดสินใจเองว่าจะส่งรอบไหน:
-    # ส่งเฉพาะรอบแรกที่ "รันจริง" ตั้งแต่ 08:00 น. ไทยเป็นต้นไป ส่วนรอบถัดไปในวันเดียวกันจะถูกกันซ้ำ (ดู notify-expiry.mjs)
-    - cron: '30 0 * * *'   # 00:30 UTC = 07:30 น. ไทย
-    - cron: '45 0 * * *'   # 00:45 UTC = 07:45 น. ไทย
-    - cron: '0 1 * * *'    # 01:00 UTC = 08:00 น. ไทย
-    - cron: '15 1 * * *'   # 01:15 UTC = 08:15 น. ไทย
-    - cron: '30 1 * * *'   # 01:30 UTC = 08:30 น. ไทย
-    - cron: '45 1 * * *'   # 01:45 UTC = 08:45 น. ไทย — สำรองเผื่อทุกรอบก่อนหน้าดีเลย์เกินช่วง
-  workflow_dispatch: {}    # กดรันเองได้จากแท็บ Actions เพื่อทดสอบ ไม่ต้องรอถึงเช้า
+  # ไม่ใช้ schedule ของ GitHub Actions แล้ว (ดีเลย์ไม่แน่นอน บางวันมาถึงเที่ยง-บ่ายโมง)
+  # Cloudflare Worker cron (telegram-webhook/wrangler.toml) สั่งรันผ่าน workflow_dispatch ทุกวัน 08:30 น. ไทย
+  # และคำสั่ง /check ใน Telegram ก็ใช้ช่องทางเดียวกัน — กดรันเองจากแท็บ Actions ได้ด้วย
+  workflow_dispatch: {}
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: หาวันที่ปัจจุบัน (Asia/Bangkok) สำหรับกันส่งซ้ำ
-        id: date
-        run: echo "today=$(TZ=Asia/Bangkok date +%F)" >> "$GITHUB_OUTPUT"
-      - name: กันส่งซ้ำ — จำวันที่เคยส่งไปแล้วข้ามรอบ cron
-        uses: actions/cache@v4
-        with:
-          path: .expiry-notify-sent
-          key: expiry-notify-sent-${{ steps.date.outputs.today }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

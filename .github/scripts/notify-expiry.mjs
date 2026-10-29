@@ -3,7 +3,7 @@
 // ทำซ้ำตรรกะ buildRows()/statusOf() จาก expiry-tracker.html นอกเบราว์เซอร์:
 // อ่าน DATA (ข้อมูลพื้นฐาน) จากไฟล์ HTML โดยตรง + ดึงส่วนที่แก้ไข (overrides/extras/removed)
 // จาก Firestore REST API แล้วรวมกันเป็นรายการปัจจุบันจริง
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 
 const FIREBASE_API_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE';
 const PROJECT_ID = 'pharmacy-tph';
@@ -11,9 +11,6 @@ const DOC_PATH = 'pharmacy_tph/expiry_tracker';
 const TRACKER_URL = 'https://oatsudster.github.io/pharmacy-tph/expiry-tracker.html';
 const NEAR_EXPIRY_DAYS = 90;
 const TELEGRAM_MAX_LEN = 4000; // เผื่อ margin จาก limit จริง 4096
-const MIN_SEND_HOUR = 8; // ห้ามส่งก่อน 08:00 น. ไทย — cron ยิงหลายรอบคร่อมช่วงเวลา (ดู workflow) รอบที่มาถึงก่อน 08:00 จะข้ามไปเฉยๆ
-// marker กันส่งซ้ำในวันเดียวกัน ถูกเก็บ/คืนค่าข้ามรัน workflow ด้วย actions/cache (ดู .github/workflows/expiry-telegram-notify.yml)
-const MARKER_URL = new URL('../../.expiry-notify-sent', import.meta.url);
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -169,26 +166,8 @@ async function sendTelegram(text) {
   }
 }
 
-// ── 8. กันส่งซ้ำ + กันส่งก่อนเวลา ─────────────────────────────────────
-async function alreadySentOn(today) {
-  try {
-    return (await readFile(MARKER_URL, 'utf8')).trim() === today;
-  } catch {
-    return false; // ยังไม่มีไฟล์ marker (รอบแรกของวัน หรือ cache ยังไม่เคยถูกสร้าง)
-  }
-}
-
 // ── main ─────────────────────────────────────────────────────────────
-const { date: today, hour, minute } = nowBangkok();
-
-if (await alreadySentOn(today)) {
-  console.log(`ℹ️ ส่งแจ้งเตือนของวันที่ ${today} ไปแล้วจากรอบ cron ก่อนหน้า ข้ามรอบนี้`);
-  process.exit(0);
-}
-if (hour < MIN_SEND_HOUR) {
-  console.log(`⏳ ตอนนี้ ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} น. ไทย ยังไม่ถึง ${MIN_SEND_HOUR}:00 น. ข้ามรอบนี้ รอรอบ cron ถัดไป`);
-  process.exit(0);
-}
+const { date: today } = nowBangkok();
 
 const DATA = await loadBaseData();
 const state = await loadFirestoreState();
@@ -200,5 +179,4 @@ console.log(message);
 console.log('-----------------------');
 
 await sendTelegram(message);
-await writeFile(MARKER_URL, today, 'utf8');
-console.log('✅ ส่งข้อความแจ้งเตือนสำเร็จ และบันทึกกันส่งซ้ำสำหรับวันนี้');
+console.log('✅ ส่งข้อความแจ้งเตือนสำเร็จ');

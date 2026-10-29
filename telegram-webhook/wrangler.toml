@@ -2,6 +2,10 @@ name = "expiry-telegram-webhook"
 main = "worker.js"
 compatibility_date = "2026-07-20"
 
+# แจ้งเตือนรายวัน 08:30 น. ไทย (01:30 UTC) — Cloudflare cron ตรงเวลา ต่างจาก GitHub Actions schedule
+[triggers]
+crons = ["30 1 * * *"]
+
 [vars]
 GITHUB_OWNER = "oatsudster"
 GITHUB_REPO = "pharmacy-tph"

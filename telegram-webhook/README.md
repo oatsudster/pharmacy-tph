@@ -3,7 +3,7 @@
 Worker นี้รับข้อความจาก Telegram จากกลุ่มที่อนุญาตเท่านั้น รองรับคำสั่ง:
 
 - `/check` — สั่งรัน GitHub Actions workflow `expiry-telegram-notify.yml` ทันที
-  สรุปยาใกล้หมดอายุ ≤90 วันทั้งหมด (ไม่ต้องรอ 08:00 น. หรือเข้าเว็บ GitHub) ใช้เวลา ~15-20 วิ
+  สรุปยาใกล้หมดอายุ ≤90 วันทั้งหมด (ไม่ต้องรอ 08:30 น. หรือเข้าเว็บ GitHub) ใช้เวลา ~15-20 วิ
 - `/search ชื่อยา` — ค้นหายาตามชื่อ ตอบทันทีจากข้อมูลสด (ดึง HTML + Firestore เอง ไม่ผ่าน workflow)
 - `/help` — แสดงคำสั่งทั้งหมด
 
@@ -73,3 +73,8 @@ https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=<WORKER_URL>
 ถ้าตั้งค่า secret ผ่าน PowerShell ด้วย `'ค่า' | wrangler secret put ...` ค่าที่ได้อาจมี
 BOM (U+FEFF) แอบติดหน้าข้อความ ทำให้ token ใช้งานไม่ได้แบบเงียบๆ (error 401 จากปลายทาง)
 วิธีที่ปลอดภัยกว่าคือใช้ Bash/Git Bash: `printf '%s' 'ค่า' | wrangler secret put ...`
+
+## แจ้งเตือนรายวัน 08:30 น. (Cron trigger)
+`wrangler.toml` มี `[triggers] crons = ["30 1 * * *"]` (01:30 UTC = 08:30 น. ไทย) — handler `scheduled()` ใน `worker.js`
+สั่ง `workflow_dispatch` ของ `expiry-telegram-notify.yml` แบบเดียวกับ `/check` ใช้แทน schedule ของ GitHub Actions ที่ดีเลย์ไม่แน่นอน
+ดู log การยิงได้ที่ Cloudflare dashboard → Workers → expiry-telegram-webhook → Logs / Cron Events
