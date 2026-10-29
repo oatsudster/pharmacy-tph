@@ -2298,6 +2298,20 @@ const FC_CSS = FLOAT_CSS + `
   .box .sec{margin-top:0}
   #fc-hist{max-height:64px;overflow:auto}
   .box .empty{padding:8px}
+  .sm-sec{font-weight:700;font-size:12px;color:#124228;margin:9px 0 4px}
+  .sm-sum{font-size:11.5px;margin:-1px 0 4px;color:#4b5563}
+  table.sm-tb{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+  table.sm-tb td,table.sm-tb th{padding:3px 5px;border-bottom:1px solid #E3ECE6;text-align:left;vertical-align:top}
+  table.sm-tb th{font-size:11px;color:#7A9A85;font-weight:600}
+  table.sm-tb td.l{font-weight:700;color:#124228;white-space:nowrap}
+  table.sm-tb .ser small{color:#7A9A85}
+  .tr{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+  .tr.better{background:#dcfce7;color:#166534}.tr.worse{background:#fee2e2;color:#b91c1c}.tr.bad{background:#FFFBEB;color:#92400e}.tr.ok{background:#EAF4EE;color:#124228;font-weight:400}
+  table.sm-tb td.n{font-size:15px;font-weight:700;text-align:center;white-space:nowrap}
+  table.sm-tb td.n.diff{color:#b91c1c;background:#FFF5F5}
+  table.sm-tb td.n small{font-size:10.5px;font-weight:400;color:#92400e;display:block}
+  table.sm-tb tr.ml{cursor:pointer}
+  table.sm-tb tr.mld td{font-size:11.5px;color:#374151;background:#F9FBFA;line-height:1.5}
 `;
 
 async function openFloatClinic() {
@@ -2341,6 +2355,7 @@ async function openFloatClinic() {
       </div>
       <div class="muted">💬 DRP: พิมพ์ใน COUNSELLING ของ HOSxP ตามปกติ — ระบบดึงมาเติมให้ในวันถัดไป</div>
     </div>
+    <div id="fc-smart" class="box" style="margin-top:8px;display:none"></div>
     <div class="row checks" style="margin-top:8px">
       <label><input type="checkbox" data-chk="chk-adherence"> กินยาถูกต้อง</label>
       <label><input type="checkbox" data-chk="chk-noleftover"> ไม่มียาเหลือ</label>
@@ -2361,6 +2376,12 @@ async function openFloatClinic() {
     onHnLookup(); renderFloatClinic();
   });
   d.getElementById('fc-name').addEventListener('input', e => { main('f-name').value = e.target.value; });
+  d.getElementById('fc-smart').addEventListener('click', e => {
+    const ml = e.target.closest('tr[data-sm-meal]'); if (!ml) return;
+    const k = ml.dataset.smMeal;
+    smartMealOpen.has(k) ? smartMealOpen.delete(k) : smartMealOpen.add(k);
+    fcRenderSmart();
+  });
   d.getElementById('fc-body').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.rmLo != null) { main('lo-list').children[+b.dataset.rmLo].remove(); updateLoTotal(); }
@@ -2838,6 +2859,7 @@ function renderFloatClinic() {
   d.body.querySelectorAll('[data-chk]').forEach(c => { c.checked = main(c.dataset.chk).checked; });
   d.getElementById('fc-icebox').style.display = main('chk-insulin').checked ? '' : 'none';
   fcRenderEmrMsg();
+  fcRenderSmart();
 }
 
 function floatDaysToAppt() {
@@ -3472,19 +3494,6 @@ const SMART_CSS = `
   .chip.bad{background:#fee2e2;color:#b91c1c;font-weight:700}
   .chip small{opacity:.75;font-weight:400}
   .sm-ai{margin-top:6px;font-size:12px;line-height:1.55;background:#F4F7F5;border-radius:8px;padding:8px 9px}
-  .sm-sum{font-size:11.5px;margin:-1px 0 4px;color:#4b5563}
-  table.sm-tb{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
-  table.sm-tb td,table.sm-tb th{padding:3px 5px;border-bottom:1px solid #E3ECE6;text-align:left;vertical-align:top}
-  table.sm-tb th{font-size:11px;color:#7A9A85;font-weight:600}
-  table.sm-tb td.l{font-weight:700;color:#124228;white-space:nowrap}
-  table.sm-tb .ser small{color:#7A9A85}
-  .tr{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
-  .tr.better{background:#dcfce7;color:#166534}.tr.worse{background:#fee2e2;color:#b91c1c}.tr.bad{background:#FFFBEB;color:#92400e}.tr.ok{background:#EAF4EE;color:#124228;font-weight:400}
-  table.sm-tb td.n{font-size:15px;font-weight:700;text-align:center;white-space:nowrap}
-  table.sm-tb td.n.diff{color:#b91c1c;background:#FFF5F5}
-  table.sm-tb td.n small{font-size:10.5px;font-weight:400;color:#92400e;display:block}
-  table.sm-tb tr.ml{cursor:pointer}
-  table.sm-tb tr.mld td{font-size:11.5px;color:#374151;background:#F9FBFA;line-height:1.5}
   button.ai{background:#1A5E38;color:#fff;border-color:#1A5E38;width:100%;margin-top:6px}
   button.ai:disabled{opacity:.6;cursor:wait}
 `;
@@ -3548,7 +3557,7 @@ function renderSmart() {
   const LV = { high: '🔴', warn: '🟠', info: '🟢' };
   const visits = c.visits || [];
   const sel = visits.length ? `<select data-sm-prev="1">${visits.map(v => `<option value="${escHtml(v.vn)}"${res.prev && v.vn === res.prev.vn ? ' selected' : ''}>${escHtml(tphHosxp.thDate(v.date))} ${escHtml(v.dep || '')} (${v.drugs.length} รายการ)</option>`).join('')}</select>` : '';
-  const labs = tphSmartRx.labSummary(info).filter(l => !SMART_TREND_KEYS.includes(l.key));
+  const labs = tphSmartRx.labSummary(info);
   const ai = c.ai && c.ai.key === smartAiKey(c) ? c.ai : null;
   const short = iso => tphHosxp.thDate(iso).replace(/ \d{4}$/, '');
   box.innerHTML = head
@@ -3560,9 +3569,7 @@ function renderSmart() {
       + (res.alerts.length ? res.alerts.map(a => `<div class="sm-it ${a.level}">${LV[a.level]} ${escHtml(a.text)}</div>`).join('')
         : '<div class="sm-it info">🟢 ไม่พบปัญหาจากกฎที่ตรวจ</div>') : '')
     + (today.length ? smartRenalHtml(res.renal) : '')
-    + smartTrendHtml(tphSmartRx.trends(info))
-    + smartMealHtml(res.prev, today)
-    + `<div class="sm-sec">Lab อื่น <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
+    + `<div class="sm-sec">Lab ล่าสุด <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
     + (labs.length ? labs.map(l => `<span class="chip${l.bad ? ' bad' : ''}" title="${escHtml(l.raw)} · ${escHtml(tphHosxp.thDate(l.date))}${l.prev != null ? ` · ครั้งก่อน ${l.prev} (${escHtml(tphHosxp.thDate(l.prevDate))})` : ''}">${escHtml(l.label)} ${l.value}${l.prev != null ? ` <small>(${l.prev})</small>` : ''} <small>${escHtml(short(l.date))}</small></span>`).join('')
       : '<div class="muted">ไม่มีผล lab ใน 1 ปี</div>')
     + ((info.allergy || []).length ? `<div class="sm-it high" style="margin-top:4px">⚠️ แพ้ยา: ${escHtml(info.allergy.map(a => a.agent).join(', '))}</div>` : '')
@@ -3571,8 +3578,45 @@ function renderSmart() {
     + (ai && ai.text ? `<div class="sm-ai">${smartMd(ai.text)}</div>` : '')
     + '<div class="muted" style="margin-top:6px;font-size:10.5px">ผลจากระบบ/AI เป็นตัวช่วยคัดกรอง เภสัชกรต้องพิจารณาเองทุกครั้ง · AI ได้รับเฉพาะอายุ เพศ โรค lab และรายการยา (ไม่มีชื่อ/HN)</div>';
 }
-// แนวโน้ม BP + lab หลักเทียบครั้งก่อน (ผู้ใช้ขอ 2026-10-29) — ค่าเรียงเก่า → ล่าสุด, ป้ายบอกดีขึ้น/แย่ลงเทียบช่วงปกติ
-const SMART_TREND_KEYS = ['fbs', 'hba1c', 'egfr', 'cr', 'na', 'k', 'cl', 'co2', 'ast', 'alt'];
+// ── หน้าต่างบันทึกคลินิก: BP/lab เทียบครั้งก่อน + จำนวนยาเม็ดต่อมื้อ (ผู้ใช้ขอ 2026-10-29) ──
+// ข้อมูลจาก HOSxP Bridge (/db/order, /db/visits, /db/smartrx) อ่านใหม่ทุก 1 นาที — เครื่องที่ไม่มี bridge ส่วนนี้ว่างไว้
+const FC_INFO_MS = 60000;
+const fcInfoCache = new Map();   // HN → { at, order, visits, info, failed }
+let fcInfoBusy = false;
+async function fcLoadInfo(hn) {
+  if (fcInfoBusy || !window.tphHosxp || typeof tphHosxp.smartRx !== 'function') return;
+  const c = fcInfoCache.get(hn);
+  if (c && Date.now() - c.at < FC_INFO_MS) return;
+  fcInfoBusy = true;
+  try {
+    const [o, v, i] = await Promise.all([tphHosxp.order(hn), tphHosxp.visits(hn), tphHosxp.smartRx(hn)]);
+    fcInfoCache.set(hn, { at: Date.now(), order: o, visits: (v && v.visits) || [], info: i, failed: !v && !i });
+    if (fcInfoCache.size > 30) fcInfoCache.delete(fcInfoCache.keys().next().value);
+  } finally { fcInfoBusy = false; }
+  fcRenderSmart();   // HN เปลี่ยนระหว่างอ่าน → ตัวนี้จะเริ่มอ่านของ HN ใหม่ต่อ
+}
+// ยาที่กินอยู่ = visit ที่ใช้เทียบกับใบสั่งวันนี้ (เหมือน Smart Pharmacy) — ยังไม่มีใบสั่งวันนี้ (เภสัชพบคนไข้ก่อนแพทย์)
+// ใช้ visit ล่าสุดที่มียาโรคเรื้อรัง ≥ 60% ของ visit ที่มีมากที่สุด ไม่ให้ไปเจอ visit ER ที่มีแต่ยาบรรเทาอาการ
+function fcRegimenVisit(visits, today, res) {
+  if (today.some(tphSmartRx.isChronic)) return res.prev;
+  const n = visits.map(v => v.drugs.filter(tphSmartRx.isChronic).length), max = Math.max(0, ...n);
+  return max ? visits[n.findIndex(x => x >= Math.ceil(max * 0.6))] : null;
+}
+function fcRenderSmart() {
+  if (!clinicWin || clinicWin.closed) return;
+  const el = clinicWin.document.getElementById('fc-smart'), hn = document.getElementById('f-hn').value.trim();
+  if (!el) return;
+  if (!/^\d{5,10}$/.test(hn) || !window.tphHosxp || typeof tphHosxp.smartRx !== 'function' || !window.tphSmartRx) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const c = fcInfoCache.get(hn);
+  fcLoadInfo(hn);
+  if (!c) { el.innerHTML = '<div class="muted">⏳ กำลังอ่าน BP/lab และยาจาก HOSxP…</div>'; return; }
+  if (c.failed) { el.innerHTML = '<div class="muted">ต่อฐานข้อมูล HOSxP ไม่ได้ — ส่วน BP/lab และยาต่อมื้อต้องใช้ HOSxP Bridge ที่มี db.json</div>'; return; }
+  const today = (c.order && c.order.drugs) || [], info = c.info || {};
+  const res = tphSmartRx.analyze({ today, visits: c.visits, info });
+  el.innerHTML = smartTrendHtml(tphSmartRx.trends(info)) + smartMealHtml(fcRegimenVisit(c.visits, today, res), today);
+}
+// แนวโน้ม BP + lab หลักเทียบครั้งก่อน — ค่าเรียงเก่า → ล่าสุด, ป้ายบอกดีขึ้น/แย่ลงเทียบช่วงปกติ
 function smartTrendHtml(rows) {
   const h = '<div class="sm-sec">📈 BP และ Lab หลัก เทียบครั้งก่อน <span class="muted" style="font-weight:400">(เก่า → ล่าสุด)</span></div>';
   if (!rows.length) return h + '<div class="muted">ไม่มี BP/lab ใน 1 ปี</div>';
@@ -3650,8 +3694,6 @@ function onSmartChange(e) {
 }
 async function onSmartClick(e) {
   if (e.target.closest('button[data-sm-reload]')) { smartRefresh(true); return; }
-  const ml = e.target.closest('tr[data-sm-meal]');
-  if (ml) { const k = ml.dataset.smMeal; smartMealOpen.has(k) ? smartMealOpen.delete(k) : smartMealOpen.add(k); renderSmart(); return; }
   if (!e.target.closest('button[data-sm-ai]')) return;
   const c = smartCache.get(smartHnNow());
   if (!c || !c.res || (c.ai && c.ai.busy)) return;
