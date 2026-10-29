@@ -215,9 +215,11 @@ function DbVisits($hn) {
 $MED_CLINICS = "'023','001','024','002','013'"
 function DbMeds($hn) {
   # visit ที่มาตามนัดของคลินิกเหล่านี้ — ผูกกับนัดด้วย visit_vn ถ้าไม่ได้ผูก ใช้ visit ของ HN นี้ในวันนัด
+  # + visit ที่ "ออกนัด" คลินิกเหล่านี้ (oapp.vn) = visit ที่จ่ายยาถึงวันนัด (2026-10-29: HN 4700684 มาช้ากว่านัด, HN 5501044
+  #   ได้ยาที่ OPD ทั่วไปแล้วนัด DM — เดิมไม่ถูกดึงเพราะ visit นั้นไม่ได้มาตามนัด DM/HT/COPD)
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn, o.vstdate, o.vsttime FROM oapp a " +
     "JOIN clinic c ON c.clinic=a.clinic " +
-    "JOIN ovst o ON o.vn=a.visit_vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
+    "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
     "WHERE a.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $drugs = @{}
@@ -229,10 +231,13 @@ function DbMeds($hn) {
     }
   }
   # แต่ละคลินิกเอา visit ล่าสุดที่มียา (นัด LAB บางครั้งไม่มียา ข้ามไป visit ก่อนหน้าของคลินิกนั้น)
-  $visits = New-Object System.Collections.ArrayList; $seen = @{}
+  $visits = New-Object System.Collections.ArrayList; $seen = @{}; $used = @{}
   foreach ($v in $vis) {
     if ($seen.ContainsKey($v['clinic']) -or -not $drugs.ContainsKey($v['vn'])) { continue }
     $seen[$v['clinic']] = $true
+    # visit เดียวกันทั้งมาตามนัดคลินิกหนึ่งและออกนัดอีกคลินิก เอาครั้งเดียว
+    if ($used.ContainsKey("$($v['vn'])")) { continue }
+    $used["$($v['vn'])"] = $true
     [void]$visits.Add([ordered]@{ clinic = $v['clinic']; clinicName = $v['clinic_name']; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; drugs = $drugs[$v['vn']] })
   }
   # ยากลับบ้านของการนอน รพ. ครั้งล่าสุดที่จำหน่ายแล้ว
@@ -668,7 +673,7 @@ function DbMrMeds($hn, $path) {
   if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
   $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn FROM oapp a JOIN clinic c ON c.clinic=a.clinic " +
-    "JOIN ovst o ON o.vn=a.visit_vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
+    "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
     "WHERE a.hn='$hn' AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $items = New-Object System.Collections.ArrayList
@@ -747,7 +752,7 @@ function DbPatient($hn) {
 # Smart Pharmacy (หน้าต่างลอยจ่ายยาของเภสัชกร): ข้อมูลประกอบการตรวจความเหมาะสมของยา visit วันนี้
 # อายุ/เพศ, สัญญาณชีพ 4 visit ล่าสุดใน 1 ปี (วันนี้อยู่บนสุดถ้ามี), lab 3 ครั้งล่าสุดต่อรายการใน 400 วัน,
 # ประวัติแพ้ยา, วินิจฉัย visit วันนี้ + โรคประจำตัว (ICD10 3 หลักใน 2 ปี), ตารางยาตีกันของ รพ.
-$RX_LABS = [ordered]@{ cr = '3036,3003,3118'; egfr = '3189'; k = '3181,3042,3018'; na = '3179,3041'; hba1c = '3119'; fbs = '3117'
+$RX_LABS = [ordered]@{ cr = '3036,3003,3118'; egfr = '3189'; k = '3181,3042,3018'; na = '3179,3041'; cl = '3183,3043'; co2 = '3177,3040'; hba1c = '3119'; fbs = '3117'
   ldl = '3191,3008,3122'; tg = '3006,3039,3123'; tc = '3038,3005,3120'; alt = '3055,3015'; ast = '3054'; hb = '1002'; hct = '1003,3127'
   plt = '3062'; uric = '3004,3037'; tsh = '3026'; ft4 = '3164'; uacr = '3138'; pt = '1009'; bun = '3124' }
 function DbSmartRx($hn) {

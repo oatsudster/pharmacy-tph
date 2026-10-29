@@ -3472,6 +3472,19 @@ const SMART_CSS = `
   .chip.bad{background:#fee2e2;color:#b91c1c;font-weight:700}
   .chip small{opacity:.75;font-weight:400}
   .sm-ai{margin-top:6px;font-size:12px;line-height:1.55;background:#F4F7F5;border-radius:8px;padding:8px 9px}
+  .sm-sum{font-size:11.5px;margin:-1px 0 4px;color:#4b5563}
+  table.sm-tb{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+  table.sm-tb td,table.sm-tb th{padding:3px 5px;border-bottom:1px solid #E3ECE6;text-align:left;vertical-align:top}
+  table.sm-tb th{font-size:11px;color:#7A9A85;font-weight:600}
+  table.sm-tb td.l{font-weight:700;color:#124228;white-space:nowrap}
+  table.sm-tb .ser small{color:#7A9A85}
+  .tr{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+  .tr.better{background:#dcfce7;color:#166534}.tr.worse{background:#fee2e2;color:#b91c1c}.tr.bad{background:#FFFBEB;color:#92400e}.tr.ok{background:#EAF4EE;color:#124228;font-weight:400}
+  table.sm-tb td.n{font-size:15px;font-weight:700;text-align:center;white-space:nowrap}
+  table.sm-tb td.n.diff{color:#b91c1c;background:#FFF5F5}
+  table.sm-tb td.n small{font-size:10.5px;font-weight:400;color:#92400e;display:block}
+  table.sm-tb tr.ml{cursor:pointer}
+  table.sm-tb tr.mld td{font-size:11.5px;color:#374151;background:#F9FBFA;line-height:1.5}
   button.ai{background:#1A5E38;color:#fff;border-color:#1A5E38;width:100%;margin-top:6px}
   button.ai:disabled{opacity:.6;cursor:wait}
 `;
@@ -3535,7 +3548,7 @@ function renderSmart() {
   const LV = { high: '🔴', warn: '🟠', info: '🟢' };
   const visits = c.visits || [];
   const sel = visits.length ? `<select data-sm-prev="1">${visits.map(v => `<option value="${escHtml(v.vn)}"${res.prev && v.vn === res.prev.vn ? ' selected' : ''}>${escHtml(tphHosxp.thDate(v.date))} ${escHtml(v.dep || '')} (${v.drugs.length} รายการ)</option>`).join('')}</select>` : '';
-  const labs = tphSmartRx.labSummary(info);
+  const labs = tphSmartRx.labSummary(info).filter(l => !SMART_TREND_KEYS.includes(l.key));
   const ai = c.ai && c.ai.key === smartAiKey(c) ? c.ai : null;
   const short = iso => tphHosxp.thDate(iso).replace(/ \d{4}$/, '');
   box.innerHTML = head
@@ -3547,7 +3560,9 @@ function renderSmart() {
       + (res.alerts.length ? res.alerts.map(a => `<div class="sm-it ${a.level}">${LV[a.level]} ${escHtml(a.text)}</div>`).join('')
         : '<div class="sm-it info">🟢 ไม่พบปัญหาจากกฎที่ตรวจ</div>') : '')
     + (today.length ? smartRenalHtml(res.renal) : '')
-    + `<div class="sm-sec">Lab ล่าสุด <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
+    + smartTrendHtml(tphSmartRx.trends(info))
+    + smartMealHtml(res.prev, today)
+    + `<div class="sm-sec">Lab อื่น <span class="muted" style="font-weight:400">(วงเล็บ = ครั้งก่อน)</span></div>`
     + (labs.length ? labs.map(l => `<span class="chip${l.bad ? ' bad' : ''}" title="${escHtml(l.raw)} · ${escHtml(tphHosxp.thDate(l.date))}${l.prev != null ? ` · ครั้งก่อน ${l.prev} (${escHtml(tphHosxp.thDate(l.prevDate))})` : ''}">${escHtml(l.label)} ${l.value}${l.prev != null ? ` <small>(${l.prev})</small>` : ''} <small>${escHtml(short(l.date))}</small></span>`).join('')
       : '<div class="muted">ไม่มีผล lab ใน 1 ปี</div>')
     + ((info.allergy || []).length ? `<div class="sm-it high" style="margin-top:4px">⚠️ แพ้ยา: ${escHtml(info.allergy.map(a => a.agent).join(', '))}</div>` : '')
@@ -3555,6 +3570,59 @@ function renderSmart() {
     + (ai && ai.err ? `<div class="warn" style="margin-top:4px">AI ไม่ตอบ: ${escHtml(ai.err)}</div>` : '')
     + (ai && ai.text ? `<div class="sm-ai">${smartMd(ai.text)}</div>` : '')
     + '<div class="muted" style="margin-top:6px;font-size:10.5px">ผลจากระบบ/AI เป็นตัวช่วยคัดกรอง เภสัชกรต้องพิจารณาเองทุกครั้ง · AI ได้รับเฉพาะอายุ เพศ โรค lab และรายการยา (ไม่มีชื่อ/HN)</div>';
+}
+// แนวโน้ม BP + lab หลักเทียบครั้งก่อน (ผู้ใช้ขอ 2026-10-29) — ค่าเรียงเก่า → ล่าสุด, ป้ายบอกดีขึ้น/แย่ลงเทียบช่วงปกติ
+const SMART_TREND_KEYS = ['fbs', 'hba1c', 'egfr', 'cr', 'na', 'k', 'cl', 'co2', 'ast', 'alt'];
+function smartTrendHtml(rows) {
+  const h = '<div class="sm-sec">📈 BP และ Lab หลัก เทียบครั้งก่อน <span class="muted" style="font-weight:400">(เก่า → ล่าสุด)</span></div>';
+  if (!rows.length) return h + '<div class="muted">ไม่มี BP/lab ใน 1 ปี</div>';
+  const ST = { high: 'สูง', low: 'ต่ำ' };
+  const TR = { better: '✅ ดีขึ้น', worse: '🔻 แย่ลง', bad: '🟠 ยังผิดปกติ', ok: 'ปกติ' };
+  const short = iso => tphHosxp.thDate(iso).replace(/ \d{4}$/, '');
+  const n = { better: 0, worse: 0, bad: 0 };
+  rows.forEach(r => { if (n[r.trend] != null) n[r.trend]++; });
+  const sum = [n.better && `ดีขึ้น ${n.better}`, n.worse && `<b style="color:#b91c1c">แย่ลง ${n.worse}</b>`, n.bad && `ยังผิดปกติ ${n.bad}`].filter(Boolean);
+  return h + `<div class="sm-sum">${sum.length ? sum.join(' · ') : 'ปกติทุกรายการ'}</div><table class="sm-tb">`
+    + rows.map(r => {
+      const ser = r.series.map((x, i) => i === r.series.length - 1 ? `<b>${escHtml(x.value)}</b>` : escHtml(x.value)).join(' → ');
+      const last = r.series[r.series.length - 1];
+      const tip = r.series.map(x => `${x.value} (${tphHosxp.thDate(x.date)})`).join(' → ') + ` · เป้าหมาย/ปกติ ${r.target}`;
+      return `<tr title="${escHtml(tip)}"><td class="l">${escHtml(r.label)}</td><td class="ser">${ser} <small>${escHtml(short(last.date))}${r.old ? ' · เก่ากว่า 6 เดือน' : ''}</small></td>`
+        + `<td><span class="tr ${r.trend}">${TR[r.trend]}${ST[r.st] ? ` (${r.trend === 'better' ? 'ยัง' : ''}${ST[r.st]})` : ''}</span></td></tr>`;
+    }).join('') + '</table>';
+}
+// จำนวนยาเม็ดต่อมื้อ: ที่กินอยู่ (visit ที่ใช้เทียบ) กับใบสั่งวันนี้ — ไว้ถามทวนผู้ป่วยว่ากินยาถูกไหม (ผู้ใช้ขอ 2026-10-29)
+// คลิกแถวเพื่อดูว่ามื้อนั้นมียาอะไรบ้าง
+const smartMealOpen = new Set();
+function pillFmt(v) {
+  const w = Math.floor(v + 1e-9), f = Math.round((v - w) * 100) / 100;
+  const fr = { 0.25: '¼', 0.5: '½', 0.75: '¾' }[f];
+  return f === 0 ? String(w) : fr ? (w ? w + fr : fr) : String(Math.round(v * 100) / 100);
+}
+function smartMealHtml(prev, today) {
+  const A = prev ? tphSmartRx.mealSchedule(prev.drugs) : null, B = today.length ? tphSmartRx.mealSchedule(today) : null;
+  if (!A && !B) return '';
+  const cols = [A && { s: A, h: `ที่กินอยู่<br><small>${escHtml(tphHosxp.thDate(prev.date).replace(/ \d{4}$/, ''))}</small>` }, B && { s: B, h: 'ใบสั่ง<br><small>วันนี้</small>' }].filter(Boolean);
+  const used = tphSmartRx.SLOTS.filter(k => cols.some(c => c.s.slots[k].tabs || c.s.slots[k].insulin.length));
+  const h = '<div class="sm-sec">🍽️ จำนวนยาเม็ดแต่ละมื้อ <span class="muted" style="font-weight:400">— ถามทวนผู้ป่วย เช่น "หลังอาหารเช้ากินยากี่เม็ด" · คลิกมื้อเพื่อดูรายการยา</span></div>';
+  if (!used.length) return h + '<div class="muted">อ่านมื้อยาจากวิธีใช้ไม่ได้</div>';
+  const ins = x => x.insulin.length ? `<small>+ อินซูลิน ${x.insulin.map(i => `${pillFmt(i.amt)} u`).join(', ')}</small>` : '';
+  const list = (x, label) => x.items.length || x.insulin.length ? `<div>${label ? `<b>${label}:</b> ` : ''}${x.items.map(i => `${escHtml(i.name)} <b>${pillFmt(i.amt)}</b>`).concat(x.insulin.map(i => `${escHtml(i.name)} <b>${pillFmt(i.amt)} ยูนิต</b>`)).join(' · ')}</div>` : '';
+  const total = c => tphSmartRx.SLOTS.reduce((a, k) => a + c.s.slots[k].tabs, 0);
+  let html = h + `<table class="sm-tb"><tr><th>มื้อ</th>${cols.map(c => `<th style="text-align:center">${c.h}</th>`).join('')}</tr>`;
+  used.forEach(k => {
+    const xs = cols.map(c => c.s.slots[k]), diff = xs.length === 2 && (xs[0].tabs !== xs[1].tabs || ins(xs[0]) !== ins(xs[1]));
+    html += `<tr class="ml" data-sm-meal="${escHtml(k)}"><td class="l">${smartMealOpen.has(k) ? '▾' : '▸'} ${escHtml(k)}</td>`
+      + xs.map(x => `<td class="n${diff ? ' diff' : ''}">${x.tabs ? pillFmt(x.tabs) + ' <span style="font-size:11px;font-weight:400">เม็ด</span>' : x.insulin.length ? '' : '–'}${ins(x)}</td>`).join('') + '</tr>';
+    if (smartMealOpen.has(k)) html += `<tr class="mld"><td colspan="${cols.length + 1}">${cols.map((c, i) => list(xs[i], cols.length === 2 ? (i ? 'วันนี้' : 'ที่กินอยู่') : '')).join('')}</td></tr>`;
+  });
+  html += `<tr><td class="l">รวมต่อวัน</td>${cols.map(c => `<td class="n">${pillFmt(total(c))} <span style="font-size:11px;font-weight:400">เม็ด</span></td>`).join('')}</tr></table>`;
+  cols.forEach((c, i) => {
+    const tag = cols.length === 2 ? (i ? 'วันนี้: ' : 'ที่กินอยู่: ') : '';
+    if (c.s.alt.length) html += `<div class="muted">${tag}ไม่นับรวมรายวัน — ${c.s.alt.map(a => `${escHtml(a.name)} ${pillFmt(a.amt)} เม็ด ${escHtml(a.slot)} ${escHtml(a.alt)}`).join(' · ')}</div>`;
+    if (c.s.unknown.length) html += `<div class="muted">${tag}อ่านมื้อไม่ได้ (ถามเอง): ${c.s.unknown.map(escHtml).join(' · ')}</div>`;
+  });
+  return html;
 }
 // ขนาดยาตามการทำงานของไต (lib/renal-dose.js): Cr / eGFR / CrCl + ยาทุกตัวในใบสั่งที่มีเกณฑ์ปรับตามไต
 function smartRenalHtml(r) {
@@ -3582,6 +3650,8 @@ function onSmartChange(e) {
 }
 async function onSmartClick(e) {
   if (e.target.closest('button[data-sm-reload]')) { smartRefresh(true); return; }
+  const ml = e.target.closest('tr[data-sm-meal]');
+  if (ml) { const k = ml.dataset.smMeal; smartMealOpen.has(k) ? smartMealOpen.delete(k) : smartMealOpen.add(k); renderSmart(); return; }
   if (!e.target.closest('button[data-sm-ai]')) return;
   const c = smartCache.get(smartHnNow());
   if (!c || !c.res || (c.ai && c.ai.busy)) return;
