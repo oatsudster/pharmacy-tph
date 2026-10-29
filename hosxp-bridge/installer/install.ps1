@@ -26,7 +26,7 @@ try {
   Start-Sleep -Milliseconds 500
 
   New-Item -ItemType Directory -Force $Target | Out-Null
-  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'start-bridge.bat', 'stop-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
+  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'update.json', 'start-bridge.bat', 'stop-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
   # หน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ (ใช้เฉพาะเครื่องห้องยาที่ต่อเครื่องพิมพ์สติกเกอร์)

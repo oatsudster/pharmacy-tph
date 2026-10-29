@@ -57,9 +57,25 @@
 # HOSxP ไม่ตอบ PrintWindow จึงต้องจับภาพจากจอจริง — ถ้ามีหน้าต่างอื่นบังอยู่ (รวมถึงหน้าอื่นของ HOSxP
 # เช่น "เปรียบเทียบประวัติ") จะไม่จับส่วนที่ถูกบัง และคงผลที่อ่านได้ล่าสุดของคนไข้คนนี้ไว้
 
-$PORT = 8765
-$ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ
+#   /version[?check=1] — เวอร์ชันของ bridge เครื่องนี้ (check=1 = เทียบกับไฟล์ล่าสุดบนเว็บด้วย)
+#   /update  — ดาวน์โหลดไฟล์ bridge ล่าสุดจากเว็บ (UPDATE_BASE) แทนของเดิม แล้วเปิดตัวใหม่เอง — ปุ่ม "อัปเดต Bridge" ในหน้าเว็บ
+#
+# Mac (pwsh 7, HOSxP รันใน Wine): อ่านหน้าจอไม่ได้ ใช้ได้เฉพาะ /db/* /version /update — ติดตั้งด้วย mac/Install HOSxP Bridge.command
 
+$PORT = if ($env:HXB_PORT) { [int]$env:HXB_PORT } else { 8765 }
+$ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ
+$UPDATE_ORIGIN = 'https://oatsudster.github.io'                  # สั่ง /update ได้เฉพาะหน้าเว็บของเราจริง (ไม่รับ 'null')
+$UPDATE_BASE = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/' }   # HXB_UPDATE_BASE ใช้ทดสอบ
+$OS = if ($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) { 'win' } else { 'mac' }
+# อ่านหน้าจอ HOSxP (UI Automation + OCR ของ Windows) ได้เฉพาะ Windows PowerShell 5.1 — HXB_NOSCREEN=1 ใช้ทดสอบโหมด Mac บน Windows
+$SCREEN = $PSVersionTable.PSEdition -eq 'Desktop' -and -not $env:HXB_NOSCREEN
+# pwsh 7 ใช้ปฏิทินตามภาษาเครื่อง (th-TH = พ.ศ.) ทั้งตอนแปลงวันที่เป็นข้อความและตอน ParseExact — ล็อกเป็น invariant (ค.ศ.)
+if ($PSVersionTable.PSEdition -ne 'Desktop') {
+  [System.Globalization.CultureInfo]::DefaultThreadCurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+  [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+}
+
+if ($SCREEN) {
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Runtime.WindowsRuntime
 Add-Type @"
 using System;
@@ -114,9 +130,10 @@ function Await($op, [Type]$t) { $task = $asTask.MakeGenericMethod($t).Invoke($nu
 # วันนัดต้องการแค่ตัวเลขในวงเล็บ ใช้ OCR ภาษาอังกฤษของ Windows ได้
 $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $ocr) { $ocr = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('en-US')) }
+}
 $md5 = [System.Security.Cryptography.MD5]::Create()
 
-$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; db = $false; dbErr = ''; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; hotkey = ''; hotkeySeq = 0; hotkeyTs = 0; ts = 0 }
+$state = [ordered]@{ ok = $false; hn = ''; name = ''; active = $false; apptDays = $null; db = $false; dbErr = ''; ver = ''; os = $OS; gridVer = 0; gridHash = ''; gridCut = $false; covered = $false; emrHn = ''; emrName = ''; emrGridVer = 0; emrGridHash = ''; emrVisit = ''; hotkey = ''; hotkeySeq = 0; hotkeyTs = 0; ts = 0 }
 $cache = @{ hnEdit = $null; nameEdit = $null; apptList = $null; grid = $null; emr = @(); layout2 = $false }
 $nextEmrScan = [DateTime]::MinValue; $nextFind = [DateTime]::MinValue
 $nextCard = [DateTime]::MinValue
@@ -801,7 +818,7 @@ function ApptFromDb($hn) {
 
 function DbHaCases {
   # รายเคสตัวชี้วัด HA (แพ้ยาซ้ำ / RAS 2 ชนิด / ยาห้ามใช้ในหญิงตั้งครรภ์) ที่ pharmacy_ha_sync.py เขียนไว้ในเครื่องนี้
-  $f = Join-Path $env:LOCALAPPDATA 'HOSxPBridge\ha-cases.json'
+  $f = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'HOSxPBridge\ha-cases.json' } else { Join-Path $PSScriptRoot 'ha-cases.json' }
   if (-not (Test-Path $f)) { return '{"ok":false,"error":"เครื่องนี้ไม่ได้รัน pharmacy_ha_sync.py"}' }
   '{"ok":true,"data":' + [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8) + '}'
 }
@@ -1136,6 +1153,153 @@ function UpdateState {
   $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
 }
 
+# ── อัปเดตตัวเองจากเว็บ (หน้าเว็บสั่งอัตโนมัติเมื่อพบว่า bridge เครื่องนี้เป็นรุ่นเก่า) ─────────────────────────
+# รายการไฟล์อยู่ใน update.json บนเว็บ (src = path ใน hosxp-bridge/, dst = ชื่อไฟล์ในเครื่อง, os = win/mac/ไม่ระบุ = ทุกเครื่อง)
+# เวอร์ชัน = SHA-256 ของไฟล์ทั้งชุด (ตัด BOM, ขึ้นบรรทัดแบบ LF) — ไม่ต้องเปลี่ยนเลขเวอร์ชันเอง แก้ไฟล์แล้ว push ก็พอ
+# db.json / hme-station.txt / autostart-days.txt ไม่อยู่ในรายการ จึงไม่ถูกแตะ — สำรองไฟล์เดิมไว้ใน backup\ ก่อนเขียนทับทุกครั้ง
+$DEFAULT_FILES = @(
+  @{ src = 'hosxp-bridge.ps1' }, @{ src = 'hxdb.cs' }, @{ src = 'hme-printer.ps1'; os = 'win' },
+  @{ src = 'start-bridge.bat'; os = 'win' }, @{ src = 'stop-bridge.bat'; os = 'win' },
+  @{ src = 'HME-AutoPrint.bat'; os = 'win' }, @{ src = 'HME-AutoPrint-setup.bat'; os = 'win' },
+  @{ src = 'installer/uninstall.ps1'; dst = 'uninstall.ps1'; os = 'win' })
+function UpdList($files) {
+  @($files | Where-Object { -not $_.os -or $_.os -eq $OS } | ForEach-Object {
+    @{ src = [string]$_.src; dst = $(if ($_.dst) { [string]$_.dst } else { Split-Path ([string]$_.src) -Leaf }) } })
+}
+function NormText([byte[]]$b) {
+  $t = [System.Text.Encoding]::UTF8.GetString($b)
+  if ($t.Length -and $t[0] -eq [char]0xFEFF) { $t = $t.Substring(1) }
+  $t -replace "`r`n", "`n"
+}
+function VersionOf($items) {
+  $sb = New-Object System.Text.StringBuilder
+  foreach ($i in ($items | Sort-Object { $_.dst })) { [void]$sb.Append($i.dst + "`n" + $i.text + "`n") }
+  $h = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($sb.ToString()))
+  ([BitConverter]::ToString($h) -replace '-', '').Substring(0, 10).ToLower()
+}
+function LocalItems($list) {
+  @($list | ForEach-Object { $p = Join-Path $PSScriptRoot $_.dst
+    @{ dst = $_.dst; text = $(if (Test-Path $p) { NormText ([IO.File]::ReadAllBytes($p)) } else { '' }) } })
+}
+function LocalList {
+  $f = Join-Path $PSScriptRoot 'update.json'
+  try { if (Test-Path $f) { return UpdList ((Get-Content $f -Raw -Encoding UTF8 | ConvertFrom-Json).files) } } catch {}
+  UpdList $DEFAULT_FILES
+}
+function Fetch($url) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  $rq = [Net.HttpWebRequest]::Create($url + '?t=' + [DateTime]::UtcNow.Ticks)   # ข้าม cache ของ GitHub Pages
+  $rq.Timeout = 10000; $rq.ReadWriteTimeout = 10000
+  $rs = $rq.GetResponse()
+  try { $ms = New-Object System.IO.MemoryStream; $rs.GetResponseStream().CopyTo($ms); return , $ms.ToArray() } finally { $rs.Close() }
+}
+# ไฟล์ชุดล่าสุดบนเว็บ — จำผลไว้ 10 นาที (ล้มเหลวจำ 2 นาที) bridge ทำงานวนรอบเดียว จะได้ไม่ค้างรอเน็ตบ่อย
+$remote = $null; $remoteAt = [DateTime]::MinValue
+function RemoteSet([bool]$fresh) {
+  if (-not $fresh -and $script:remote -and (Get-Date) -lt $script:remoteAt) { return $script:remote }
+  try {
+    $man = NormText (Fetch ($UPDATE_BASE + 'update.json'))
+    $list = UpdList ($man | ConvertFrom-Json).files
+    $items = @($list | ForEach-Object { @{ src = $_.src; dst = $_.dst; text = (NormText (Fetch ($UPDATE_BASE + $_.src))) } })
+    $script:remote = @{ ok = $true; list = $list; items = $items; manifest = $man; version = (VersionOf $items) }
+    $script:remoteAt = (Get-Date).AddMinutes(10)
+  } catch {
+    $script:remote = @{ ok = $false; error = "โหลดไฟล์จากเว็บไม่ได้: $($_.Exception.Message)" }
+    $script:remoteAt = (Get-Date).AddMinutes(2)
+  }
+  $script:remote
+}
+# เครื่องที่รันจากโฟลเดอร์ repo (เครื่องพัฒนา) ห้ามอัปเดตทับไฟล์ที่กำลังแก้อยู่
+$DEV = Test-Path (Join-Path (Split-Path $PSScriptRoot) '.git')
+function VersionInfo([bool]$check) {
+  $r = [ordered]@{ ok = $true; version = $state.ver; os = $OS; ps = $PSVersionTable.PSVersion.ToString(); screen = $SCREEN
+    installed = (Get-Item $PSCommandPath).LastWriteTime.ToString('yyyy-MM-dd HH:mm'); dev = $DEV }
+  if ($check) {
+    $rs = RemoteSet $false
+    if ($rs.ok) {
+      $r.latest = $rs.version
+      # เทียบด้วยรายการไฟล์ของชุดใหม่ (เผื่อชุดใหม่มีไฟล์เพิ่ม)
+      $r.outdated = (VersionOf (LocalItems $rs.list)) -ne $rs.version
+      $ff = Join-Path $PSScriptRoot 'update-failed.txt'
+      if ($r.outdated -and (Test-Path $ff) -and ([IO.File]::ReadAllText($ff).Trim() -eq $rs.version)) { $r.failed = $true }
+    } else { $r.checkError = $rs.error }
+  }
+  $r
+}
+$restartAfter = $null
+function DoUpdate {
+  if ($DEV) { return @{ ok = $false; error = 'bridge นี้รันจากโฟลเดอร์ repo (เครื่องพัฒนา) — ไม่อัปเดตทับไฟล์ที่กำลังแก้' } }
+  $rs = RemoteSet $true
+  if (-not $rs.ok) { return @{ ok = $false; error = $rs.error } }
+  if ((VersionOf (LocalItems $rs.list)) -eq $rs.version) { return @{ ok = $true; updated = $false; version = $rs.version } }
+  Remove-Item (Join-Path $PSScriptRoot 'update-failed.txt') -Force -ErrorAction SilentlyContinue
+  # ไฟล์ต้องไม่ว่าง และ .ps1 ต้อง parse ผ่าน — ไฟล์เสีย/โหลดมาไม่ครบจะไม่เขียนทับของเดิม
+  foreach ($i in $rs.items) {
+    if (-not $i.text) { return @{ ok = $false; error = "ไฟล์ $($i.src) บนเว็บว่างเปล่า" } }
+    if ($i.dst -like '*.ps1') {
+      $tok = $null; $err = $null
+      [void][System.Management.Automation.Language.Parser]::ParseInput($i.text, [ref]$tok, [ref]$err)
+      if ($err) { return @{ ok = $false; error = "ไฟล์ $($i.src) บนเว็บมีข้อผิดพลาด: $($err[0].Message)" } }
+    }
+  }
+  $bak = Join-Path $PSScriptRoot 'backup'
+  New-Item -ItemType Directory -Force $bak | Out-Null
+  $saved = @()
+  foreach ($i in $rs.items) {
+    $p = Join-Path $PSScriptRoot $i.dst
+    if (Test-Path $p) { Copy-Item $p (Join-Path $bak $i.dst) -Force; $saved += $i.dst }
+  }
+  [IO.File]::WriteAllLines((Join-Path $bak 'files.txt'), [string[]]$saved)
+  $utf8 = New-Object System.Text.UTF8Encoding $false; $bom = New-Object System.Text.UTF8Encoding $true
+  foreach ($i in $rs.items) {
+    $t = if ($OS -eq 'win') { $i.text -replace "`n", "`r`n" } else { $i.text }
+    # PowerShell 5.1 อ่าน .ps1 ไม่มี BOM เป็น ANSI (ภาษาไทยเพี้ยน) / .bat มี BOM แล้ว cmd อ่านบรรทัดแรกผิด
+    $p = Join-Path $PSScriptRoot $i.dst
+    [IO.File]::WriteAllText($p, $t, $(if ($i.dst -like '*.ps1') { $bom } else { $utf8 }))
+    if ($OS -ne 'win' -and $i.dst -match '\.(command|sh)$') { & chmod +x $p }
+  }
+  [IO.File]::WriteAllText((Join-Path $PSScriptRoot 'update.json'), $rs.manifest, $utf8)
+  $script:restartAfter = @{ from = $state.ver; to = $rs.version }
+  @{ ok = $true; updated = $true; from = $state.ver; version = $rs.version }
+}
+function StartBridgeProcess {
+  if ($OS -eq 'win') {
+    # เหมือน start-bridge.bat: conhost = คอนโซลแบบเดิม (Windows Terminal ไม่ยอมซ่อนหน้าต่าง)
+    Start-Process conhost.exe -ArgumentList "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`"" -WindowStyle Minimized
+  } else {
+    $exe = (Get-Process -Id $PID).Path; $log = Join-Path $PSScriptRoot 'bridge.log'
+    & /bin/bash -c "nohup '$exe' -NoProfile -File '$PSCommandPath' >> '$log' 2>&1 &"
+  }
+}
+# เฉพาะตัวที่รันไฟล์เดียวกับตัวนี้ (ไม่ไปปิด bridge ตัวอื่นในเครื่อง เช่นตัวทดสอบพอร์ตอื่น)
+function OtherBridges {
+  if ($OS -eq 'win') {
+    @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine.Contains($PSCommandPath) } | ForEach-Object { [int]$_.ProcessId })
+  } else { @(& pgrep -f -- ([regex]::Escape($PSCommandPath)) | ForEach-Object { [int]$_ } | Where-Object { $_ -ne $PID }) }
+}
+# Windows ต่อพอร์ตที่ไม่มีใครเปิดใช้เวลา ~2 วินาทีกว่าจะรู้ว่าไม่ได้ จึงรอแค่ 500 ms ต่อครั้ง
+function BridgeUp {
+  $c = New-Object System.Net.Sockets.TcpClient
+  try { $ok = $c.ConnectAsync('127.0.0.1', $PORT).Wait(500) -and $c.Connected } catch { $ok = $false }
+  $c.Close(); $ok
+}
+# ปิดพอร์ตแล้วเปิดตัวใหม่ รอดูว่าตัวใหม่เปิดพอร์ตได้ภายใน 40 วินาที — ไม่ได้ (เปิดไม่ขึ้น) ให้คืนไฟล์จาก backup\ แล้วเปิดตัวเดิมกลับมา
+function RestartAfterUpdate {
+  Write-Host "อัปเดต bridge $($restartAfter.from) → $($restartAfter.to) เปิดตัวใหม่ $(Get-Date -Format 'HH:mm:ss')"
+  $listener.Stop()
+  StartBridgeProcess
+  $until = (Get-Date).AddSeconds(40)
+  while ((Get-Date) -lt $until) { Start-Sleep -Milliseconds 500; if (BridgeUp) { exit 0 } }
+  Write-Host 'ตัวใหม่เปิดไม่ขึ้น — คืนไฟล์เดิมจาก backup'
+  foreach ($p in OtherBridges) { try { Stop-Process -Id $p -Force -ErrorAction Stop } catch {} }
+  $bak = Join-Path $PSScriptRoot 'backup'
+  foreach ($f in [IO.File]::ReadAllLines((Join-Path $bak 'files.txt'))) { if ($f) { Copy-Item (Join-Path $bak $f) (Join-Path $PSScriptRoot $f) -Force } }
+  # จำชุดที่เปิดไม่ขึ้นไว้ หน้าเว็บจะไม่สั่งอัปเดตชุดนี้ซ้ำทุกครั้งที่เปิดหน้า (รอชุดใหม่ที่แก้แล้ว)
+  [IO.File]::WriteAllText((Join-Path $PSScriptRoot 'update-failed.txt'), $restartAfter.to)
+  StartBridgeProcess
+  exit 1
+}
+
 function Respond($client) {
   $stream = $client.GetStream()
   $stream.ReadTimeout = 1000
@@ -1149,6 +1313,12 @@ function Respond($client) {
   }
   $type = 'application/json; charset=utf-8'; $bytes = [byte[]]@()
   if ($method -eq 'OPTIONS') { $status = '204 No Content' }
+  elseif ($path -like '/version*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(((VersionInfo ($path -match '[?&]check=1')) | ConvertTo-Json -Compress)) }
+  elseif ($path -like '/update*') {
+    $status = '200 OK'
+    $res = if ($origin -ne $UPDATE_ORIGIN) { @{ ok = $false; error = 'สั่งอัปเดตได้จากหน้าเว็บของ รพ. เท่านั้น' } } else { try { DoUpdate } catch { @{ ok = $false; error = "$_" } } }
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($res | ConvertTo-Json -Compress))
+  }
   elseif ($path -like '/current*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(($state | ConvertTo-Json -Compress)) }
   elseif ($path -like '/db/*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes((DbEndpoint $path)) }
   elseif ($path -like '/grid.png*' -and $script:gridPng) { $status = '200 OK'; $type = 'image/png'; $bytes = $script:gridPng }
@@ -1163,11 +1333,14 @@ function Respond($client) {
   $client.Close()
 }
 
+$state.ver = VersionOf (LocalItems (LocalList))
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $PORT)
 try { $listener.Start() } catch { Write-Host "เปิดพอร์ต $PORT ไม่ได้ — อาจมี HOSxP Bridge เปิดอยู่แล้ว"; exit 1 }
-Write-Host "HOSxP Bridge ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (หยุด: stop-bridge.bat)"
+Write-Host "HOSxP Bridge $($state.ver) ($OS) ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (หยุด: stop-bridge.bat)"
 if ($db) { try { [void](DbQuery 'SELECT 1'); Write-Host "เชื่อมฐานข้อมูล HOSxP แล้ว" } catch { Write-Host "ยังเชื่อมฐานข้อมูลไม่ได้: $_ (ใช้ OCR แทน)" } }
 else { Write-Host "ไม่ได้ตั้งฐานข้อมูล ($($state.dbErr)) — ใช้ OCR" }
+# อ่านหน้าจอ / ปุ่มลัด / หน้าต่างพิมพ์สรุปยากลับบ้าน ใช้ได้เฉพาะ Windows
+if ($SCREEN) {
 # เครื่องพิมพ์สรุปยากลับบ้าน — bridge เปิดหน้าต่างพิมพ์อัตโนมัติให้เอง (ย่อไว้) และเปิดใหม่ถ้าถูกปิด เปิดแค่ bridge ตัวเดียวก็พิมพ์ได้
 $hmeProf = Join-Path $env:LOCALAPPDATA 'TPH-AutoPrint'
 $hmeBat = Join-Path $PSScriptRoot 'HME-AutoPrint.bat'
@@ -1207,12 +1380,16 @@ function OnHotkey($mode) {
   }
   Start-Process "$CLINIC_URL#float=$mode"
 }
+}
 
 $nextPoll = [DateTime]::MinValue; $nextHme = (Get-Date).AddSeconds(3)
 while ($true) {
-  while (($hk = [HxWin]::PollHotkey())) { if ($HOTKEYS.ContainsKey($hk)) { try { OnHotkey $HOTKEYS[$hk] } catch { Write-Host "ปุ่มลัด: $_" } } }
-  if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
-  if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
+  if ($SCREEN) {
+    while (($hk = [HxWin]::PollHotkey())) { if ($HOTKEYS.ContainsKey($hk)) { try { OnHotkey $HOTKEYS[$hk] } catch { Write-Host "ปุ่มลัด: $_" } } }
+    if ((Get-Date) -ge $nextPoll) { UpdateState; $nextPoll = (Get-Date).AddSeconds(1) }
+    if ((Get-Date) -ge $nextHme) { try { HmeWatch } catch {}; $nextHme = (Get-Date).AddSeconds(60) }
+  } else { $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
   while ($listener.Pending()) { try { Respond $listener.AcceptTcpClient() } catch {} }
+  if ($restartAfter) { RestartAfterUpdate }
   Start-Sleep -Milliseconds 100
 }

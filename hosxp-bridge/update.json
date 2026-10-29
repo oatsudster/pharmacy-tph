@@ -1,0 +1,18 @@
+{
+  "_note": "ไฟล์ที่ bridge ดาวน์โหลดตอนอัปเดตตัวเอง (src = path ใน hosxp-bridge/, dst = ชื่อไฟล์ในเครื่อง, os = win/mac/ไม่ระบุ = ทุกเครื่อง) — เพิ่มไฟล์ใหม่ของ bridge ต้องเพิ่มที่นี่ด้วย",
+  "files": [
+    { "src": "hosxp-bridge.ps1" },
+    { "src": "hxdb.cs" },
+    { "src": "update.json" },
+    { "src": "hme-printer.ps1", "os": "win" },
+    { "src": "start-bridge.bat", "os": "win" },
+    { "src": "stop-bridge.bat", "os": "win" },
+    { "src": "HME-AutoPrint.bat", "os": "win" },
+    { "src": "HME-AutoPrint-setup.bat", "os": "win" },
+    { "src": "installer/uninstall.ps1", "dst": "uninstall.ps1", "os": "win" },
+    { "src": "mac/start-bridge.sh", "dst": "start-bridge.sh", "os": "mac" },
+    { "src": "mac/restart-bridge.command", "dst": "Restart HOSxP Bridge.command", "os": "mac" },
+    { "src": "mac/stop-bridge.command", "dst": "Stop HOSxP Bridge.command", "os": "mac" },
+    { "src": "mac/uninstall-bridge.command", "dst": "Uninstall HOSxP Bridge.command", "os": "mac" }
+  ]
+}
