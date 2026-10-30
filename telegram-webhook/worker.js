@@ -8,6 +8,7 @@
 //
 // Cron trigger (wrangler.toml) สั่งรัน workflow เดียวกันทุกวัน 08:30 น. ไทย —
 // ใช้แทน schedule ของ GitHub Actions ที่ดีเลย์ไม่แน่นอน (บางวันช้าไปถึงเที่ยง-บ่ายโมง)
+// วันที่ 1 ของเดือน cron เดียวกันส่งข้อความเตือนลงข้อมูลเดือนที่แล้วใน HRMS และ SKYNET ด้วย (monthlyReminder)
 
 const FIREBASE_API_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE';
 const PROJECT_ID = 'pharmacy-tph';
@@ -60,8 +61,31 @@ export default {
         }
       })
     );
+    // วันที่ 1 ของเดือน (เวลาไทย) — เตือนส่งข้อมูลเดือนที่แล้วเข้า HRMS และ SKYNET
+    const reminder = monthlyReminder(new Date(event.scheduledTime));
+    if (reminder) ctx.waitUntil(replyTelegram(env, env.ALLOWED_CHAT_ID, reminder));
   },
 };
+
+const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+function monthlyReminder(now) {
+  const bkk = new Date(now.getTime() + 7 * 3600 * 1000);   // เวลาไทย UTC+7
+  if (bkk.getUTCDate() !== 1) return null;
+  const prev = new Date(Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth() - 1, 1));
+  const month = `${TH_MONTHS[prev.getUTCMonth()]} ${prev.getUTCFullYear() + 543}`;
+  return (
+    `📅 <b>วันที่ 1 — ส่งข้อมูลเดือน${month}</b>\n\n` +
+    '<b>1. HRMS (ความคลาดเคลื่อนทางยา)</b>\n' +
+    '• OPD/IPD จาก HOSxP + ER จาก ME Dashboard\n' +
+    '• โปรแกรม HRMS เปิดเองที่เครื่องเภสัช 09:00 น. — ตรวจรายการแล้วกด เริ่ม\n\n' +
+    '<b>2. SKYNET (อย.)</b>\n' +
+    '• ใบสั่งยา OPD / วันนอน IPD / ARV (ช่อง TB กรอกเอง)\n' +
+    '• รายงาน ADR ที่ยังไม่ได้ส่ง — โปรแกรม SKYNET ADR Auto Fill\n\n' +
+    'ส่งครบแล้วตอบ ✅ ในกลุ่มนี้ได้เลย'
+  );
+}
 
 function dispatchWorkflow(env) {
   return fetch(
