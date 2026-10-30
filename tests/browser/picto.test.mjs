@@ -85,3 +85,34 @@ test('หน่วยที่ไม่มีรูปเฉพาะ (สูด
   assert.deepEqual(r, [{ text: '2', icons: 0 }, { text: '', icons: 1 }, { text: '', icons: 2 }]);
   await ctx.close();
 });
+
+test('พิมพ์เฉพาะฉลากรูปภาพ: ไม่มีฉลากปกติ · ยาที่ทำภาพไม่ได้ถูกข้ามพร้อมแจ้งชื่อ · มี HN บนหัวฉลาก', async () => {
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith('file:') ? r.continue() : r.abort());
+  await ctx.addInitScript(() => localStorage.setItem('tph_auth_v1', '1'));   // ไม่ได้เปิดโหมดฉลากภาพของ HN นี้ — ปุ่มยังใช้ได้
+  const page = await ctx.newPage();
+  await page.goto(pathToFileURL(path.join(ROOT, 'rx-sticker.html')).href);
+  await page.waitForTimeout(500);
+  const r = await page.evaluate(async () => {
+    window.print = () => { window.__printed = (window.__printed || 0) + 1; };
+    const it = (guid, l1, l2) => ({ guid, name: 'ยาทดสอบ ' + guid, qty: 10, line1: l1, line2: l2, line3: '', thaiName: '-' });
+    CUR = { hn: '9999001', now: '2026-10-30 10:00:00', visits: [{ vn: '1', date: '2026-10-30', time: '10:00', queue: '1', name: 'นายทดสอบ ระบบ', items: [
+      it('a', 'รับประทานครั้งละ 1 เม็ด', 'วันละ 2 ครั้ง หลังอาหาร เช้า-เย็น'), it('b', 'รับประทานครั้งละ 1 เม็ด', 'วันเว้นวัน')] }] };
+    CHECK.a = CHECK.b = true; COPIES.a = 2; COPIES.b = 1;
+    render();
+    const btn = [...document.querySelectorAll('.actions button')].find(b => /เฉพาะฉลากรูปภาพ/.test(b.textContent));
+    const rowBtns = document.querySelectorAll('td button[title^="พิมพ์เฉพาะฉลากรูปภาพ"]').length;
+    btn.click();
+    await new Promise(res => setTimeout(res, 300));
+    const pa = document.getElementById('print-area');
+    return { label: btn.textContent, rowBtns, order: [...pa.children].map(c => c.className), head: pa.querySelector('.phd').textContent,
+      status: document.getElementById('status').textContent, printed: window.__printed || 0 };
+  });
+  assert.match(r.label, /\(2 ดวง\)/);               // a × 2 สำเนา, b ทำภาพไม่ได้ไม่นับ
+  assert.equal(r.rowBtns, 1);                        // ปุ่ม 🖼️ รายยาเฉพาะยาที่ทำภาพได้
+  assert.deepEqual(r.order, ['pstk', 'pstk']);
+  assert.match(r.head, /HN 9999001/);
+  assert.match(r.status, /ไม่ได้พิมพ์ฉลากภาพ: ยาทดสอบ b/);
+  assert.equal(r.printed, 1);
+  await ctx.close();
+});

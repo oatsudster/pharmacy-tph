@@ -410,7 +410,7 @@ function picStickerHtml(v, it) {
   }
   const warn = r.warnings.map(w => `<div class="pwarn">${picIcon(w)}<span>${T[w]}</span></div>`).join('');
   return `<div class="pstk"><div class="pin">
-      <div class="phd"><b class="fit" style="font-size:12pt">${escHtml(v.name || '')}</b><span class="fit" style="font-size:9pt">${escHtml(drugName(it))}</span></div>
+      <div class="phd"><b class="fit" style="font-size:12pt">${escHtml(v.name || '')} <span style="font-size:9pt;font-weight:400">HN ${escHtml(CUR.hn)}</span></b><span class="fit" style="font-size:9pt">${escHtml(drugName(it))}</span></div>
       <div class="pmain">${main}</div>
       <div class="pft"><div class="pamt fit" style="font-size:15pt">${escHtml(amt)}</div>${warn}</div>
     </div></div>`;
@@ -507,10 +507,12 @@ function render() {
           <td class="num">${escHtml(fmtQty(it.qty))} ${escHtml(String(it.units || '').replace(/\s*\(.*\)\s*$/, ''))}</td>
           <td class="use">${useCell(it)}</td>
           <td class="num"><input class="cp" type="number" min="1" max="9" value="${COPIES[it.guid]}" onchange="COPIES['${it.guid}']=Math.max(1,Math.min(9,+this.value||1))"></td>
-          <td><button class="btn btn-sm" onclick="printItems(['${it.guid}'])">🖨</button></td>
+          <td style="white-space:nowrap"><button class="btn btn-sm" onclick="printItems(['${it.guid}'])" title="ฉลากปกติ${picOn(CUR.hn) ? ' + ฉลากรูปภาพ' : ''}">🖨</button>${picParse(it).error ? '' : ` <button class="btn btn-sm" onclick="printItems(['${it.guid}'], true)" title="พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ)">🖼️</button>`}</td>
         </tr>`).join('') + '</tbody></table>' : '<div class="empty">ไม่มียาใน visit นี้</div>'}
       <div class="actions">
         <button class="btn btn-gold" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))})" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'}>🖨 พิมพ์ที่เลือก (${v.items.filter(it => CHECK[it.guid]).reduce((s, it) => s + COPIES[it.guid], 0)} ดวง)</button>
+        ${(() => { const sel = v.items.filter(it => CHECK[it.guid] && !picParse(it).error);   /* นับเฉพาะที่ทำภาพได้ — ส่งทุกตัวที่เลือก ให้แจ้งชื่อยาที่ถูกข้าม */ const n = sel.reduce((s, it) => s + COPIES[it.guid], 0);
+          return `<button class="btn" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))}, true)" ${n ? '' : 'disabled'} title="ไม่พิมพ์ฉลากปกติ — ใช้กับยาที่มีฉลากปกติแล้ว (เช่น พิมพ์ฉลากภาพเพิ่มให้คนไข้)">🖼️ พิมพ์เฉพาะฉลากรูปภาพ (${n} ดวง)</button>`; })()}
         <button class="btn" onclick="loadHn('${escHtml(CUR.hn)}')">🔄 ดึงใหม่</button>
         <span class="hint" style="margin:0">เลือกเครื่องพิมพ์ ZDesigner ZD230 · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
       </div>
@@ -563,14 +565,23 @@ function usageTrBlock(it, L, s, pos, lang) {
     s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th fit', L.filter(x => x && !dotLine(x)).join(' ')) +
     s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th b fit', it.hint || '');
 }
-function printItems(guids) {
+// picOnly: พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ) — ใช้กับยาที่มีฉลากปกติอยู่แล้ว ต้องกดปุ่มเองทุกครั้ง ไม่จำเป็นโหมด
+function printItems(guids, picOnly) {
   if (!CUR || !guids.length) return;
   const now = new Date(), list = [];
   (CUR.visits || []).forEach(v => v.items.forEach(it => { if (guids.includes(it.guid)) for (let c = 0; c < (COPIES[it.guid] || 1); c++) list.push([v, it]); }));
   if (!list.length) return;
   const pa = document.getElementById('print-area');
-  const pic = picOn(CUR.hn);
-  pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now) + (pic ? picStickerHtml(v, it) : '')).join('');
+  if (picOnly) {
+    const skip = [...new Set(list.filter(([, it]) => picParse(it).error).map(([, it]) => drugName(it)))];
+    const html = list.map(([v, it]) => picStickerHtml(v, it)).join('');
+    showStatus(skip.length ? `🖼️ ไม่ได้พิมพ์ฉลากภาพ: ${skip.join(', ')} — วิธีใช้ทำเป็นภาพไม่ได้ ใช้ฉลากปกติ` : '');
+    if (!html) return;
+    pa.innerHTML = html;
+  } else {
+    const pic = picOn(CUR.hn);
+    pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now) + (pic ? picStickerHtml(v, it) : '')).join('');
+  }
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
