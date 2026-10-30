@@ -7,6 +7,7 @@
 3. เลือกวันที่ให้เปิดเอง: Yes = เฉพาะพุธ-พฤหัส, No = ทุกวัน
 4. ในหน้าตั้งค่าเบราว์เซอร์ที่เปิดขึ้น ตั้ง "Local network" และ "Apps on device" เป็น Allow
 
+ไม่อยากแตก zip: เปิดหน้าเว็บ (เช่นหน้าคลินิก) จะมีปุ่ม "คัดลอกคำสั่งติดตั้ง" → กด Win+R → Ctrl+V → Enter ติดตั้งจากเว็บได้เลย
 ถ้า install.cmd ใช้ไม่ได้: คลิกขวา install.ps1 > Run with PowerShell
 หรือไม่ติดตั้งเลย: คัดลอก hosxp-bridge.ps1, hxdb.cs, db.json กับ start-bridge.bat ไปไว้ในโฟลเดอร์เดียวกัน แล้วดับเบิลคลิก start-bridge.bat
 
