@@ -232,7 +232,8 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
       <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
     <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
-      <button class="btn btn-gold" id="md-print" onclick="printMd()">🖨 พิมพ์</button>
+      <button class="btn btn-gold" id="mrmd-print" onclick="printMrMd()" title="หัวสติกเกอร์ MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมที่ติ๊ก — พิมพ์รวดเดียว">📋💊 พิมพ์หัว MR + ยาเดิม</button>
+      <button class="btn" id="md-print" onclick="printMd()">🖨 พิมพ์เฉพาะยาเดิม</button>
       <label class="hint" style="margin:0">ชุด × <input class="cp" type="number" id="md-sets" min="1" max="4" value="2"></label>
       <button class="btn btn-sm" onclick="mdAll(true)">เลือกทั้งหมด</button>
       <button class="btn btn-sm" onclick="mdAll(false)">ไม่เลือกเลย</button>
@@ -555,14 +556,26 @@ function mrHalf(x, mrDate, tag) {
       </div>
     </div>`;
 }
+function mrHtml(list) {
+  const mrDate = document.getElementById('mr-date').value || todayIso();
+  return list.map(x => `<div class="mrstk">${mrHalf(x, mrDate, 'ตัวจริง')}${mrHalf(x, mrDate, 'สำเนา')}</div>`).join('');
+}
+// สติกเกอร์ 9×6 ซม. ชนิดต่างๆ พิมพ์ในงานเดียวกันได้ — fits = ฟังก์ชันย่อตัวอักษรของแต่ละชนิด (วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว)
+function stkPrint(html, fits) {
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html;
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  fits.forEach(f => f(pa));
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
+  setTimeout(() => window.print(), 50);
+}
 function printMr(ans) {
   const list = IPD.filter(x => ans.includes(x.an));
-  if (!list.length) return;
-  const mrDate = document.getElementById('mr-date').value || todayIso();
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = list.map(x => `<div class="mrstk">${mrHalf(x, mrDate, 'ตัวจริง')}${mrHalf(x, mrDate, 'สำเนา')}</div>`).join('');
-  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
-  pa.querySelectorAll('.fit').forEach(el => {
+  if (list.length) stkPrint(mrHtml(list), [mrFit]);
+}
+function mrFit(pa) {
+  pa.querySelectorAll('.mrstk .fit').forEach(el => {
     let fs = parseFloat(el.style.fontSize);
     while (el.scrollWidth > el.clientWidth + 1 && fs > 10) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
@@ -577,9 +590,6 @@ function printMr(ans) {
     const v = h.querySelector('.fitv'); let fs = 11.5;
     while (h.scrollHeight > h.clientHeight + 1 && fs > 7) { fs -= 0.5; v.querySelectorAll('.tx').forEach(t => t.style.fontSize = fs + 'pt'); }
   });
-  pa.style.cssText = '';
-  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
-  setTimeout(() => window.print(), 50);
 }
 // ── สติกเกอร์ยาเดิมแปะตารางใบ MR ──
 // เลือกยา: ครั้งล่าสุดของแต่ละตัว (icode; ตัวยาเดียวกันต่างความแรง = เอาครั้งล่าสุด) ติ๊กให้ถ้าจำนวนที่ได้รับใช้ถึงวัน admit
@@ -1039,6 +1049,7 @@ function renderMd() {
   const sel = MD.items.filter(d => d.on).length;
   document.getElementById('md-meta').textContent = `${MD.x.name} · เตียง ${MD.x.bed || '-'} · admit ${thIso(MD.x.regdate)} · เลือก ${sel}/${MD.items.length} รายการ = ${Math.ceil(sel / mdPer())} ดวง/ชุด`;
   document.getElementById('md-print').disabled = !sel;
+  document.getElementById('mrmd-print').disabled = !sel;
   document.getElementById('md-list').innerHTML = MD.items.map((d, i) => d.ext ? `<div class="md-row ext${d.on ? '' : ' off'}">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <input class="mdx-in" list="mdx-drugs" value="${escHtml(d.namePrint)}" onchange="mdExtEdit(this, ${i}, 'namePrint')">
@@ -1069,31 +1080,27 @@ function mdStickers(rows, grid) {
       <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(mdUse(d)))}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
-function mdPrint(html) {
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = html;
-  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
-  pa.querySelectorAll('.fit').forEach(el => {   // ชื่อยายาว/แถวเตี้ย → ลดตัวอักษรจนไม่เกินความกว้างและความสูงแถว
+function mdFit(pa) {
+  pa.querySelectorAll('.mdstk .fit').forEach(el => {   // ชื่อยายาว/แถวเตี้ย → ลดตัวอักษรจนไม่เกินความกว้างและความสูงแถว
     // ช่องจัดกลางแนวตั้ง (flex) ส่วนที่ล้นด้านบนไม่นับใน scrollHeight — วัดจากความสูงรวมของบรรทัดแทน
     const box = el.parentElement, tall = () => [...box.children].reduce((h, c) => h + c.offsetHeight, 0) > box.clientHeight + 1;
     let fs = parseFloat(el.style.fontSize);
     while ((el.scrollWidth > el.clientWidth + 1 || tall()) && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
-  pa.querySelectorAll('.fitv').forEach(el => {   // วิธีใช้ยาว → ลดตัวอักษรจนไม่เกินความสูงแถว
+  pa.querySelectorAll('.mdstk .fitv').forEach(el => {   // วิธีใช้ยาว → ลดตัวอักษรจนไม่เกินความสูงแถว
     const box = el.parentElement; let fs = parseFloat(el.style.fontSize);
     while (el.scrollHeight > box.clientHeight + 1 && fs > 7) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
-  pa.style.cssText = '';
-  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
-  setTimeout(() => window.print(), 50);
 }
-function printMd() {
-  if (!MD) return;
-  const rows = MD.items.filter(d => d.on); if (!rows.length) return;
+function mdSetsHtml() {
+  const rows = MD ? MD.items.filter(d => d.on) : []; if (!rows.length) return '';
   const sets = Math.max(1, Math.min(4, +document.getElementById('md-sets').value || 2));
-  mdPrint(Array(sets).fill(0).map(() => mdStickers(rows)).join(''));
+  return Array(sets).fill(0).map(() => mdStickers(rows)).join('');
 }
-function printMdGrid() { mdSaveCal(); mdPrint(mdStickers(Array(mdPer()).fill(null), true)); }
+function printMd() { const h = mdSetsHtml(); if (h) stkPrint(h, [mdFit]); }
+// หัว MR + ยาเดิม คลิกเดียว (ผู้ใช้ขอ 2026-10-30): หัว MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมตามจำนวนชุด ในงานพิมพ์เดียว
+function printMrMd() { const h = mdSetsHtml(); if (h) stkPrint(mrHtml([MD.x]) + h, [mrFit, mdFit]); }
+function printMdGrid() { mdSaveCal(); stkPrint(mdStickers(Array(mdPer()).fill(null), true), [mdFit]); }
 // ── สรุปยากลับบ้าน (HMe) — ตรวจทุก 30 วินาที พิมพ์อัตโนมัติเมื่อใบสั่งไม่ถูกแก้มา 2 นาที ──
 let HME = [], HME_NOW = null, hmeFirst = true;
 const HME_STABLE_MS = 120000, HME_FRESH_MS = 30 * 60000;
