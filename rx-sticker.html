@@ -14,6 +14,7 @@
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
+<script src="lib/usage-picto.js"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -78,6 +79,35 @@ td.use .en { color: #1e3a8a; font-size: 13px; }
 td.use .mm-miss { color: #b45309; font-size: 12px; }
 .lang-pick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-weight: 600; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 5px 10px; margin: 0 0 8px; width: fit-content; }
 .lang-pick .chip { font-weight: 400; }
+/* ── ฉลากยารูปภาพ (ดวงเสริมต่อจากฉลากปกติ) สำหรับผู้ป่วยอ่านหนังสือไม่ออก/สายตาไม่ดี — 101.6 × 59.9 มม. เครื่องเดียวกัน ── */
+.pstk { position: relative; width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; font-family: Tahoma, 'Noto Sans Thai', sans-serif; }
+.pstk:last-child { page-break-after: auto; break-after: auto; }
+.pstk .pin { position: absolute; left: 10.58mm; top: 1.2mm; width: 78.3mm; height: 57.4mm; display: flex; flex-direction: column; }
+.pstk .phd { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; border-bottom: .3mm solid #000; padding-bottom: .4mm; white-space: nowrap; }
+.pstk .phd b { font-size: 12pt; overflow: hidden; }
+.pstk .phd span { font-size: 9pt; overflow: hidden; }
+.pstk .pmain { flex: 1; display: flex; gap: 1.2mm; align-items: stretch; padding: 1mm 0; min-height: 0; }
+.pstk .pcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: .5mm solid transparent; border-radius: 2mm; padding: .6mm 0; min-width: 0; }
+.pstk .pcol.on { border-color: #000; }
+.pstk .pcol.off .pic { opacity: .18; }
+.pstk .pcol.meal { flex: 1.15; border: 0; }
+.pstk .pic { width: 12mm; height: 12mm; display: flex; align-items: center; justify-content: center; font-size: 26pt; line-height: 1; }
+.pstk .pic img, .pstk .pic svg { width: 100%; height: 100%; object-fit: contain; }
+.pstk .plb { font-size: 10.5pt; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+.pstk .pcol.off .plb { font-weight: 400; }
+/* รูปเม็ดยาใหญ่ให้คนสายตาไม่ดีนับได้ · 3–4 เม็ดเรียง 2×2 เล็กลงให้พอดีช่อง (ไม่ล้นลงส่วนท้าย) */
+.pstk .pills { display: flex; flex-wrap: wrap; gap: .8mm; align-items: center; justify-content: center; max-width: 14mm; margin-top: 1mm; font-size: 18pt; font-weight: 700; }
+.pstk .pills .pic { width: 7.5mm; height: 7.5mm; font-size: 16pt; }
+.pstk .pills.many .pic { width: 6mm; height: 6mm; }
+.pstk .pbig { flex: 1; display: flex; align-items: center; gap: 2mm; min-width: 0; }
+.pstk .pbig .pic { width: 20mm; height: 20mm; font-size: 40pt; flex-shrink: 0; }
+.pstk .pbig .ptx { font-size: 13pt; font-weight: 700; line-height: 1.3; white-space: normal; }
+.pstk .pft { display: flex; align-items: center; gap: 2mm; border-top: .3mm solid #000; padding-top: .5mm; min-height: 9mm; }
+.pstk .pamt { font-size: 15pt; font-weight: 700; white-space: nowrap; flex: 1; overflow: hidden; }
+.pstk .pwarn { display: flex; flex-direction: column; align-items: center; font-size: 7pt; line-height: 1.1; }
+.pstk .pwarn .pic { width: 7mm; height: 7mm; font-size: 15pt; }
+td.use .pic-ok { color: #1A5E38; font-size: 12.5px; }
+td.use .pic-warn { color: #b45309; font-size: 12px; }
 
 @media print {
   body { background: #fff; }
@@ -319,6 +349,71 @@ function setLang(hn, lang) {
   try { localStorage.setItem('rx_lang_hns', JSON.stringify(m)); } catch (e) {}
   render();
 }
+// ฉลากยารูปภาพ: เปิดรายผู้ป่วย (อ่านหนังสือไม่ออก/สายตาไม่ดี) — จำตาม HN ในเครื่องนี้เหมือนภาษาฉลาก
+function picSet() { try { return new Set(JSON.parse(localStorage.getItem('rx_pic_hns') || '[]')); } catch (e) { return new Set(); } }
+function picOn(hn) { return picSet().has(String(hn)); }
+function setPic(hn, on) {
+  const s = [...picSet()].filter(x => x !== String(hn));
+  if (on) s.push(String(hn));
+  try { localStorage.setItem('rx_pic_hns', JSON.stringify(s.slice(-500))); } catch (e) {}
+  render();
+}
+function picParse(it) { return window.TphPicto ? TphPicto.parse(it.line1, it.line2, it.line3, { hint: [it.hint, it.advice].filter(Boolean).join(' '), antibiotic: it.antibiotic }) : { error: 'โหลดตัวแปลงภาพไม่ได้' }; }
+// สรุปสั้นๆ ในตารางให้เภสัชตรวจก่อนพิมพ์
+function picSummary(r) {
+  const T = TphPicto.TH, amt = r.amount ? (r.amount.text ? r.amount.text + ' ' : '') + r.amount.unit : '';
+  if (r.prn) return `เมื่อมีอาการ${r.prn.symptom ? T[r.prn.symptom] : ''} ${amt}${r.prn.everyH ? ' ห่าง ' + r.prn.everyH + ' ชม.' : ''}`;
+  if (r.everyH) return `ทุก ${r.everyH} ชม. ${amt}`;
+  const sl = r.slots ? Object.entries(r.slots).filter(([, v]) => v).map(([k, v]) => T[k] + (r.amount && r.amount.n == null && !r.amount.text ? ' ' + v : '')).join(' · ') : '';
+  return [T[r.meal] || (r.route !== 'oral' ? T[r.route] : ''), sl, amt].filter(Boolean).join(' · ');
+}
+// ไฟล์ภาพที่มีจริงใน img/picto/ (ตรวจครั้งเดียวตอนเปิดหน้า) — ไม่มีใช้ไอคอนพื้นฐาน
+const PIC_FILES = new Set();
+if (window.TphPicto) TphPicto.FILES.forEach(n => { const im = new Image(); im.onload = () => PIC_FILES.add(n); im.src = `img/picto/${n}.png`; });
+const PIC_EMOJI = { eye: '👁', ear: '👂', nose: '👃', inhaler: '💨', sublingual: '👅', suppository: '⬆', skin: '✋', injection: '💉', sachet: '▭',
+  prn: '🤒', 'prn-pain': '🤕', 'prn-fever': '🌡', 'prn-cough': '😷', 'prn-nausea': '🤢', 'prn-chest': '💔', 'prn-constipation': '🚽', 'prn-diarrhea': '🚽',
+  'prn-itch': '✋', 'prn-sleep': '🛏', 'prn-dyspnea': '🫁', sleepy: '😴', shake: '↕', fridge: '❄', 'no-crush': '🚫', finish: '✔', tbsp: '🥄', tube: '▭', other: '●' };
+function picIcon(name) {
+  const inner = PIC_FILES.has(name) ? `<img src="img/picto/${name}.png" alt="">` : (TphPicto.ICON[name] || escHtml(PIC_EMOJI[name] || '●'));
+  return `<div class="pic">${inner}</div>`;
+}
+// จำนวนเม็ดเป็นรูป: 2 → ⚪⚪, 1.5 → ⚪◐ · เกิน 4 หรือเศษอื่น (1/4) ใช้ตัวเลข + รูป 1 อัน
+function picPills(n, form) {
+  const f = ['tablet', 'capsule', 'tsp', 'tbsp', 'drop'].includes(form) ? form : 'tablet';
+  if (!(n > 0)) return '<div class="pills">–</div>';
+  const whole = Math.floor(n), half = n - whole === 0.5;
+  if (whole + (half ? 1 : 0) <= 4 && (n === whole || half) && (f === 'tablet' || n === whole))
+    return `<div class="pills${whole + (half ? 1 : 0) > 2 ? ' many' : ''}">${picIcon(f).repeat(whole)}${half ? picIcon('half') : ''}</div>`;
+  return `<div class="pills">${escHtml(String(n))}${picIcon(f)}</div>`;
+}
+function picStickerHtml(v, it) {
+  const r = picParse(it);
+  if (r.error) return '';
+  const T = TphPicto.TH;
+  // ขนาดยาแยกมื้อ: "เช้า 2 · กลางวัน 1.5 · เย็น 4 เม็ด" (เดิมเหลือแค่คำว่า "เม็ด")
+  const amt = !r.amount ? '' : r.amount.text ? 'ครั้งละ ' + r.amount.text + ' ' + r.amount.unit
+    : Object.entries(r.slots || {}).filter(([, n]) => n).map(([k, n]) => T[k] + ' ' + n).join(' · ') + ' ' + r.amount.unit;
+  let main;
+  if (r.slots) {
+    const lead = r.meal ? `<div class="pcol meal">${picIcon(r.meal)}<div class="plb">${T[r.meal]}</div></div>`
+      : r.route !== 'oral' ? `<div class="pcol meal">${picIcon(r.route)}<div class="plb">${T[r.route] || ''}</div></div>` : '';
+    main = lead + ['morning', 'noon', 'evening', 'bed'].map(k => `<div class="pcol ${r.slots[k] ? 'on' : 'off'}">${picIcon(k)}<div class="plb">${T[k]}</div>${
+      r.slots[k] ? picPills(r.slots[k], r.amount && r.amount.form) : '<div class="pills">–</div>'}</div>`).join('');
+  } else if (r.prn) {
+    const sym = r.prn.symptom ? 'prn-' + r.prn.symptom : 'prn';
+    main = `<div class="pbig">${picIcon(sym)}<div class="ptx">เมื่อมีอาการ${r.prn.symptom ? '<br>' + T[r.prn.symptom] : ''}</div></div>` +
+      (r.prn.everyH ? `<div class="pbig">${picIcon('clock')}<div class="ptx">ห่างกันอย่างน้อย<br><span style="white-space:nowrap">${escHtml(r.prn.everyH)} ชม.</span></div></div>` : '');
+  } else {
+    main = `<div class="pbig">${picIcon(r.route === 'oral' ? 'clock' : r.route)}<div class="ptx">${r.route !== 'oral' ? T[r.route] + '<br>' : ''}ทุก ${escHtml(r.everyH)} ชม.</div></div>`;
+  }
+  const warn = r.warnings.map(w => `<div class="pwarn">${picIcon(w)}<span>${T[w]}</span></div>`).join('');
+  return `<div class="pstk"><div class="pin">
+      <div class="phd"><b class="fit" style="font-size:12pt">${escHtml(v.name || '')}</b><span class="fit" style="font-size:9pt">${escHtml(drugName(it))}</span></div>
+      <div class="pmain">${main}</div>
+      <div class="pft"><div class="pamt fit" style="font-size:15pt">${escHtml(amt)}</div>${warn}</div>
+    </div></div>`;
+}
+
 // วิธีใช้ที่แปลแล้วทีละบรรทัด: '' = บรรทัดว่าง, null = แปลไม่ได้ (พิมพ์ภาษาไทยแทน)
 function usageTr(it, lang) {
   return usageLines(it).map(l => !l || dotLine(l) ? '' : (window.translateUsage ? translateUsage(l, lang) : null));
@@ -387,12 +482,17 @@ function render() {
   const at = CUR.now.slice(11, 16), lang = labelLang(CUR.hn);
   const useCell = it => {
     const th = usageLines(it), tr = lang !== 'th' ? usageTr(it, lang) : [];
-    return th.map((l, i) => !l ? '' : escHtml(l) + (lang === 'th' || tr[i] === '' ? '' : tr[i] === null
+    const txt = th.map((l, i) => !l ? '' : escHtml(l) + (lang === 'th' || tr[i] === '' ? '' : tr[i] === null
       ? '<div class="mm-miss">⚠️ แปลไม่ได้ — พิมพ์เป็นภาษาไทย</div>' : `<div class="${lang}">${escHtml(tr[i])}</div>`)).filter(Boolean).join('<br>');
+    if (!picOn(CUR.hn)) return txt;
+    const p = picParse(it);
+    return txt + (p.error ? `<div class="pic-warn">⚠️ ทำฉลากภาพไม่ได้ (${escHtml(p.error)}) — พิมพ์ฉลากปกติอย่างเดียว</div>`
+      : `<div class="pic-ok">🖼️ ${escHtml(picSummary(p))}</div>` + (p.assumed ? '<div class="pic-warn">⚠️ วิธีใช้ไม่บอกมื้อ — ภาพใช้มื้อมาตรฐาน ตรวจให้ตรงก่อนพิมพ์</div>' : ''));
   };
   det.innerHTML = `<div class="lang-pick">🌐 ภาษาวิธีใช้บนฉลาก:
       ${Object.entries(LANGS).map(([k, t]) => `<button class="chip${k === lang ? ' on' : ''}" onclick="setLang('${escHtml(CUR.hn)}','${k}')">${t}</button>`).join('')}
-      <span class="hint" style="margin:0;font-weight:400">· ผู้ป่วยอ่านภาษาไทยไม่ได้ · จำ HN นี้ไว้ในเครื่องนี้</span></div>` + vs.map(v => {
+      <span class="hint" style="margin:0;font-weight:400">· ผู้ป่วยอ่านภาษาไทยไม่ได้ · จำ HN นี้ไว้ในเครื่องนี้</span>
+      <label class="chip${picOn(CUR.hn) ? ' on' : ''}" style="margin-left:auto;cursor:pointer"><input type="checkbox" ${picOn(CUR.hn) ? 'checked' : ''} onchange="setPic('${escHtml(CUR.hn)}', this.checked)" style="margin-right:4px">🖼️ พิมพ์ฉลากรูปภาพเพิ่ม (อ่านหนังสือไม่ออก/สายตาไม่ดี)</label></div>` + vs.map(v => {
     const lk = lockText(v);
     return `<div style="margin-bottom:18px">
       <div class="v-head"><span class="nm">${escHtml(v.name || '-')}</span><span class="mt">HN ${escHtml(CUR.hn)} · VN ${escHtml(v.vn)} · ${escHtml(thIso(v.date))} ${escHtml(v.time)} น. · คิว ${escHtml(v.queue || '-')}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span></div>
@@ -467,7 +567,8 @@ function printItems(guids) {
   (CUR.visits || []).forEach(v => v.items.forEach(it => { if (guids.includes(it.guid)) for (let c = 0; c < (COPIES[it.guid] || 1); c++) list.push([v, it]); }));
   if (!list.length) return;
   const pa = document.getElementById('print-area');
-  pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now)).join('');
+  const pic = picOn(CUR.hn);
+  pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now) + (pic ? picStickerHtml(v, it) : '')).join('');
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
   pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
@@ -477,7 +578,8 @@ function printItems(guids) {
     while (el.scrollWidth > el.clientWidth + 1 && fs > 6) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
   pa.style.cssText = '';
-  setTimeout(() => window.print(), 50);
+  // รอรูปใน img/picto/ โหลดเสร็จก่อนสั่งพิมพ์ (ไม่งั้นดวงแรกอาจพิมพ์ออกมาไม่มีรูป)
+  Promise.all([...pa.querySelectorAll('img')].map(im => im.decode().catch(() => {}))).then(() => setTimeout(() => window.print(), 50));
 }
 
 // ── หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา) ──
