@@ -12,12 +12,14 @@
 <title>ระยะเวลารอคอยยา — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/fs-merge-save.js"></script>
 <style>
 :root {
   --primary: #1A5E38;
@@ -34,7 +36,7 @@
   --border: #D6E4DA;
   --text: #1C2B22;
   --text-mid: #3D5A47;
-  --text-light: #7A9A85;
+  --text-light: #587363;
   font-family: 'Noto Sans Thai', sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1236,7 +1238,7 @@ function renderStatCharts() {
   chartInstances['s-monthly'] = new Chart(document.getElementById('s-chart-monthly'), {
     type: 'bar',
     data: {
-      labels: monthly.map(m => labelMonth(m.key)),
+      labels: monthly.map(m => TphMonthNote.mark(labelMonth(m.key), m.key)),
       datasets: [
         {
           label: 'ค่าเฉลี่ย (นาที)',
@@ -1325,7 +1327,7 @@ function renderCartCharts() {
   chartInstances['c-monthly'] = new Chart(document.getElementById('c-chart-monthly'), {
     type: 'bar',
     data: {
-      labels: monthly.map(m => labelMonth(m.key)),
+      labels: monthly.map(m => TphMonthNote.mark(labelMonth(m.key), m.key)),
       datasets: [
         {
           label: 'ค่าเฉลี่ย (นาที)',
@@ -1528,26 +1530,34 @@ function showToast(msg) {
     badge.style.opacity = '1';
   }
 
-  window.fbSaveStat = async function() {
+  // ส่งเฉพาะรายการที่เพิ่ม/แก้/ลบ (เดิม set ทั้งชุด — 2 เครื่องบันทึกพร้อมกัน รายการของเครื่องแรกหาย)
+  const trackers = {};
+  async function fbSave(doc, records, label) {
     if (!db) return;
-    try { await db.collection(COL).doc('wt_stat').set({ records: statRecords, updated: new Date().toISOString() }); }
-    catch(e) { console.warn('fbSaveStat:', e.message); }
-  };
-  window.fbSaveCart = async function() {
-    if (!db) return;
-    try { await db.collection(COL).doc('wt_cart').set({ records: cartRecords, updated: new Date().toISOString() }); }
-    catch(e) { console.warn('fbSaveCart:', e.message); }
-  };
-  window.fbSaveStatPending = async function() {
-    if (!db) return;
-    try { await db.collection(COL).doc('wt_stat_pending').set({ records: pendingStatRecords, updated: new Date().toISOString() }); }
-    catch(e) { console.warn('fbSaveStatPending:', e.message); }
-  };
-  window.fbSaveCartPending = async function() {
-    if (!db) return;
-    try { await db.collection(COL).doc('wt_cart_pending').set({ records: pendingCartRecords, updated: new Date().toISOString() }); }
-    catch(e) { console.warn('fbSaveCartPending:', e.message); }
-  };
+    try { await trackers[doc].save({ records }, { updated: new Date().toISOString() }); }
+    catch(e) { console.warn(label + ':', e.message); TphMergeSave.badge(badge, 'error'); }
+  }
+  window.fbSaveStat = () => fbSave('wt_stat', statRecords, 'fbSaveStat');
+  window.fbSaveCart = () => fbSave('wt_cart', cartRecords, 'fbSaveCart');
+  window.fbSaveStatPending = () => fbSave('wt_stat_pending', pendingStatRecords, 'fbSaveStatPending');
+  window.fbSaveCartPending = () => fbSave('wt_cart_pending', pendingCartRecords, 'fbSaveCartPending');
+  // arrayUnion ต่อท้ายเสมอ → เรียงตามเวลาที่สร้าง (id = 'stat_' + Date.now()) ได้ลำดับเดิมก่อนแก้ทุกประการ
+  const idTime = r => +(String(r && r.id || '').split('_').pop()) || 0;
+  const tidy = list => TphMergeSave.dedupeBy(list || [], 'id').sort((a, b) => idTime(a) - idTime(b));
+  // ป้าย: รอส่ง/cache ของเอกสารไหนก็ได้ = ยังไม่ยืนยันครบ
+  const docStatus = {};
+  function listen(doc, onData) {
+    const ref = db.collection(COL).doc(doc);
+    trackers[doc] = TphMergeSave.tracker(ref, { arrays: ['records'] });
+    ref.onSnapshot({ includeMetadataChanges: true }, snap => {
+      trackers[doc].seen(snap.exists ? snap.data() : null);
+      docStatus[doc] = TphMergeSave.status(snap);
+      onData(snap);
+      const all = Object.values(docStatus);
+      const st = all.includes('pending') ? 'pending' : all.includes('cache') ? 'cache' : 'server';
+      if (st === 'server') setSyncBadge('☁️ ซิงค์แล้ว', true); else TphMergeSave.badge(badge, st);
+    }, () => setSyncBadge('⚠️ ออฟไลน์', false));
+  }
 
   function fbInit() {
     try {
@@ -1557,31 +1567,29 @@ function showToast(msg) {
       setSyncBadge('🔄 กำลังเชื่อมต่อ...', null);
 
       // Real-time listeners for main records
-      db.collection(COL).doc('wt_stat').onSnapshot(snap => {
+      listen('wt_stat', snap => {
         if (snap.exists) {
-          statRecords = snap.data().records || [];
+          statRecords = tidy(snap.data().records);
           saveStatLocal(); buildMonthFilter(); renderAll();
-          setSyncBadge('☁️ ซิงค์แล้ว', true);
         } else if (statRecords.length) { window.fbSaveStat(); }
-      }, () => setSyncBadge('⚠️ ออฟไลน์', false));
-
-      db.collection(COL).doc('wt_cart').onSnapshot(snap => {
+      });
+      listen('wt_cart', snap => {
         if (snap.exists) {
-          cartRecords = snap.data().records || [];
+          cartRecords = tidy(snap.data().records);
           saveCartLocal(); buildMonthFilter(); renderAll();
         } else if (cartRecords.length) { window.fbSaveCart(); }
       });
 
       // Real-time listeners for pending records
-      db.collection(COL).doc('wt_stat_pending').onSnapshot(snap => {
+      listen('wt_stat_pending', snap => {
         if (snap.exists) {
-          pendingStatRecords = snap.data().records || [];
+          pendingStatRecords = tidy(snap.data().records);
           savePendingStatLocal(); renderPending();
         }
       });
-      db.collection(COL).doc('wt_cart_pending').onSnapshot(snap => {
+      listen('wt_cart_pending', snap => {
         if (snap.exists) {
-          pendingCartRecords = snap.data().records || [];
+          pendingCartRecords = tidy(snap.data().records);
           savePendingCartLocal(); renderPending();
         }
       });

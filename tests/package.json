@@ -1,0 +1,17 @@
+{
+  "name": "pharmacy-tph-tests",
+  "private": true,
+  "description": "Regression tests — ข้อมูลสมมติเท่านั้น ไม่เชื่อม production",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"unit/*.test.mjs\"",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-pharmacy-tph --config emulator/firebase.json \"node --test emulator/*.test.mjs\"",
+    "pretest:emulator": "node -e \"require('fs').copyFileSync('../firestore.rules','emulator/firestore.rules')\"",
+    "test:browser": "node --test \"browser/*.test.mjs\""
+  },
+  "devDependencies": {
+    "firebase": "9.23.0",
+    "jsdom": "24.1.3",
+    "playwright": "1.63.0"
+  }
+}

@@ -11,6 +11,7 @@
 <title>Admin Error IPD — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/admin-error-categories.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
@@ -28,7 +29,7 @@
     --border:        #D6E4DA;
     --text:          #1C2B22;
     --text-mid:      #3D5A47;
-    --text-light:    #7A9A85;
+    --text-light:    #587363;
     --shadow:        0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
     --shadow-md:     0 4px 16px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
     --radius:        14px;
@@ -545,10 +546,11 @@ function setSyncStatus() {
   } else if (states.includes('loading')) {
     el.textContent = '⏳ กำลังโหลดข้อมูลรายงาน';
   } else if (states.includes('cached')) {
-    el.textContent = '◷ ข้อมูลที่บันทึกไว้ — รอการยืนยันจากเซิร์ฟเวอร์';
+    el.textContent = '📦 ข้อมูลในเครื่อง — ยังไม่ได้ยืนยันกับ server';
   } else {
-    el.textContent = '☁️ ข้อมูลรายงานอัปเดตแล้ว';
-    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+    const t = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+    el.textContent = '☁️ ซิงค์แล้ว ' + t;
+    document.getElementById('last-sync').textContent = t;
   }
 }
 
@@ -682,7 +684,7 @@ function render() {
   // Updated in place (never destroyed from inside its own click handler) to avoid a Chart.js
   // afterEvent crash when a click triggers a re-render of the same chart mid-event.
   trendMonths = d.months;
-  const trendLabels = d.months.map(fmtMonthShort);
+  const trendLabels = d.months.map(m => TphMonthNote.mark(fmtMonthShort(m), m));
   const trendData = d.monthTotals;
   if (!trendChart) {
     const ctx = document.getElementById('trend-chart').getContext('2d');
@@ -703,8 +705,8 @@ function render() {
           callbacks: { title: (items) => fmtMonthFull(trendMonths[items[0].dataIndex]) }
         } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 11 } } },
-          y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+          x: { grid: { display: false }, ticks: { color: '#587363', font: { size: 11 } } },
+          y: { beginAtZero: true, ticks: { precision: 0, color: '#587363' }, grid: { color: '#EAF4EE' } }
         },
         onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
         onClick: (evt, elements) => {
@@ -733,8 +735,8 @@ function render() {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => 'ระดับ ' + NCC_SEVERITY[items[0].dataIndex] } } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#7A9A85', font: { size: 12, weight: '700' } } },
-          y: { beginAtZero: true, ticks: { precision: 0, color: '#7A9A85' }, grid: { color: '#EAF4EE' } }
+          x: { grid: { display: false }, ticks: { color: '#587363', font: { size: 12, weight: '700' } } },
+          y: { beginAtZero: true, ticks: { precision: 0, color: '#587363' }, grid: { color: '#EAF4EE' } }
         },
         onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
         onClick: (evt, elements) => {

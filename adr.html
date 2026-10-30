@@ -12,11 +12,13 @@
 <title>ระบบรายงาน ADR — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/fs-merge-save.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <style>
@@ -26,7 +28,7 @@
   --success: #16a34a; --danger: #b91c1c; --warning: #b45309;
   --info: #0e7490; --info-light: #e0f2fe;
   --bg: #F4F7F5; --surface: #ffffff; --border: #D6E4DA;
-  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #7A9A85;
+  --text: #1C2B22; --text-mid: #3D5A47; --text-light: #587363;
   font-family: 'Noto Sans Thai', sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1210,7 +1212,8 @@ function renderCharts(recs) {
 
   charts.monthly = new Chart(mCtx, {
     type: 'bar',
-    data: { labels: FISCAL_MONTHS, datasets },
+    // ปีงบปัจจุบัน: เดือนนี้มี * (ยังไม่สิ้นสุด) — ปีอื่น/ทุกปีไม่ทำเครื่องหมาย
+    data: { labels: FISCAL_MONTHS.map(m => { const t = fiscalInfo(TphMonthNote.currentYm() + '-15'); return document.getElementById('fil-year').value == t.year && m === t.month ? m + ' *' : m; }), datasets },
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins: { legend: { display: currentTab==='all', position:'bottom', labels:{boxWidth:12,font:{size:11}} } },
@@ -1338,11 +1341,15 @@ function renderTable(fRecs) {
     badge.style.opacity = '1';
   }
 
+  // ส่งเฉพาะรายการที่เพิ่ม/แก้/ลบ (เดิม set ทั้งชุด — 2 เครื่องบันทึกพร้อมกัน รายการของเครื่องแรกหาย)
+  let tracker = null;
   window.fbSaveADR = async function() {
     if (!db) return;
-    try { await db.collection(COL).doc('adr_records').set({ records, updated: new Date().toISOString() }); }
-    catch(e) { console.warn('fbSaveADR:', e.message); }
+    try { await tracker.save({ records }, { updated: new Date().toISOString() }); }
+    catch(e) { console.warn('fbSaveADR:', e.message); TphMergeSave.badge(badge, 'error'); }
   };
+  // arrayUnion ต่อท้ายเสมอ → เรียงใหม่: วันที่ล่าสุดก่อน แล้วรายการที่สร้างทีหลังก่อน (id = เวลาแบบ base36)
+  const byNewest = (a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.id || '').localeCompare(String(a.id || ''));
 
   function fbInit() {
     try {
@@ -1350,14 +1357,20 @@ function renderTable(fRecs) {
       db = firebase.firestore();
       db.enablePersistence().catch(() => {});
       setBadge('🔄 กำลังเชื่อมต่อ...', null);
-      db.collection(COL).doc('adr_records').onSnapshot(snap => {
+      const ref = db.collection(COL).doc('adr_records');
+      tracker = TphMergeSave.tracker(ref, { arrays: ['records'] });
+      // includeMetadataChanges: รู้ว่าข้อมูลมาจาก server จริง หรือแค่ cache/รอส่ง (เดิมขึ้น "ซิงค์แล้ว" ทุกกรณี)
+      ref.onSnapshot({ includeMetadataChanges: true }, snap => {
+        tracker.seen(snap.exists ? snap.data() : null);
+        const st = TphMergeSave.status(snap);
         if (snap.exists) {
-          records = snap.data().records || [];
+          records = TphMergeSave.dedupeBy(snap.data().records || [], 'id').sort(byNewest);
           saveLocal(); renderAll();
-          setBadge('☁️ ซิงค์แล้ว', true);
         } else if (records.length) {
           window.fbSaveADR();
         }
+        // ทุกกรณี (รวมยังไม่มีเอกสาร/ต่อ server ไม่ได้ตั้งแต่เปิดหน้า — เดิมค้าง "กำลังเชื่อมต่อ")
+        if (st === 'server') setBadge('☁️ ซิงค์แล้ว', true); else TphMergeSave.badge(badge, st);
         window._adrFbLoaded = true;
       }, err => {
         console.warn('fbSnapshot:', err.message);

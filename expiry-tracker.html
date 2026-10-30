@@ -17,6 +17,7 @@
 <script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/fs-merge-save.js"></script>
 <style>
 :root {
   --primary:#1A5E38;--primary-dark:#124228;--primary-mid:#237A4A;
@@ -24,7 +25,7 @@
   --success:#16a34a;--danger:#b91c1c;--warning:#b45309;
   --info:#0e7490;--info-light:#e0f2fe;
   --bg:#F4F7F5;--surface:#fff;--border:#D6E4DA;
-  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#7A9A85;
+  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#587363;
   font-family:'Noto Sans Thai',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -639,15 +640,21 @@ const FB_CONFIG = {
   messagingSenderId:"617328257113",
   appId:"1:617328257113:web:2863e26c5b2c6da2fe2948"
 };
-let db, fbReady = false;
+let db, fbReady = false, fbSync = null;
+// ส่งเฉพาะ key/รายการที่เปลี่ยน (เดิม set ทั้งก้อน — 2 เครื่องแก้คนละกล่องพร้อมกัน การแก้ของเครื่องแรกหาย)
+const FB_SPEC = { maps: ['overrides', 'boxChecked', 'itemChecked'], arrays: ['extras', 'removed', 'customBoxes'] };
 function initFirebase() {
   const badge = document.getElementById('sync-badge');
   try {
     if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
     db = firebase.firestore();
     db.enablePersistence().catch(()=>{});
-    db.collection('pharmacy_tph').doc('expiry_tracker').onSnapshot(snap => {
+    const ref = db.collection('pharmacy_tph').doc('expiry_tracker');
+    fbSync = TphMergeSave.tracker(ref, FB_SPEC);
+    // includeMetadataChanges: แยก "ยืนยันกับ server แล้ว" ออกจาก cache/รอส่ง (เดิมขึ้น "ซิงค์แล้ว" ทุกกรณี)
+    ref.onSnapshot({ includeMetadataChanges: true }, snap => {
       fbReady = true;
+      fbSync.seen(snap.exists ? snap.data() : null);
       if (snap.exists && snap.data()) {
         const d = snap.data();
         overrides = d.overrides || {};
@@ -661,8 +668,7 @@ function initFirebase() {
         BOX_LIST = buildBoxList();
         render();
       }
-      badge.textContent = '☁️ ซิงค์แล้ว ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
-      badge.style.background = '#dcfce7'; badge.style.color = '#15803d';
+      TphMergeSave.badge(badge, TphMergeSave.status(snap), new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}));
     }, err => {
       badge.textContent = '📴 ออฟไลน์ (บันทึกเฉพาะเครื่องนี้)';
       badge.style.background = '#fee2e2'; badge.style.color = '#991b1b';
@@ -673,9 +679,9 @@ function initFirebase() {
   }
 }
 function fbSave() {
-  if (!db) return;
-  db.collection('pharmacy_tph').doc('expiry_tracker').set({overrides, extras, removed, boxChecked, customBoxes, itemChecked, updated: Date.now()})
-    .catch(e => showToast('⚠️ ซิงค์ไม่สำเร็จ (บันทึกไว้ในเครื่องนี้แล้ว): ' + (e.code||e.message)));
+  if (!db || !fbSync) return;
+  fbSync.save({overrides, extras, removed, boxChecked, customBoxes, itemChecked}, {updated: Date.now()})
+    .catch(e => { showToast('⚠️ ซิงค์ไม่สำเร็จ (บันทึกไว้ในเครื่องนี้แล้ว): ' + (e.code||e.message)); TphMergeSave.badge(document.getElementById('sync-badge'), 'error'); });
 }
 
 function setSort(key) {

@@ -13,6 +13,7 @@
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/admin-gate.js"></script>
+<script src="lib/th-date.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -22,8 +23,8 @@
     --red: #b91c1c; --red-light: #fee2e2;
     --green: #16a34a; --green-light: #d1fae5;
     --yellow: #b45309; --yellow-light: #fff7ed;
-    --gray: #7A9A85; --gray-light: #F4F7F5; --gray-border: #D6E4DA;
-    --text: #1C2B22; --text-muted: #7A9A85;
+    --gray: #587363; --gray-light: #F4F7F5; --gray-border: #D6E4DA;
+    --text: #1C2B22; --text-muted: #587363;
     --shadow: 0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
     --shadow-md: 0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
     --radius: 12px;
@@ -2729,25 +2730,11 @@ function renderDrugStopChart() {
   }).join('');
 }
 
-function nextLastFriday() {
-  const today = new Date();
-  // Find last friday of current month, if passed find next month's
-  const check = (year, month) => {
-    const last = new Date(year, month+1, 0); // last day of month
-    const dow = last.getDay(); // 0=Sun, 5=Fri
-    const diff = (dow >= 5) ? dow - 5 : dow + 2;
-    return new Date(year, month, last.getDate() - diff);
-  };
-  let candidate = check(today.getFullYear(), today.getMonth());
-  if (candidate <= today) candidate = check(today.getFullYear(), today.getMonth()+1);
-  return candidate.toISOString().split('T')[0];
-}
+// ศุกร์สุดท้ายของเดือน (วันคลินิก) — วันนี้ถ้าวันนี้คือวันนั้น · เดิม toISOString() ได้วันก่อนหน้าเสมอ (เที่ยงคืนไทย = 17:00 UTC เมื่อวาน)
+function nextLastFriday() { return TphDate.nextLastFriday(); }
 
-function daysUntil(dateStr) {
-  const target = new Date(dateStr);
-  const today = new Date(); today.setHours(0,0,0,0);
-  return Math.ceil((target - today) / 86400000);
-}
+// นับวันตามปฏิทินไทย — เดิม new Date('YYYY-MM-DD') = 07:00 น. ไทย ปัดขึ้นเกิน 1 วัน
+function daysUntil(dateStr) { return TphDate.daysBetween(TphDate.ymd(), dateStr); }
 
 function exportCSV() {
   const visits = getVisits();
@@ -3803,7 +3790,7 @@ function resExportPDF() {
 <script>
 AiAssistant.init({
   title: 'ผู้ช่วย AI — DM Remission Clinic',
-  context: 'หน้านี้ติดตามผู้ป่วยเบาหวานในโครงการ DM Remission: น้ำหนัก BMI ความดัน น้ำตาล (dtx/fbs/hba1c) ไขมัน (ldl/tc/tg) ไต (cr/egfr/urineAlb) และยาที่ใช้/หยุด. ค่า lab เป็นตัวเลข (ว่างถ้าไม่ได้ตรวจ). ชื่อผู้ป่วยถูกซ่อนจาก AI ให้อ้างเป็นรหัสผู้ป่วย (patientId).',
+  context: 'หน้านี้ติดตามผู้ป่วยเบาหวานในโครงการ DM Remission: น้ำหนัก BMI ความดัน น้ำตาล (dtx/fbs/hba1c) ไขมัน (ldl/tc/tg) ไต (cr/egfr/urineAlb) และยาที่ใช้/หยุด. ค่า lab เป็นตัวเลข (ว่างถ้าไม่ได้ตรวจ). ชื่อผู้ป่วย/HN ถูกซ่อนจาก AI ให้อ้างเป็นรหัสผู้ป่วย (patientId เช่น P001).',
   suggestions: ['HbA1c เฉลี่ยของผู้ป่วยทั้งหมดแต่ละเดือน', 'ผู้ป่วยกี่คนที่หยุดยาเบาหวานได้', 'สร้างรายงานผลตรวจล่าสุดเป็น Excel'],
   datasets: {
     dm_visits: {
@@ -3813,11 +3800,13 @@ AiAssistant.init({
           ldl: n(v.ldl), tc: n(v.tc), tg: n(v.tg), cr: n(v.cr), egfr: n(v.egfr), urineAlb: n(v.urineAlb), drugs: (v.drugs || []).map(d => d.name).join(', '), drug_count: (v.drugs || []).length,
           drugChange: v.drugChange, drugProblem: v.drugProblem, dmDrugCost: dmCost(v), note: v.note }; }),
       private: ['patientName', 'note'],
+      pseudo: ['patientId'],   // patientId ของคนที่ดึงจาก HOSxP = 'pt_hx_' + HN
     },
     dm_patients: {
       label: 'ผู้ป่วยในโครงการ',
       rows: () => PATIENTS.map(p => ({ patientId: p.id, dx: p.dx, name: p.name, hn: p.hn })),
       private: ['name', 'hn'],
+      pseudo: ['patientId'],
     },
   },
 });

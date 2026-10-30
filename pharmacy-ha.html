@@ -11,6 +11,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/firebase-app-compat-10.js"></script>
 <script src="lib/firebase-firestore-compat-10.js"></script>
@@ -21,7 +22,7 @@
   color-scheme: light;
   --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE; --gold: #C49A22; --gold-light: #FBF3DC;
   --bg: #F4F7F5; --surface: #ffffff; --surface-2: #F7FAF8; --border: #DDE7E0; --grid: #E9EFEB;
-  --text: #1C2B22; --text-2: #4A6354; --text-3: #7A9A85;
+  --text: #1C2B22; --text-2: #4A6354; --text-3: #587363;
   --good: #15803d; --good-bg: #E6F4EA; --bad: #b91c1c; --bad-bg: #FDECEC; --warn: #9a6a00; --warn-bg: #FBF3DC;
   --mark: #1A5E38; --mark-muted: #B9C9BE; --target: #C49A22;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
@@ -405,6 +406,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
   const esc = window.escHtml || ((s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
   const fmt = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
   const mLabel = (m) => TH_M[+m.slice(5, 7)] + ' ' + String(+m.slice(0, 4) + 543).slice(-2);
+  const mChart = (m) => TphMonthNote.mark(mLabel(m), m);   // ป้ายแกนกราฟ: เดือนนี้มี * (ยังไม่สิ้นสุด)
   const thDate = (iso) => iso ? `${+iso.slice(8, 10)} ${TH_M[+iso.slice(5, 7)]} ${String(+iso.slice(0, 4) + 543).slice(-2)}` : '';
   const fyOf = (m) => +m.slice(0, 4) + 543 + (+m.slice(5, 7) >= 10 ? 1 : 0);
   const $ = (id) => document.getElementById(id);
@@ -503,7 +505,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
       borderColor: css('--mark'), backgroundColor: isCount ? css('--mark') : css('--mark'), fill: false,
       pointBackgroundColor: vals.map((x) => pass(d, x) === false ? css('--bad') : css('--mark')), pointRadius: 4, pointHoverRadius: 6 }];
     if (d.target != null) ds.push({ type: 'line', label: 'เป้าหมาย', data: ms.map(() => d.target), borderColor: css('--target'), borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false });
-    chart('ch-rdu', { type: isCount ? 'bar' : 'line', data: { labels: ms.map(mLabel), datasets: ds },
+    chart('ch-rdu', { type: isCount ? 'bar' : 'line', data: { labels: ms.map(mChart), datasets: ds },
       options: opts({ y: isCount ? 'คน/ครั้ง' : d.kind === 'MEAN' ? 'รายการ/ครั้ง' : '%', unit: unitTxt(d), legend: d.target != null }) });
     setCnt('cnt-rdu', st.evalN - st.passN);
   }
@@ -531,7 +533,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     $('allergy-tiles').innerHTML = tile('แพ้ยาซ้ำ (นับ)', fmt(s.n), s.n ? 'bad' : 'good', `OPD ${fmt(s.opd)} · IPD ${fmt(s.ipd)}`) +
       tile('ไม่ระบุประเภท', fmt(s.unspec), s.unspec ? 'bad' : '', 'ควรแก้ใน HOSxP') +
       tile('เฝ้าระวังการใช้ยา', fmt(s.watch), '', 'ผลข้างเคียง — ไม่นับ') + tile('แพ้เฉพาะยี่ห้อ / ทนได้', fmt(s.brand), '', 'ไม่นับ');
-    chart('ch-allergy', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [
+    chart('ch-allergy', { type: 'bar', data: { labels: ms.map(mChart), datasets: [
       { label: 'แพ้ยาซ้ำ (นับ)', data: ms.map((m) => (a.months[m] || {}).n || 0), backgroundColor: css('--bad'), stack: 's' },
       { label: 'ไม่ระบุประเภท', data: ms.map((m) => (a.months[m] || {}).unspec || 0), backgroundColor: css('--target'), stack: 's' },
       { label: 'เฝ้าระวัง / แพ้เฉพาะยี่ห้อ (ไม่นับ)', data: ms.map((m) => ((a.months[m] || {}).watch || 0) + ((a.months[m] || {}).brand || 0)), backgroundColor: css('--mark-muted'), stack: 's' }] },
@@ -566,7 +568,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     $('me-tiles').innerHTML = tile('OPD / 1,000 ใบสั่งยา', fmt(o, 2), o != null && o > 20 ? 'bad' : 'good', `${fmt(t.opd)} รายการ`) +
       tile('IPD / 1,000 วันนอน', fmt(i, 2), i != null && i > 10 ? 'bad' : 'good', `${fmt(t.ipd)} รายการ`) +
       tile('ER / 1,000 ใบสั่งยา', fmt(e, 2), '', `${fmt(t.er)} รายการ`) + tile('ระดับ E–I', fmt(t.sev), t.sev ? 'bad' : 'good', 'ถึงผู้ป่วยและเกิดอันตราย');
-    const mini = (id, k, kd, tgt) => chart(id, { type: 'line', data: { labels: rows.map((r) => mLabel(r.m)), datasets: [
+    const mini = (id, k, kd, tgt) => chart(id, { type: 'line', data: { labels: rows.map((r) => mChart(r.m)), datasets: [
       { label: 'อัตรา', data: rows.map((r) => { const v = rate(r[k], r[kd]); return v == null ? null : +v.toFixed(2); }), borderColor: css('--mark'), backgroundColor: css('--mark'),
         pointBackgroundColor: rows.map((r) => tgt && rate(r[k], r[kd]) > tgt ? css('--bad') : css('--mark')), pointRadius: 3, spanGaps: true },
       ...(tgt ? [{ label: 'เป้าหมาย', data: rows.map(() => tgt), borderColor: css('--target'), borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0 }] : [])] },
@@ -585,7 +587,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     const byM = P.trend.map((m) => { const x = adrRecs.filter((r) => r.date.startsWith(m)); return { m, n: x.length, s: x.filter(serious).length }; });
     const n = recs.length, s = recs.filter(serious).length;
     $('adr-tiles').innerHTML = tile('รายงานทั้งหมด', fmt(n)) + tile('ร้ายแรง', fmt(s), s ? 'bad' : '') + (P.monthly ? '' : tile('เฉลี่ยต่อเดือน', fmt(P.months.length ? n / P.months.length : null, 1)));
-    chart('ch-adr', { type: 'bar', data: { labels: byM.map((r) => mLabel(r.m)), datasets: [
+    chart('ch-adr', { type: 'bar', data: { labels: byM.map((r) => mChart(r.m)), datasets: [
       { label: 'ร้ายแรง', data: byM.map((r) => r.s), backgroundColor: css('--bad'), stack: 's' },
       { label: 'ไม่ร้ายแรง', data: byM.map((r) => r.n - r.s), backgroundColor: css('--mark'), stack: 's' }] },
       options: opts({ y: 'ราย', stacked: true, unit: ' ราย', legend: true }) });
@@ -607,7 +609,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     $('medrec-tiles').innerHTML = tile('admit ทั้งหมด', fmt(t.adm), '', 'ราย — ทำ MR ทุกรายบนใบ MR') + tile('มียาเดิม', fmt(t.admMeds), '', 'ราย') +
       tile('บันทึกใน HOSxP (มียาเดิม)', pm == null ? '—' : fmt(pm, 1) + '%', '', `${fmt(t.doneMeds)} จาก ${fmt(t.admMeds)} ราย`) +
       tile('บันทึกใน HOSxP (ทั้งหมด)', pa == null ? '—' : fmt(pa, 1) + '%', '', `${fmt(t.done)} จาก ${fmt(t.adm)} ราย`);
-    chart('ch-medrec', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
+    chart('ch-medrec', { type: 'line', data: { labels: ms.map(mChart), datasets: [
       { label: 'บันทึกใน HOSxP — ผู้ป่วยที่มียาเดิม', data: ms.map((m) => { const x = mr[m]; return x && x.admMeds ? +(x.doneMeds / x.admMeds * 100).toFixed(1) : null; }), borderColor: css('--mark'), backgroundColor: css('--mark'), pointRadius: 3 },
       { label: 'บันทึกใน HOSxP — admit ทั้งหมด', data: ms.map((m) => { const x = mr[m]; return x && x.adm ? +(x.done / x.adm * 100).toFixed(1) : null; }), borderColor: css('--mark-muted'), backgroundColor: css('--mark-muted'), pointRadius: 3 }] },
       options: opts({ y: '%', unit: '%', legend: true }) });
@@ -620,7 +622,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     const CL = [['DM', '--s1'], ['HT', '--s2'], ['COPD', '--s3']];
     const ms = P.trend, all = clinicVisits.filter((v) => ms.includes(String(v.date || '').slice(0, 7)));
     const pctOf = (xs) => xs.length ? +(xs.filter(has).length / xs.length * 100).toFixed(1) : null;
-    chart('ch-drp', { type: 'line', data: { labels: ms.map(mLabel), datasets: CL.map(([c, col]) => ({
+    chart('ch-drp', { type: 'line', data: { labels: ms.map(mChart), datasets: CL.map(([c, col]) => ({
       label: c, data: ms.map((m) => pctOf(all.filter((v) => v.clinic === c && v.date.startsWith(m)))), borderColor: css(col), backgroundColor: css(col), pointRadius: 3, spanGaps: true })) },
       options: opts({ y: '% ครั้งที่พบ DRP', unit: '%', legend: true, yMax: 100 }) });
     const tot = { visits: vs.length, withDrp: vs.filter(has).length, drp: vs.reduce((s, v) => s + (v.drps || []).length, 0) };
@@ -644,7 +646,7 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
       tile('ภายใน 15 นาที', n ? fmt(le15 / n * 100, 1) + '%' : '—') +
       tile(P.monthly ? 'มัธยฐาน' : 'มัธยฐานรายเดือน', meds.length ? (meds.length === 1 ? fmt(meds[0], 1) : `${fmt(Math.min(...meds), 1)}–${fmt(Math.max(...meds), 1)}`) : '—', '', 'นาที') +
       tile('วัดได้', fmt(n), '', `จาก ${fmt(rx)} ใบสั่งยา (${rx ? fmt(n / rx * 100, 0) : '—'}%)`);
-    chart('ch-wait', { type: 'line', data: { labels: ms.map(mLabel), datasets: [
+    chart('ch-wait', { type: 'line', data: { labels: ms.map(mChart), datasets: [
       { label: 'มัธยฐาน', data: ms.map((m) => (w[m] || {}).median ?? null), borderColor: css('--s1'), backgroundColor: css('--s1'), pointRadius: 3 },
       { label: '90% ได้รับยาภายใน', data: ms.map((m) => (w[m] || {}).p90 ?? null), borderColor: css('--s2'), backgroundColor: css('--s2'), pointRadius: 3 }] },
       options: opts({ y: 'นาที', unit: ' นาที', legend: true }) });

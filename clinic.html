@@ -12,6 +12,7 @@
 <title>งานเภสัชกรรมคลินิก — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
@@ -33,7 +34,7 @@
   --dm:#0e7490;--dm-light:#e0f2fe;
   --copd:#c2410c;--copd-light:#ffedd5;
   --bg:#F4F7F5;--surface:#fff;--border:#D6E4DA;
-  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#7A9A85;
+  --text:#1C2B22;--text-mid:#3D5A47;--text-light:#587363;
   font-family:'Noto Sans Thai',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -2014,7 +2015,7 @@ const FLOAT_CSS = `
   #fl-hn{flex:1;font-size:16px;font-weight:700}
   .pt{background:#fff;border-left:4px solid #1A5E38;border-radius:9px;padding:8px 10px;margin-bottom:8px}
   .pt b{font-size:14px}
-  .muted{color:#7A9A85;font-size:12px}
+  .muted{color:#587363;font-size:12px}
   .warn{color:#b45309;font-size:12px;font-weight:600}
   table{width:100%;border-collapse:collapse;background:#fff;border-radius:9px;overflow:hidden}
   th{background:#EAF4EE;color:#124228;font-size:11px;padding:5px 4px;text-align:center}
@@ -2022,9 +2023,9 @@ const FLOAT_CSS = `
   td.drug{text-align:left;font-size:12px;font-weight:600;word-break:break-word}
   td.lo{color:#dc2626;font-weight:800;font-size:15px}
   td.need{font-size:17px;font-weight:900;color:#1A5E38}
-  td.need.zero{color:#7A9A85;font-size:13px}
+  td.need.zero{color:#587363;font-size:13px}
   .pd{width:52px;text-align:center}
-  .empty{text-align:center;padding:24px 8px;color:#7A9A85}
+  .empty{text-align:center;padding:24px 8px;color:#587363}
   .use{font-size:11px;font-weight:400;color:#3D5A47;margin-top:2px}
   .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:#fee2e2;color:#b91c1c;margin-top:3px}
   .pd.auto{background:#FBF3DC;border-color:#C49A22}
@@ -2038,7 +2039,7 @@ const FLOAT_CSS = `
   #fl-result .paused-msg{display:none}
   #fl-result.paused .paused-msg{display:block}
   #fl-result.paused table, #fl-result.paused .calc-note{display:none}
-  #fl-link{font-size:11px;color:#7A9A85;margin-bottom:6px}
+  #fl-link{font-size:11px;color:#587363;margin-bottom:6px}
   #fl-link.on{color:#1A5E38;font-weight:600}
 `;
 
@@ -2270,7 +2271,7 @@ const FC_CSS = FLOAT_CSS + `
   .clin.on{background:#1A5E38;color:#fff;border-color:#1A5E38}
   .big{width:100%;padding:9px;font-size:14px;margin-bottom:6px}
   .primary{background:#1A5E38;color:#fff;border-color:#1A5E38}
-  .sec{font-size:11px;font-weight:700;color:#7A9A85;margin:10px 0 4px}
+  .sec{font-size:11px;font-weight:700;color:#587363;margin:10px 0 4px}
   .it{display:flex;gap:6px;align-items:flex-start;background:#fff;border-radius:8px;padding:6px 8px;margin-bottom:4px}
   .it span{flex:1;font-size:12px;font-weight:600}
   .it i{font-weight:400;color:#3D5A47}
@@ -2291,7 +2292,7 @@ const FC_CSS = FLOAT_CSS + `
   .sugg div:first-child{border-top:none}
   .sugg div.on,.sugg div:hover{background:#EAF4EE}
   .sugg b{font-weight:700;color:#1A5E38}
-  .sugg .p{color:#7A9A85;white-space:nowrap}
+  .sugg .p{color:#587363;white-space:nowrap}
   #fc-lo-qty{width:70px;text-align:center}
   .chip{font-size:11px;padding:3px 7px;border-radius:12px;font-weight:600}
   .box{background:#fff;border:1.5px solid #D6E4DA;border-radius:10px;padding:8px;margin-bottom:8px}
@@ -2302,9 +2303,9 @@ const FC_CSS = FLOAT_CSS + `
   .sm-sum{font-size:11.5px;margin:-1px 0 4px;color:#4b5563}
   table.sm-tb{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
   table.sm-tb td,table.sm-tb th{padding:3px 5px;border-bottom:1px solid #E3ECE6;text-align:left;vertical-align:top}
-  table.sm-tb th{font-size:11px;color:#7A9A85;font-weight:600}
+  table.sm-tb th{font-size:11px;color:#587363;font-weight:600}
   table.sm-tb td.l{font-weight:700;color:#124228;white-space:nowrap}
-  table.sm-tb .ser small{color:#7A9A85}
+  table.sm-tb .ser small{color:#587363}
   .tr{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
   .tr.better{background:#dcfce7;color:#166534}.tr.worse{background:#fee2e2;color:#b91c1c}.tr.bad{background:#FFFBEB;color:#92400e}.tr.ok{background:#EAF4EE;color:#124228;font-weight:400}
   table.sm-tb td.n{font-size:15px;font-weight:700;text-align:center;white-space:nowrap}
@@ -4261,7 +4262,7 @@ function renderDrpCharts(all) {
   if (months.length) {
     const mCats = DRP_GROUPS.filter(g => mItems.some(it => it.cat === g.key));
     chartInstances['dd-month'] = new Chart(document.getElementById('dd-month'), {type:'bar',
-      data:{labels:months.map(drpMonthLabel), datasets:mCats.map(g => ({label:g.label,
+      data:{labels:months.map(k => TphMonthNote.mark(drpMonthLabel(k), k)), datasets:mCats.map(g => ({label:g.label,
         data:months.map(m => mItems.filter(it => it.month === m && it.cat === g.key).length),
         backgroundColor:months.map(m => dim(g.color, !F.month || F.month === m)),
         borderColor:'#fff', borderWidth:{top:2}, borderSkipped:'bottom', maxBarThickness:42}))},
@@ -4697,7 +4698,7 @@ const FB_CONFIG = {
 };
 
 // บันทึกคลินิกเก็บแยกเอกสารรายเดือน (lib/clinic-store.js) ส่วน session/ราคา/ทะเบียนผู้ป่วยยังอยู่ใน clinic_data
-let db, clinicSync = null, visitMonthOf = {}, lastSyncTime = null, migrating = false;
+let db, clinicSync = null, visitMonthOf = {}, lastSyncTime = null, migrating = false, clinicFromCache = true;
 function initFirebase() {
   try {
     firebase.initializeApp(FB_CONFIG);
@@ -4705,8 +4706,9 @@ function initFirebase() {
     db.enablePersistence().catch(() => {});
     clinicSync = ClinicStore.createSync(db, 'clinic_pending_sync', renderSyncBadge);
     const nowTH = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
-    ClinicStore.watch(db, ({ visits, monthOf, legacy, meta }) => {
+    ClinicStore.watch(db, ({ visits, monthOf, legacy, meta, fromCache }) => {
       visitMonthOf = monthOf;
+      clinicFromCache = fromCache;
       visitRecords = clinicSync.overlay(visits);
       if (meta.sessionRecords) sessionRecords = meta.sessionRecords;
       if (meta.priceOverrides) priceOverrides = meta.priceOverrides;
@@ -4714,7 +4716,7 @@ function initFirebase() {
       if (Array.isArray(meta.noAdjustDrugs)) noAdjustDrugs = meta.noAdjustDrugs;
       invalidatePatientIndex();
       saveLocal(); renderAll();
-      lastSyncTime = nowTH();
+      if (!fromCache) lastSyncTime = nowTH();
       renderSyncBadge();
       // บันทึกที่ยังอยู่ในเอกสารเดิม (ก่อนแยกรายเดือน หรือจากหน้าเว็บรุ่นเก่าที่ยังเปิดค้าง) ย้ายเข้าเอกสารรายเดือน
       if (legacy.length && !migrating) {
@@ -4723,7 +4725,7 @@ function initFirebase() {
           .catch(e => console.warn('ClinicStore migrate:', e))
           .finally(() => { migrating = false; });
       }
-    }, () => renderSyncBadge(true));
+    }, () => renderSyncBadge(true), { metadata: true });   // metadata: รู้ว่าข้อมูลยืนยันกับ server แล้วหรือยัง
   } catch(e) { console.warn('Firebase:',e); }
 }
 
@@ -4733,7 +4735,9 @@ function renderSyncBadge(offline) {
   const set = (t, bg, c) => { badge.textContent = t; badge.style.background = bg; badge.style.color = c; };
   if (n) set(`⏳ รอส่งขึ้นคลาวด์ ${n} รายการ`, '#fef9c3', '#854d0e');
   else if (offline) set(lastSyncTime ? `📴 ออฟไลน์ (ล่าสุด ${lastSyncTime})` : '📴 ออฟไลน์', '#fee2e2', '#991b1b');
-  else if (lastSyncTime) set(`☁️ ซิงค์แล้ว ${lastSyncTime}`, '#dcfce7', '#15803d');
+  // เดิมขึ้น "ซิงค์แล้ว" แม้ข้อมูลมาจาก cache ในเครื่อง — ใช้ถ้อยคำ/สีเดียวกับหน้า ADR, รอคอยยา, ยาหมดอายุ
+  else if (clinicFromCache) set('📦 ข้อมูลในเครื่อง — ยังไม่ได้ยืนยันกับ server', '#fef9c3', '#78350f');
+  else if (lastSyncTime) set(`☁️ ซิงค์แล้ว ${lastSyncTime}`, '#d1fae5', '#065f46');
 }
 
 // เพิ่ม/แก้ (rec) หรือลบ (rec = null, id) บันทึกคลินิก 1 รายการ → เข้าคิวส่งเอกสารรายเดือน

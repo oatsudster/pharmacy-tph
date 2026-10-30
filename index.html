@@ -27,7 +27,7 @@
   --border:       #D6E4DA;
   --text:         #1C2B22;
   --text-mid:     #3D5A47;
-  --text-light:   #7A9A85;
+  --text-light:   #587363;
   --shadow:       0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
   --shadow-md:    0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
   --shadow-lg:    0 8px 32px rgba(26,94,56,.15), 0 2px 8px rgba(26,94,56,.08);
@@ -598,6 +598,58 @@ body[data-suite-page='me'] #section-overview .kpi-grid { grid-template-columns:r
   body[data-suite-page='expiry'] #tbody .row-btn { min-width:44px; min-height:44px; }
 }
 </style>
+<style id="home-v2">
+/* หน้าแรก: หมวดงาน · รายการโปรด/ใช้ล่าสุด · รายงานประจำเดือน · สถานะข้อมูลรายระบบ (ผลตรวจ UI 30 ต.ค. 2569) */
+.home-top { display:flex; gap:12px; align-items:stretch; flex-wrap:wrap; margin-bottom:14px; }
+.home-top .suite-search { flex:1 1 420px; margin:0; }
+.monthly-btn { flex:0 1 300px; display:flex; flex-direction:column; justify-content:center; gap:2px; text-align:left; padding:14px 18px; background:var(--gold-light); border:1px solid #ead99f; border-radius:16px; color:#5C4300; font:inherit; font-size:15px; font-weight:800; cursor:pointer; min-height:56px; }
+.monthly-btn small { font-size:12px; font-weight:500; color:#715509; }
+.monthly-btn:hover { background:#f7e8bd; }
+.monthly-panel { background:#fff; border:1px solid #ead99f; border-left:4px solid var(--gold); border-radius:14px; padding:16px 18px; margin:0 0 18px; }
+.monthly-panel h2 { font-size:16px; color:var(--primary-dark); margin-bottom:4px; }
+.monthly-panel .mp-sub { font-size:13px; color:var(--text-mid); margin-bottom:10px; line-height:1.6; }
+.mp-item { display:grid; grid-template-columns:28px 1fr auto; gap:4px 10px; align-items:center; padding:9px 0; border-top:1px solid #f1ead2; cursor:pointer; }
+.mp-item input { width:20px; height:20px; accent-color:var(--primary); }
+.mp-item b { font-size:14px; color:var(--text); }
+.mp-item span { grid-column:2; font-size:12.5px; color:var(--text-mid); line-height:1.5; }
+.mp-item a { grid-row:1 / span 2; grid-column:3; font-size:13px; font-weight:700; color:var(--primary); text-decoration:none; padding:8px 12px; border:1px solid var(--border); border-radius:9px; white-space:nowrap; }
+.mp-item.done b { color:var(--text-light); text-decoration:line-through; }
+.recent-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; font-size:13px; color:var(--text-mid); }
+.recent-row a { padding:7px 12px; background:#fff; border:1px solid var(--border); border-radius:20px; color:var(--primary-dark); text-decoration:none; font-weight:600; min-height:36px; display:inline-flex; align-items:center; }
+.recent-row a:hover { border-color:#82aa91; }
+.home-group { margin-bottom:28px; }
+.home-group > .section-label { font-size:13px; color:var(--primary-dark); letter-spacing:.3px; text-transform:none; }
+.home-group > .section-label small { font-weight:500; color:var(--text-light); margin-left:6px; }
+.app-card { position:relative; }
+.fav-btn { position:absolute; top:12px; right:12px; z-index:2; width:40px; height:40px; border-radius:10px; border:1px solid transparent; background:transparent; font-size:20px; line-height:1; color:#8a7a4a; cursor:pointer; }
+.fav-btn:hover, .fav-btn:focus-visible { background:var(--gold-light); border-color:#ead99f; }
+.fav-btn[aria-pressed="true"] { color:var(--gold); }
+.card-title-wrap { padding-right:36px; }
+.last-update[data-state="cache"], .last-update[data-state="local"] { color:#715509; }
+.last-update[data-state="offline"] { color:#991b1b; }
+.card-footer .open-btn { white-space:nowrap; }
+.monthly-panel { scroll-margin-top:80px; }
+@media (max-width:768px) {
+  /* มือถือ: ย่อส่วนหัว ให้งานหลักขึ้นในจอแรก */
+  body[data-suite-page='index'] .hero { padding:14px 16px 16px; }
+  body[data-suite-page='index'] .hero h1 { font-size:18px; line-height:1.45; margin:0; }
+  body[data-suite-page='index'] .hero h1 br { display:none; }
+  body[data-suite-page='index'] .hero h1 span { display:block; font-size:14px; font-weight:600; }
+  body[data-suite-page='index'] .hero-badge, body[data-suite-page='index'] .hero p { display:none; }
+  body[data-suite-page='index'] .cards-wrap { margin-top:14px; }
+  .home-top { gap:10px; }
+  /* ปุ่มออกอยู่แถวเดียวกับชื่อหน่วยงาน · ซ่อนป้ายช่องค้นหา (ยังมี placeholder และ aria-label) */
+  body[data-suite-page='index'] .header { flex-wrap:nowrap; }
+  body[data-suite-page='index'] .header-left { flex:1; }
+  body[data-suite-page='index'] .header-sub { display:none; }
+  .home-top .suite-search label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .home-top .suite-search { padding:12px; }
+  .monthly-btn { flex:1 1 100%; }
+  .mp-item { grid-template-columns:28px 1fr; }
+  .mp-item a { grid-row:auto; grid-column:2; justify-self:start; }
+  body[data-suite-page='index'] .dash-context { display:none; }
+}
+</style>
 <script>
 const DashUX = {
   period(fy, month) {
@@ -681,6 +733,7 @@ async function checkPin() {
   if (hash === PIN_HASH) {
     localStorage.removeItem(FAIL_KEY);
     localStorage.setItem(AUTH_KEY, '1');
+    sessionStorage.removeItem('tph_admin_unlock_v1');   // login ใหม่ = ต้องยืนยันสิทธิ์แอดมินใหม่
     document.getElementById('login-overlay').style.display = 'none';
   } else {
     const newCount  = (state.count || 0) + 1;
@@ -721,7 +774,7 @@ async function checkPin() {
   </div>
   <div class="header-date" id="hdr-date"></div>
   <span id="idx-sync" style="font-size:11px;color:rgba(255,255,255,.5);display:none"></span>
-  <button onclick="localStorage.removeItem('tph_auth_v1');location.reload()" style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">🔒 ออก</button>
+  <button onclick="window.tphLogout?tphLogout():(localStorage.removeItem('tph_auth_v1'),sessionStorage.removeItem('tph_admin_unlock_v1'),location.reload())" style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">🔒 ออก</button>
 </header>
 
 <!-- Hero -->
@@ -733,15 +786,23 @@ async function checkPin() {
 
 <!-- Cards -->
 <div class="cards-wrap">
-  <div class="section-label" style="margin-top:0">เครื่องมือที่ใช้งานได้</div>
-  <div class="suite-search"><label for="suite-search">ค้นหาระบบที่ต้องการ</label><input id="suite-search" type="search" placeholder="ชื่อระบบหรืองาน เช่น ME, คลินิก, หมดอายุ" autocomplete="off" aria-controls="suite-apps"><button type="button" id="suite-clear">ล้างคำค้น</button></div>
+  <div class="home-top">
+    <div class="suite-search"><label for="suite-search">ค้นหาระบบที่ต้องการ</label><input id="suite-search" type="search" placeholder="ชื่องาน เช่น รายงาน, แพ้ยา, สติกเกอร์, หมดอายุ" autocomplete="off" aria-controls="suite-apps"><button type="button" id="suite-clear">ล้างคำค้น</button></div>
+    <button type="button" class="monthly-btn" id="monthly-btn" aria-expanded="false" aria-controls="monthly-panel">📅 รายงานประจำเดือน<small id="monthly-due"></small></button>
+  </div>
+  <section class="monthly-panel" id="monthly-panel" hidden aria-labelledby="monthly-title">
+    <h2 id="monthly-title">📅 รายงานประจำเดือน</h2>
+    <div class="mp-sub" id="monthly-sub"></div>
+    <div id="monthly-list"></div>
+  </section>
+  <div class="recent-row" id="recent-row" hidden></div>
 <div class="dash-context">ตัวเลขด้านล่างเป็นข้อมูลสรุปจากข้อมูลที่โหลดไว้ในเครื่องนี้ · เปิดแต่ละระบบเพื่อดูรายละเอียดและสถานะการอัปเดต<span class="dash-caption">เดือนปัจจุบันยังไม่สิ้นสุด จึงไม่ควรเทียบจำนวนตรง ๆ กับเดือนเต็ม</span></div>
-<p class="suite-search-status" id="suite-search-status" role="status">ระบบงานทั้งหมด 6 ระบบ</p>
+<p class="suite-search-status" id="suite-search-status" role="status"></p>
 <div class="suite-no-results" id="suite-no-results" hidden>ไม่พบระบบที่ตรงกับคำค้น ลองใช้คำสั้นลงหรือกดล้างคำค้น</div>
-<div class="cards-grid" id="suite-apps">
+<div id="suite-apps">
 
     <!-- ME Dashboard -->
-    <div class="app-card" onclick="window.location.href='ME_Dashboard.html'">
+    <div class="app-card" data-href="ME_Dashboard.html" data-cat="record" data-short="ME" data-keywords="me medication error ความคลาดเคลื่อน คลาดเคลื่อนทางยา er ห้องฉุกเฉิน hrms rca capa รายงาน รายเดือน ตัวหาร" onclick="window.location.href='ME_Dashboard.html'">
       <div class="card-stripe"></div>
       <div class="card-body">
         <div class="card-head">
@@ -760,18 +821,18 @@ async function checkPin() {
       </div>
       <div class="dash-caption" style="padding:0 22px 10px">ME จากหน้าบันทึก ER · เดือนปัจจุบัน</div><div class="card-stat-bar">
         <div class="stat-item">
-          <div class="stat-val" id="me-total">—</div>
+          <div class="stat-val" id="me-total">…</div>
           <div class="stat-lbl">ME เดือนนี้</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" id="me-harm">—</div>
-          <div class="stat-lbl">ก่อให้เกิดอันตราย</div>
+          <div class="stat-val" id="me-harm">…</div>
+          <div class="stat-lbl">ระดับ E–I</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" id="me-month">—</div>
-          <div class="stat-lbl">เดือนนี้</div>
+          <div class="stat-val" id="me-month">…</div>
+          <div class="stat-lbl">เดือนที่แล้ว</div>
         </div>
       </div>
       <div class="card-footer">
@@ -781,7 +842,7 @@ async function checkPin() {
     </div>
 
     <!-- Waiting Time -->
-    <div class="app-card" onclick="window.location.href='waiting-time.html'">
+    <div class="app-card" data-href="waiting-time.html" data-cat="record" data-short="รอคอยยา" data-keywords="รอคอย รอยา เวลา stat cart ผู้ป่วยใน ipd ตัวชี้วัด kpi รายงาน รายเดือน" onclick="window.location.href='waiting-time.html'">
       <div class="card-stripe gold"></div>
       <div class="card-body">
         <div class="card-head">
@@ -800,17 +861,17 @@ async function checkPin() {
       </div>
       <div class="dash-caption" style="padding:0 22px 10px">เดือนปัจจุบัน · Stat Dose และ Cart</div><div class="card-stat-bar gold-bar">
         <div class="stat-item">
-          <div class="stat-val gold-val" id="wt-stat-count">—</div>
+          <div class="stat-val gold-val" id="wt-stat-count">…</div>
           <div class="stat-lbl">บันทึก Stat Dose</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val gold-val" id="wt-cart-count">—</div>
+          <div class="stat-val gold-val" id="wt-cart-count">…</div>
           <div class="stat-lbl">บันทึก Cart Dose</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val gold-val" id="wt-avg">—</div>
+          <div class="stat-val gold-val" id="wt-avg">…</div>
           <div class="stat-lbl">เฉลี่ย Stat (นาที)</div>
         </div>
       </div>
@@ -821,7 +882,7 @@ async function checkPin() {
     </div>
 
     <!-- DM Remission -->
-    <div class="app-card" onclick="window.location.href='dm-remission.html'">
+    <div class="app-card" data-href="dm-remission.html" data-cat="track" data-short="DM Remission" data-keywords="เบาหวาน dm a1c hba1c remission ติดตาม รายงาน" onclick="window.location.href='dm-remission.html'">
       <div class="card-stripe"></div>
       <div class="card-body">
         <div class="card-head">
@@ -840,17 +901,17 @@ async function checkPin() {
       </div>
       <div class="dash-caption" style="padding:0 22px 10px">ผู้ป่วยสะสม · การติดตามเดือนปัจจุบัน</div><div class="card-stat-bar">
         <div class="stat-item">
-          <div class="stat-val" id="dm-patients">—</div>
+          <div class="stat-val" id="dm-patients">…</div>
           <div class="stat-lbl">ผู้ป่วยทั้งหมด</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" id="dm-remit">—</div>
-          <div class="stat-lbl">Remission</div>
+          <div class="stat-val" id="dm-remit">…</div>
+          <div class="stat-lbl">HbA1c ล่าสุด &lt; 6.5%</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" id="dm-visits">—</div>
+          <div class="stat-val" id="dm-visits">…</div>
           <div class="stat-lbl">ติดตามเดือนนี้</div>
         </div>
       </div>
@@ -861,7 +922,7 @@ async function checkPin() {
     </div>
 
     <!-- Clinic HT/DM/COPD -->
-    <div class="app-card" onclick="window.location.href='clinic.html'" style="background:linear-gradient(135deg,#faf5ff 0%,#f0fdf4 100%)">
+    <div class="app-card" data-href="clinic.html" data-cat="record" data-short="คลินิก" data-keywords="คลินิก ht dm copd ความดัน เบาหวาน ปอด drp ยาเหลือ ยาเหลือใช้ ประหยัด หน้าต่างลอย รายงาน รายเดือน" onclick="window.location.href='clinic.html'" style="background:linear-gradient(135deg,#faf5ff 0%,#f0fdf4 100%)">
       <div class="card-stripe" style="background:linear-gradient(90deg,#7c3aed,#0e7490)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -880,17 +941,17 @@ async function checkPin() {
       </div>
       <div class="dash-caption" style="padding:0 22px 10px">งานคลินิก · เดือนปัจจุบัน</div><div class="card-stat-bar" style="background:#f5f3ff">
         <div class="stat-item">
-          <div class="stat-val" style="color:#5b21b6" id="clinic-visits">—</div>
+          <div class="stat-val" style="color:#5b21b6" id="clinic-visits">…</div>
           <div class="stat-lbl">ครั้งที่ให้บริการ</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" style="color:#5b21b6" id="clinic-drp">—</div>
+          <div class="stat-val" style="color:#5b21b6" id="clinic-drp">…</div>
           <div class="stat-lbl">DRP Coverage</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" style="color:#5b21b6" id="clinic-saving">—</div>
+          <div class="stat-val" style="color:#5b21b6" id="clinic-saving">…</div>
           <div class="stat-lbl">ประหยัดยาได้</div>
         </div>
       </div>
@@ -901,7 +962,7 @@ async function checkPin() {
     </div>
 
     <!-- ADR -->
-    <div class="app-card" onclick="window.location.href='adr.html'">
+    <div class="app-card" data-href="adr.html" data-cat="record" data-short="ADR" data-keywords="adr แพ้ยา อาการไม่พึงประสงค์ skynet อย. รายงาน รายเดือน" onclick="window.location.href='adr.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#b91c1c,#dc2626)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -920,18 +981,18 @@ async function checkPin() {
       </div>
       <div class="dash-caption" style="padding:0 22px 10px">ADR · เดือนปัจจุบัน</div><div class="card-stat-bar" style="background:#fff1f2">
         <div class="stat-item">
-          <div class="stat-val" style="color:#b91c1c" id="adr-total">—</div>
+          <div class="stat-val" style="color:#b91c1c" id="adr-total">…</div>
           <div class="stat-lbl">ADR เดือนนี้</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" style="color:#b91c1c" id="adr-serious">—</div>
-          <div class="stat-lbl">Probable/Certain</div>
+          <div class="stat-val" style="color:#b91c1c" id="adr-serious">…</div>
+          <div class="stat-lbl">ร้ายแรง</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <div class="stat-val" style="color:#b91c1c" id="adr-month">—</div>
-          <div class="stat-lbl">เดือนนี้</div>
+          <div class="stat-val" style="color:#b91c1c" id="adr-month">…</div>
+          <div class="stat-lbl">เดือนที่แล้ว</div>
         </div>
       </div>
       <div class="card-footer">
@@ -941,7 +1002,7 @@ async function checkPin() {
     </div>
 
     <!-- RX STICKER -->
-    <div class="app-card" onclick="window.location.href='rx-sticker.html'">
+    <div class="app-card" data-href="rx-sticker.html" data-cat="hosxp" data-short="สติกเกอร์ยา" data-keywords="สติกเกอร์ ฉลากยา sticker พิมพ์ mr medication reconciliation ยาเดิม ผู้ป่วยใน ipd รถยา hme ยากลับบ้าน" onclick="window.location.href='rx-sticker.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#92400e,#C49A22)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -964,7 +1025,7 @@ async function checkPin() {
     </div>
 
     <!-- INSURANCE -->
-    <div class="app-card" onclick="window.location.href='insurance.html'">
+    <div class="app-card" data-href="insurance.html" data-cat="track" data-short="ประกัน" data-keywords="ประกัน เคลม claim รายได้ สปสช uc ktb e-claim smt รายงาน รายเดือน" onclick="window.location.href='insurance.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#124228,#C49A22)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -987,7 +1048,7 @@ async function checkPin() {
     </div>
 
     <!-- PHARMACY HA KPI -->
-    <div class="app-card" onclick="window.location.href='pharmacy-ha.html'">
+    <div class="app-card" data-href="pharmacy-ha.html" data-cat="track" data-short="ตัวชี้วัด HA" data-keywords="ha ตัวชี้วัด kpi rdu คุณภาพ แพ้ยาซ้ำ med rec รายงาน รายเดือน" onclick="window.location.href='pharmacy-ha.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#1A5E38,#C49A22)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -1010,7 +1071,7 @@ async function checkPin() {
     </div>
 
     <!-- NIGHT MEDS -->
-    <div class="app-card" onclick="window.location.href='night-meds.html'">
+    <div class="app-card" data-href="night-meds.html" data-cat="hosxp" data-short="ยาเวรดึก" data-keywords="เวรดึก เวรบ่าย กลางคืน รถยา คืนยา สติกเกอร์ er น้ำเกลือ" onclick="window.location.href='night-meds.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#1e3a8a,#4338ca)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -1033,7 +1094,7 @@ async function checkPin() {
     </div>
 
     <!-- EXPIRY TRACKER -->
-    <div class="app-card" onclick="window.location.href='expiry-tracker.html'">
+    <div class="app-card" data-href="expiry-tracker.html" data-cat="track" data-short="ยาหมดอายุ" data-keywords="หมดอายุ exp ยาหมดอายุ ใกล้หมดอายุ emergency box กล่องฉุกเฉิน ตู้เย็น high alert telegram" onclick="window.location.href='expiry-tracker.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#c2410c,#b45309)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -1056,7 +1117,7 @@ async function checkPin() {
       </div>
     </div>
 
-  </div><!-- /cards-grid -->
+  </div><!-- /suite-apps -->
 
   <!-- Suggest Section -->
   <div class="section-label" style="margin-top:40px">ข้อเสนอแนะ / ขอระบบใหม่</div>
@@ -1094,8 +1155,10 @@ async function checkPin() {
 </footer>
 
 <script src="lib/esc-html.js"></script>
+<script src="lib/th-date.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/fs-merge-save.js"></script>
 <script src="lib/clinic-store.js"></script>
 <script>
 const firebaseConfig = {
@@ -1120,87 +1183,97 @@ function updateDate() {
 updateDate();
 setInterval(updateDate, 60000);
 
-// ── Stats from localStorage ──
+// ── ตัวเลขบนการ์ด + สถานะข้อมูลรายระบบ ──
+// "…" = ยังไม่มีข้อมูลในเครื่อง/กำลังโหลด · 0 = โหลดแล้วไม่มีรายการ (เดิมใช้ "—" ทั้งสองกรณี)
+// ข้อมูลมาจาก localStorage (สำเนาล่าสุดในเครื่อง) แล้วอัปเดตเมื่อ snapshot จาก Firestore มา — ป้ายใต้การ์ดบอกว่ามาจาก server หรือในเครื่อง
 function g(id) { return document.getElementById(id); }
+const fmtN = n => Number(n).toLocaleString('th-TH');
+function setVal(id, v) { const el = g(id); if (el) el.textContent = v; }
+function readLS(k) { const raw = localStorage.getItem(k); if (raw == null) return null; try { return JSON.parse(raw) || []; } catch(e) { return null; } }
+const SRC = {};
+function setSrc(card, st, at) {
+  SRC[card] = st;
+  const el = g(card + '-updated'); if (!el) return;
+  el.dataset.state = st;
+  el.textContent = st === 'server' ? '☁️ อัปเดต ' + at + ' น.' : st === 'loading' ? '⏳ กำลังโหลด…' : st === 'offline' ? '⚠️ ยังโหลดจาก server ไม่ได้' : '📦 ข้อมูลในเครื่อง';
+  el.title = st === 'server' ? 'ข้อมูลยืนยันกับ server แล้ว' : st === 'cache' ? 'สำเนาในเครื่องนี้ — ยังไม่ได้ยืนยันกับ server'
+    : st === 'local' ? 'จากการเปิดหน้านี้ครั้งล่าสุดในเครื่องนี้ (หน้าแรกไม่ได้โหลดข้อมูลนี้จาก server)'
+    : st === 'offline' ? 'ยังไม่มีข้อมูลในเครื่องนี้ และต่อ server ไม่ได้ — ตรวจอินเทอร์เน็ต' : 'กำลังโหลดข้อมูล';
+}
+const SEVERE = ['E','F','G','H','I'];
 
 function updateStats() {
-  // Current month prefix: "YYYY-MM"
-  const now = new Date();
-  const mPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  const inMonth = r => r.date && r.date.startsWith(mPrefix);
+  const cur = TphDate.ym(), prev = TphDate.addMonths(cur, -1);
+  const inM = m => r => r && typeof r.date === 'string' && r.date.startsWith(m);
 
-  // ME Dashboard — show current month ME events + harmful
-  try {
-    const meRecs = JSON.parse(localStorage.getItem('me_records_v2') || '[]').filter(inMonth);
-    const meCount = meRecs.length;
-    g('me-total').textContent = meCount.toLocaleString();
-    const harm = meRecs.filter(r => r.harm && r.harm !== 'ไม่มีอันตราย' && r.harm !== 'none' && r.harm !== 'A').length;
-    g('me-harm').textContent = meCount ? harm : '—';
-    g('me-month').textContent = meCount || '—';
-  } catch(e) {}
+  // ME — เฉพาะแถวที่มี ME จริง (hasME:false = บันทึกจำนวนใบสั่งยาอย่างเดียว) · ระดับ E–I เหมือน ME Dashboard
+  const er = readLS('me_records_v2');
+  if (er) {
+    const me = er.filter(r => r && r.hasME !== false), now = me.filter(inM(cur));
+    setVal('me-total', fmtN(now.length));
+    setVal('me-harm', fmtN(now.filter(r => SEVERE.includes(r.severity)).length));
+    setVal('me-month', fmtN(me.filter(inM(prev)).length));
+  }
 
-  // Waiting Time — current month only
-  try {
-    const wtStat = JSON.parse(localStorage.getItem('wt_stat') || '[]').filter(inMonth);
-    const wtCart = JSON.parse(localStorage.getItem('wt_cart') || '[]').filter(inMonth);
-    g('wt-stat-count').textContent = wtStat.length || '—';
-    g('wt-cart-count').textContent = wtCart.length || '—';
-    if (wtStat.length) {
-      const avg = wtStat.reduce((s,r) => s + (parseFloat(r.minutes)||parseFloat(r.mins)||0), 0) / wtStat.length;
-      g('wt-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
-    } else {
-      g('wt-avg').textContent = '—';
-    }
-  } catch(e) {}
+  // Waiting Time — เดือนปัจจุบัน
+  const wtStat = readLS('wt_stat'), wtCart = readLS('wt_cart');
+  if (wtStat) {
+    const st = wtStat.filter(inM(cur));
+    setVal('wt-stat-count', fmtN(st.length));
+    const mins = st.map(r => parseFloat(r.minutes) || parseFloat(r.mins)).filter(n => n > 0);
+    setVal('wt-avg', mins.length ? (mins.reduce((a, b) => a + b, 0) / mins.length).toFixed(1) : '0');
+  }
+  if (wtCart) setVal('wt-cart-count', fmtN(wtCart.filter(inM(cur)).length));
 
-  // DM Remission — visits this month / total patients
-  try {
-    const dmPts = JSON.parse(localStorage.getItem('dm_patients') || '[]');
-    const dmVisits = JSON.parse(localStorage.getItem('dm_visits') || '[]').filter(inMonth);
-    g('dm-patients').textContent = dmPts.length.toLocaleString();
-    g('dm-visits').textContent = dmVisits.length || '—';
-    const remit = dmPts.filter(p => p.remission || (p.a1c && parseFloat(p.a1c) < 6.5)).length;
-    g('dm-remit').textContent = remit > 0 ? remit : '—';
-  } catch(e) {}
+  // DM Remission — ข้อมูลจากการเปิดหน้า DM ครั้งล่าสุดในเครื่องนี้ (หน้าแรกไม่ได้ฟัง Firestore ของ DM)
+  // เดิมใช้ p.remission / p.a1c ซึ่งไม่มีในข้อมูล → ขึ้น "—" เสมอ · ใช้ HbA1c ล่าสุดของแต่ละคนแทน
+  const dmPts = readLS('dm_patients'), dmVisits = readLS('dm_visits');
+  if (dmPts && dmVisits) {
+    setVal('dm-patients', fmtN(dmPts.length));
+    setVal('dm-visits', fmtN(dmVisits.filter(inM(cur)).length));
+    const latest = {};
+    dmVisits.filter(v => v && v.patientId && v.hba1c !== '' && v.hba1c != null && !isNaN(parseFloat(v.hba1c)))
+      .forEach(v => { if (!latest[v.patientId] || v.date > latest[v.patientId].date) latest[v.patientId] = v; });
+    setVal('dm-remit', fmtN(Object.values(latest).filter(v => parseFloat(v.hba1c) < 6.5).length));
+    setSrc('dm', 'local');
+  }
 
-  // Clinic — current month only
-  try {
-    const clinicVisits = JSON.parse(localStorage.getItem('clinic_visits') || '[]').filter(inMonth);
-    const count = clinicVisits.length;
-    g('clinic-visits').textContent = count || '—';
-    if (count) {
-      const withDRP = clinicVisits.filter(r => r.drps && r.drps.length > 0);
-      const drpPct = Math.round(withDRP.length / count * 100);
-      g('clinic-drp').textContent = drpPct + '%';
-      const saving = clinicVisits.reduce((s,r) => s + (r.totalSaving||0), 0);
-      g('clinic-saving').textContent = saving > 0 ? '฿' + Math.round(saving).toLocaleString() : '—';
-    } else {
-      g('clinic-drp').textContent = '—';
-      g('clinic-saving').textContent = '—';
-    }
-  } catch(e) {}
+  // Clinic — เดือนปัจจุบัน
+  const clinicAll = readLS('clinic_visits');
+  if (clinicAll) {
+    const cv = clinicAll.filter(inM(cur));
+    setVal('clinic-visits', fmtN(cv.length));
+    setVal('clinic-drp', cv.length ? Math.round(cv.filter(r => r.drps && r.drps.length).length / cv.length * 100) + '%' : '0%');
+    setVal('clinic-saving', '฿' + Math.round(cv.reduce((sum, r) => sum + (r.totalSaving || 0), 0)).toLocaleString('th-TH'));
+  }
 
-  // ADR — current month only
-  try {
-    const adrRecs = JSON.parse(localStorage.getItem('adr_records') || '[]').filter(inMonth);
-    const adrCount = adrRecs.length;
-    g('adr-total').textContent = adrCount || '—';
-    const serious = adrRecs.filter(r => r.causality === 'Probable' || r.causality === 'Certain').length;
-    g('adr-serious').textContent = adrCount ? serious : '—';
-    g('adr-month').textContent = adrCount || '—';
-  } catch(e) {}
+  // ADR — "ร้ายแรง" ตามช่องความร้ายแรงในหน้า ADR (เดิมใช้ causality ซึ่งไม่มีในข้อมูล จึงเป็น 0 เสมอ)
+  const adr = readLS('adr_records');
+  if (adr) {
+    const now = adr.filter(inM(cur));
+    setVal('adr-total', fmtN(now.length));
+    setVal('adr-serious', fmtN(now.filter(r => String(r.severity || '').startsWith('ร้ายแรง')).length));
+    setVal('adr-month', fmtN(adr.filter(inM(prev)).length));
+  }
 }
 
+// ก่อน snapshot แรกมา: มีสำเนาในเครื่อง = "ข้อมูลในเครื่อง", ไม่มี = "กำลังโหลด"
+[['me', 'me_records_v2'], ['wt', 'wt_stat'], ['clinic', 'clinic_visits'], ['adr', 'adr_records']].forEach(([c, k]) => setSrc(c, readLS(k) ? 'cache' : 'loading'));
+if (!readLS('dm_patients')) { const el = g('dm-updated'); if (el) { el.dataset.state = 'loading'; el.textContent = 'ยังไม่มีข้อมูลในเครื่องนี้'; el.title = 'เปิดหน้า DM Remission หนึ่งครั้ง ตัวเลขจะขึ้นที่นี่'; } }
 updateStats();
 
 // ── Suggest (Firebase) ──
 const SUGGEST_DOC = db.collection('pharmacy_tph').doc('suggestions');
+// ส่งเฉพาะข้อที่เพิ่ม/แก้/ลบ (เดิม set ทั้งชุด — 2 เครื่องส่งพร้อมกัน ข้อเสนอของเครื่องแรกหาย)
+const SUGGEST_SYNC = TphMergeSave.tracker(SUGGEST_DOC, { arrays: ['list'] });
 let suggests = [];
 
 async function loadSuggests() {
   try {
     const snap = await SUGGEST_DOC.get();
-    suggests = snap.exists ? (snap.data().list || []) : [];
+    SUGGEST_SYNC.seen(snap.exists ? snap.data() : null);
+    // เรียงตามเวลาที่ส่ง (id = Date.now()) — arrayUnion ต่อท้ายเสมอ ข้อที่ถูกโหวตจะไม่กระโดดไปท้าย
+    suggests = TphMergeSave.dedupeBy(snap.exists ? (snap.data().list || []) : [], 'id').sort((a, b) => (+a.id || 0) - (+b.id || 0));
     renderSuggests();
   } catch(e) { console.warn('Suggest load failed', e); }
 }
@@ -1225,8 +1298,8 @@ function renderSuggests() {
 }
 
 async function saveSuggests() {
-  await SUGGEST_DOC.set({ list: suggests });
-  renderSuggests();
+  await SUGGEST_SYNC.save({ list: suggests });
+  await loadSuggests();   // รวมข้อที่เครื่องอื่นเพิ่งส่งมาด้วย
 }
 
 window.submitSuggest = async function() {
@@ -1258,7 +1331,12 @@ loadSuggests();
 
 // ── Realtime stats from Firestore ──
 const COL = 'pharmacy_tph';
+const META = { includeMetadataChanges: true };   // แยก server จริง / cache ในเครื่อง
 const syncEl = document.getElementById('idx-sync');
+
+const nowHM = () => new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
+// ไม่มีทั้งข้อมูลในเครื่องและ server (เปิดครั้งแรกตอนเน็ตหลุด) = ยังโหลดไม่ได้ ไม่ใช่ "ข้อมูลในเครื่อง"
+function snapSrc(card, snap) { setSrc(card, TphMergeSave.status(snap) === 'server' ? 'server' : snap.exists ? 'cache' : 'offline', nowHM()); }
 
 function setIdxSync(ok) {
   if (!syncEl) return;
@@ -1268,16 +1346,19 @@ function setIdxSync(ok) {
   syncEl.style.display = 'inline';
 }
 
-db.collection(COL).doc('er_records').onSnapshot(snap => {
+db.collection(COL).doc('er_records').onSnapshot(META, snap => {
   if (snap.exists) { localStorage.setItem('me_records_v2', JSON.stringify(snap.data().records||[])); updateStats(); setIdxSync(true); }
+  snapSrc('me', snap);
 }, () => setIdxSync(false));
 
-db.collection(COL).doc('adr_records').onSnapshot(snap => {
+db.collection(COL).doc('adr_records').onSnapshot(META, snap => {
   if (snap.exists) { localStorage.setItem('adr_records', JSON.stringify(snap.data().records||[])); updateStats(); }
+  snapSrc('adr', snap);
 });
 
-db.collection(COL).doc('wt_stat').onSnapshot(snap => {
+db.collection(COL).doc('wt_stat').onSnapshot(META, snap => {
   if (snap.exists) { localStorage.setItem('wt_stat', JSON.stringify(snap.data().records||[])); updateStats(); }
+  snapSrc('wt', snap);
 });
 
 db.collection(COL).doc('wt_cart').onSnapshot(snap => {
@@ -1285,26 +1366,130 @@ db.collection(COL).doc('wt_cart').onSnapshot(snap => {
 });
 
 // บันทึกคลินิกแยกเก็บเอกสารรายเดือนแล้ว (lib/clinic-store.js) — หน้านี้อ่านอย่างเดียว
-ClinicStore.watch(db, ({ visits }) => {
+ClinicStore.watch(db, ({ visits, fromCache }) => {
   localStorage.setItem('clinic_visits', JSON.stringify(visits));
   updateStats();
-});
+  setSrc('clinic', fromCache ? 'cache' : 'server', nowHM());
+}, undefined, { metadata: true });
 </script>
 
 <script>
+// ── หน้าแรก: หมวดงาน · รายการโปรด · ใช้ล่าสุด · ค้นหาด้วยคำเรียกงาน · รายงานประจำเดือน ──
 (function () {
- const input=document.getElementById('suite-search');
- const cards=Array.from(document.querySelectorAll('#suite-apps .app-card'));
- function filterApps() {
-   const words=input.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-   let count=0;
-   cards.forEach(card=>{ const match=words.every(word=>card.textContent.toLocaleLowerCase().includes(word)); card.style.display=match?'':'none'; if(match) count++; });
-   document.getElementById('suite-search-status').textContent=words.length?'พบ '+count+' จาก '+cards.length+' ระบบ':'ระบบงานทั้งหมด '+cards.length+' ระบบ';
-   document.getElementById('suite-no-results').hidden=count!==0;
- }
- input.addEventListener('input',filterApps);
- document.getElementById('suite-clear').addEventListener('click',()=>{input.value='';filterApps();input.focus();});
- filterApps();
+  const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } },
+               set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+  const FAV_KEY = 'tph_home_fav_v1', RECENT_KEY = 'tph_home_recent_v1';
+  const wrap = document.getElementById('suite-apps');
+  const cards = Array.from(wrap.querySelectorAll('.app-card'));
+  const GROUPS = [
+    ['fav', '⭐ รายการโปรด', 'จำไว้ในเครื่องนี้'],
+    ['record', '📝 บันทึกงานประจำวัน', ''],
+    ['hosxp', '🖨️ ดึงจาก HOSxP / พิมพ์สติกเกอร์', 'ใช้ได้เฉพาะเครื่องที่ติดตั้ง HOSxP Bridge'],
+    ['track', '📊 ติดตามและรายงาน', ''],
+  ];
+  const grids = {};
+  GROUPS.forEach(([id, title, note]) => {
+    const sec = document.createElement('section');
+    sec.className = 'home-group'; sec.dataset.group = id;
+    sec.innerHTML = '<h2 class="section-label">' + title + (note ? '<small>' + note + '</small>' : '') + '</h2><div class="cards-grid"></div>';
+    wrap.appendChild(sec);
+    grids[id] = sec.querySelector('.cards-grid');
+  });
+
+  // ☆ ปุ่มปักรายการโปรดบนการ์ด + จดระบบที่เปิดล่าสุด
+  cards.forEach(card => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'fav-btn';
+    b.addEventListener('click', e => { e.stopPropagation(); toggleFav(card.dataset.href); });
+    card.prepend(b);
+    card.addEventListener('click', e => {
+      if (e.target.closest('.fav-btn')) return;
+      const r = LS.get(RECENT_KEY, []).filter(h => h !== card.dataset.href);
+      r.unshift(card.dataset.href); LS.set(RECENT_KEY, r.slice(0, 4));
+    }, true);
+  });
+  function toggleFav(href) {
+    const f = LS.get(FAV_KEY, []);
+    LS.set(FAV_KEY, f.includes(href) ? f.filter(h => h !== href) : f.concat(href));
+    place(); filterApps();
+  }
+  function place() {
+    const fav = LS.get(FAV_KEY, []);
+    cards.forEach(card => {
+      const on = fav.includes(card.dataset.href);
+      grids[on ? 'fav' : card.dataset.cat].appendChild(card);
+      const b = card.querySelector('.fav-btn');
+      b.textContent = on ? '★' : '☆';
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', (on ? 'เอาออกจากรายการโปรด: ' : 'ปักเป็นรายการโปรด: ') + card.dataset.short);
+      b.title = on ? 'เอาออกจากรายการโปรด' : 'ปักไว้ด้านบน (รายการโปรด)';
+    });
+  }
+  function renderRecent() {
+    const row = document.getElementById('recent-row');
+    const list = LS.get(RECENT_KEY, []).map(h => cards.find(c => c.dataset.href === h)).filter(Boolean);
+    row.hidden = !list.length;
+    row.innerHTML = list.length ? '<span>ใช้ล่าสุด:</span>' + list.map(c => '<a href="' + c.dataset.href + '">' + c.dataset.short + '</a>').join('') : '';
+  }
+
+  // 🔎 ค้นหา: ชื่อ/คำอธิบายบนการ์ด + คำเรียกงาน (data-keywords) เช่น "รายงาน", "แพ้ยา", "เคลม"
+  const input = document.getElementById('suite-search');
+  function filterApps() {
+    const words = input.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    let count = 0;
+    cards.forEach(card => {
+      const hay = (card.textContent + ' ' + card.dataset.keywords).toLocaleLowerCase();
+      const match = words.every(w => hay.includes(w));
+      card.style.display = match ? '' : 'none';
+      if (match) count++;
+    });
+    wrap.querySelectorAll('.home-group').forEach(sec => {
+      sec.hidden = ![...sec.querySelectorAll('.app-card')].some(c => c.style.display !== 'none');
+    });
+    document.getElementById('suite-search-status').textContent = words.length ? 'พบ ' + count + ' จาก ' + cards.length + ' ระบบ' : 'ระบบงานทั้งหมด ' + cards.length + ' ระบบ';
+    document.getElementById('suite-no-results').hidden = count !== 0;
+  }
+  input.addEventListener('input', filterApps);
+  document.getElementById('suite-clear').addEventListener('click', () => { input.value = ''; filterApps(); input.focus(); });
+
+  // 📅 รายงานประจำเดือน — รายการส่งข้อมูลเดือนที่แล้ว (ชุดเดียวกับที่ Telegram เตือนวันที่ 1) ติ๊กเก็บในเครื่องนี้
+  const TH_M = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const MONTHLY = [
+    ['hrms', 'ME ส่ง HRMS', 'OPD/IPD จาก HOSxP + ER จาก ME Dashboard · โปรแกรม HRMS เปิดเองที่เครื่องเภสัช 09:00 น. วันที่ 1 — ตรวจแล้วกด เริ่ม', 'ME_Dashboard.html'],
+    ['skynet-rx', 'SKYNET: ใบสั่งยา OPD / วันนอน IPD / ARV', 'โปรแกรม SKYNET ADR Auto Fill ในเครื่องเภสัช (ช่อง TB กรอกเอง)', ''],
+    ['skynet-adr', 'SKYNET: รายงาน ADR ที่ยังไม่ได้ส่ง', 'ตรวจรายการ ADR ของเดือนในหน้า ADR แล้วส่งด้วยโปรแกรม SKYNET ADR Auto Fill', 'adr.html'],
+    ['ha', 'ตัวชี้วัดงานเภสัชกรรม (HA)', 'ดึงจาก HOSxP อัตโนมัติทุกวัน — ตรวจตัวเลขเดือนที่แล้ว', 'pharmacy-ha.html'],
+    ['wt', 'ระยะเวลารอคอยยา', 'สรุป Stat Dose / Cart Dose ของเดือน', 'waiting-time.html'],
+    ['clinic', 'งานเภสัชกรรมคลินิก', 'จำนวนครั้ง DRP ยาเหลือใช้และมูลค่าที่ประหยัดได้', 'clinic.html'],
+    ['ins', 'รายได้ประกันสุขภาพ', 'อัปเดตอัตโนมัติรายเดือน — ตรวจยอดเคลม/โอน SMT', 'insurance.html'],
+  ];
+  const cur = TphDate.ym(), repMonth = TphDate.addMonths(cur, -1);
+  const [ry, rm] = repMonth.split('-').map(Number), curM = +cur.split('-')[1];
+  const doneKey = 'tph_monthly_done_' + repMonth;
+  function renderMonthly() {
+    const done = LS.get(doneKey, []);
+    const left = MONTHLY.filter(m => !done.includes(m[0])).length;
+    document.getElementById('monthly-due').textContent = 'ข้อมูลเดือน' + TH_M[rm - 1] + ' ' + (ry + 543) + ' · ' + (left ? 'เหลือ ' + left + ' รายการ' : 'ครบแล้ว ✓');
+    document.getElementById('monthly-sub').textContent = 'ข้อมูลเดือน' + TH_M[rm - 1] + ' ' + (ry + 543) + ' · ส่งภายในวันที่ 1 ' + TH_M[curM - 1] +
+      ' (Telegram เตือนวันที่ 1 เวลา 08:30 น.) · ติ๊กเก็บไว้ในเครื่องนี้เท่านั้น';
+    document.getElementById('monthly-list').innerHTML = MONTHLY.map(([id, t, d, href]) =>
+      '<label class="mp-item' + (done.includes(id) ? ' done' : '') + '"><input type="checkbox" data-id="' + id + '"' + (done.includes(id) ? ' checked' : '') + '>' +
+      '<b>' + t + '</b><span>' + d + '</span>' + (href ? '<a href="' + href + '">เปิด →</a>' : '') + '</label>').join('');
+  }
+  document.getElementById('monthly-list').addEventListener('change', e => {
+    const id = e.target.dataset.id; if (!id) return;
+    const done = LS.get(doneKey, []).filter(x => x !== id);
+    if (e.target.checked) done.push(id);
+    LS.set(doneKey, done); renderMonthly();
+  });
+  const mBtn = document.getElementById('monthly-btn'), mPanel = document.getElementById('monthly-panel');
+  mBtn.addEventListener('click', () => {
+    mPanel.hidden = !mPanel.hidden;
+    mBtn.setAttribute('aria-expanded', String(!mPanel.hidden));
+    if (!mPanel.hidden) mPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  place(); renderRecent(); renderMonthly(); filterApps();
 })();
 </script>
 </body>

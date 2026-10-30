@@ -12,11 +12,13 @@
 <title>ระบบบันทึก ME — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
+<script src="lib/chart-month-note.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/export-utils.js"></script>
 <script src="lib/session-timeout.js"></script>
 <script src="lib/admin-gate.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/th-date.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <script src="lib/admin-error-categories.js"></script>
 <style>
@@ -37,7 +39,7 @@
     --border:        #D6E4DA;
     --text:          #1C2B22;
     --text-mid:      #3D5A47;
-    --text-light:    #7A9A85;
+    --text-light:    #587363;
     --shadow:        0 1px 4px rgba(26,94,56,.08), 0 1px 2px rgba(26,94,56,.05);
     --shadow-md:     0 4px 12px rgba(26,94,56,.12), 0 2px 4px rgba(26,94,56,.07);
     --radius:        12px;
@@ -2438,11 +2440,13 @@ function buildMonthFilterOptions() {
   const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const sel = document.getElementById('filter-month');
+  // เดือนตามเวลาไทย — เดิม toISOString() ก่อน 07:00 น. ได้ value เป็นเดือนก่อนหน้าแต่ข้อความเป็นเดือนนี้
+  const cur = TphDate.ym();
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    const v = TphDate.addMonths(cur, -i), [y, m] = v.split('-').map(Number);
     const opt = document.createElement('option');
-    opt.value = d.toISOString().slice(0, 7);
-    opt.textContent = `${thMonths[d.getMonth()]} ${d.getFullYear() + 543}`;
+    opt.value = v;
+    opt.textContent = `${thMonths[m - 1]} ${y + 543}`;
     sel.appendChild(opt);
   }
 }
@@ -3033,7 +3037,7 @@ function renderDashboard() {
   for (let i = 5; i >= 0; i--) {
     const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    months.push(d.toLocaleString('th-TH', {month:'short', year:'2-digit'}));
+    months.push(TphMonthNote.mark(d.toLocaleString('th-TH', {month:'short', year:'2-digit'}), key));
     monthKeys.push(key);
     trendData.push(meRecs.filter(r => r.date.startsWith(key)).length);
   }
@@ -3954,7 +3958,7 @@ function populateAdminRptMonth() {
   if (!fyEl || !monthEl) return;
   const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
   const months = fiscalYearMonths(fy);
-  const curMonth = new Date().toISOString().slice(0,7);
+  const curMonth = TphDate.ym();
   const prev = monthEl.value;
   monthEl.innerHTML = '<option value="ALL">รวมทั้งปีงบ</option>' +
     months.map(m => `<option value="${m}">${fmtMonthFull(m)}</option>`).join('');
@@ -4108,7 +4112,7 @@ function populateERFilter() {
   const meRecs = erStatsRecords().filter(r => r.hasME !== false);
   const months = [...new Set(meRecs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
   const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
-  const curMonth = new Date().toISOString().slice(0,7);
+  const curMonth = TphDate.ym();
 
   const fyEl = document.getElementById('er-dash-fy');
   if (fyEl) {
@@ -4143,7 +4147,7 @@ function populateHosXPMonthFilter(dept) {
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
   const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
-  const curMonth = new Date().toISOString().slice(0,7);
+  const curMonth = TphDate.ym();
   const defaultsApplied = hosxpFilterDefaultsApplied[p] === true;
 
   // Fiscal year dropdown
@@ -4281,7 +4285,7 @@ function renderHosXPDashboard(dept) {
   for(let i=11;i>=0;i--){
     const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);
     const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    trendLabels.push(thM[d.getMonth()].substring(0,3)+' '+(d.getFullYear()+543).toString().slice(-2));
+    trendLabels.push(TphMonthNote.mark(thM[d.getMonth()].substring(0,3)+' '+(d.getFullYear()+543).toString().slice(-2), k));
     trendData.push(allRecs.filter(r=>r.date&&r.date.startsWith(k)).length);
   }
   renderChart('chart-'+p+'-trend','line',trendLabels,trendData,['#2563eb']);

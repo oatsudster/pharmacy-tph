@@ -9,3 +9,8 @@ backups/
 .wrangler/
 tts/.env
 db.json
+tests/node_modules/
+tests/package-lock.json
+tests/emulator/firestore.rules
+tests/emulator/*.log
+tests/*.log
