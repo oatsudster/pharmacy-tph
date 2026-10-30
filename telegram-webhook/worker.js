@@ -4,6 +4,7 @@
 // คำสั่งที่รองรับ:
 //   /check          สั่งรัน workflow expiry-telegram-notify.yml ทันที (สรุปยาใกล้หมดอายุ ≤90 วันทั้งหมด)
 //   /search <ชื่อยา>  ค้นหายาตามชื่อ ตอบทันทีจากข้อมูลสด (ไม่ผ่าน workflow)
+//   /monthly        รายการส่ง HRMS / SKYNET ประจำเดือน (cron ส่งเองทุกวันที่ 1)
 //   /help           แสดงคำสั่งทั้งหมด
 //
 // Cron trigger (wrangler.toml) สั่งรัน workflow เดียวกันทุกวัน 08:30 น. ไทย —
@@ -46,6 +47,8 @@ export default {
       await handleCheck(env, chatId);
     } else if (cmd === '/search') {
       await handleSearch(env, chatId, arg);
+    } else if (cmd === '/monthly') {
+      await replyTelegram(env, chatId, monthlyReminder(new Date(), true));
     } else if (cmd === '/help') {
       await handleHelp(env, chatId);
     }
@@ -70,9 +73,10 @@ export default {
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-function monthlyReminder(now) {
+// force = ส่งแม้ไม่ใช่วันที่ 1 (คำสั่ง /monthly) — เดือนที่แจ้งคือเดือนก่อนเดือนปัจจุบัน
+function monthlyReminder(now, force) {
   const bkk = new Date(now.getTime() + 7 * 3600 * 1000);   // เวลาไทย UTC+7
-  if (bkk.getUTCDate() !== 1) return null;
+  if (!force && bkk.getUTCDate() !== 1) return null;
   const prev = new Date(Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth() - 1, 1));
   const month = `${TH_MONTHS[prev.getUTCMonth()]} ${prev.getUTCFullYear() + 543}`;
   return (
@@ -107,6 +111,7 @@ async function handleHelp(env, chatId) {
     '🤖 <b>คำสั่งที่ใช้ได้</b>\n\n' +
     '/check — ตรวจสอบยาใกล้หมดอายุทั้งหมดทันที (≤90 วัน)\n' +
     '/search ชื่อยา — ค้นหายาตามชื่อ ดูวันหมดอายุและตำแหน่งเก็บ\n' +
+    '/monthly — ดูรายการที่ต้องส่ง HRMS / SKYNET ประจำเดือน (เตือนเองทุกวันที่ 1)\n' +
     '/help — แสดงคำสั่งทั้งหมดนี้';
   await replyTelegram(env, chatId, text);
 }
