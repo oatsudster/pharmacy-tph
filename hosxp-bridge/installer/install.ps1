@@ -80,6 +80,11 @@ try {
     for ($i = 0; $i -lt 10 -and -not $state.db; $i++) { Start-Sleep -Milliseconds 500; $s2 = BridgeState; if ($s2) { $state = $s2 } }
     $dbNote = if ($state.db) { '✅ เชื่อมฐานข้อมูล HOSxP แล้ว — ใบสั่งยา/วันนัด/ยาเดิม อ่านจากฐานข้อมูล' } else { "⚠️ ยังเชื่อมฐานข้อมูล HOSxP ไม่ได้ ($($state.dbErr)) — ใช้ OCR ไปก่อน" }
     $notes += $dbNote
+  } else {
+    # web-install / update zip ไม่มี db.json (รหัสฐานข้อมูลอยู่บนเว็บไม่ได้) — เครื่องที่ไม่เคยลง bridge ต้องคัดลอกเอง
+    $notes += "⚠️ เครื่องนี้ยังไม่มี db.json จึงยังอ่านฐานข้อมูล HOSxP ไม่ได้ (ใช้ OCR ไปก่อน)`n" +
+      "   คัดลอก db.json จากเครื่องห้องยาที่ใช้ได้ (%LOCALAPPDATA%\HOSxPBridge\db.json) มาวางที่ $Target`n" +
+      "   แล้วดับเบิลคลิก start-bridge.bat ในโฟลเดอร์นั้น"
   }
 
   Add-Type -AssemblyName System.Runtime.WindowsRuntime
