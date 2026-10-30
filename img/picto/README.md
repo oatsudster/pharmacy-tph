@@ -8,6 +8,7 @@
 1. เปิด ChatGPT (รุ่นที่สร้างภาพได้) → วาง **prompt หลัก** ด้านล่างก่อน 1 ครั้ง
 2. ส่ง prompt ของแต่ละรูปทีละข้อ (ภาพละ 1 ข้อความ) — ถ้าสไตล์เริ่มเพี้ยน ส่ง prompt หลักซ้ำ
 3. ดาวน์โหลดเป็น PNG แล้วเปลี่ยนชื่อไฟล์ **ให้ตรงตามตาราง** (ตัวพิมพ์เล็ก) ใส่ในโฟลเดอร์นี้ (`img/picto/`)
+   ห้ามใช้ชื่อสงวนของ Windows เป็นชื่อไฟล์ (prn, con, aux, nul, com1, lpt1) — git บน Windows เปิดไฟล์ไม่ได้ และเครื่องอื่นดึง repo ไม่ได้
 4. commit + push — หน้าเว็บตรวจหาไฟล์เอง: มีไฟล์ใช้รูปนั้น ไม่มีใช้ไอคอนพื้นฐาน (เส้นดำ/อีโมจิ) แทน จึงทยอยเพิ่มทีละรูปได้
 
 **ข้อควรระวัง**
@@ -73,7 +74,7 @@ Reply only with the image. I will send each subject one by one.
 ### ใช้เมื่อมีอาการ
 | ไฟล์ | prompt |
 |---|---|
-| `prn.png` | Only when needed: a person holding their head looking unwell, with a single pill beside them. |
+| `prn-general.png` | Only when needed: a person holding their head looking unwell, with a single pill beside them. |
 | `prn-pain.png` | Pain: a person holding their head with both hands, short jagged lines around the head showing headache. |
 | `prn-fever.png` | Fever: a person lying in bed with a thermometer in the mouth and wavy heat lines above the head. |
 | `prn-cough.png` | Cough: a side-view person coughing into their elbow, small burst lines in front of the mouth. |
@@ -96,5 +97,18 @@ Reply only with the image. I will send each subject one by one.
 
 ## หลังสร้างครบ
 
-- ไฟล์ PNG ขนาดแนะนำ 512–1024 px สี่เหลี่ยมจัตุรัส ไฟล์ละไม่เกิน ~200 KB (ย่อได้ในโปรแกรม Paint)
+ชุดแรกสร้างครบ 38 รูปแล้ว (30 ต.ค. 2569) — ต้นฉบับจาก ChatGPT (1254 px, ~1 MB/รูป) เก็บไว้ที่ `backups/picto-original/` (ไม่ขึ้นเว็บ)
+ไฟล์ในโฟลเดอร์นี้ถูกย่อแล้ว: ตัดขอบขาว → สี่เหลี่ยมจัตุรัส 256 px (พอสำหรับ 20 มม. ที่ 203 dpi) → พื้นเกือบขาวเป็นขาวสนิท
+(กันเครื่องพิมพ์ความร้อนพิมพ์จุดเทาเป็นกรอบ) — รวม ~285 KB หน้าเว็บโหลดทุกรูปตอนเปิดหน้า จึงห้ามใส่ไฟล์ขนาดใหญ่
+
+เปลี่ยน/เพิ่มรูปใหม่: วางไฟล์ต้นฉบับแล้วย่อด้วยคำสั่งเดียวกัน (Python + Pillow) หรือส่งให้ Claude ทำให้
+
+```
+python -c "from PIL import Image, ImageOps; import sys
+for f in sys.argv[1:]:
+    im = Image.open(f).convert('L'); b = ImageOps.invert(im).point(lambda v: 255 if v > 24 else 0).getbbox(); im = im.crop(b) if b else im
+    n = int(max(im.size) * 1.08); sq = Image.new('L', (n, n), 255); sq.paste(im, ((n - im.width) // 2, (n - im.height) // 2))
+    sq.resize((256, 256), Image.LANCZOS).point(lambda v: 255 if v >= 225 else v).save(f, optimize=True)" img/picto/ชื่อไฟล์.png
+```
+
 - ถ้ารูปไหนดูไม่ออกเมื่อพิมพ์จริง ลบไฟล์นั้นทิ้ง หน้าเว็บกลับไปใช้ไอคอนพื้นฐานเอง

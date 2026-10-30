@@ -72,3 +72,16 @@ test('มีไฟล์ img/picto/morning.png → ใช้รูปนั้�
     assert.ok(r.imgs.includes('img/picto/morning.png'), JSON.stringify(r.imgs));
   } finally { if (!existed) fs.rmSync(f, { force: true }); }
 });
+
+test('หน่วยที่ไม่มีรูปเฉพาะ (สูด) แสดงเป็นตัวเลข ไม่วาดเป็นเม็ดยา · ซองยาใช้รูปซอง', async () => {
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith('file:') ? r.continue() : r.abort());
+  await ctx.addInitScript(() => localStorage.setItem('tph_auth_v1', '1'));
+  const page = await ctx.newPage();
+  await page.goto(pathToFileURL(path.join(ROOT, 'rx-sticker.html')).href);
+  const r = await page.evaluate(() => [picPills(2, 'puff'), picPills(1, 'sachet'), picPills(2, 'tablet')].map(h => {
+    const d = document.createElement('div'); d.innerHTML = h; return { text: d.textContent.trim(), icons: d.querySelectorAll('.pic').length };
+  }));
+  assert.deepEqual(r, [{ text: '2', icons: 0 }, { text: '', icons: 1 }, { text: '', icons: 2 }]);
+  await ctx.close();
+});

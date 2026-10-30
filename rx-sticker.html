@@ -371,7 +371,7 @@ function picSummary(r) {
 const PIC_FILES = new Set();
 if (window.TphPicto) TphPicto.FILES.forEach(n => { const im = new Image(); im.onload = () => PIC_FILES.add(n); im.src = `img/picto/${n}.png`; });
 const PIC_EMOJI = { eye: '👁', ear: '👂', nose: '👃', inhaler: '💨', sublingual: '👅', suppository: '⬆', skin: '✋', injection: '💉', sachet: '▭',
-  prn: '🤒', 'prn-pain': '🤕', 'prn-fever': '🌡', 'prn-cough': '😷', 'prn-nausea': '🤢', 'prn-chest': '💔', 'prn-constipation': '🚽', 'prn-diarrhea': '🚽',
+  'prn-general': '🤒', 'prn-pain': '🤕', 'prn-fever': '🌡', 'prn-cough': '😷', 'prn-nausea': '🤢', 'prn-chest': '💔', 'prn-constipation': '🚽', 'prn-diarrhea': '🚽',
   'prn-itch': '✋', 'prn-sleep': '🛏', 'prn-dyspnea': '🫁', sleepy: '😴', shake: '↕', fridge: '❄', 'no-crush': '🚫', finish: '✔', tbsp: '🥄', tube: '▭', other: '●' };
 function picIcon(name) {
   const inner = PIC_FILES.has(name) ? `<img src="img/picto/${name}.png" alt="">` : (TphPicto.ICON[name] || escHtml(PIC_EMOJI[name] || '●'));
@@ -379,8 +379,10 @@ function picIcon(name) {
 }
 // จำนวนเม็ดเป็นรูป: 2 → ⚪⚪, 1.5 → ⚪◐ · เกิน 4 หรือเศษอื่น (1/4) ใช้ตัวเลข + รูป 1 อัน
 function picPills(n, form) {
-  const f = ['tablet', 'capsule', 'tsp', 'tbsp', 'drop'].includes(form) ? form : 'tablet';
   if (!(n > 0)) return '<div class="pills">–</div>';
+  // หน่วยที่ไม่มีรูปเฉพาะ (สูด/พ่น, หลอด ฯลฯ) แสดงเป็นตัวเลข — ไม่วาดเป็นเม็ดยา
+  if (!['tablet', 'capsule', 'tsp', 'tbsp', 'drop', 'sachet'].includes(form)) return `<div class="pills">${escHtml(String(n))}</div>`;
+  const f = form;
   const whole = Math.floor(n), half = n - whole === 0.5;
   if (whole + (half ? 1 : 0) <= 4 && (n === whole || half) && (f === 'tablet' || n === whole))
     return `<div class="pills${whole + (half ? 1 : 0) > 2 ? ' many' : ''}">${picIcon(f).repeat(whole)}${half ? picIcon('half') : ''}</div>`;
@@ -400,7 +402,7 @@ function picStickerHtml(v, it) {
     main = lead + ['morning', 'noon', 'evening', 'bed'].map(k => `<div class="pcol ${r.slots[k] ? 'on' : 'off'}">${picIcon(k)}<div class="plb">${T[k]}</div>${
       r.slots[k] ? picPills(r.slots[k], r.amount && r.amount.form) : '<div class="pills">–</div>'}</div>`).join('');
   } else if (r.prn) {
-    const sym = r.prn.symptom ? 'prn-' + r.prn.symptom : 'prn';
+    const sym = r.prn.symptom ? 'prn-' + r.prn.symptom : 'prn-general';
     main = `<div class="pbig">${picIcon(sym)}<div class="ptx">เมื่อมีอาการ${r.prn.symptom ? '<br>' + T[r.prn.symptom] : ''}</div></div>` +
       (r.prn.everyH ? `<div class="pbig">${picIcon('clock')}<div class="ptx">ห่างกันอย่างน้อย<br><span style="white-space:nowrap">${escHtml(r.prn.everyH)} ชม.</span></div></div>` : '');
   } else {
