@@ -131,6 +131,26 @@ td small { display: block; color: var(--text-light); }
 .gl-item .ab { font-size: 12px; color: var(--text-light); }
 .gl-item b { color: var(--primary-dark); }
 .gl-item .who { font-size: 12.5px; color: var(--text-mid); }
+.layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); max-width: 1440px; margin: 0 auto; align-items: start; }
+.side { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 14px 10px 24px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--border); background: var(--surface); min-height: calc(100vh - 56px); }
+.side-grp { font-size: 11.5px; font-weight: 700; color: var(--text-light); letter-spacing: .02em; padding: 12px 10px 4px; }
+.side-grp:first-child { padding-top: 0; }
+.side button, .side a { font: inherit; font-size: 14px; display: flex; gap: 8px; align-items: center; text-align: left; border: 0; background: none; color: var(--text-mid); padding: 8px 10px; border-radius: 8px; cursor: pointer; text-decoration: none; width: 100%; }
+.side button:hover, .side a:hover { background: var(--primary-light); color: var(--primary-dark); }
+.side button.on { background: var(--primary); color: #fff; font-weight: 700; }
+.side button.nodata span:last-child::after { content: ' · ไม่มีข้อมูล'; font-size: 11px; opacity: .7; font-weight: 400; }
+.side .ic { width: 22px; text-align: center; flex: none; }
+.wrap { max-width: none; margin: 0; }
+.view { display: none; }
+.view.on { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.view-head h2 { font-size: 20px; margin: 0; color: var(--primary-dark); }
+.view-head .note { margin: 2px 0 0; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side { position: sticky; top: 0; z-index: 20; flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; min-height: 0; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--border); gap: 6px; scrollbar-width: thin; }
+  .side-grp { display: none; }
+  .side button, .side a { width: auto; white-space: nowrap; flex: none; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+}
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -138,7 +158,7 @@ td small { display: block; color: var(--text-light); }
 <div class="topbar">
   <a href="index.html" class="pharm-only">← หน้าหลัก</a>
   <a href="#" class="ins-only" onclick="localStorage.removeItem('tph_ins_auth_v1');location.replace('insurance-login.html');return false">🔒 ออกจากระบบ</a>
-  <a href="#glossary" title="ความหมายของตัวย่อและคำศัพท์ในหน้านี้">📖 คำศัพท์</a>
+  <a href="#v=glossary" title="ความหมายของตัวย่อและคำศัพท์ในหน้านี้">📖 คำศัพท์</a>
   <a href="insurance-audit.html" title="ดูว่าตัวเลขแต่ละตัวคิดจากอะไร และให้แต่ละงานตรวจ/แนบเอกสารแนวทางเคลม">🔎 ตรวจสอบที่มาตัวเลข</a>
   <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
   <div class="right">
@@ -151,7 +171,27 @@ td small { display: block; color: var(--text-light); }
   </div>
 </div>
 
-<div class="wrap">
+<div class="layout">
+<nav class="side" id="side" aria-label="หัวข้อ">
+  <div class="side-grp">ภาพรวม</div>
+  <button type="button" data-v="overview"><span class="ic">📊</span><span>สรุปภาพรวม</span></button>
+  <div class="side-grp">รายได้</div>
+  <button type="button" data-v="rev"><span class="ic">💰</span><span>รายได้เบิกคืนจากเคลม</span></button>
+  <button type="button" data-v="smt"><span class="ic">🏦</span><span>เงินโอนจริงจาก สปสช.</span></button>
+  <button type="button" data-v="opp"><span class="ic">🎯</span><span>แนวทางเพิ่มรายได้</span></button>
+  <div class="side-grp">บริการ</div>
+  <button type="button" data-v="ipd"><span class="ic">🛏️</span><span>ผู้ป่วยใน &amp; เตียง</span></button>
+  <button type="button" data-v="op"><span class="ic">🩺</span><span>ผู้ป่วยนอก &amp; บริการเคลมแยก</span></button>
+  <button type="button" data-v="herb"><span class="ic">🌿</span><span>แพทย์แผนไทย &amp; สมุนไพร</span></button>
+  <div class="side-grp">เทียบเคียง</div>
+  <button type="button" data-v="prov"><span class="ic">🗺️</span><span>เทียบผลงานทั้งจังหวัด</span></button>
+  <div class="side-grp">อื่นๆ</div>
+  <button type="button" data-v="glossary"><span class="ic">📖</span><span>คำศัพท์และตัวย่อ</span></button>
+  <a href="insurance-audit.html"><span class="ic">🔎</span><span>ตรวจสอบที่มาตัวเลข</span></a>
+</nav>
+<main class="wrap">
+  <div class="view" data-view="overview">
+    <div class="view-head"><h2>สรุปภาพรวม</h2><p class="note">สรุปสั้นๆ · ประมาณการรายได้ที่เพิ่มได้ · ตัวชี้วัดหลักรายเดือน</p></div>
   <section class="card" id="sum">
     <div class="sum-head"><h2 id="sum-title">สรุปสั้นๆ</h2><button id="sum-copy" class="upbtn sec" type="button">📋 คัดลอกข้อความสรุป</button></div>
     <ul id="sum-list"><li><span>⏳</span><span>กำลังโหลดข้อมูล…</span></li></ul>
@@ -174,6 +214,12 @@ td small { display: block; color: var(--text-light); }
     <div class="src-cards" id="src-cards"></div>
   </section>
 
+  <section>
+    <div class="kpis" id="kpis"></div>
+  </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="rev">
   <section class="card" id="rev" hidden>
     <h2 id="rev-title">รายได้เบิกคืนจากเคลม: ยืนยันแล้ว + ประมาณการ</h2>
     <p class="note" id="rev-note"></p>
@@ -188,7 +234,9 @@ td small { display: block; color: var(--text-light); }
     <div class="tbl" style="margin-top:12px"><table id="rev-table" style="min-width:760px"></table></div>
     <details class="hc-detail"><summary>ไฟล์ผลงานเคลมที่บันทึกไว้ (ยอดสะสมของ รพ. แต่ละฉบับ)</summary><div class="tbl"><table id="rev-hist" style="min-width:600px"></table></div></details>
   </section>
-
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="smt">
   <section class="card" id="smt" hidden>
     <h2 id="smt-title">เงินโอนจริงจาก สปสช.</h2>
     <p class="note" id="smt-note"></p>
@@ -200,11 +248,18 @@ td small { display: block; color: var(--text-light); }
     </div>
     <details class="hc-detail"><summary>รายการที่ถูกชะลอการโอน / หัก</summary><div class="tbl"><table id="smt-ded" style="min-width:600px"></table></div></details>
   </section>
-
-  <section>
-    <div class="kpis" id="kpis"></div>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="opp">
+  <section class="card">
+    <h2>แนวทางเพิ่มรายได้</h2>
+    <p class="note">ประมาณการจากการวิเคราะห์ปีงบ 69 (อนุรักษ์นิยม ยังไม่ได้ตรวจกับอัตราจ่าย สปสช. รายรายการ) · ปรับตามข้อมูลจากทีมงาน 16 ต.ค. 69</p>
+    <div class="tbl"><table id="opp-table"><thead><tr><th>แนวทาง</th><th>ตัวชี้วัดที่ติดตามในหน้านี้</th><th class="num">เพิ่มได้/ปี</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody></tbody></table></div>
   </section>
-
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="ipd">
+    <div class="view-head"><h2>ผู้ป่วยใน &amp; เตียง</h2><p class="note">อัตราครองเตียง · จำนวนผู้ป่วยใน UC/WEL และ RW · คุณภาพการลงรหัส</p></div>
   <section class="card" id="beds">
     <h2>อัตราการครองเตียง</h2>
     <p class="note">วันนอนรวมในเดือน × 100 ÷ (จำนวนเตียง × จำนวนวัน) · ทุกสิทธิ · เลือกดู รวม 17 เตียง / ผู้ป่วยใน 15 เตียง / ห้องคลอด 2 เตียง (ตาม ward.bedcount ใน HOSxP)</p>
@@ -212,14 +267,25 @@ td small { display: block; color: var(--text-light); }
     <div class="kpis" id="beds-kpis" style="margin-bottom:12px"></div>
     <div class="chartbox"><canvas id="c-beds"></canvas></div>
   </section>
-
   <section class="grid2">
     <div class="card"><h2>ผู้ป่วยใน UC/WEL รายเดือน</h2><p class="note">แท่ง = จำนวนราย · เส้น = RW เฉลี่ยต่อราย (ยิ่งสูงยิ่งได้เงินมาก)</p><div class="chartbox"><canvas id="c-ipd"></canvas></div></div>
     <div class="card"><h2>คุณภาพข้อมูลผู้ป่วยใน</h2><p class="note">% ไม่มีการวินิจฉัยรอง และ % นอนไม่เกิน 1 วัน (ควรลดลง)</p><div class="chartbox"><canvas id="c-coding"></canvas></div></div>
+  </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="op">
+    <div class="view-head"><h2>ผู้ป่วยนอก &amp; บริการเคลมแยก</h2><p class="note">UC นอกเขต · HbA1c · refer พร้อมรถ · วัคซีน</p></div>
+  <section class="grid2">
     <div class="card"><h2>ผู้ป่วย UC นอกเขต</h2><p class="note">จำนวน visit ที่มีค่าใช้จ่าย และยอดค่าใช้จ่าย (ต้องเคลม OP_AE / WALKIN ให้ครบ)</p><div class="chartbox"><canvas id="c-ooa"></canvas></div></div>
+    <div class="card"><h2>บริการที่เคลมแยกได้</h2><p class="note">HbA1c (UC/WEL), refer พร้อมรถ (UC/WEL), วัคซีนไข้หวัดใหญ่, วัคซีน dT/TT</p><div class="chartbox"><canvas id="c-svc"></canvas></div></div>
+  </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="herb">
+    <div class="view-head"><h2>แพทย์แผนไทย &amp; สมุนไพร</h2><p class="note">ยาสมุนไพรในโรคพื้นฐาน · ยอดเรียกเก็บแพทย์แผนไทย · ตัวชี้วัด Common Diseases</p></div>
+  <section class="grid2">
     <div class="card"><h2>สั่งยาสมุนไพรในโรคพื้นฐาน</h2><p class="note">% visit หวัด/ไอ ปวดกล้ามเนื้อ ท้องอืด ท้องผูก (UC/WEL) ที่ได้ยาสมุนไพร · เส้นประ = เป้า 50%</p><div class="chartbox"><canvas id="c-herb"></canvas></div></div>
     <div class="card"><h2>แพทย์แผนไทย: ยอดเรียกเก็บ</h2><p class="note">เบิกได้รายครั้ง (OFC/LGO/จ่ายเอง) เทียบกับสิทธิในงบเหมาจ่าย (UC/WEL/SSS)</p><div class="chartbox"><canvas id="c-tm"></canvas></div></div>
-    <div class="card"><h2>บริการที่เคลมแยกได้</h2><p class="note">HbA1c (UC/WEL), refer พร้อมรถ (UC/WEL), วัคซีนไข้หวัดใหญ่, วัคซีน dT/TT</p><div class="chartbox"><canvas id="c-svc"></canvas></div></div>
   </section>
 
   <section class="card" id="herbcd">
@@ -247,7 +313,10 @@ td small { display: block; color: var(--text-light); }
     <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม · <a href="insurance-audit.html#HERB-03">ⓘ ตรวจสอบที่มา</a></summary><div id="hc-criteria"></div></details>
     <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · นับเฉพาะรหัสยาที่เปิดใช้งาน (แพทย์สั่งได้) ใน HOSxP ปัจจุบัน · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
   </section>
-
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="prov">
+    <div class="view-head"><h2>เทียบผลงานทั้งจังหวัด</h2><p class="note">เทียบกับ รพช.ขนาดเล็ก 10 แห่ง · รายการที่ได้ต่ำกว่ากลุ่ม</p></div>
   <section class="card">
     <h2 id="prov-title">เทียบผลงานเคลมทั้งจังหวัด</h2>
     <p class="note" id="prov-note">เลือกช่องทางและรายการ · สีเข้ม = ถ้ำพรรณรา · สีกลาง = รพช.ขนาดเล็ก 10 แห่งที่ใช้เทียบ · เส้นประ = ค่ามัธยฐานกลุ่ม · ไม่แสดงอันดับ เพราะจำนวนประชากรแต่ละพื้นที่ไม่เท่ากัน</p>
@@ -264,21 +333,19 @@ td small { display: block; color: var(--text-light); }
     <div class="controls" id="gap-chips"></div>
     <div class="tbl"><table id="gap-table"><thead><tr><th>รายการ</th><th>ช่องทาง</th><th class="num">ถ้ำพรรณรา</th><th class="num">มัธยฐานกลุ่ม</th><th class="num">ส่วนต่าง</th></tr></thead><tbody></tbody></table></div>
   </section>
-
-  <section class="card">
-    <h2>แนวทางเพิ่มรายได้</h2>
-    <p class="note">ประมาณการจากการวิเคราะห์ปีงบ 69 (อนุรักษ์นิยม ยังไม่ได้ตรวจกับอัตราจ่าย สปสช. รายรายการ) · ปรับตามข้อมูลจากทีมงาน 16 ต.ค. 69</p>
-    <div class="tbl"><table id="opp-table"><thead><tr><th>แนวทาง</th><th>ตัวชี้วัดที่ติดตามในหน้านี้</th><th class="num">เพิ่มได้/ปี</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody></tbody></table></div>
-  </section>
-
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="glossary">
   <section class="card" id="glossary">
     <h2>📖 คำศัพท์และตัวย่อ</h2>
     <p class="note">ความหมายของตัวย่อที่ใช้ในหน้านี้ · ป้าย "ยังไม่ยืนยัน" = ยังไม่ได้ตรวจกับทีมประกัน ถ้าผิดแจ้งให้แก้ได้</p>
     <input id="gl-q" type="search" placeholder="ค้นหา เช่น RW, ฝากครรภ์, OFC" aria-label="ค้นหาคำศัพท์">
     <div id="gl-list"></div>
   </section>
-
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
   <p class="note" id="foot"></p>
+</main>
 </div>
 <div id="gl-pop" class="gl-pop" hidden></div>
 
@@ -1147,6 +1214,40 @@ td small { display: block; color: var(--text-light); }
   } catch (e) {
     status.textContent = 'เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message;
   }
+})();
+</script>
+<script>
+// แถบหัวข้อด้านซ้าย: แสดงทีละหัวข้อ · จำหัวข้อใน URL (#v=...) และในเครื่อง
+(function () {
+  const views = [...document.querySelectorAll('.view')], btns = [...document.querySelectorAll('#side button[data-v]')];
+  const ids = views.map((v) => v.dataset.view);
+  const KEY = 'tph_ins_view';
+  const fromHash = () => { const h = location.hash.replace(/^#/, ''); const m = h.match(/^v=(\w+)/); const v = m ? m[1] : h; return ids.includes(v) ? v : null; };
+  function refreshEmpty() {
+    views.forEach((v) => {
+      const kids = [...v.children].filter((c) => !c.classList.contains('view-head') && !c.classList.contains('view-empty') && c.id !== 'foot');
+      const empty = kids.length > 0 && kids.every((c) => c.hidden);
+      const ve = v.querySelector('.view-empty'); if (ve.hidden === empty) ve.hidden = !empty;  // เขียนเฉพาะเมื่อเปลี่ยน ไม่งั้น MutationObserver วนไม่จบ
+      const b = btns.find((x) => x.dataset.v === v.dataset.view); if (b) b.classList.toggle('nodata', empty);
+    });
+  }
+  function show(v, push) {
+    if (!ids.includes(v)) v = 'overview';
+    views.forEach((x) => x.classList.toggle('on', x.dataset.view === v));
+    btns.forEach((b) => { const on = b.dataset.v === v; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    const foot = document.getElementById('foot'); const cur = views.find((x) => x.dataset.view === v); if (foot && cur) cur.appendChild(foot);
+    const side = document.getElementById('side'), ab = btns.find((b) => b.dataset.v === v);
+    if (ab && getComputedStyle(side).flexDirection === 'row') side.scrollLeft = ab.offsetLeft - 12;  // มือถือ: เลื่อนแถบให้เห็นหัวข้อที่เลือก
+    try { localStorage.setItem(KEY, v); } catch (e) {}
+    if (push && location.hash !== '#v=' + v) history.replaceState(null, '', '#v=' + v);
+    refreshEmpty();
+    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));  // Chart.js ที่สร้างตอนซ่อนอยู่ ให้คำนวณขนาดใหม่
+  }
+  btns.forEach((b) => b.addEventListener('click', () => { show(b.dataset.v, true); window.scrollTo(0, 0); }));
+  window.addEventListener('hashchange', () => { const v = fromHash(); if (v) show(v, false); });
+  new MutationObserver((recs) => { if (recs.some((r) => !r.target.classList.contains('view-empty'))) refreshEmpty(); }).observe(document.querySelector('main.wrap'), { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  let saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
+  show(fromHash() || saved || 'overview', !!fromHash());
 })();
 </script>
 </body>
