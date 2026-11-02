@@ -3,13 +3,15 @@
 <head>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8765; img-src 'self' data:; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com http://127.0.0.1:8765; img-src 'self' data:; frame-ancestors 'none';">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>สติกเกอร์ยา — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
+<script src="lib/firebase-app-compat-9.js"></script>
+<script src="lib/firebase-firestore-compat-9.js"></script>
 <script src="lib/hosxp-db.js?v=20261029"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
@@ -196,6 +198,14 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .md-row .src { grid-column: 2 / -1; font-size: 12px; color: var(--text-mid); }
 .md-row b { font-weight: 600; }
 .md-row.ext { background: #f5f9ff; }
+.md-row.ed { background: #fffdf3; }
+.md-row .ed-name { display: flex; gap: 6px; }
+.md-row .ed-name input:last-child { flex: 0 0 34%; }
+.md-row .eb { border: 0; background: none; cursor: pointer; font-size: 13px; padding: 0 2px; color: var(--text-mid); }
+.md-row .tag { font-size: 11px; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 0 5px; margin-left: 4px; font-weight: 600; }
+.md-hist { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 10px; margin: 0 0 6px; font-size: 13px; }
+.md-hist.prev { background: #fffbeb; border-color: #f0dca4; }
+.md-hist .muted { font-size: 12px; }
 .md-row input.mdx-in, .mdx-add input { font: inherit; font-size: 13.5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; width: 100%; min-width: 0; }
 .md-row .src input.mdx-in { width: 200px; font-size: 12px; padding: 1px 5px; }
 .mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
@@ -260,7 +270,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
       <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
-    <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
+    <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · กด ✏️ แก้ชื่อยา/ความแรง/วิธีใช้ได้ · กดพิมพ์ = บันทึกรายการที่ติ๊กไว้ตาม HN (ทุกเครื่องเห็น) · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
       <button class="btn btn-gold" id="mrmd-print" onclick="printMrMd()" title="หัวสติกเกอร์ MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมที่ติ๊ก — พิมพ์รวดเดียว">📋💊 พิมพ์หัว MR + ยาเดิม</button>
       <button class="btn" id="md-print" onclick="printMd()">🖨 พิมพ์เฉพาะยาเดิม</button>
@@ -278,6 +288,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       </div>
       <div class="hint" style="margin:0">พิมพ์ทดสอบ 1 ดวงแล้วทาบกับตารางใบ MR — เส้นไม่ตรงค่อยปรับตัวเลข (จำไว้ในเครื่องนี้) · สติกเกอร์จริงมีขีดสั้นที่ขอบซ้าย/ขวา = แนวเส้นแถว และขีดบน/ล่าง = เส้นแบ่งช่องชื่อยา|วิธีใช้ ใช้เล็งตอนแปะ</div>
     </details>
+    <div id="md-hist" class="md-hist" style="display:none"></div>
     <div id="md-list"></div>
     <details class="mdv" id="mdv" ontoggle="if (this.open) mdvOpen()">
       <summary>📋 ดึงยาเดิมจาก visit อื่นเพิ่ม <span class="hint" id="mdv-meta" style="margin:0;font-weight:400">· ทุก visit OPD ที่มียา + ยากลับบ้าน ใน 1 ปีก่อน admit</span></summary>
@@ -1027,14 +1038,21 @@ function mdPick(items, reg, chronicSrc) {
 async function openMd(an) {
   const x = IPD.find(i => i.an === an); if (!x) return;
   const card = document.getElementById('md-card');
-  card.style.display = ''; mdLoadCal(); MD = null; MDV = null;
+  card.style.display = ''; mdLoadCal(); MD = null; MDV = null; document.getElementById('md-hist').style.display = 'none';
   document.getElementById('mdv').open = false; document.getElementById('mdv-list').innerHTML = '';
   document.getElementById('md-meta').textContent = `${x.name} · เตียง ${x.bed || '-'} · admit ${thIso(x.regdate)} · กำลังโหลด…`;
   document.getElementById('md-list').innerHTML = '';
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const hp = mdHistLoad(x.hn);
   const r = await tphHosxp.mrMeds(x.hn, x.an);
   if (!r || !r.ok) { document.getElementById('md-list').innerHTML = `<div class="empty">${escHtml(r && r.error ? r.error : NOBRIDGE)}</div>`; return; }
   MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate, !!r.chronic).concat(mdExtLoad(x.hn)) };
+  // รอประวัติที่พิมพ์ไว้ไม่เกิน 3 วิ — มาช้ากว่านั้นแค่ขึ้นแถบให้กดใช้เอง (ไม่เปลี่ยนรายการที่เภสัชอาจติ๊กไปแล้ว)
+  const h = await Promise.race([hp, new Promise(res => setTimeout(() => res(undefined), 3000))]);
+  if (MD && MD.x === x) {
+    if (h !== undefined) { MD.prev = h; if (h && h.an === x.an) mdHistApply(h, true); }
+    else hp.then(h2 => { if (MD && MD.x === x) { MD.prev = h2; mdHistMsg(); } });
+  }
   renderMd();
   mdLoadDict();
 }
@@ -1161,6 +1179,7 @@ function mdvDel(i) {
 function mdAll(v) { if (MD) { MD.items.forEach(d => d.on = v); renderMd(); } }
 function mdToggle(i, v) { MD.items[i].on = v; renderMd(); }
 function renderMd() {
+  mdHistMsg();
   const sel = MD.items.filter(d => d.on).length;
   document.getElementById('md-meta').textContent = `${MD.x.name} · เตียง ${MD.x.bed || '-'} · admit ${thIso(MD.x.regdate)} · เลือก ${sel}/${MD.items.length} รายการ = ${Math.ceil(sel / mdPer())} ดวง/ชุด`;
   document.getElementById('md-print').disabled = !sel;
@@ -1171,10 +1190,20 @@ function renderMd() {
       <div style="display:flex;gap:6px"><input class="mdx-in" list="mdx-usages" value="${escHtml(d.usage)}" onchange="mdExtEdit(this, ${i}, 'usage')">
         <button class="btn btn-sm" onclick="mdExtDel(${i})" title="ลบรายการนี้">✕</button></div>
       <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
+    </div>` : d.editing ? `<div class="md-row ed">
+      <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
+      <div class="ed-name"><input class="mdx-in" list="mdx-drugs" value="${escHtml(d.nameEdit)}" placeholder="ชื่อยา" onchange="mdEditSet(this, ${i}, 'nameEdit')">
+        <input class="mdx-in" value="${escHtml(d.strEdit)}" placeholder="ความแรง/ขนาด เช่น 500 mg" onchange="mdEditSet(this, ${i}, 'strEdit')"></div>
+      <div style="display:flex;gap:6px"><input class="mdx-in" list="mdx-usages" value="${escHtml(d.useEdit)}" placeholder="วิธีใช้ หรือรหัสย่อ เช่น 11pt" onchange="mdEditSet(this, ${i}, 'useEdit')">
+        <button class="btn btn-primary btn-sm" onclick="mdEditDone(${i})" title="เสร็จ">✓</button>
+        <button class="btn btn-sm" onclick="mdEditReset(${i})" title="กลับเป็นค่าจาก HOSxP">↺</button></div>
+      <div class="src">แก้ข้อความที่จะพิมพ์ในสติกเกอร์ · เดิม: ${escHtml(mdName(d))} — ${escHtml(mdAbbr(mdUse(d)))}</div>
     </div>` : `<div class="md-row${d.on ? '' : ' off'}">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
-      <b>${escHtml(mdName(d))}</b><span>${mdAbbr(mdUse(d)) !== mdClean(mdUse(d)) ? `<b>${escHtml(mdAbbr(mdUse(d)))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(mdUse(d))}</span>
-      <div class="src">${escHtml(thIso(d.date))} · ${escHtml(mdClean(d.dep) || '-')} · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic ? '' : ' · ยาบรรเทาอาการ/ระยะสั้น'}</div>
+      ${mdEdited(d) ? `<b>${escHtml(mdNameOut(d))}<span class="tag">แก้แล้ว</span></b><span><b>${escHtml(mdUseOut(d))}</b>` :
+        `<b>${escHtml(mdName(d))}</b><span>${mdAbbr(mdUse(d)) !== mdClean(mdUse(d)) ? `<b>${escHtml(mdAbbr(mdUse(d)))}</b> <small class="muted">(${escHtml(d.usage)})</small>` : escHtml(mdUse(d))}`}
+        <button class="eb" onclick="mdEdit(${i})" title="แก้ชื่อยา/ความแรง/วิธีใช้">✏️</button></span>
+      <div class="src">${d.date ? escHtml(thIso(d.date)) + ' · ' : ''}${escHtml(mdClean(d.dep) || '-')}${d.qty !== '' && d.qty != null ? ` · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}` : ''}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic === false ? ' · ยาบรรเทาอาการ/ระยะสั้น' : ''}${mdEdited(d) ? ` · เดิม: ${escHtml(mdName(d))} — ${escHtml(mdAbbr(mdUse(d)))}` : ''}</div>
     </div>`).join('') || '<div class="empty">ไม่พบยาจาก visit ตามนัด หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
 }
 function mdStickers(rows, grid) {
@@ -1191,8 +1220,8 @@ function mdStickers(rows, grid) {
   // ยาแต่ละตัวมีเส้นขอบตาราง (class bx) + ลำดับ 1 2 3… ต่อเนื่องข้ามดวงในชุดเดียวกัน
   // ไม่พิมพ์วันที่ได้รับ/คลินิก/รพ.ที่ได้ยา — เภสัชเขียนเองในช่องถัดไปของใบ MR (ผู้ใช้ขอ 2026-10-21)
   return pages.map((pg, pi) => `<div class="mdstk${grid ? ' grid' : ''}">${grid ? '' : tk}${pg.map((d, k) => `<div class="row${d ? ' bx' : ''}" style="top:${c.top + k * c.rowH}mm;height:${c.rowH}mm">
-      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${pi * per + k + 1}. ${escHtml(mdName(d))}</div>` : ''}</div>
-      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdAbbr(mdUse(d)))}</div>` : ''}</div>
+      <div class="c1" style="width:${c.c1}mm">${d ? `<div class="dn fit" style="font-size:15pt">${pi * per + k + 1}. ${escHtml(mdNameOut(d))}</div>` : ''}</div>
+      <div class="c2" style="width:${90 - c.c1}mm">${d ? `<div class="us fitv" style="font-size:15pt">${escHtml(mdUseOut(d))}</div>` : ''}</div>
     </div>`).join('')}</div>`).join('');
 }
 function mdFit(pa) {
@@ -1212,10 +1241,110 @@ function mdSetsHtml() {
   const sets = Math.max(1, Math.min(4, +document.getElementById('md-sets').value || 2));
   return Array(sets).fill(0).map(() => mdStickers(rows)).join('');
 }
-function printMd() { const h = mdSetsHtml(); if (h) stkPrint(h, [mdFit]); }
+function printMd() { const h = mdSetsHtml(); if (h) { mdHistSave(); stkPrint(h, [mdFit]); } }
 // หัว MR + ยาเดิม คลิกเดียว (ผู้ใช้ขอ 2026-10-30): หัว MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมตามจำนวนชุด ในงานพิมพ์เดียว
-function printMrMd() { const h = mdSetsHtml(); if (h) stkPrint(mrHtml([MD.x]) + h, [mrFit, mdFit]); }
+function printMrMd() { const h = mdSetsHtml(); if (h) { mdHistSave(); stkPrint(mrHtml([MD.x]) + h, [mrFit, mdFit]); } }
 function printMdGrid() { mdSaveCal(); stkPrint(mdStickers(Array(mdPer()).fill(null), true), [mdFit]); }
+// ── แก้ชื่อยา/ความแรง/วิธีใช้ของยาเดิมจาก HOSxP ก่อนพิมพ์ (ผู้ใช้ขอ 2026-11-02) — แก้เฉพาะข้อความในสติกเกอร์ ไม่แตะ HOSxP
+//   nameEdit + strEdit = ชื่อ + ความแรงที่พิมพ์ · useEdit = วิธีใช้ (พิมพ์รหัสย่อ HOSxP ได้ แปลงเป็นตัวย่อเหมือนเดิม)
+const mdNameOut = d => d.nameEdit != null ? (mdClean([d.nameEdit, d.strEdit].join(' ')) || mdName(d)) : mdName(d);
+const mdUseOut = d => mdAbbr(d.useEdit != null ? d.useEdit : mdUse(d));
+const mdEdited = d => (d.nameEdit != null || d.useEdit != null) && (mdNameOut(d) !== mdName(d) || mdUseOut(d) !== mdAbbr(mdUse(d)));
+function mdEdit(i) {
+  const d = MD.items[i];
+  if (d.nameEdit == null) {
+    const plain = !d.namePrint && !mdOld(d);   // ชื่อ/ความแรงแยกกันได้เฉพาะชื่อจาก drugitems ตรงๆ
+    d.nameEdit = plain ? mdClean(d.name) : mdName(d); d.strEdit = plain ? mdClean(d.strength) : '';
+  }
+  if (d.useEdit == null) d.useEdit = mdAbbr(mdUse(d));
+  d.editing = true; renderMd(); mdLoadDict();
+}
+// ไม่ render ใหม่ระหว่างแก้ (Tab ไปช่องถัดไปได้)
+function mdEditSet(el, i, f) { const d = MD.items[i]; d[f] = f === 'useEdit' ? mdUsage(el.value) : mdClean(el.value); el.value = d[f]; }
+function mdEditDone(i) {
+  const d = MD.items[i]; d.editing = false;
+  if (!mdEdited(d)) ['nameEdit', 'strEdit', 'useEdit'].forEach(k => delete d[k]);
+  renderMd();
+}
+function mdEditReset(i) { const d = MD.items[i]; ['nameEdit', 'strEdit', 'useEdit', 'editing'].forEach(k => delete d[k]); renderMd(); }
+
+// ── ประวัติยาเดิมที่พิมพ์ (ผู้ใช้ขอ 2026-11-02): กดพิมพ์ = บันทึกรายการที่ติ๊ก (ชื่อ/วิธีใช้ตามที่พิมพ์จริง รวมที่แก้) ตาม HN
+//   = ยาที่ผู้ป่วยใช้อยู่จริงที่เภสัชตรวจแล้ว · ใช้ร่วมกันทุกเครื่อง: Firestore pharmacy_tph/mr_meds_NN (NN = 2 หลักท้าย HN)
+//   { data: { h<HN>: { at, an, regdate, items:[{ name, use, ext, src, icode, vn, date, dep, qty, units, e? }] } } } — เก็บครั้งล่าสุดต่อ HN
+//   เปิด AN เดิมอีกครั้ง = โหลดรายการที่พิมพ์ไว้ให้เลย · admit ครั้งใหม่ = แถบให้กด "ใช้รายการนี้" (ยา HOSxP ใหม่กว่าอาจเปลี่ยน)
+const FB_CONFIG = {
+  apiKey: "AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE", authDomain: "pharmacy-tph.firebaseapp.com", projectId: "pharmacy-tph",
+  storageBucket: "pharmacy-tph.firebasestorage.app", messagingSenderId: "617328257113", appId: "1:617328257113:web:2863e26c5b2c6da2fe2948"
+};
+let mdFs = null;
+function mdHistRef(hn) {
+  if (mdFs === null) {
+    try { if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG); mdFs = firebase.firestore(); } catch (e) { mdFs = false; }
+  }
+  return mdFs ? mdFs.collection('pharmacy_tph').doc('mr_meds_' + String(hn).slice(-2).padStart(2, '0')) : null;
+}
+async function mdHistLoad(hn) {
+  const ref = mdHistRef(hn); if (!ref) return null;
+  try { const s = await ref.get(); const m = s.exists ? s.data().data : null; return (m && m['h' + hn]) || null; } catch (e) { return null; }
+}
+function mdHistSave() {
+  if (!MD) return;
+  const ref = mdHistRef(MD.x.hn), on = MD.items.filter(d => d.on);
+  if (!ref || !on.length) return;
+  const items = on.map(d => {
+    const o = { name: mdNameOut(d), use: mdUseOut(d), ext: !!d.ext, src: d.src || '', icode: String(d.icode || ''), vn: String(d.vn || ''),
+      date: d.date || '', dep: mdClean(d.dep), qty: d.qty == null ? '' : String(d.qty), units: mdClean(d.units) };
+    if (!d.ext && mdEdited(d)) o.e = { n: d.nameEdit, s: d.strEdit || '', u: d.useEdit };
+    return o;
+  });
+  const e = { at: new Date().toISOString(), an: MD.x.an, regdate: MD.x.regdate || '', items }, x = MD.x;
+  MD.prev = e; MD.histState = 'saving'; mdHistMsg();
+  ref.set({ data: { ['h' + x.hn]: e } }, { merge: true })
+    .then(() => { if (MD && MD.x === x) { MD.histState = 'saved'; mdHistMsg(); } })
+    .catch(err => { if (MD && MD.x === x) { MD.histState = 'error'; MD.histErr = err && err.message; mdHistMsg(); } });
+}
+// ใช้รายการที่พิมพ์ไว้: ยาเดียวกัน (icode + visit) ในรายการตอนนี้ติ๊กให้ + ใส่ที่แก้ไว้ · ยาที่ไม่อยู่ในรายการแล้ว (เพิ่มจาก visit อื่น)
+// เพิ่มเป็นแถวจากประวัติ · ยาจาก รพ.อื่นแทนที่ของเครื่องนี้ · ยาอื่นไม่ติ๊ก · เรียงตามลำดับที่พิมพ์ไว้
+function mdHistApply(h, auto) {
+  if (!MD || !h || !h.items) return;
+  const cur = MD.items.filter(d => !d.ext), used = new Set(), out = [];
+  h.items.forEach(s => {
+    if (s.ext) { out.push({ ext: true, namePrint: s.name, usage: s.use, src: s.src || '', on: true, saved: String(h.at || '').slice(0, 10) }); return; }
+    let d = cur.find(c => !used.has(c) && String(c.icode) === s.icode && String(c.vn) === s.vn);
+    if (d) {
+      ['nameEdit', 'strEdit', 'useEdit', 'editing'].forEach(k => delete d[k]);
+      if (s.e) { d.nameEdit = s.e.n; d.strEdit = s.e.s; d.useEdit = s.e.u; }
+      else if (s.name !== mdName(d) || s.use !== mdAbbr(mdUse(d))) { d.nameEdit = s.name; d.strEdit = ''; d.useEdit = s.use; }
+    } else {
+      d = { icode: s.icode, vn: s.vn, date: s.date, dep: s.dep, qty: s.qty, units: s.units, namePrint: s.name, usage: s.use,
+        hist: true, why: 'จากรายการที่พิมพ์ไว้' };
+      if (s.e) { d.nameEdit = s.e.n; d.strEdit = s.e.s; d.useEdit = s.e.u; }
+    }
+    d.on = true; used.add(d); out.push(d);
+  });
+  cur.forEach(d => { if (!used.has(d)) { d.on = false; out.push(d); } });
+  MD.items = out; MD.applied = h.at; MD.histState = '';
+  mdExtSave();
+  if (!auto) renderMd();
+}
+function mdHistMsg() {
+  const el = document.getElementById('md-hist');
+  const h = MD && MD.prev;
+  if (!h) { el.style.display = 'none'; return; }
+  const when = h.at ? thShort(new Date(h.at)) + ' ' + new Date(h.at).toTimeString().slice(0, 5) : '';
+  const same = h.an === MD.x.an, st = MD.histState;
+  el.className = 'md-hist' + (same ? '' : ' prev'); el.style.display = '';
+  if (st === 'saving' || st === 'saved' || st === 'error') {
+    el.innerHTML = st === 'error' ? `⚠️ บันทึกรายการที่พิมพ์ไม่สำเร็จ: ${escHtml(MD.histErr || '')}`
+      : `💾 ${st === 'saved' ? 'บันทึกแล้ว' : 'กำลังบันทึก'} — ยาเดิม ${h.items.length} รายการที่พิมพ์ ${escHtml(when)} (ทุกเครื่องเห็นรายการนี้)`;
+    return;
+  }
+  const names = h.items.map(s => escHtml(s.name)).join(' · ');
+  el.innerHTML = same && MD.applied === h.at
+    ? `💾 รายการที่พิมพ์ไว้แล้ว ${escHtml(when)} — โหลดให้ ${h.items.length} รายการ (ติ๊ก/แก้ไขตามที่พิมพ์)`
+    : `📜 ยาเดิมที่พิมพ์ไว้${same ? '' : `ครั้งก่อน (admit ${escHtml(thIso(h.regdate))})`} ${escHtml(when)} · ${h.items.length} รายการ
+       <button class="btn btn-sm" onclick="mdHistApply(MD.prev)">ใช้รายการนี้</button><div class="muted">${names}</div>`;
+}
 // ── สรุปยากลับบ้าน (HMe) — ตรวจทุก 30 วินาที พิมพ์อัตโนมัติเมื่อใบสั่งไม่ถูกแก้มา 2 นาที ──
 let HME = [], HME_NOW = null, hmeFirst = true;
 const HME_STABLE_MS = 120000, HME_FRESH_MS = 30 * 60000;
