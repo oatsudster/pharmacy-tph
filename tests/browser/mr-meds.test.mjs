@@ -106,3 +106,32 @@ test('แก้ชื่อ/ความแรง/วิธีใช้ → ส�
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('ยาที่ดึงจาก visit อื่นเพิ่มเอง แก้ชื่อ/ความแรง/วิธีใช้ได้ และพิมพ์ + บันทึกค่าที่แก้', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => {
+    tphHosxp.mrVisits = async () => ({ ok: true, visits: [{ vn: '6905050001', date: '2026-05-05', dep: 'ER', pdx: 'J20', items: [
+      { icode: '2001', name: 'Omeprazole', strength: '20 mg', units: 'cap', form: 'CAP', qty: '30', usage: 'รับประทานครั้งละ 1 แคปซูล วันละ 1 ครั้ง ก่อนอาหาร เช้า', vn: '6905050001', date: '2026-05-05', dep: 'ER' },
+    ] }] });
+    openMd('690000001');
+  });
+  await page.waitForSelector('#md-list .md-row');
+  await page.click('#mdv summary');
+  await page.click('#mdv-list button');
+  const i = await page.evaluate(() => MD.items.findIndex(d => d.icode === '2001'));
+  assert.ok(i >= 0);
+  await page.click(`#md-list .md-row:nth-child(${i + 1}) .eb`);
+  const ed = page.locator('#md-list .md-row.ed');
+  await ed.locator('input.mdx-in').nth(1).fill('40 mg');
+  await ed.locator('input.mdx-in').nth(1).dispatchEvent('change');
+  await ed.locator('button[title="เสร็จ"]').click();
+  assert.match((await rows(page))[i].text, /Omeprazole 40 mg\s*แก้แล้ว/);
+  await page.evaluate(() => MD.items.forEach(d => d.on = d.icode === '2001'));
+  await page.click('#md-print');
+  await page.waitForTimeout(200);
+  assert.match((await printed(page))[0], /1\. Omeprazole 40 mg\s*1 x 1 ac/);
+  const saved = await page.evaluate(() => window.__fs.mr_meds_01.data.h9999001.items);
+  assert.deepEqual(saved.map(s => s.name), ['Omeprazole 40 mg']);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
