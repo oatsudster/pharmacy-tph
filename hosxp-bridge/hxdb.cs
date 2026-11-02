@@ -188,16 +188,29 @@ public class HxDb : IDisposable {
   // ส่งคำสั่ง SQL หนึ่งคำสั่ง คืนแถวเป็น ชื่อคอลัมน์ → ข้อความ (NULL = null) — ต่อใหม่เองครั้งหนึ่งถ้าการเชื่อมต่อเดิมหลุด
   public List<Dictionary<string, string>> Query(string sql) {
     for (int attempt = 0; ; attempt++) {
+      bool wasOpen = s != null;
       try {
         if (s == null) Connect(4000);
+        wasOpen = true;
         return QueryOnce(sql);
       } catch (Exception e) {
         LastError = e.Message;
         bool sqlErr = e.Message.StartsWith("MySQL ") && s != null;
         if (!sqlErr) Close();
+        // ต่อได้แล้วแต่รอผลเกิน ReceiveTimeout = คำสั่งช้า ไม่ใช่สายหลุด — ส่งซ้ำก็ช้าเท่าเดิม (2026-11-02: เดิมรอ 2 รอบ 40 วิ
+        //   แล้วหน้าเว็บขึ้นว่าไม่ได้ต่อ bridge)
+        if (wasOpen && IsTimeout(e)) { LastError = "HOSxP ตอบช้าเกิน 20 วินาที — ลองใหม่อีกครั้ง"; throw new Exception(LastError, e); }
         if (sqlErr || attempt >= 1) throw;
       }
     }
+  }
+
+  static bool IsTimeout(Exception e) {
+    for (Exception x = e; x != null; x = x.InnerException) {
+      SocketException se = x as SocketException;
+      if (se != null && se.SocketErrorCode == SocketError.TimedOut) return true;
+    }
+    return false;
   }
 
   List<Dictionary<string, string>> QueryOnce(string sql) {

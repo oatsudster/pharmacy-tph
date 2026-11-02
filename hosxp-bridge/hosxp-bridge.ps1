@@ -163,7 +163,8 @@ function DbQuery($sql) {
   try { $r = $db.Query($sql); $state.db = $true; $state.dbErr = ''; return , $r }
   catch {
     $msg = if ($_.Exception.InnerException) { $_.Exception.InnerException.Message } else { $_.Exception.Message }
-    if (-not $db.Connected) { $state.db = $false; $script:dbRetryAt = (Get-Date).AddSeconds(30) }
+    # คำสั่งช้าเกินเวลารอ (HxDb ขึ้นต้น "HOSxP ตอบช้า") ไม่ใช่ DB ล่ม — ไม่พักการต่อ 30 วิ ให้หน้าอื่นใช้ต่อได้
+    if (-not $db.Connected -and -not $msg.StartsWith('HOSxP ตอบช้า')) { $state.db = $false; $script:dbRetryAt = (Get-Date).AddSeconds(30) }
     $state.dbErr = $msg; throw $msg
   }
 }
@@ -235,10 +236,12 @@ function DbMeds($hn) {
   # visit ที่มาตามนัดของคลินิกเหล่านี้ — ผูกกับนัดด้วย visit_vn ถ้าไม่ได้ผูก ใช้ visit ของ HN นี้ในวันนัด
   # + visit ที่ "ออกนัด" คลินิกเหล่านี้ (oapp.vn) = visit ที่จ่ายยาถึงวันนัด (2026-10-29: HN 4700684 มาช้ากว่านัด, HN 5501044
   #   ได้ยาที่ OPD ทั่วไปแล้วนัด DM — เดิมไม่ถูกดึงเพราะ visit นั้นไม่ได้มาตามนัด DM/HT/COPD)
+  # o.hn='$hn' ใน WHERE: เงื่อนไข OR ใน JOIN ทำให้ MySQL ไล่ ovst ทั้งตาราง (1.2 ล้านแถว) ต่อนัดทุกรายการ — คนไข้นัดเยอะ
+  #   ใช้ >20 วิ เกินเวลารอของ bridge แล้วหน้าเว็บขึ้นว่าไม่ได้ต่อ bridge (2026-11-02: AN 690001206 20.9 วิ → 0.01 วิ ผลเท่าเดิม)
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn, o.vstdate, o.vsttime FROM oapp a " +
     "JOIN clinic c ON c.clinic=a.clinic " +
     "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
-    "WHERE a.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
+    "WHERE a.hn='$hn' AND o.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $drugs = @{}
   if ($vis.Count) {
@@ -690,9 +693,11 @@ function DbMrMeds($hn, $path) {
   $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
   if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
   $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
+  # o.hn='$hn' ใน WHERE: เงื่อนไข OR ใน JOIN ทำให้ MySQL ไล่ ovst ทั้งตาราง (1.2 ล้านแถว) ต่อนัดทุกรายการ — คนไข้นัดเยอะ
+  #   ใช้ >20 วิ เกินเวลารอของ bridge แล้วหน้าเว็บขึ้นว่าไม่ได้ต่อ bridge (2026-11-02: AN 690001206 20.9 วิ → 0.01 วิ ผลเท่าเดิม)
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn FROM oapp a JOIN clinic c ON c.clinic=a.clinic " +
     "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
-    "WHERE a.hn='$hn' AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
+    "WHERE a.hn='$hn' AND o.hn='$hn' AND o.vstdate>='$reg' - INTERVAL 365 DAY AND o.vstdate<='$reg' AND o.vn<>'$avn' " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $items = New-Object System.Collections.ArrayList
   if ($vis.Count) {
