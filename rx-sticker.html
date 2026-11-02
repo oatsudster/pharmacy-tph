@@ -749,17 +749,31 @@ const mdName0 = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean)
 // "ยาเดิม…" = ยานอกบัญชีที่ได้จาก รพ.อื่น (ผู้ใช้อธิบาย 2026-10-26): คีย์รายการ "ยาเดิม......" แล้วพิมพ์ชื่อยาจริงไว้หน้าวิธีใช้
 //   "Lercanidipine 20 mg รับประทานครั้งละ 1 เม็ด ก่อนอาหารเช้า" → ชื่อ "ยาเดิม: Lercanidipine 20 mg" วิธีใช้ "1 x 1 ac"
 //   "ยาเดิม(Atorvastatin)" = ชื่ออยู่ในวงเล็บ วิธีใช้ปกติ
+// แยกชื่อยา | วิธีใช้ ที่จุดแรกที่เป็นวิธีใช้ (ไม่นับข้อความในวงเล็บ): ภาษาไทย · ขนาดยา "1*1" "2 tab" "2.5 cc" "2 สูด"
+//   · ทางให้ยา/ความถี่ภาษาอังกฤษ IV SC po OD hs prn q 8 hr weekly off
+// (2026-11-02: เดิมแยกที่ภาษาไทยตัวแรกเท่านั้น — วิธีใช้ภาษาอังกฤษล้วน "Ertapenem 1 g IV 1 g OD" ไปอยู่ช่องชื่อทั้งหมด
+//   ช่องวิธีใช้ว่าง และชื่อยาวถูกย่อจนตกขอบตอนพิมพ์ · ภาษาไทยในวงเล็บ "(100 ml/ขวด)" ถูกตัดกลางวงเล็บ)
+const MD_USE_AT = new RegExp([
+  '[฀-๿]',
+  '\\d+(?:\\.\\d+)?\\s*(?:[x*×]\\s*\\d|(?:tab|cap|puff|buff|cc|drop|gtt)s?\\b|(?:เม็ด|แคปซูล|สูด|ที|หยด|ซีซี|ช้อน|ซอง|ยูนิต))',
+  '\\b(?:iv|im|sc|sq|po|od|bid|tid|qid|hs|prn|stat|weekly|off|q\\s*\\d+\\s*(?:hr?s?|ชม)\\b|q\\s*(?:hr?s?|d|am|pm)\\b)\\b',
+].join('|'), 'i');
+function mdOldSplit(u) {
+  const mask = u.replace(/\([^()]*\)/g, s => '('.padEnd(s.length - 1, '_') + ')');   // ข้ามข้อความในวงเล็บ
+  const i = mask.search(MD_USE_AT);
+  const nm = s => s.replace(/(\s+\.+)+\s*$/, '').trim();   // "lidocaine gel . ." — จุดช่องว่างที่คีย์ทิ้งไว้
+  return i < 0 ? [nm(u), ''] : [nm(u.slice(0, i)), u.slice(i).trim()];
+}
 function mdOld(d) {
   const nm = mdClean(d.name), u = mdClean(d.usage);
   if (d.namePrint || !/^ยาเดิม/.test(nm)) return null;
   const pm = nm.match(/^ยาเดิม\s*\((.+)\)\s*$/);
   if (pm) return { name: 'ยาเดิม: ' + pm[1].trim(), use: u };
-  const m = u.replace(/^\[[^\]]*\]\s*/, '').match(/^([A-Za-z][^฀-๿]*?)\s*(?=[฀-๿]|\d+(?:\.\d+)?\s*(?:[x*]\s*\d|tab|cap|puff)|$)/i);
-  if (!m || !m[1]) return null;
-  let name = m[1], use = u.slice(u.indexOf(m[1]) + m[1].length);
-  const num = name.match(/\s(\d+(?:\.\d+)?)$/);   // "Symbicort 1 สูด" — เลขท้ายไม่มีหน่วย = ขนาดยา ไม่ใช่ความแรง
-  if (num) { name = name.slice(0, num.index); use = num[1] + ' ' + use; }
-  return { name: 'ยาเดิม: ' + name.trim(), use: mdClean(use) };
+  const t = u.replace(/^\[[^\]]*\]\s*/, '');
+  if (dotLine(t)) return { name: 'ยาเดิม', use: '' };   // "ยาเดิม......" ที่ไม่ได้คีย์อะไร — ไม่พิมพ์ "...... mg."
+  // ขึ้นต้นด้วยวิธีใช้/ภาษาไทย (ไม่มีชื่อยาภาษาอังกฤษนำหน้า) = ไม่เดาชื่อ พิมพ์ข้อความทั้งหมดในช่องวิธีใช้
+  const [name, use] = /^[A-Za-z]/.test(t) ? mdOldSplit(t) : ['', t];
+  return { name: name ? 'ยาเดิม: ' + name : 'ยาเดิม', use: mdClean(use) };
 }
 const mdName = d => { const o = mdOld(d); return o ? o.name : mdName0(d); };
 const mdUse = d => { const o = mdOld(d); return o ? o.use : d.usage; };
@@ -1486,7 +1500,11 @@ const dotLine = t => !String(t || '').replace(/[.\s…_-]/g, '');
 function hmeDrug(i) {
   const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
   // "ยาเดิม......" = ยาที่ผู้ป่วยนำมาเอง: ชื่อยาจริงอยู่บรรทัดแรกของวิธีใช้
-  if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) return { name: 'ยาเดิม: ' + lines[0], use: lines.slice(1).join(' ') };
+  //   คีย์ชื่อ+วิธีใช้รวมบรรทัดเดียว ("Ertapenem 1 g IV 1 g OD") = แยกแบบเดียวกับสติกเกอร์ยาเดิม ไม่ให้ช่องวิธีใช้ว่าง
+  if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) {
+    const [n, u] = lines.length === 1 && /^[A-Za-z]/.test(lines[0]) ? mdOldSplit(lines[0]) : [lines[0], lines.slice(1).join(' ')];
+    return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? u : '' };
+  }
   const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
   return { name, use: lines.join(' ') };
 }

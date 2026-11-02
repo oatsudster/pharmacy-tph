@@ -116,6 +116,32 @@ test('แก้ชื่อ/ความแรง/วิธีใช้ → ส�
   await ctx.close();
 });
 
+// "ยาเดิม......" คีย์ชื่อ+วิธีใช้ภาษาอังกฤษล้วน (2026-11-02: เดิมทั้งข้อความไปอยู่ช่องชื่อ ช่องวิธีใช้ว่าง ชื่อยาวตกขอบตอนพิมพ์)
+test('ยาเดิม......: แยกชื่อ/วิธีใช้ภาษาอังกฤษล้วน + ภาษาไทยในวงเล็บ — พิมพ์วิธีใช้ครบ', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => {
+    const old = (icode, usage) => ({ icode, name: 'ยาเดิม.............................', strength: 'mg.', units: '', form: '', qty: '0', usage, vn: '6910010001', date: '2026-10-01', dep: 'นัด คลินิก HT' });
+    tphHosxp.mrMeds = async () => ({ ok: true, chronic: true, regdate: '2026-10-31', items: [
+      old('3001', 'Ertapenem 1 g + NSS 50 ml IV 1 g OD'),
+      old('3002', 'Semaglutide inj./pen 1 mg SC weekly .'),
+      old('3003', 'Lactulose 20g/30ml (100 ml/ขวด) รับประทานครั้งละ 30 ซีซี วันละ 1 ครั้ง ก่อนนอน'),
+      old('3004', '. . .'),
+    ] });
+    openMd('690000001');
+  });
+  await page.waitForSelector('#md-list .md-row');
+  await page.evaluate(() => { MD.items.forEach(d => d.on = true); renderMd(); });
+  await page.click('#md-print');
+  await page.waitForTimeout(200);
+  const p = (await printed(page)).slice(0, 4).join(' | ');
+  assert.match(p, /Ertapenem 1 g \+ NSS 50 ml\s*IV 1 g OD/);
+  assert.match(p, /Semaglutide inj\.\/pen 1 mg\s*SC weekly/);
+  assert.match(p, /Lactulose 20g\/30ml \(100 ml\/ขวด\)\s*30 ml x 1 hs/);
+  assert.doesNotMatch(p, /\.\.\.\.|mg\.\s/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test('ยาที่ดึงจาก visit อื่นเพิ่มเอง แก้ชื่อ/ความแรง/วิธีใช้ได้ และพิมพ์ + บันทึกค่าที่แก้', async () => {
   const { ctx, page, errors } = await openPage();
   await page.evaluate(() => {
