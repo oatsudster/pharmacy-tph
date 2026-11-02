@@ -64,8 +64,8 @@
 #   /current มี pc = ชื่อเครื่องใน HOSxP ที่ใช้หา — ติดตั้งด้วย mac/Install HOSxP Bridge.command
 
 $PORT = if ($env:HXB_PORT) { [int]$env:HXB_PORT } else { 8765 }
-$ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ
-$UPDATE_ORIGIN = 'https://oatsudster.github.io'                  # สั่ง /update ได้เฉพาะหน้าเว็บของเราจริง (ไม่รับ 'null')
+$ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'https://tph-pharmacy.pages.dev', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ · tph-pharmacy.pages.dev = Cloudflare Pages (ลิงก์ที่ 2 ของเว็บเดียวกัน)
+$UPDATE_ORIGINS = @('https://oatsudster.github.io', 'https://tph-pharmacy.pages.dev')   # สั่ง /update ได้เฉพาะหน้าเว็บของเราจริง (ไม่รับ 'null')
 $UPDATE_BASE = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/' }   # HXB_UPDATE_BASE ใช้ทดสอบ
 $OS = if ($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) { 'win' } else { 'mac' }
 # อ่านหน้าจอ HOSxP (UI Automation + OCR ของ Windows) ได้เฉพาะ Windows PowerShell 5.1 — HXB_NOSCREEN=1 ใช้ทดสอบโหมด Mac บน Windows
@@ -1374,7 +1374,7 @@ function Respond($client) {
   elseif ($path -like '/version*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(((VersionInfo ($path -match '[?&]check=1')) | ConvertTo-Json -Compress)) }
   elseif ($path -like '/update*') {
     $status = '200 OK'
-    $res = if ($origin -ne $UPDATE_ORIGIN) { @{ ok = $false; error = 'สั่งอัปเดตได้จากหน้าเว็บของ รพ. เท่านั้น' } } else { try { DoUpdate } catch { @{ ok = $false; error = "$_" } } }
+    $res = if ($UPDATE_ORIGINS -notcontains $origin) { @{ ok = $false; error = 'สั่งอัปเดตได้จากหน้าเว็บของ รพ. เท่านั้น' } } else { try { DoUpdate } catch { @{ ok = $false; error = "$_" } } }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes(($res | ConvertTo-Json -Compress))
   }
   elseif ($path -like '/current*') { $status = '200 OK'; $bytes = [System.Text.Encoding]::UTF8.GetBytes(($state | ConvertTo-Json -Compress)) }
