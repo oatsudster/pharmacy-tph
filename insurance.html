@@ -7,7 +7,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ติดตามรายได้ประกันสุขภาพ — รพ.ถ้ำพรรณรา</title>
+<title>ติดตามรายได้งานประกันสุขภาพ — รพ.ถ้ำพรรณรา</title>
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
@@ -131,7 +131,8 @@ td small { display: block; color: var(--text-light); }
 .gl-item .ab { font-size: 12px; color: var(--text-light); }
 .gl-item b { color: var(--primary-dark); }
 .gl-item .who { font-size: 12.5px; color: var(--text-mid); }
-.layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); max-width: 1440px; margin: 0 auto; align-items: start; }
+.layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); align-items: start; }
+.layout > main.wrap { max-width: 1320px; width: 100%; }
 .side { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 14px 10px 24px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--border); background: var(--surface); min-height: calc(100vh - 56px); }
 .side-grp { font-size: 11.5px; font-weight: 700; color: var(--text-light); letter-spacing: .02em; padding: 12px 10px 4px; }
 .side-grp:first-child { padding-top: 0; }
@@ -160,7 +161,7 @@ td small { display: block; color: var(--text-light); }
   <a href="#" class="ins-only" onclick="localStorage.removeItem('tph_ins_auth_v1');location.replace('insurance-login.html');return false">🔒 ออกจากระบบ</a>
   <a href="#v=glossary" title="ความหมายของตัวย่อและคำศัพท์ในหน้านี้">📖 คำศัพท์</a>
   <a href="insurance-audit.html" title="ดูว่าตัวเลขแต่ละตัวคิดจากอะไร และให้แต่ละงานตรวจ/แนบเอกสารแนวทางเคลม">🔎 ตรวจสอบที่มาตัวเลข</a>
-  <div><h1>ติดตามรายได้ประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
+  <div><h1>ติดตามรายได้งานประกันสุขภาพ</h1><div class="sub">ดึงจาก HOSxP อัตโนมัติรายเดือน · ประมวลผลใหม่ทั้งหมดทุก 3 เดือน · เทียบผลงานเคลมทั้งจังหวัด</div></div>
   <div class="right">
     <label for="fy" class="sub">ปีงบประมาณ</label>
     <select id="fy"></select>
@@ -183,6 +184,7 @@ td small { display: block; color: var(--text-light); }
   <button type="button" data-v="ipd"><span class="ic">🛏️</span><span>ผู้ป่วยใน &amp; เตียง</span></button>
   <button type="button" data-v="op"><span class="ic">🩺</span><span>ผู้ป่วยนอก &amp; บริการเคลมแยก</span></button>
   <button type="button" data-v="herb"><span class="ic">🌿</span><span>แพทย์แผนไทย &amp; สมุนไพร</span></button>
+  <button type="button" data-v="ncd"><span class="ic">🩸</span><span>เบาหวาน / ความดัน (NCD)</span></button>
   <div class="side-grp">เทียบเคียง</div>
   <button type="button" data-v="prov"><span class="ic">🗺️</span><span>เทียบผลงานทั้งจังหวัด</span></button>
   <div class="side-grp">อื่นๆ</div>
@@ -313,6 +315,22 @@ td small { display: block; color: var(--text-light); }
     <details class="hc-detail"><summary>รหัส ICD-10 และรายการยาที่นับในแต่ละกลุ่ม · <a href="insurance-audit.html#HERB-03">ⓘ ตรวจสอบที่มา</a></summary><div id="hc-criteria"></div></details>
     <p class="note" style="margin:8px 0 0">แก้เกณฑ์ได้ที่ Hospital Tasks/2026-10 ตัวชี้วัดยาสมุนไพร Common Diseases/criteria.json (คำนวณใหม่อัตโนมัติรอบถัดไป) · นับเฉพาะรหัสยาที่เปิดใช้งาน (แพทย์สั่งได้) ใน HOSxP ปัจจุบัน · การ์ด "สั่งยาสมุนไพรในโรคพื้นฐาน" ด้านบนเป็นอีกเกณฑ์ (UC/WEL เป้า 50%)</p>
   </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="ncd">
+    <div class="view-head"><h2>เบาหวาน / ความดัน (ประกาศ สปสช. 2568)</h2><p class="note">เงินที่ สปสช. จ่ายเพิ่มจากงบเหมาจ่าย: HbA1c ผู้ป่วย DM type 2 · Cr/K ผู้ป่วยความดันรายใหม่ · DM remission · คำนวณจาก HOSxP วันละครั้ง (เฉพาะสิทธิ UC/WEL · ยอดสรุป ไม่มีรายชื่อผู้ป่วย)</p></div>
+    <section id="ncd-box" hidden>
+      <div class="kpis" id="ncd-kpis"></div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card"><h2>4. HbA1c (รหัส 32401) · 150 บาท/ครั้ง</h2><p class="note">ผู้ป่วย E11 สิทธิ UC/WEL เบิกได้ปีละ 2 ครั้ง ต้องห่างกันอย่างน้อย 3 เดือน · แท่ง = ครั้งที่เข้าเกณฑ์เบิกในแต่ละเดือน</p>
+          <div class="kpis" id="ncd-a1c-kpis" style="margin-bottom:10px"></div><div class="chartbox"><canvas id="c-ncd-a1c"></canvas></div><div id="ncd-a1c-act"></div></div>
+        <div class="card"><h2>5–6. Cr (32202) + K (32103) ความดันรายใหม่ · 45 + 40 บาท</h2><p class="note">ได้รหัส I10–I15 ครั้งแรก (ไม่เคยมีใน HOSxP) · นับ lab ที่ตรวจตั้งแต่ 30 วันก่อนถึง 90 วันหลังวินิจฉัย</p>
+          <div class="kpis" id="ncd-ht-kpis" style="margin-bottom:10px"></div><div class="chartbox"><canvas id="c-ncd-ht"></canvas></div><div id="ncd-ht-warn"></div></div>
+      </div>
+      <div class="card" style="margin-top:14px"><h2>7. DM Remission · 4,000 + 2,000 บาท/ราย</h2><p class="note">E11 อายุ ≥ 18 ปี · HbA1c &lt; 6.5% ติดกัน 2 ครั้ง ห่างกัน ≥ 3 เดือน โดยไม่ได้รับยาลดน้ำตาล (ตั้งแต่ 3 เดือนก่อนครั้งแรก) · +2,000 เมื่อยังสงบอีก 1 ครั้งหลังจากนั้น 3–6 เดือน · ทีมต้องผ่านอบรม และลงทะเบียนผู้ป่วยใน e-Claim</p>
+        <div class="tbl"><table id="ncd-rem" style="min-width:560px"></table></div></div>
+      <p class="note" style="margin-top:10px" id="ncd-foot"></p>
+    </section>
     <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
   </div>
   <div class="view" data-view="prov">
@@ -577,7 +595,68 @@ td small { display: block; color: var(--text-light); }
     const part = ms.some((m) => monthly.months[m].partial) ? ' · * = เดือนปัจจุบัน ยังไม่ครบเดือน' : '';
     sumArgs = { ms, R };
     drawRevenue();
+    drawNcd();
     document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'}${part} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
+  }
+
+  // ---------- เบาหวาน/ความดัน ตามประกาศ สปสช. 2568: insurance_monthly.ncd_json = { "2570": {...} } จาก ncd_claim.py ----------
+  function drawNcd() {
+    const box = document.getElementById('ncd-box');
+    let N = null; try { N = JSON.parse(monthly && monthly.ncd_json || 'null'); } catch (e) { N = null; }
+    const R = N && N[String(fy)];
+    if (!R) { box.hidden = true; return; }
+    box.hidden = false;
+    const A = R.a1c, H = R.ht_new, M = R.remission, act = A.actions || {}, P = M.pair_in_fy || {};
+    const thd = (iso) => { const [y, m, d] = String(iso).split('-').map(Number); return d + ' ' + TH_M[m] + ' ' + String(y + 543).slice(2); };
+    const kpi = (l, n, s, warn) => `<div class="kpi${warn ? ' warn' : ''}"><span class="l">${esc(l)}</span><span class="n">${esc(n)}</span><span class="s">${esc(s)}</span></div>`;
+    const got = A.claimable_baht + H.claimable_baht + (M.pair_in_fy_baht || 0);
+    const remN = (P.pair_stopped_drug || 0) + (P.pair_never_drug_here || 0);
+    document.getElementById('ncd-kpis').innerHTML = [
+      kpi('เข้าเกณฑ์เบิกแล้ว (ประมาณ)', fmt(got) + ' บาท', `ปีงบ ${R.fy} · ` + (R.partial ? `ข้อมูลถึง ${thd(R.asof)} (ปีงบยังไม่จบ)` : 'ทั้งปีงบ')),
+      kpi('HbA1c ยังเบิกเพิ่มได้', fmt(A.missed_baht) + ' บาท', `เต็มที่ ${fmt(A.max_baht)} บาท (${fmt(A.e11_patients)} ราย × 2 ครั้ง)`, true),
+      kpi('Cr/K ความดันรายใหม่ ยังขาด', fmt(H.missed_baht) + ' บาท', `${fmt(H.new_ht_uc)} รายใหม่ · ตรวจครบทั้งคู่ ${fmt(H.both)} ราย`, H.missed_baht > 0),
+      kpi('Remission ครบเกณฑ์ในปีงบนี้', fmt(remN) + ' ราย', `≈ ${fmt(M.pair_in_fy_baht)} บาท ถ้าลงทะเบียน e-Claim`),
+    ].join('');
+    document.getElementById('ncd-a1c-kpis').innerHTML = [
+      kpi('ผู้ป่วย E11 (UC/WEL)', fmt(A.e11_patients) + ' ราย', R.partial ? 'มีรหัส E11 ใน 12 เดือนล่าสุด' : 'มีรหัส E11 ในปีงบ'),
+      kpi('ตรวจครบ 2 ครั้ง', fmt(A.patients_2) + ' ราย', `1 ครั้ง ${fmt(A.patients_1)} · ยังไม่ตรวจ ${fmt(A.patients_0)}`),
+      kpi('เข้าเกณฑ์เบิก', fmt(A.claimable_tests) + ' ครั้ง', fmt(A.claimable_baht) + ' บาท' + (A.claimable_without_authcode ? ` · ไม่มีรหัสยืนยันตัวตน ${A.claimable_without_authcode} ครั้ง` : '')),
+    ].join('');
+    const ms = Object.keys(A.by_month || {}).sort();
+    chart('c-ncd-a1c', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [{ label: 'HbA1c ที่เข้าเกณฑ์เบิก (ครั้ง)', data: ms.map((m) => A.by_month[m]), backgroundColor: C.primary, borderRadius: 4 }] }, options: baseOpts({ scales: { y: { beginAtZero: true } } }) });
+    const row = (ic, t, n, d) => `<tr><td>${ic} ${t}</td><td class="num"><b>${fmt(n || 0)}</b> ราย</td><td>${d}</td></tr>`;
+    document.getElementById('ncd-a1c-act').innerHTML = R.partial ? `<h3 style="font-size:15px;margin:12px 0 4px;color:var(--primary-dark)">ต้องทำอะไรต่อในปีงบนี้</h3><div class="tbl"><table style="min-width:480px"><tbody>
+      ${row('🧪', 'ตรวจแล้ว 1 ครั้ง · มีนัดหลังครบ 3 เดือน', act.one_has_appt, 'สั่ง HbA1c ในนัดนั้น (เบิกครั้งที่ 2)')}
+      ${row('📞', 'ตรวจแล้ว 1 ครั้ง · ไม่มีนัดที่ทัน', act.one_no_appt, 'โทรนัดมาตรวจก่อน 30 ก.ย.')}
+      ${row('🗓️', 'ยังไม่ตรวจ · มีนัดในปีงบ', act.zero_has_appt, 'เจาะ HbA1c ในนัดถัดไป แล้วนัดครั้งที่ 2 ให้ห่าง ≥ 3 เดือน')}
+      ${row('📞', 'ยังไม่ตรวจ · ไม่มีนัด', act.zero_no_appt, 'อาจรับยาที่ รพ.สต. — ประสานเจาะเลือด')}
+      ${act.one_no_time_left ? row('⏳', 'ตรวจครั้งแรกช้า ครั้งที่ 2 ไม่ทันปีงบ', act.one_no_time_left, 'เบิกได้ครั้งเดียว') : ''}
+      </tbody></table></div>` : `<p class="note" style="margin-top:10px">ตรวจแค่ 1 ครั้ง ${fmt(A.patients_1)} ราย · ไม่ได้ตรวจเลย ${fmt(A.patients_0)} ราย · ตรวจเกินเกณฑ์ (ห่างกันไม่ถึง 3 เดือน หรือเกิน 2 ครั้ง) ${fmt(A.extra_tests_not_claimable)} ครั้ง</p>`;
+    document.getElementById('ncd-ht-kpis').innerHTML = [
+      kpi('ความดันรายใหม่ (UC/WEL)', fmt(H.new_ht_uc) + ' ราย', `ครบทั้งคู่ ${fmt(H.both)} · Cr อย่างเดียว ${fmt(H.cr_only)} · K อย่างเดียว ${fmt(H.k_only)}`),
+      kpi('ยังไม่ได้ตรวจเลย', fmt(H.none) + ' ราย', 'ควรสั่ง Cr + K ตั้งแต่วันที่วินิจฉัย', H.none > 0),
+      kpi('เข้าเกณฑ์เบิก', fmt(H.claimable_baht) + ' บาท', `เต็มที่ ${fmt(H.max_baht)} บาท`),
+    ].join('');
+    const hm = Object.keys(H.by_month || {}).sort(), g = (m, k) => (H.by_month[m] || {})[k] || 0;
+    chart('c-ncd-ht', { type: 'bar', data: { labels: hm.map(mLabel), datasets: [
+      { label: 'ครบ Cr + K', data: hm.map((m) => g(m, 'both')), backgroundColor: C.primary, stack: 's' },
+      { label: 'Cr อย่างเดียว', data: hm.map((m) => g(m, 'cr_only')), backgroundColor: C.gold, stack: 's' },
+      { label: 'K อย่างเดียว', data: hm.map((m) => g(m, 'k_only')), backgroundColor: C.peer, stack: 's' },
+      { label: 'ยังไม่ตรวจ', data: hm.map((m) => g(m, 'none')), backgroundColor: C.danger, stack: 's' },
+    ] }, options: baseOpts({ scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }) });
+    const kb = H.billing_items_uc || {};
+    document.getElementById('ncd-ht-warn').innerHTML = !kb.K_32103 && kb.ELECTROLYTE_32001 ? `<div class="upbox" style="margin:12px 0 0"><div class="row"><span class="warn">⚠️ ค่า K ไม่ได้คิดด้วยรหัส 32103</span></div><div class="row" style="font-size:13.5px">ปีงบนี้ "ตรวจระดับ Potassium ในเลือด" (32103) ถูกคิด 0 ครั้ง แต่คิดเป็น ELECTROLYTE (32001) ${fmt(kb.ELECTROLYTE_32001)} ครั้ง เพราะ lab K ใน HOSxP ผูกกับรายการ ELECTROLYTE · ต้องถามทีมประกันว่า สปสช. รับ 32001 แทนได้หรือไม่ ถ้าไม่ได้ ให้สั่งรายการ 32103 แยกสำหรับผู้ป่วยความดันรายใหม่</div></div>` : '';
+    const rr = (t, n, d, ok) => `<tr${ok ? ' style="background:var(--primary-light)"' : ''}><td>${t}</td><td class="num"><b>${fmt(n || 0)}</b></td><td>${d}</td></tr>`;
+    document.getElementById('ncd-rem').innerHTML = `<thead><tr><th>ขั้น</th><th class="num">ราย</th><th>ทำอะไรต่อ</th></tr></thead><tbody>
+      ${rr('ผู้ป่วย E11 อายุ ≥ 18 ปี', M.e11_adults, 'กลุ่มทั้งหมด')}
+      ${rr('HbA1c ล่าสุด &lt; 6.5% แต่ยังได้รับยาลดน้ำตาล', M.lt65_still_on_drug, 'ให้ทีม NCD พิจารณาเองว่าลดยาได้หรือไม่ (ระบบไม่ได้แนะนำให้หยุดยา)')}
+      ${rr('HbA1c &lt; 6.5% แล้ว 1 ครั้ง และไม่ได้รับยาแล้ว ≥ 3 เดือน', M.one_lt65_off_drug, 'นัดตรวจ HbA1c ซ้ำเมื่อครบ 3 เดือน → ถ้ายัง &lt; 6.5% เบิก 4,000 บาท')}
+      ${rr('✅ ครบเกณฑ์ในปีงบนี้ · เคยได้รับยาที่ รพ. แล้วหยุด', P.pair_stopped_drug, 'ลงทะเบียน e-Claim + เก็บหลักฐานการปรับพฤติกรรม', true)}
+      ${rr('✅ ครบเกณฑ์ในปีงบนี้ · ไม่มีประวัติรับยาที่ รพ.', P.pair_never_drug_here, 'เช็กก่อนว่ารับยาที่ รพ.สต. หรือไม่', true)}
+      ${rr('ยังสงบต่อหลังครบเกณฑ์ 3–6 เดือน (ทุกปี)', M.plus2000_reached, 'เบิกเพิ่ม 2,000 บาท (ครั้งเดียว)')}
+      ${rr('อยู่ในคลินิก NCDs remission (032)', M.clinic032_patients, `ในจำนวนที่ครบเกณฑ์ปีนี้ อยู่ในคลินิก 032 แล้ว ${fmt(P.in_clinic032 || 0)} ราย`)}
+      </tbody>`;
+    document.getElementById('ncd-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · ยอดเป็นการประมาณจากงานที่ทำจริงใน HOSxP ยังไม่ได้เทียบกับยอดที่ส่งเบิก/ได้รับจริง · "หยุดยา" ดูจากการจ่ายยาที่ รพ. เท่านั้น · "ไม่อยู่ในทะเบียน สปสช." ใช้ประวัติใน HOSxP แทน · ที่มา: Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/ncd_claim.py`;
   }
 
   // ---------- อัตราครองเตียง (beds จาก insurance-sync) ----------
