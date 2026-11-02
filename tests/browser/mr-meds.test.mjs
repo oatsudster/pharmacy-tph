@@ -35,7 +35,16 @@ async function openPage() {
       return {
         id,
         get: async () => ({ exists: !!window.__fs[id], data: () => JSON.parse(JSON.stringify(window.__fs[id])) }),
-        set: async v => { const d = window.__fs[id] || (window.__fs[id] = { data: {} }); Object.assign(d.data, JSON.parse(JSON.stringify(v.data))); },
+        set: async v => {   // merge 2 ชั้น (data / ext → h<HN>) + FieldValue.delete()
+          const d = window.__fs[id] || (window.__fs[id] = {}), DEL = firebase.firestore.FieldValue.delete();
+          for (const [f, m] of Object.entries(v)) {
+            d[f] = d[f] || {};
+            for (const [k, val] of Object.entries(m)) {
+              if (val && typeof val.isEqual === 'function' && val.isEqual(DEL)) delete d[f][k];
+              else d[f][k] = JSON.parse(JSON.stringify(val));
+            }
+          }
+        },
       };
     };
     IPD = [{ an: '690000001', hn: '9999001', name: 'นายทดสอบ ระบบ', regdate: '2026-10-31', bed: '1' },
@@ -132,6 +141,57 @@ test('ยาที่ดึงจาก visit อื่นเพิ่มเอ�
   assert.match((await printed(page))[0], /1\. Omeprazole 40 mg\s*1 x 1 ac/);
   const saved = await page.evaluate(() => window.__fs.mr_meds_01.data.h9999001.items);
   assert.deepEqual(saved.map(s => s.name), ['Omeprazole 40 mg']);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('ยาเดิม รพ.อื่น: คีย์ครั้งเดียว → admit ครั้งหน้าขึ้นให้ทุกเครื่อง + เทียบวันนัด รพ.อื่น + ป้ายในรายชื่อผู้ป่วยใน', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => {
+    IPD.push({ an: '690000150', hn: '9999001', name: 'นายทดสอบ ระบบ', regdate: '2027-03-10', bed: '3' });
+    tphHosxp.ipdList = async () => ({ items: IPD.slice(1) });
+    openMd('690000001');
+  });
+  await page.waitForSelector('#md-list .md-row');
+  // admit ครั้งแรก: คีย์ยาจาก รพ.อื่น + วันนัดครั้งถัดไป
+  await page.fill('#mdx-src', 'รพ.สกลนคร');
+  await page.fill('#mdx-name', 'Clopidogrel 75 mg');
+  await page.fill('#mdx-usage', '1 x 1 pc');
+  await page.click('.mdx-add button.btn-primary');
+  await page.fill('#mdx-next', '2027-01-15');
+  await page.fill('#mdx-nextsrc', 'รพ.สกลนคร');
+  await page.dispatchEvent('#mdx-nextsrc', 'change');
+  await page.waitForFunction(() => window.__fs.mr_meds_01 && window.__fs.mr_meds_01.ext && window.__fs.mr_meds_01.ext.h9999001);
+  const rec = await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001);
+  assert.deepEqual(rec.items, [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร' }]);
+  assert.equal(rec.next, '2027-01-15');
+
+  // อีกเครื่อง (ไม่มี localStorage) admit ใหม่ 20 ธ.ค. — ก่อนนัด → ขึ้นให้ ติ๊กไว้ + ✅
+  await page.evaluate(() => { localStorage.removeItem('mr_ext_meds'); openMd('690000099'); });
+  await page.waitForFunction(() => MD && MD.x.an === '690000099' && MD.items.some(d => d.ext));
+  const ext = await page.evaluate(() => MD.items.filter(d => d.ext).map(d => [d.namePrint, d.on]));
+  assert.deepEqual(ext, [['Clopidogrel 75 mg', true]]);
+  assert.match(await page.textContent('#mdx-rec'), /ยาเดิม รพ\.อื่น 1 รายการ — ทำไว้แล้ว.*admit ก่อนนัด รพ\.สกลนคร 15 ม\.ค\. 70/s);
+  assert.equal(await page.inputValue('#mdx-next'), '2027-01-15');
+  // เปิดดูเฉย ๆ ไม่ถือว่ายืนยัน — วันที่ทำไว้ไม่เปลี่ยน
+  await page.waitForTimeout(800);
+  assert.equal(await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001.an), '690000001');
+
+  // admit 10 มี.ค. 70 — เลยนัด → ⚠️
+  await page.evaluate(() => openMd('690000150'));
+  await page.waitForFunction(() => MD && MD.x.an === '690000150' && MD.items.some(d => d.ext));
+  assert.match(await page.textContent('#mdx-rec'), /เลยนัด รพ\.สกลนคร 15 ม\.ค\. 70 แล้ว/);
+
+  // รายชื่อผู้ป่วยใน: ป้ายตามวันนัด
+  await page.evaluate(() => loadIpd());
+  await page.waitForSelector('.xb.ok');
+  const badges = await page.$$eval('#ipd-list .ipd-row', rs => rs.map(r => [...r.querySelectorAll('.xb')].map(b => b.className + ' ' + b.textContent).join(' | ')));
+  assert.match(badges[0], /xb ok 🏥 ยาเดิม รพ\.อื่น 1 รายการ · ก่อนนัด 15 ม\.ค\. 70/);
+  assert.match(badges[1], /xb warn 🏥 ยาเดิม รพ\.อื่น 1 รายการ · เลยนัด 15 ม\.ค\. 70/);
+
+  // พิมพ์ = ยืนยัน → วันที่ทำไว้ + AN อัปเดต
+  await page.click('#md-print');
+  await page.waitForFunction(() => window.__fs.mr_meds_01.ext.h9999001.an === '690000150');
   assert.deepEqual(errors, []);
   await ctx.close();
 });

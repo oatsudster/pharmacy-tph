@@ -206,6 +206,12 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .md-hist { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 10px; margin: 0 0 6px; font-size: 13px; }
 .md-hist.prev { background: #fffbeb; border-color: #f0dca4; }
 .md-hist .muted { font-size: 12px; }
+.xb { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 10px; padding: 1px 8px; margin: 2px 4px 0 0; background: #eef2ff; color: #3730a3; cursor: pointer; }
+.xb.ok { background: #dcfce7; color: #166534; } .xb.warn { background: #fef3c7; color: #92400e; } .xb.mr { background: #f1f5f9; color: #475569; }
+.mdx-rec { grid-column: 1 / -1; font-size: 13px; border-radius: 6px; padding: 5px 8px; background: #fff; border: 1px solid #bfdbfe; }
+.mdx-rec.ok { border-color: #86efac; background: #f0fdf4; } .mdx-rec.warn { border-color: #fcd34d; background: #fffbeb; }
+.mdx-next { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.mdx-add .mdx-next input { width: auto; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
 .md-row input.mdx-in, .mdx-add input { font: inherit; font-size: 13.5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; width: 100%; min-width: 0; }
 .md-row .src input.mdx-in { width: 200px; font-size: 12px; padding: 1px 5px; }
 .mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
@@ -296,12 +302,16 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
     </details>
     <div class="mdx-add">
       <div class="t">🏥 เพิ่มยาจาก รพ.อื่น / ยาที่ผู้ป่วยนำมา <span class="hint" id="mdx-meta" style="margin:0;font-weight:400"></span></div>
+      <div class="mdx-rec" id="mdx-rec" style="display:none"></div>
+      <div class="mdx-next">📅 นัดครั้งถัดไปที่ รพ.อื่น <input type="date" id="mdx-next" onchange="mdExtNextSet()">
+        ที่ <input id="mdx-nextsrc" list="mdx-srcs" placeholder="รพ./คลินิก" style="width:180px !important" onchange="mdExtNextSet()">
+        <span class="hint" style="margin:0">ดูจากใบนัด/ซองยา — admit ครั้งหน้าก่อนวันนี้ = ยาน่าจะเหมือนเดิม</span></div>
       <input id="mdx-src" list="mdx-srcs" placeholder="ได้ยาจาก (รพ./คลินิก)" autocomplete="off">
       <input id="mdx-name" list="mdx-drugs" placeholder="ชื่อยา + ความแรง (พิมพ์ 2-3 ตัวแล้วเลือก)" autocomplete="off">
       <input id="mdx-usage" list="mdx-usages" placeholder="วิธีใช้ หรือรหัสย่อ เช่น 11pt 12pt 11ht" autocomplete="off">
       <button class="btn btn-primary btn-sm" onclick="mdExtAdd()">➕ เพิ่ม</button>
       <div class="hint" style="grid-column:1/-1;margin:0">Enter ที่ชื่อยา = ไปช่องวิธีใช้ · Enter ที่วิธีใช้ = เพิ่มรายการ · รหัสวิธีใช้เหมือนใน HOSxP · ยาที่ไม่มีในรายการพิมพ์เองได้ ·
-        จำรายการไว้ตาม HN ในเครื่องนี้ admit ครั้งหน้าขึ้นให้ตรวจเลย · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
+        จำรายการ + วันนัดไว้ตาม HN ทุกเครื่องเห็น admit ครั้งหน้าขึ้นให้ตรวจเลย (ไม่ต้องตามยาใหม่) · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
     </div>
     <datalist id="mdx-drugs"></datalist><datalist id="mdx-usages"></datalist><datalist id="mdx-srcs"></datalist>
   </div>
@@ -619,6 +629,7 @@ async function loadIpd() {
   IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
   document.getElementById('ipd-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
   renderIpd();
+  ipdRecLoad();
 }
 function renderIpd() {
   const wards = [...new Map(IPD.map(x => [x.ward, x.wardName || x.ward])).entries()];
@@ -630,7 +641,7 @@ function renderIpd() {
       <input type="checkbox" ${IPD_SEL.has(x.an) ? 'checked' : ''} onchange="this.checked?IPD_SEL.add('${escHtml(x.an)}'):IPD_SEL.delete('${escHtml(x.an)}');renderIpd()">
       <div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
-        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
+        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div>${ipdRecBadge(x)}</div>
       <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
         <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button>
         <button class="btn btn-sm" onclick="openMd('${escHtml(x.an)}')" title="สติกเกอร์ยาเดิมแปะตารางใบ MR">💊 ยาเดิม</button></div>
@@ -1043,15 +1054,19 @@ async function openMd(an) {
   document.getElementById('md-meta').textContent = `${x.name} · เตียง ${x.bed || '-'} · admit ${thIso(x.regdate)} · กำลังโหลด…`;
   document.getElementById('md-list').innerHTML = '';
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const hp = mdHistLoad(x.hn);
+  document.getElementById('mdx-next').value = ''; document.getElementById('mdx-nextsrc').value = '';
+  document.getElementById('mdx-rec').style.display = 'none';
+  const hp = mdDocLoad(x.hn);
   const r = await tphHosxp.mrMeds(x.hn, x.an);
   if (!r || !r.ok) { document.getElementById('md-list').innerHTML = `<div class="empty">${escHtml(r && r.error ? r.error : NOBRIDGE)}</div>`; return; }
   MD = { x, items: mdPick(r.items || [], r.regdate || x.regdate, !!r.chronic).concat(mdExtLoad(x.hn)) };
   // รอประวัติที่พิมพ์ไว้ไม่เกิน 3 วิ — มาช้ากว่านั้นแค่ขึ้นแถบให้กดใช้เอง (ไม่เปลี่ยนรายการที่เภสัชอาจติ๊กไปแล้ว)
-  const h = await Promise.race([hp, new Promise(res => setTimeout(() => res(undefined), 3000))]);
+  const doc = await Promise.race([hp, new Promise(res => setTimeout(() => res(undefined), 3000))]);
   if (MD && MD.x === x) {
-    if (h !== undefined) { MD.prev = h; if (h && h.an === x.an) mdHistApply(h, true); }
-    else hp.then(h2 => { if (MD && MD.x === x) { MD.prev = h2; mdHistMsg(); } });
+    if (doc !== undefined) {
+      MD.prev = doc.hist; if (doc.hist && doc.hist.an === x.an) mdHistApply(doc.hist, true);
+      mdExtRecApply(doc.ext, true);
+    } else hp.then(d2 => { if (MD && MD.x === x) { MD.prev = d2.hist; mdExtRecApply(d2.ext, false); mdHistMsg(); } });
   }
   renderMd();
   mdLoadDict();
@@ -1083,8 +1098,9 @@ function mdExtLoad(hn) {
   const s = mdExtAll()['h' + hn];
   return s ? s.items.map(d => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', on: true, saved: s.at })) : [];
 }
-function mdExtSave() {
+function mdExtSave(local) {
   if (!MD) return;
+  if (!local) mdExtSync();
   const m = mdExtAll(), k = 'h' + MD.x.hn;
   const items = MD.items.filter(d => d.ext && d.namePrint).map(d => ({ name: d.namePrint, usage: d.usage, src: d.src }));
   delete m[k];   // key ขึ้นต้น h ให้เรียงตามลำดับที่บันทึก — ตัดคนที่เก่าสุดเมื่อเกิน 500 HN
@@ -1283,9 +1299,12 @@ function mdHistRef(hn) {
   }
   return mdFs ? mdFs.collection('pharmacy_tph').doc('mr_meds_' + String(hn).slice(-2).padStart(2, '0')) : null;
 }
-async function mdHistLoad(hn) {
-  const ref = mdHistRef(hn); if (!ref) return null;
-  try { const s = await ref.get(); const m = s.exists ? s.data().data : null; return (m && m['h' + hn]) || null; } catch (e) { return null; }
+async function mdDocLoad(hn) {
+  const ref = mdHistRef(hn); if (!ref) return { hist: null, ext: null };
+  try {
+    const s = await ref.get(), d = s.exists ? s.data() : {};
+    return { hist: (d.data && d.data['h' + hn]) || null, ext: (d.ext && d.ext['h' + hn]) || null };
+  } catch (e) { return { hist: null, ext: null }; }
 }
 function mdHistSave() {
   if (!MD) return;
@@ -1299,6 +1318,7 @@ function mdHistSave() {
   });
   const e = { at: new Date().toISOString(), an: MD.x.an, regdate: MD.x.regdate || '', items }, x = MD.x;
   MD.prev = e; MD.histState = 'saving'; mdHistMsg();
+  if (on.some(d => d.ext) || MD.extNext) mdExtSync();   // พิมพ์ = ยืนยันว่ายาเดิม รพ.อื่นยังใช้อยู่ (วันที่ทำไว้เป็นวันนี้)
   ref.set({ data: { ['h' + x.hn]: e } }, { merge: true })
     .then(() => { if (MD && MD.x === x) { MD.histState = 'saved'; mdHistMsg(); } })
     .catch(err => { if (MD && MD.x === x) { MD.histState = 'error'; MD.histErr = err && err.message; mdHistMsg(); } });
@@ -1324,7 +1344,7 @@ function mdHistApply(h, auto) {
   });
   cur.forEach(d => { if (!used.has(d)) { d.on = false; out.push(d); } });
   MD.items = out; MD.applied = h.at; MD.histState = '';
-  mdExtSave();
+  mdExtSave(auto);
   if (!auto) renderMd();
 }
 function mdHistMsg() {
@@ -1344,6 +1364,99 @@ function mdHistMsg() {
     ? `💾 รายการที่พิมพ์ไว้แล้ว ${escHtml(when)} — โหลดให้ ${h.items.length} รายการ (ติ๊ก/แก้ไขตามที่พิมพ์)`
     : `📜 ยาเดิมที่พิมพ์ไว้${same ? '' : `ครั้งก่อน (admit ${escHtml(thIso(h.regdate))})`} ${escHtml(when)} · ${h.items.length} รายการ
        <button class="btn btn-sm" onclick="mdHistApply(MD.prev)">ใช้รายการนี้</button><div class="muted">${names}</div>`;
+}
+// ── ยาเดิมจาก รพ.อื่น ใช้ร่วมกันทุกเครื่อง (ผู้ใช้ขอ 2026-11-02): ผู้ป่วยรับยาที่ รพ.อื่น admit บ่อย แต่ไม่มีใน HOSxP
+//   เภสัชต้องตามยาใหม่ทุกครั้ง — เก็บรายการที่เคยคีย์ + วันนัดครั้งถัดไปที่ รพ.อื่น ไว้ตาม HN ใน mr_meds_NN.ext.h<HN>
+//   { at, an, items:[{ name, usage, src }], next: 'YYYY-MM-DD', nextSrc } — ส่งขึ้นทุกครั้งที่เพิ่ม/แก้/ลบ (ไม่ใช่ตอนแค่เปิดดู)
+//   admit ก่อนวันนัด = ยาน่าจะเหมือนเดิม (ติ๊กให้ ตรวจทานแล้วพิมพ์ได้) · เลยนัดแล้ว = เตือนให้ถามผู้ป่วยว่าได้ยาใหม่ไหม
+//   localStorage (mr_ext_meds) ยังใช้เป็นสำรองตอนต่อ Firestore ไม่ได้
+let mdExtTimer = null;
+function mdExtSync() {
+  clearTimeout(mdExtTimer);
+  const x = MD && MD.x; if (!x) return;
+  mdExtTimer = setTimeout(() => {
+    if (!MD || MD.x !== x) return;
+    const ref = mdHistRef(x.hn); if (!ref) return;
+    const items = MD.items.filter(d => d.ext && d.namePrint).map(d => ({ name: d.namePrint, usage: d.usage || '', src: d.src || '' }));
+    const next = MD.extNext || '', nextSrc = MD.extNextSrc || '';
+    const FV = firebase.firestore.FieldValue, k = 'h' + x.hn;
+    const rec = items.length || next ? { at: new Date().toISOString(), an: x.an, regdate: x.regdate || '', items, next, nextSrc } : null;
+    ref.set({ ext: { [k]: rec || FV.delete() } }, { merge: true })
+      .then(() => { if (MD && MD.x === x) { MD.extRec = rec; MD.extErr = ''; mdExtRecMsg(); } IPD_REC[x.hn] = Object.assign({}, IPD_REC[x.hn], { ext: rec }); renderIpd(); })
+      .catch(err => { if (MD && MD.x === x) { MD.extErr = (err && err.message) || 'error'; mdExtRecMsg(); } });
+  }, 600);
+}
+// ยาเดิม รพ.อื่นที่เก็บไว้ → แทนรายการของเครื่องนี้ (ข้อมูลกลางใหม่กว่า/เครื่องอื่นคีย์ไว้) · มาช้า (late) แทนเฉพาะถ้ายังไม่ได้คีย์อะไรเพิ่ม
+function mdExtRecApply(rec, early) {
+  if (!MD) return;
+  MD.extRec = rec || null;
+  if (rec) {
+    MD.extNext = rec.next || ''; MD.extNextSrc = rec.nextSrc || '';
+    document.getElementById('mdx-next').value = MD.extNext;
+    document.getElementById('mdx-nextsrc').value = MD.extNextSrc;
+    const mine = MD.items.filter(d => d.ext);
+    if (early || !mine.length || mine.every(d => d.saved)) {
+      const at = MD.items.findIndex(d => d.ext);
+      MD.items = MD.items.filter(d => !d.ext);
+      const add = (rec.items || []).map(d => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', on: true, saved: String(rec.at || '').slice(0, 10) }));
+      MD.items.splice(at < 0 ? MD.items.length : Math.min(at, MD.items.length), 0, ...add);
+      mdExtSave(true);
+    }
+    if (!early) renderMd();
+  }
+  mdExtRecMsg();
+}
+function mdExtNextSet() {
+  if (!MD) return;
+  MD.extNext = document.getElementById('mdx-next').value || '';
+  MD.extNextSrc = mdClean(document.getElementById('mdx-nextsrc').value);
+  if (MD.extNextSrc) mdSrcRemember(MD.extNextSrc);
+  mdExtSync();
+}
+// สถานะเทียบวัน admit กับวันนัด รพ.อื่น: 'ok' = admit ก่อน/วันนัด, 'warn' = เลยนัดแล้ว, '' = ไม่ได้บันทึกนัด
+const mdExtState = (rec, regdate) => !rec || !rec.next || !regdate ? '' : regdate <= rec.next ? 'ok' : 'warn';
+function mdExtRecMsg() {
+  const el = document.getElementById('mdx-rec');
+  const rec = MD && MD.extRec;
+  if (MD && MD.extErr) { el.className = 'mdx-rec warn'; el.style.display = ''; el.textContent = `⚠️ บันทึกยาเดิม รพ.อื่นขึ้นระบบกลางไม่สำเร็จ (เก็บไว้ในเครื่องนี้แล้ว): ${MD.extErr}`; return; }
+  if (!rec || !(rec.items || []).length) { el.style.display = 'none'; return; }
+  const st = mdExtState(rec, MD.x.regdate), src = rec.nextSrc ? ' ' + rec.nextSrc : '';
+  const same = rec.an === MD.x.an;
+  el.className = 'mdx-rec ' + st; el.style.display = '';
+  el.innerHTML = `📌 ยาเดิม รพ.อื่น ${rec.items.length} รายการ — ${same ? 'บันทึกใน admit นี้' : 'ทำไว้แล้ว'} ${escHtml(thIso(String(rec.at || '').slice(0, 10)))}${same ? '' : ` (admit ${escHtml(thIso(rec.regdate))})`}<br>` +
+    (st === 'ok' ? `✅ admit ก่อนนัด${escHtml(src)} ${escHtml(thIso(rec.next))} — ยาน่าจะเหมือนเดิม ถามผู้ป่วยยืนยันแล้วพิมพ์ได้เลย`
+      : st === 'warn' ? `⚠️ เลยนัด${escHtml(src)} ${escHtml(thIso(rec.next))} แล้ว — ผู้ป่วยอาจได้ยาใหม่/ปรับยา ดูซองยา/ใบนัดล่าสุด แล้วแก้รายการด้านบน + วันนัดใหม่`
+      : 'ไม่ได้บันทึกวันนัด รพ.อื่น — ตรวจกับผู้ป่วยว่ายังใช้อยู่ และใส่วันนัดครั้งถัดไปไว้ช่วย admit ครั้งหน้า');
+}
+// ── ป้ายในรายชื่อผู้ป่วยใน: มียาเดิม รพ.อื่นที่ทำไว้ / เคยพิมพ์ยาเดิม — อ่านเอกสารตาม 2 หลักท้าย HN (แคช 2 นาที)
+const IPD_REC = {};
+let ipdRecAt = 0;
+async function ipdRecLoad() {
+  if (!IPD.length || Date.now() - ipdRecAt < 120000 && IPD.every(x => x.hn in IPD_REC)) return;
+  const buckets = [...new Set(IPD.map(x => String(x.hn).slice(-2).padStart(2, '0')))];
+  const docs = await Promise.all(buckets.map(async b => {
+    const ref = mdHistRef('00' + b); if (!ref) return [b, null];
+    try { const s = await ref.get(); return [b, s.exists ? s.data() : {}]; } catch (e) { return [b, null]; }
+  }));
+  const m = new Map(docs);
+  IPD.forEach(x => {
+    const d = m.get(String(x.hn).slice(-2).padStart(2, '0')); if (!d) return;
+    IPD_REC[x.hn] = { ext: (d.ext && d.ext['h' + x.hn]) || null, hist: (d.data && d.data['h' + x.hn]) || null };
+  });
+  ipdRecAt = Date.now();
+  renderIpd();
+}
+function ipdRecBadge(x) {
+  const r = IPD_REC[x.hn]; if (!r) return '';
+  const e = r.ext && (r.ext.items || []).length ? r.ext : null, h = r.hist;
+  let out = '';
+  if (e) {
+    const st = mdExtState(e, x.regdate);
+    out += `<span class="xb ${st}" onclick="openMd('${escHtml(x.an)}')" title="${escHtml(e.items.map(d => d.name).join(' · '))}">🏥 ยาเดิม รพ.อื่น ${e.items.length} รายการ${st === 'ok' ? ` · ก่อนนัด ${escHtml(thIso(e.next))}` : st === 'warn' ? ` · เลยนัด ${escHtml(thIso(e.next))}` : ''}</span>`;
+  }
+  if (h && h.an !== x.an) out += `<span class="xb mr" onclick="openMd('${escHtml(x.an)}')">📋 เคยทำยาเดิม ${escHtml(thIso(String(h.at || '').slice(0, 10)))}</span>`;
+  else if (h) out += `<span class="xb mr" onclick="openMd('${escHtml(x.an)}')">📋 พิมพ์ยาเดิมแล้ว</span>`;
+  return out ? `<div>${out}</div>` : '';
 }
 // ── สรุปยากลับบ้าน (HMe) — ตรวจทุก 30 วินาที พิมพ์อัตโนมัติเมื่อใบสั่งไม่ถูกแก้มา 2 นาที ──
 let HME = [], HME_NOW = null, hmeFirst = true;
