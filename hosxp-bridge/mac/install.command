@@ -74,7 +74,7 @@ fi
 
 # Chrome ต้องอนุญาตให้หน้าเว็บคุยกับ bridge ในเครื่อง
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-[ -x "$CHROME" ] && ("$CHROME" "chrome://settings/content/siteDetails?site=https%3A%2F%2Foatsudster.github.io" >/dev/null 2>&1 &)
+[ -x "$CHROME" ] && ("$CHROME" "chrome://settings/content/siteDetails?site=https%3A%2F%2Foatsudster.github.io" "chrome://settings/content/siteDetails?site=https%3A%2F%2Ftph-pharmacy.pages.dev" >/dev/null 2>&1 &)
 echo
 echo "✅ ติดตั้ง HOSxP Bridge เรียบร้อย (เปิดเองทุกครั้งที่ login)"
 echo "• ในหน้าตั้งค่า Chrome ที่เปิดขึ้น ตั้ง \"Local network\" และ \"Apps on device\" เป็น Allow"
