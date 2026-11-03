@@ -1788,5 +1788,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => { if (!document.hidden) loadQueue(); }, 60000);
 });
 </script>
+<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '.tabbar' });
+</script>
 </body>
 </html>

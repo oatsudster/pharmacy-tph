@@ -119,8 +119,8 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
   <div class="tabs" role="tablist">
     <button class="tab active" data-tab="metrics" role="tab">ตรวจสอบตัวชี้วัด</button>
     <button class="tab" data-tab="docs" role="tab">เอกสารแนวทางเคลม</button>
-    <span style="margin-left:auto;align-self:center"><button class="link" id="export">⬇ ส่งออก Excel</button></span>
   </div>
+  <div style="display:flex;justify-content:flex-end;margin:0 0 8px"><button class="link" id="export">⬇ ส่งออก Excel</button></div>
 
   <section id="tab-metrics" style="display:grid;gap:14px">
     <div class="panel progress">
@@ -423,6 +423,11 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
     }).catch(() => toast('โหลดตัวส่งออก Excel ไม่สำเร็จ'));
   });
 })();
+</script>
+<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '.wrap > .tabs' });
 </script>
 </body>
 </html>

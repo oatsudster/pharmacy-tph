@@ -3952,7 +3952,7 @@ function renderMain() {
   const clinicBtns = buildClinicBtns(clinic);
 
   main.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    <div class="clinic-report-tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     ${periodBarHtml()}
     <div class="dash-context">สรุปคลินิก ${escHtml(clinic)} · ${escHtml(window.reportFY?"ปีงบประมาณ "+window.reportFY:"ทุกปี")} · ${escHtml(window.reportMonth||"ทุกเดือน")}<span class="dash-caption">จำนวนบริการนับเป็นครั้งที่ให้คำปรึกษา ผู้ป่วยหนึ่งคนอาจมีหลายครั้ง</span></div>
     ${anomalyBannerHtml(clinic)}
@@ -4128,7 +4128,7 @@ function renderDrpDashboard() {
   if (F.pharm) pills.push(['pharm', 'เภสัชกร: ' + F.pharm]);
 
   main.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${buildClinicBtns('drp')}</div>
+    <div class="clinic-report-tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${buildClinicBtns('drp')}</div>
     ${periodBarHtml()}
     <div class="drp-dash">
       <div class="dd-bar">
@@ -4358,7 +4358,7 @@ function renderLeftoverReport(main) {
   const clinicOptions = ['','HT','DM','COPD'].map(v=>`<option value="${v}">${v||'ทุกคลินิก'}</option>`).join('');
 
   main.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    <div class="clinic-report-tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     ${periodBarHtml()}
     <div class="table-card" style="background:transparent;box-shadow:none;padding:0">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
@@ -4546,7 +4546,7 @@ function renderSessionTab(main) {
   const all = [...sessionRecords].filter(r=>inPeriod(r.date)).sort((a,b)=>b.date.localeCompare(a.date));
   const clinicBtns = buildClinicBtns('session');
   main.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
+    <div class="clinic-report-tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">${clinicBtns}</div>
     ${periodBarHtml()}
     <div class="table-card">
       <div class="table-head">
@@ -4904,6 +4904,13 @@ AiAssistant.init({
     },
   },
 });
+</script>
+<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '.view-bar' });
+TphSideTabs.mount({ tabs: '.clinic-tabs', group: 'คลินิก', when: () => document.getElementById('view-entry').style.display !== 'none' });
+TphSideTabs.mount({ tabs: () => document.querySelector('#main-content .clinic-report-tabs'), group: 'รายงาน', when: () => document.getElementById('view-report').style.display !== 'none' });
 </script>
 </body>
 </html>

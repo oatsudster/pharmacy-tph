@@ -516,5 +516,10 @@ document.addEventListener('DOMContentLoaded', () => {
   load();
 });
 </script>
+<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '#result .tabs', start: '.wrap', when: () => document.getElementById('result').style.display !== 'none' });
+</script>
 </body>
 </html>

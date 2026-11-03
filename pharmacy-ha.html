@@ -910,5 +910,10 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
   if (window.tphHosxp && tphHosxp.haCases) tphHosxp.haCases().then((j) => { cases = j && j.data ? j.data : null; render(); });
 })();
 </script>
+<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '#tabs' });
+</script>
 </body>
 </html>
