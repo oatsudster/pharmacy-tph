@@ -139,7 +139,7 @@ td small { display: block; color: var(--text-light); }
 .layout > main.wrap { max-width: 1600px; width: 100%; }
 /* แถบซ้ายธีมเดียวกับ ME Dashboard / lib/side-tabs.js (ผู้ใช้ขอ 2026-11-03) */
 .side { position: sticky; top: 0; height: 100vh; overflow-y: auto; box-sizing: border-box; padding: 16px 12px 24px; display: flex; flex-direction: column; gap: 4px; background: #124228; box-shadow: 2px 0 12px rgba(0,0,0,.18); scrollbar-color: rgba(255,255,255,.2) transparent; }
-.side-grp { font-size: 10.5px; font-weight: 700; color: rgba(255,255,255,.4); letter-spacing: .12em; text-transform: uppercase; padding: 14px 8px 6px; }
+.side-grp { font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,.62); letter-spacing: .12em; text-transform: uppercase; padding: 14px 8px 6px; }
 .side-grp:first-child { padding-top: 4px; }
 .side button, .side a { font: inherit; font-size: 15px; font-weight: 500; display: flex; gap: 10px; align-items: center; text-align: left; border: 0; background: none; color: rgba(255,255,255,.7); padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 10px; cursor: pointer; text-decoration: none; width: 100%; transition: background .18s, color .18s; box-shadow: inset 3px 0 transparent; }
 .side button:hover, .side a:hover { background: rgba(255,255,255,.08); color: #fff; box-shadow: inset 3px 0 rgba(255,255,255,.2); }
@@ -160,6 +160,7 @@ td small { display: block; color: var(--text-light); }
 }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
 </style>
+<link rel="stylesheet" href="lib/theme.css">
 </head>
 <body>
 <div class="topbar">
@@ -1335,5 +1336,6 @@ td small { display: block; color: var(--text-light); }
   show(fromHash() || saved || 'overview', !!fromHash());
 })();
 </script>
+<script src="lib/tph-ui.js"></script>
 </body>
 </html>

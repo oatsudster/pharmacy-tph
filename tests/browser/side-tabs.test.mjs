@@ -76,3 +76,12 @@ test('clinic.html: กลุ่ม "คลินิก" แสดงตอนบ
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('แถบติดใต้หัวหน้าพอดี (DM มือถือ: ไม่เว้นช่องว่างเหนือแถบ ไม่นับ modal ที่ fixed เป็นหัว)', async () => {
+  const { ctx, page, errors } = await open('dm-remission.html', { width: 390, height: 844 });
+  await page.waitForTimeout(800);
+  const r = await page.evaluate(() => ({ hh: document.querySelector('.app-header').offsetHeight, top: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tph-top')) }));
+  assert.equal(r.top, r.hh);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

@@ -380,7 +380,7 @@
   /* height:auto undoes the generic nav{height:64px}; without it the menu overlaps the backup box on short screens (MacBook) */
   .sidebar-nav { padding: 16px 12px; flex: 1 0 auto; height: auto; display: flex; flex-direction: column; gap: 2px; }
   .sidebar-section-label {
-    font-size: 10.5px; color: rgba(255,255,255,.3); font-weight: 700;
+    font-size: 11.5px; color: rgba(255,255,255,.62); font-weight: 700;
     letter-spacing: .12em; text-transform: uppercase;
     padding: 14px 8px 6px; margin-top: 4px;
   }
@@ -443,8 +443,9 @@
   }
   .main-topbar-title {
     font-size: 18px; font-weight: 700; color: var(--primary-dark);
-    flex: 1;
+    flex: 1; min-width: 0;
   }
+  @media (max-width: 600px) { .main-topbar-badge { display: none; } }
   .main-topbar-badge {
     background: var(--gold); color: #fff; font-size: 13px; font-weight: 700;
     padding: 3px 12px; border-radius: 20px;
@@ -564,7 +565,7 @@
       font-size: 20px; cursor: pointer; flex-shrink: 0;
     }
     .main-topbar { padding: 0 14px; gap: 10px; }
-    .main-topbar-title { font-size: 15px; }
+    .main-topbar-title { font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* vertical section tabs -> horizontal scrollable tabs */
     .section.active:not(#section-overview) { flex-direction: column !important; }
@@ -775,6 +776,7 @@ const DashUX = {
   }
 };
 </script>
+<link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="me">
 <div class="app-wrapper">
@@ -827,7 +829,7 @@ const DashUX = {
     <button class="hamburger-btn" title="เมนู" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('show')">☰</button>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
     <button onclick="expModalOpen(f=>expFilter(records,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
-    <div class="main-topbar-badge">ปีงบประมาณ 2569</div>
+    <div class="main-topbar-badge" id="topbar-fy">ปีงบประมาณ 2569</div>
   </div>
   
 <!-- ========== LANDING SECTION ========== -->
@@ -4582,7 +4584,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setDefaultDateTime();
   buildMonthFilterOptions();
   initRxMonthly();
-  document.getElementById('nav-year').textContent = 'ปี ' + (new Date().getFullYear() + 543);
+  // ปีงบประมาณ = ต.ค.–ก.ย. (ต.ค. 2569 = ปีงบ 2570) — เดิมเขียนเลขตายตัว
+  { const d = new Date(), fy = d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0);
+    document.getElementById('nav-year').textContent = fy;
+    document.getElementById('topbar-fy').textContent = 'ปีงบประมาณ ' + fy; }
   updateHosXPStatus();
   updateLandingCounts();
   renderHosXPKPI('OPD');
@@ -4818,7 +4823,7 @@ function renderOverview() {
     if (!el) {
       el = document.createElement('div');
       el.id = 'fb-sync-badge';
-      el.style.cssText = 'position:fixed;bottom:16px;right:16px;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .4s';
+      el.style.cssText = 'position:fixed;bottom:16px;right:92px;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .4s';
       document.body.appendChild(el);
     }
     if (color === 'ok') { lastSyncTime = nowTH(); el.textContent = `☁️ ซิงค์แล้ว ${lastSyncTime}`; }
@@ -4854,7 +4859,9 @@ function renderOverview() {
           if (typeof renderOverview === 'function') renderOverview();
         }
       }
-      setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
+      // snapshot จาก cache (ต่อ server ไม่ได้) ไม่ใช่การซิงค์ — ไม่บอกว่า "ซิงค์แล้ว"
+      if (snap.metadata && snap.metadata.fromCache) setSyncStatus('📦 ข้อมูลในเครื่อง — ยังไม่ยืนยันกับ server', 'warn');
+      else setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
     }, e => {
       console.warn('[Firebase] er_records:', e.message);
       setSyncStatus('⚠️ ออฟไลน์ — ใช้ข้อมูลในเครื่อง', 'err');
@@ -5058,4 +5065,5 @@ AiAssistant.init({
   },
 });
 </script>
+<script src="lib/tph-ui.js"></script>
 </body>

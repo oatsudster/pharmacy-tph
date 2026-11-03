@@ -117,6 +117,7 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
   #print-area { display: block; }
 }
 </style>
+<link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="night-meds">
 
@@ -521,5 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 TphSideTabs.mount({ tabs: '#result .tabs', start: '.wrap', when: () => document.getElementById('result').style.display !== 'none' });
 </script>
+<script src="lib/tph-ui.js"></script>
 </body>
 </html>

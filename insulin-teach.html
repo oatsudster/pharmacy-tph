@@ -33,7 +33,7 @@
   .progress span.cur { background: var(--gold); }
 
   .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
-  .step-no { color: var(--gold); font-weight: 700; font-size: 14px; }
+  .step-no { color: var(--tph-gold-text, #8A6A0F); font-weight: 700; font-size: 14px; }
   .card h2 { font-size: 22px; color: var(--primary-dark); margin: 2px 0 8px; line-height: 1.35; }
   .instr { font-size: 16.5px; }
   .instr b { color: var(--primary-dark); }
@@ -117,7 +117,7 @@
   .info-card.warn { border-left-color: var(--gold); }
   .info-card ul { padding-left: 20px; font-size: 15.5px; }
 
-  .qhead { font-weight: 700; color: var(--gold); font-size: 14px; }
+  .qhead { font-weight: 700; color: var(--tph-gold-text, #8A6A0F); font-size: 14px; }
   .qtext { font-size: 19px; font-weight: 700; margin-bottom: 8px; color: var(--primary-dark); }
   .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
   .opt { font: inherit; font-size: 20px; font-weight: 700; background: #fff; border: 2px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; color: var(--primary-dark); }
@@ -135,6 +135,7 @@
     .mini-wrap { grid-template-columns: 90px 1fr; }
   }
 </style>
+<link rel="stylesheet" href="lib/theme.css">
 </head>
 <body>
 <header class="app-header">
@@ -925,5 +926,6 @@ $('#progress').addEventListener('click', e => { const j = e.target.dataset.j; if
 }
 go(0);
 </script>
+<script src="lib/tph-ui.js"></script>
 </body>
 </html>

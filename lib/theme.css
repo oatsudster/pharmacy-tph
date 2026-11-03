@@ -1,0 +1,65 @@
+/* ธีมกลางของ web app งานเภสัชกรรม รพ.ถ้ำพรรณรา (2026-11-03) — ทุกหน้าโหลดไฟล์นี้ท้าย <head>
+ *
+ * 1) ค่ากลาง (design tokens) ชื่อขึ้นต้น --tph- ไม่ชนกับตัวแปรเดิมของแต่ละหน้า — หน้าใหม่/ส่วนที่ปรับใหม่ใช้ค่าชุดนี้
+ * 2) ปรับรายละเอียดที่ปลอดภัยกับทุกหน้า: กรอบ focus เวลาใช้คีย์บอร์ด, ตัวเลขในตารางกว้างเท่ากัน, ลดการเคลื่อนไหวตามการตั้งค่าเครื่อง
+ * 3) แก้สีที่อ่านยาก (contrast ต่ำกว่า WCAG AA): ตัวขาวบนปุ่มทอง 2.6:1 → ตัวเขียวเข้มบนทอง 5.3:1, ตัวเลขทองบนขาว → ทองเข้ม 5.1:1
+ * 4) ชิ้นส่วนพื้นฐาน (ปุ่ม 3 แบบ / การ์ด / ป้ายสถานะ / empty state) ไว้ใช้ตอนทยอยปรับแต่ละหน้า — ยังไม่บังคับใช้กับของเดิม
+ */
+:root {
+  /* สี */
+  --tph-primary: #1A5E38;
+  --tph-primary-dark: #124228;
+  --tph-primary-soft: #EDF4EF;
+  --tph-gold: #C49A22;          /* ทองแบรนด์: ใช้เป็นเส้น/จุดเน้น/พื้นปุ่ม (ตัวหนังสือบนทองใช้ --tph-on-gold) */
+  --tph-gold-text: #8A6A0F;     /* ทองสำหรับตัวหนังสือบนพื้นขาว (5.1:1) */
+  --tph-on-gold: #0D3320;       /* ตัวหนังสือบนพื้นทอง (5.3:1) */
+  --tph-bg: #F4F7F5;
+  --tph-surface: #FFFFFF;
+  --tph-text: #203D2C;
+  --tph-muted: #5A6E62;
+  --tph-line: #DCE6DF;
+  /* สีสถานะ (ตัวหนังสือ / พื้นป้าย) — ผ่าน AA ทุกคู่ */
+  --tph-success: #237345; --tph-success-bg: #EDF6EF;
+  --tph-warning: #8A5A00; --tph-warning-bg: #FFF5DE;
+  --tph-danger: #B43D37;  --tph-danger-bg: #FCEDEC;
+  --tph-info: #356A86;    --tph-info-bg: #EDF3F7;
+  /* ตัวอักษร 6 ระดับ */
+  --tph-font: 'Noto Sans Thai', 'Sarabun', sans-serif;
+  --tph-fs-xs: 12px; --tph-fs-sm: 14px; --tph-fs-md: 16px; --tph-fs-lg: 20px; --tph-fs-xl: 28px; --tph-fs-kpi: 32px;
+  /* ระยะห่าง (ฐาน 4/8 px) มุมโค้ง เงา */
+  --tph-s1: 4px; --tph-s2: 8px; --tph-s3: 12px; --tph-s4: 16px; --tph-s6: 24px; --tph-s8: 32px;
+  --tph-r-sm: 6px; --tph-r-md: 12px; --tph-r-lg: 16px;
+  --tph-shadow: 0 1px 2px rgba(18,66,40,.05), 0 2px 8px rgba(18,66,40,.05);
+}
+
+/* ── 2) รายละเอียดที่ปลอดภัยกับทุกหน้า (:where = ความสำคัญต่ำสุด สไตล์เดิมของหน้าชนะเสมอ) ── */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--tph-gold); outline-offset: 2px; }
+:where(td, th, .kpi-val, .kpi-value, .num) { font-variant-numeric: tabular-nums; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ── 3) แก้สีที่อ่านยาก ── */
+.btn-gold, .btn.btn-gold { color: var(--tph-on-gold) !important; }
+.kpi-val.gold { color: var(--tph-gold-text) !important; }
+
+/* ── 4) ชิ้นส่วนพื้นฐานสำหรับปรับทีละหน้า ── */
+.tph-btn { font: inherit; font-size: var(--tph-fs-sm); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 16px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; text-decoration: none;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease; }
+.tph-btn-primary { background: var(--tph-primary); color: #fff; }
+.tph-btn-primary:hover { background: var(--tph-primary-dark); }
+.tph-btn-secondary { background: var(--tph-surface); color: var(--tph-primary); border-color: var(--tph-line); }
+.tph-btn-secondary:hover { background: var(--tph-primary-soft); border-color: #C7D8CD; }
+.tph-btn-text { background: none; color: var(--tph-primary); padding-left: 8px; padding-right: 8px; }
+.tph-btn-text:hover { background: var(--tph-primary-soft); }
+.tph-btn:disabled { opacity: .5; cursor: default; }
+.tph-card { background: var(--tph-surface); border: 1px solid var(--tph-line); border-radius: var(--tph-r-md); padding: 20px 24px; box-shadow: var(--tph-shadow); }
+.tph-badge { display: inline-flex; align-items: center; gap: 4px; font-size: var(--tph-fs-xs); font-weight: 600; line-height: 1.4; padding: 3px 8px; border-radius: var(--tph-r-sm);
+  background: var(--tph-info-bg); color: var(--tph-info); }
+.tph-badge.ok { background: var(--tph-success-bg); color: var(--tph-success); }
+.tph-badge.warn { background: var(--tph-warning-bg); color: var(--tph-warning); }
+.tph-badge.bad { background: var(--tph-danger-bg); color: var(--tph-danger); }
+.tph-empty { text-align: center; padding: 40px 24px; color: var(--tph-muted); font-size: var(--tph-fs-sm); }
+.tph-empty b { display: block; color: var(--tph-text); font-size: var(--tph-fs-lg); margin-bottom: 6px; }

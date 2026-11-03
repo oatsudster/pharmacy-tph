@@ -563,6 +563,7 @@ const DashUX = {
   }
 };
 </script>
+<link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="clinic">
 
@@ -689,7 +690,7 @@ const DashUX = {
 
       <!-- Quick DRP: มียาเหลือสะสม (Leftover Medication) — 90% of cases -->
       <div class="drp-quick" id="drp-quick-wrap">
-        <label class="drp-quick-label" onclick="toggleQuickDrp()">
+        <label class="drp-quick-label" onclick="toggleQuickDrp()" role="checkbox" aria-checked="false" id="drp-quick-label">
           <div class="drp-quick-check" id="drp-quick-check">
             <span id="drp-quick-icon">☐</span>
           </div>
@@ -1103,6 +1104,7 @@ function toggleQuickDrp(forceState) {
   const loWrap = document.getElementById('lo-section-wrap');
   wrap.classList.toggle('active', quickDrpActive);
   icon.textContent = quickDrpActive ? '☑' : '☐';
+  const lbl = document.getElementById('drp-quick-label'); if (lbl) lbl.setAttribute('aria-checked', String(quickDrpActive));
   if (loWrap) loWrap.classList.toggle('highlighted', quickDrpActive);
   // Auto-add leftover row if none exist
   if (quickDrpActive && document.getElementById('lo-list').children.length === 0) {
@@ -4912,5 +4914,6 @@ TphSideTabs.mount({ tabs: '.view-bar' });
 TphSideTabs.mount({ tabs: '.clinic-tabs', group: 'คลินิก', when: () => document.getElementById('view-entry').style.display !== 'none' });
 TphSideTabs.mount({ tabs: () => document.querySelector('#main-content .clinic-report-tabs'), group: 'รายงาน', when: () => document.getElementById('view-report').style.display !== 'none' });
 </script>
+<script src="lib/tph-ui.js"></script>
 </body>
 </html>
