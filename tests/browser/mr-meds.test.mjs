@@ -309,3 +309,28 @@ test('แท็บ MR + ยาเดิม: ปุ่ม 📋 หัว MR ท�
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('รายชื่อผู้ป่วยใน (หัวสติกเกอร์ / MR + ยาเดิม) และยากลับบ้าน เรียงตามวัน-เวลา admit ไม่ใช่เตียง', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => {
+    tphHosxp.ipdList = async () => ({ items: [
+      { an: 'A3', hn: '1', name: 'ค', regdate: '2026-11-02', regtime: '08:05', bed: '1', ward: '1', wardName: 'หญิง' },
+      { an: 'A1', hn: '2', name: 'ก', regdate: '2026-10-30', regtime: '23:10', bed: '9', ward: '2', wardName: 'ชาย' },
+      { an: 'A2', hn: '3', name: 'ข', regdate: '2026-11-02', regtime: '7:40', bed: '3', ward: '1', wardName: 'หญิง' },
+    ] });
+    tphHosxp.hme = async () => ({ now: '2026-11-03 10:00:00', station: false, orders: [
+      { an: 'A3', orderNo: '2', hn: '1', name: 'ค', regdate: '2026-11-02', regtime: '08:05', date: '2026-11-03', time: '09:00', items: [] },
+      { an: 'A1', orderNo: '1', hn: '2', name: 'ก', regdate: '2026-10-30', regtime: '23:10', date: '2026-11-03', time: '08:00', items: [] },
+    ] });
+  });
+  await page.evaluate(() => loadIpd());
+  await page.waitForFunction(() => IPD.length === 3);
+  assert.deepEqual(await page.evaluate(() => IPD.map(x => x.an)), ['A1', 'A2', 'A3']);
+  assert.deepEqual(await page.$$eval('#mdp-list .mdp-row .nm', a => a.map(e => e.textContent)), ['ก', 'ข', 'ค']);
+  await page.evaluate(() => loadHme());
+  await page.waitForFunction(() => HME.length === 2);
+  assert.deepEqual(await page.evaluate(() => HME.map(o => o.an)), ['A1', 'A3']);
+  assert.match(await page.textContent('#hme-list'), /admit 30 ต\.ค\. 69 23:10 น\./);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

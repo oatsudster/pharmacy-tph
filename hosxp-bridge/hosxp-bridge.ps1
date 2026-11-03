@@ -589,7 +589,7 @@ function HmeStation {
 }
 function DbHme {
   $ords = DbQuery ("SELECT n.an, n.order_no, DATE_FORMAT(n.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(n.rxtime,'%H:%i') AS rxtime, n.entry_staff, " +
-    "i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, w.name AS ward_name, a.bedno, " +
+    "i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward_name, a.bedno, " +
     "CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, s.age_y " +
     "FROM ipt_order_no n JOIN ipt i ON i.an=n.an LEFT JOIN iptadm a ON a.an=n.an LEFT JOIN ward w ON w.ward=i.ward " +
     "LEFT JOIN patient p ON p.hn=i.hn LEFT JOIN an_stat s ON s.an=n.an " +
@@ -611,7 +611,7 @@ function DbHme {
       $an = $_['an']; $no = $_['order_no']
       $its = @($items | Where-Object { $_['an'] -eq $an -and $_['order_no'] -eq $no })
       [ordered]@{ an = $an; orderNo = $no; date = $_['rxdate']; time = $_['rxtime']; staff = $_['entry_staff']; hn = $_['hn']
-        dchdate = $_['dchdate']; ward = $_['ward_name']; bed = $_['bedno']; name = $_['ptname']; ageY = $_['age_y']
+        dchdate = $_['dchdate']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward_name']; bed = $_['bedno']; name = $_['ptname']; ageY = $_['age_y']
         lastmod = (@($its | ForEach-Object { $_['lastmod'] }) | Sort-Object | Select-Object -Last 1)
         items = @($its | ForEach-Object {
           [ordered]@{ icode = $_['icode']; qty = $_['qty']; name = $_['name']; strength = $_['strength']; units = $_['units']

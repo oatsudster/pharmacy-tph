@@ -643,13 +643,15 @@ function printItems(guids, picOnly) {
 let IPD = [], IPD_WARD = '';
 const IPD_SEL = new Set();
 const bedKey = b => String(b || '').replace(/\d+/g, d => d.padStart(4, '0'));
+// เรียงตามวัน-เวลา admit (ผู้ใช้ขอ 2026-11-03: แทนการเรียงตามหอ/เตียง) — admit ก่อนอยู่บน
+const admitKey = x => `${x.regdate || '9999-99-99'} ${String(x.regtime || '99:99').padStart(5, '0')}`;
 function ipdShown() { return IPD.filter(x => !IPD_WARD || x.ward === IPD_WARD); }
 function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x => x.an); }
 async function loadIpd() {
   const md = document.getElementById('md-mrdate'); if (!md.value) md.value = todayIso();
   const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
   if (!r) { document.getElementById('ipd-list').innerHTML = document.getElementById('mdp-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
-  IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
+  IPD = (r.items || []).sort((a, b) => admitKey(a).localeCompare(admitKey(b)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
   document.getElementById('ipd-meta').textContent = document.getElementById('mdp-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
   renderIpd();
   ipdRecLoad();
@@ -1670,6 +1672,8 @@ async function loadHme() {
   const r = window.tphHosxp && tphHosxp.hme ? await tphHosxp.hme() : null;
   if (!r) { document.getElementById('hme-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
   HME = (r.orders || []).map(o => ({ ...o, items: (o.items || []).filter(i => !HME_SKIP.test(i.name || '')) }));
+  // bridge รุ่นก่อน 2026-11-03 ไม่ส่ง regdate = คงลำดับเดิม (ใบสั่งล่าสุดก่อน) · ผู้ป่วยคนเดียวกันหลายใบ = ใบล่าสุดก่อน
+  if (HME.some(o => o.regdate)) HME.sort((a, b) => admitKey(a).localeCompare(admitKey(b)) || `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
   HME_NOW = toDate(r.now);
   // พิมพ์อัตโนมัติเฉพาะเครื่องที่ bridge บอกว่าเป็นเครื่องพิมพ์ยากลับบ้าน (hme-station.txt) — bridge รุ่นเก่าไม่ส่ง station = ไม่ใช่
   const station = r.station === true, cb = document.getElementById('hme-auto');
@@ -1708,7 +1712,7 @@ function renderHme() {
       : `<span class="badge-ok">พิมพ์แล้ว ${new Date(p.at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>`;
     return `<div class="hme-row">
       <div><div class="nm">${escHtml(o.name || '-')} ${st}</div>
-        <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')} · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ</div></div>
+        <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}${o.regdate ? ` · admit ${escHtml(thIso(o.regdate))} ${escHtml(o.regtime || '')} น.` : ''} · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ</div></div>
       <button class="btn btn-gold btn-sm" onclick="printHme(['${escHtml(hmeKey(o))}'])" ${o.items.length ? '' : 'disabled'}>🖨 พิมพ์</button>
       <div class="ds">${o.items.map(hmeDrug).map(d => escHtml(d.name)).join(' · ')}</div>
     </div>`;
