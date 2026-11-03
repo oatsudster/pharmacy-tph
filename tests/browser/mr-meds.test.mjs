@@ -183,14 +183,12 @@ test('ยาเดิม รพ.อื่น: คีย์ครั้งเด�
   await page.fill('#mdx-src', 'รพ.สกลนคร');
   await page.fill('#mdx-name', 'Clopidogrel 75 mg');
   await page.fill('#mdx-usage', '1 x 1 pc');
+  await page.fill('#mdx-inext', '2027-01-15');
   await page.click('.mdx-add button.btn-primary');
-  await page.fill('#mdx-next', '2027-01-15');
-  await page.fill('#mdx-nextsrc', 'รพ.สกลนคร');
-  await page.dispatchEvent('#mdx-nextsrc', 'change');
   await page.waitForFunction(() => window.__fs.mr_meds_01 && window.__fs.mr_meds_01.ext && window.__fs.mr_meds_01.ext.h9999001);
   const rec = await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001);
-  assert.deepEqual(rec.items, [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร', got: '', next: '' }]);
-  assert.equal(rec.next, '2027-01-15');
+  assert.deepEqual(rec.items, [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร', got: '', next: '2027-01-15' }]);
+  assert.equal(rec.next, '2027-01-15'); assert.equal(rec.nextSrc, 'รพ.สกลนคร');
 
   // อีกเครื่อง (ไม่มี localStorage) admit ใหม่ 20 ธ.ค. — ก่อนนัด → ขึ้นให้ ติ๊กไว้ + ✅
   await page.evaluate(() => { localStorage.removeItem('mr_ext_meds'); openMd('690000099'); });
@@ -198,7 +196,7 @@ test('ยาเดิม รพ.อื่น: คีย์ครั้งเด�
   const ext = await page.evaluate(() => MD.items.filter(d => d.ext).map(d => [d.namePrint, d.on]));
   assert.deepEqual(ext, [['Clopidogrel 75 mg', true]]);
   assert.match(await page.textContent('#mdx-rec'), /ยาเดิม รพ\.อื่น 1 รายการ — ทำไว้แล้ว.*admit ก่อนนัด รพ\.สกลนคร 15 ม\.ค\. 70/s);
-  assert.equal(await page.inputValue('#mdx-next'), '2027-01-15');
+  assert.equal(await page.evaluate(() => MD.items.find(d => d.ext).next), '2027-01-15');
   // เปิดดูเฉย ๆ ไม่ถือว่ายืนยัน — วันที่ทำไว้ไม่เปลี่ยน
   await page.waitForTimeout(800);
   assert.equal(await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001.an), '690000001');
@@ -236,8 +234,7 @@ test('ยาเดิม รพ.อื่น: วันที่ได้รั�
   await page.waitForFunction(() => { const r = window.__fs.mr_meds_01 && window.__fs.mr_meds_01.ext && window.__fs.mr_meds_01.ext.h9999001; return r && r.items.length; });
   const rec = await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001);
   assert.deepEqual(rec.items, [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร', got: '2026-09-01', next: '2026-12-01' }]);
-  assert.equal(rec.next, '2026-12-01');                       // ช่องนัด รพ.อื่น (ทำป้าย) ว่าง → เติมให้
-  assert.equal(await page.inputValue('#mdx-nextsrc'), 'รพ.สกลนคร');
+  assert.equal(rec.next, '2026-12-01'); assert.equal(rec.nextSrc, 'รพ.สกลนคร');   // นัดรวม (ทำป้าย) = นัดเร็วสุดของยารายตัว
   assert.match(await page.textContent('#md-list .md-row.ext .src'), /ได้ยา 1 ก\.ย\. 69/);
   // แก้วันได้รับยาในแถว → บันทึกตาม
   const dt = page.locator('#md-list .md-row.ext input[type=date]').first();
@@ -248,6 +245,24 @@ test('ยาเดิม รพ.อื่น: วันที่ได้รั�
   await page.waitForFunction(() => { const h = window.__fs.mr_meds_01 && window.__fs.mr_meds_01.data && window.__fs.mr_meds_01.data.h9999001; return h && h.items.some(i => i.ext); });
   const hi = await page.evaluate(() => window.__fs.mr_meds_01.data.h9999001.items.find(i => i.ext));
   assert.equal(hi.got, '2026-10-01'); assert.equal(hi.next, '2026-12-01');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('ยาเดิม รพ.อื่น: บันทึกเก่าที่มีแต่นัดรวม → ใส่เป็นนัดของยาที่ได้จาก รพ. นั้น · หลายตัว = นัดเร็วสุดเป็นนัดรวม', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => {
+    window.__fs.mr_meds_01 = { ext: { h9999001: { at: '2026-10-01T00:00:00Z', an: '680000001', regdate: '2026-09-30', next: '2027-01-15', nextSrc: 'รพ.สกลนคร',
+      items: [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร' }, { name: 'Lercanidipine 20 mg', usage: '1 x 1 pc', src: 'คลินิก ก' }] } } };
+    localStorage.removeItem('mr_ext_meds'); openMd('690000001');
+  });
+  await page.waitForFunction(() => MD && MD.items.some(d => d.ext));
+  assert.deepEqual(await page.evaluate(() => MD.items.filter(d => d.ext).map(d => d.next)), ['2027-01-15', '']);
+  assert.equal(await page.$('#mdx-next'), null);
+  const dt = page.locator('#md-list .md-row.ext').nth(1).locator('input[type=date]').nth(1);
+  await dt.fill('2026-12-20'); await dt.dispatchEvent('change');
+  await page.waitForFunction(() => window.__fs.mr_meds_01.ext.h9999001.next === '2026-12-20');
+  assert.equal(await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001.nextSrc), 'คลินิก ก');
   assert.deepEqual(errors, []);
   await ctx.close();
 });
