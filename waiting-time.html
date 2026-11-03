@@ -81,8 +81,8 @@ table { min-width: 560px; }
 .sidebar-form {
   width: 320px; flex-shrink: 0; background: var(--surface);
   border-right: 1px solid var(--border); padding: 20px;
-  overflow-y: auto; max-height: calc(100vh - 56px - 48px);
-  position: sticky; top: 104px;
+  overflow-y: auto; max-height: calc(100vh - var(--tph-top, 56px));
+  position: sticky; top: var(--tph-top, 56px);
 }
 .main-content { flex: 1; padding: 20px; overflow-y: auto; }
 
@@ -143,6 +143,8 @@ table { min-width: 560px; }
   box-shadow: 0 1px 4px rgba(26,94,56,.07); border: 1px solid var(--border);
 }
 .chart-card.wide { grid-column: span 2; }
+/* การ์ดที่อยู่แถวเดียวโดด (รถยามีกราฟเดียว · Stat: กราฟรายเดือนตามด้วยกราฟเต็มแถว) = เต็มแถว ไม่เว้นครึ่งขวาว่าง */
+.chart-grid > .chart-card:only-child, .chart-grid > .chart-card:has(+ .chart-card.wide) { grid-column: 1 / -1; }
 .chart-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 14px; }
 .chart-wrap { position: relative; height: 200px; }
 .chart-wrap.tall { height: 260px; }

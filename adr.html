@@ -83,7 +83,7 @@ body { background: var(--bg); color: var(--text); min-height: 100vh; display: fl
 .sidebar-form {
   width: 290px; flex-shrink: 0; background: var(--surface);
   border-right: 1px solid var(--border); padding: 16px;
-  overflow-y: auto; height: calc(100vh - 104px); position: sticky; top: 104px;
+  overflow-y: auto; height: calc(100vh - var(--tph-top, 56px)); position: sticky; top: var(--tph-top, 56px);
 }
 .main-content { flex: 1; padding: 18px; overflow-y: auto; }
 
