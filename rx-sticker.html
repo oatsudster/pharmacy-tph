@@ -124,6 +124,10 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .ipd-row .bed { font-size: 22px; font-weight: 800; color: var(--primary-dark); }
 .ipd-row .nm { font-weight: 600; }
 .ipd-row .mt { font-size: 12.5px; color: var(--text-mid); }
+.mdp-list { max-height: 340px; overflow-y: auto; }
+.mdp-row { cursor: pointer; border-radius: 8px; }
+.mdp-row:hover { background: #f3f8f4; }
+.mdp-row.on { background: #e6f2ea; box-shadow: inset 3px 0 0 var(--primary); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .chip.on { background: var(--gold-light); border-color: var(--gold); }
@@ -230,13 +234,14 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
   <a href="index.html">🏠 หน้าหลัก</a>
   <div>
     <h1>🏷️ พิมพ์สติกเกอร์ยา (จาก HOSxP)</h1>
-    <div class="sub">สติกเกอร์ยาเมื่อใบสั่งถูกล็อกใน HOSxP · หัวสติกเกอร์ผู้ป่วยในแปะรถยา — พิมพ์จากฐานข้อมูล HOSxP ได้ในคลิกเดียว</div>
+    <div class="sub">สติกเกอร์ยาเมื่อใบสั่งถูกล็อกใน HOSxP · หัวสติกเกอร์ผู้ป่วยในแปะรถยา/MR · ยาเดิมแปะตารางใบ MR — พิมพ์จากฐานข้อมูล HOSxP ได้ในคลิกเดียว</div>
   </div>
 </div>
 
 <div class="tabbar">
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
-  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา)</button>
+  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (รถยา / MR)</button>
+  <button class="tab" data-v="md" onclick="setView('md')">💊 ยาเดิมผู้ป่วยใน (ตารางใบ MR)</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
 </div>
 
@@ -267,11 +272,24 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       <span class="hint" style="margin:0">กด 🖨 ท้ายชื่อ = พิมพ์คนนั้นทันที · เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
     </div>
     <div class="actions" style="margin:0 0 6px">
-      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" id="mr-date"></label>
+      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" id="mr-date" onchange="mrDateSync(this)"></label>
       <button class="btn btn-gold" id="mr-print-sel" onclick="printMr(ipdSelected())" disabled>📋 พิมพ์ MR ที่เลือก</button>
       <span class="hint" style="margin:0">1 ดวง = 2 ชุด: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา</span>
     </div>
     <div id="ipd-list"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+</div>
+
+<div class="wrap1" id="view-md" style="display:none">
+  <div class="card">
+    <h2>💊 เลือกผู้ป่วยในเพื่อทำยาเดิม <span class="hint" id="mdp-meta" style="margin:0;font-weight:400"></span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="loadIpd()">🔄</button></h2>
+    <div class="actions" style="margin:0 0 6px">
+      <input type="text" id="mdp-q" placeholder="ค้นหา ชื่อ / HN / เตียง" autocomplete="off" style="max-width:260px" oninput="renderMdPts()">
+      <div class="chips" id="mdp-wards" style="margin:0"></div>
+      <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" id="md-mrdate" onchange="mrDateSync(this)"></label>
+    </div>
+    <div id="mdp-list" class="mdp-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
@@ -623,11 +641,11 @@ const bedKey = b => String(b || '').replace(/\d+/g, d => d.padStart(4, '0'));
 function ipdShown() { return IPD.filter(x => !IPD_WARD || x.ward === IPD_WARD); }
 function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x => x.an); }
 async function loadIpd() {
-  const md = document.getElementById('mr-date'); if (!md.value) md.value = todayIso();
+  const md = document.getElementById('mr-date'); if (!md.value) { md.value = todayIso(); mrDateSync(md); }
   const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
-  if (!r) { document.getElementById('ipd-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
+  if (!r) { document.getElementById('ipd-list').innerHTML = document.getElementById('mdp-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
   IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
-  document.getElementById('ipd-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+  document.getElementById('ipd-meta').textContent = document.getElementById('mdp-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
   renderIpd();
   ipdRecLoad();
 }
@@ -644,13 +662,30 @@ function renderIpd() {
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div>${ipdRecBadge(x)}</div>
       <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
         <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button>
-        <button class="btn btn-sm" onclick="openMd('${escHtml(x.an)}')" title="สติกเกอร์ยาเดิมแปะตารางใบ MR">💊 ยาเดิม</button></div>
+        <button class="btn btn-sm" onclick="openMd('${escHtml(x.an)}')" title="ไปแท็บยาเดิม — สติกเกอร์ยาเดิมแปะตารางใบ MR">💊 ยาเดิม</button></div>
     </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
   const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
   b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
   const mb = document.getElementById('mr-print-sel');
   mb.disabled = !n; mb.textContent = `📋 พิมพ์ MR ที่เลือก${n ? ` (${n})` : ''}`;
+  renderMdPts();
 }
+// ── แท็บยาเดิมผู้ป่วยใน (ผู้ใช้ขอ 2026-11-03: แยกจากแท็บหัวสติกเกอร์) — รายชื่อเดียวกับ IPD กดชื่อ = เปิดยาเดิมคนนั้น
+function renderMdPts() {
+  const el = document.getElementById('mdp-list'); if (!el) return;
+  const wards = [...new Map(IPD.map(x => [x.ward, x.wardName || x.ward])).entries()];
+  document.getElementById('mdp-wards').innerHTML = wards.length > 1
+    ? [['', 'ทุกหอ']].concat(wards).map(([w, n]) => `<button class="chip${w === IPD_WARD ? ' on' : ''}" onclick="IPD_WARD='${escHtml(w)}';renderIpd()">${escHtml(n)}${w ? ` (${IPD.filter(x => x.ward === w).length})` : ''}</button>`).join('') : '';
+  const q = document.getElementById('mdp-q').value.trim().toLowerCase();
+  const list = ipdShown().filter(x => !q || [x.name, x.hn, x.an, x.bed].some(v => String(v || '').toLowerCase().includes(q)));
+  el.innerHTML = list.map(x => `<div class="ipd-row mdp-row${x.an === MD_AN ? ' on' : ''}" onclick="openMd('${escHtml(x.an)}')">
+      <div></div><div class="bed">${escHtml(x.bed || '-')}</div>
+      <div><div class="nm">${escHtml(x.name || '-')}</div>
+        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))}</div>${ipdRecBadge(x)}</div>
+      <div><button class="btn btn-sm${x.an === MD_AN ? ' btn-gold' : ''}">💊 ยาเดิม</button></div>
+    </div>`).join('') || `<div class="empty">${IPD.length ? 'ไม่พบผู้ป่วยตามคำค้น' : 'ไม่มีผู้ป่วยใน'}</div>`;
+}
+function mrDateSync(src) { ['mr-date', 'md-mrdate'].forEach(id => { const e = document.getElementById(id); if (e !== src) e.value = src.value; }); }
 function printIpd(ans) {
   const copies = Math.max(1, Math.min(9, +document.getElementById('ipd-copies').value || 1));
   const list = IPD.filter(x => ans.includes(x.an));
@@ -1060,8 +1095,11 @@ function mdPick(items, reg, chronicSrc) {
     return Object.assign(d, { on, why, chronic, age });
   }).sort((a, b) => (b.on - a.on) || (b.chronic - a.chronic) || b.date.localeCompare(a.date) || mdName(a).localeCompare(mdName(b)));
 }
+let MD_AN = '';
 async function openMd(an) {
   const x = IPD.find(i => i.an === an); if (!x) return;
+  if (document.getElementById('view-md').style.display === 'none') setView('md', true);
+  MD_AN = an; renderMdPts();
   const card = document.getElementById('md-card');
   card.style.display = ''; mdLoadCal(); MD = null; MDV = null; document.getElementById('md-hist').style.display = 'none';
   document.getElementById('mdv').open = false; document.getElementById('mdv-list').innerHTML = '';
@@ -1597,13 +1635,15 @@ function printHme(keys) {
   setTimeout(() => window.print(), 50);
 }
 
-function setView(v) {
+function setView(v, noLoad) {
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
   document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
   document.getElementById('view-ipd').style.display = v === 'ipd' ? '' : 'none';
   document.getElementById('view-hme').style.display = v === 'hme' ? '' : 'none';
+  document.getElementById('view-md').style.display = v === 'md' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
-  if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else document.getElementById('f-hn').focus();
+  if (v === 'md') { if (!noLoad) loadIpd(); }
+  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1619,7 +1659,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
-  setView(['ipd', 'hme'].includes(v) ? v : 'rx');
+  setView(['ipd', 'md', 'hme'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);
