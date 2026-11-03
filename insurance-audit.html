@@ -123,6 +123,11 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
   </div>
   <div style="display:flex;justify-content:flex-end;margin:0 0 8px"><button class="link" id="export">⬇ ส่งออก Excel</button></div>
 
+  <div class="tph-card tph-empty" id="audit-empty" hidden>
+    <b>ยังไม่มีตัวเลขให้ตรวจ</b>
+    ตัวเลขชุดนี้สร้างตอนกด "ประมวลผลจาก HOSxP ตอนนี้" ในหน้าติดตามรายได้งานประกันสุขภาพ (หรือรอบอัตโนมัติทุก 3 เดือน)<br>
+    <a href="insurance.html" class="tph-btn tph-btn-secondary" style="margin-top:12px">ไปหน้าติดตามรายได้งานประกันสุขภาพ</a>
+  </div>
   <section id="tab-metrics" style="display:grid;gap:14px">
     <div class="panel progress">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b id="prog-title">ความคืบหน้า</b><span class="note" id="prog-legend"></span></div>
@@ -293,6 +298,9 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
   const st = document.getElementById('status');
   db.collection(COL).doc('insurance_audit').onSnapshot((s) => {
     try { audit = s.exists ? JSON.parse(s.data().json) : null; } catch (e) { audit = null; }
+    document.getElementById('audit-empty').hidden = !!audit;
+    document.querySelector('#tab-metrics .progress').style.display = audit ? '' : 'none';
+    document.querySelector('#tab-metrics .controls').style.display = audit ? '' : 'none';
     if (!audit) { st.textContent = 'ยังไม่มีข้อมูล'; return; }
     st.textContent = 'เชื่อมต่อแล้ว';
     document.getElementById('sub').textContent = `ปีงบ ${audit.fy} · คำนวณจาก HOSxP ${tTh(audit.generated)} · ให้แต่ละงานตรวจว่าคิดถูกตามจริง`;

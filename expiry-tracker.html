@@ -99,16 +99,18 @@ th:hover{background:#dcefe3;}
 th .arrow{font-size:10px;color:var(--text-light);margin-left:3px;}
 td{padding:9px 12px;border-top:1px solid var(--border);vertical-align:middle;}
 tr:hover td{background:#f8faf9;}
-tr.multi-lot td{background:var(--grp-bg);}
-tr.multi-lot:hover td{filter:brightness(0.97);}
+/* ตาราง (UI ขั้นที่ 5): พื้นแถวสลับอ่อน · ยาหลายล็อตไม่ทาสีทั้งแถว เหลือขีดสีซ้าย + ป้ายจำนวนล็อต */
+#tbody tr:nth-child(even) td{background:#F8FAF9;}
+#tbody tr:hover td{background:#F0F5F2;}
 tr.multi-lot td:first-child{box-shadow:inset 3px 0 0 var(--grp-border);}
-.lot-badge{display:inline-block;color:#fff;font-size:10.5px;font-weight:700;background:var(--grp-border);
+.lot-badge{display:inline-block;color:#203D2C;font-size:11.5px;font-weight:700;background:var(--grp-bg);border:1px solid var(--grp-border);
   padding:2px 8px;border-radius:20px;margin-left:6px;white-space:nowrap;vertical-align:middle;}
 .status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;flex-shrink:0;}
-.status-cell{display:flex;align-items:center;font-weight:700;font-size:12.5px;white-space:nowrap;}
+.status-cell{display:inline-flex;align-items:center;font-weight:700;font-size:12.5px;white-space:nowrap;padding:3px 10px 3px 8px;border-radius:999px;}
 .box-tag{display:inline-block;padding:3px 9px;border-radius:7px;background:var(--bg);color:var(--text-mid);
   font-size:11.5px;font-weight:600;white-space:nowrap;}
-.days-cell{font-weight:700;white-space:nowrap;}
+.days-cell{font-weight:600;white-space:nowrap;color:var(--text);}
+.days-cell.expired{color:#b91c1c;}
 .chk-item{width:18px;height:18px;cursor:pointer;accent-color:var(--primary);}
 tr.row-checked td{background:var(--primary-light);}
 tr.row-checked:hover td{filter:brightness(0.97);}
@@ -400,8 +402,8 @@ const DATA = {"rows":[{"cat":"emergency","catLabel":"Emergency Box","box":"Emerg
 const STATUS_DEF = {
   expired:  {label:'หมดอายุแล้ว',        color:'#b91c1c', bg:'#fee2e2'},
   critical: {label:'ใกล้หมดอายุ (≤3 ด.)', color:'#c2410c', bg:'#ffedd5'},
-  warning:  {label:'เฝ้าระวัง (≤6 ด.)',   color:'#b45309', bg:'#fef3c7'},
-  ok:       {label:'ปกติ',               color:'#16a34a', bg:'#dcfce7'},
+  warning:  {label:'เฝ้าระวัง (≤6 ด.)',   color:'#92400e', bg:'#fef3c7'},
+  ok:       {label:'ปกติ',               color:'#15803d', bg:'#dcfce7'},
   unknown:  {label:'ไม่มีข้อมูล',         color:'#6b7280', bg:'#f3f4f6'},
 };
 
@@ -808,14 +810,14 @@ function render() {
       const rowStyle = color ? ` style="--grp-bg:${color.bg};--grp-border:${color.border}"` : '';
       const isChecked = !!itemChecked[r.id];
       return `<tr class="${lotCount>1?'multi-lot':''}${isChecked?' row-checked':''}"${rowStyle}>
-        <td><span class="status-cell" style="color:${s.color}"><span class="status-dot" style="background:${s.color}"></span>${s.label}</span></td>
+        <td><span class="status-cell" style="color:${s.color};background:${s.bg}"><span class="status-dot" style="background:${s.color}"></span>${s.label}</span></td>
         <td>${nameCell}</td>
         <td><span class="box-tag">${escHtml(r.box)}</span></td>
         <td><input class="edit-input edit-qty" type="number" min="0" step="1" value="${escHtml(r.qty!=null?r.qty:'')}"
               onchange="onEditQty(${escHtml(JSON.stringify(r.id))}, this.value)"></td>
         <td><input class="edit-input edit-exp" type="text" placeholder="วว/ดด/ปปปป" maxlength="10" value="${isoToThFull(r.exp)}"
               oninput="autoDateFull(this)" onchange="onEditExpText(${escHtml(JSON.stringify(r.id))}, this)"></td>
-        <td class="days-cell" style="color:${s.color}">${dayTxt}</td>
+        <td class="days-cell${r.status==='expired'?' expired':''}">${dayTxt}</td>
         <td style="text-align:center"><input class="chk-item" type="checkbox" title="เช็คจำนวน/วันหมดอายุแล้ว" ${isChecked?'checked':''}
               onchange="toggleItemChecked(${escHtml(JSON.stringify(r.id))}, this.checked)"></td>
         <td><div class="row-actions">

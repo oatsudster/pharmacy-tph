@@ -148,3 +148,27 @@ test('ไอคอนเส้นแทน emoji ในแถบซ้าย/ห
   assert.equal(await i.page.evaluate(() => [...document.querySelectorAll('.card-icon')].every(e => e.querySelector('.tph-ic'))), true);
   await i.ctx.close();
 });
+
+test('ยังไม่มีข้อมูล: HA และตรวจสอบที่มาตัวเลขแสดงกล่องอธิบายแทนการ์ด "—" · expiry สถานะเป็นป้าย ไม่ทาสีทั้งแถว', async () => {
+  const h = await open('pharmacy-ha.html');
+  await h.page.waitForFunction(() => !document.getElementById('ha-empty').hidden, null, { timeout: 25000 });
+  assert.equal(await h.page.evaluate(() => [...document.querySelectorAll('.view')].every(v => getComputedStyle(v).display === 'none')), true);
+  assert.deepEqual(h.errors, []);
+  await h.ctx.close();
+  const a = await open('insurance-audit.html');
+  await a.page.waitForFunction(() => !document.getElementById('audit-empty').hidden, null, { timeout: 25000 });
+  assert.equal(await a.page.isVisible('#tab-metrics .progress'), false);
+  await a.ctx.close();
+  const e = await open('expiry-tracker.html');
+  await e.page.waitForSelector('#tbody tr.multi-lot');
+  const r = await e.page.evaluate(() => ({
+    lotBg: getComputedStyle(document.querySelector('#tbody tr.multi-lot:nth-child(odd) td:nth-child(2)')).backgroundColor,
+    pill: getComputedStyle(document.querySelector('#tbody .status-cell')).backgroundColor,
+    days: getComputedStyle(document.querySelector('#tbody .days-cell:not(.expired)')).color,
+  }));
+  assert.equal(r.lotBg, 'rgba(0, 0, 0, 0)');
+  assert.notEqual(r.pill, 'rgba(0, 0, 0, 0)');
+  assert.notEqual(r.days, 'rgb(21, 128, 61)');
+  assert.deepEqual(e.errors, []);
+  await e.ctx.close();
+});

@@ -208,6 +208,9 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
 .chip { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px; color: var(--text-2); }
 
 .loading { opacity: .55; transition: opacity .2s; }
+/* ยังไม่มีข้อมูล: ซ่อนการ์ดว่าง แสดงกล่องอธิบายแทน */
+body.ha-empty .view { display: none !important; }
+#ha-empty { margin: 8px 0 16px; }
 @media (max-width: 640px) {
   .wrap { padding: 10px; }
   .hero h1 { font-size: 17px; }
@@ -262,6 +265,12 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
 </nav>
 
 <main class="wrap" id="main">
+  <!-- ตอนยังไม่มีข้อมูล (UI ขั้นที่ 5) — แทนการ์ดขีด "—" ที่ดูเหมือนหน้าพัง -->
+  <div class="tph-card tph-empty" id="ha-empty" hidden>
+    <b>ยังไม่มีข้อมูลตัวชี้วัด</b>
+    <span id="ha-empty-msg">ตัวชี้วัดดึงจาก HOSxP อัตโนมัติทุกวัน 08:30 ผ่านเครื่องที่ตั้งโปรแกรมไว้ — ยังไม่มีรอบไหนส่งข้อมูลขึ้นมา</span><br>
+    <span style="font-size:13px">ถ้าเคยมีข้อมูลแล้วหายไป: ตรวจว่าเครื่องที่รันโปรแกรมดึงข้อมูลเปิดอยู่และต่อเน็ตได้ · หรือเครื่องนี้ต่อฐานข้อมูลกลางไม่ได้ (ดูสถานะใต้ชื่อหน้า)</span>
+  </div>
   <!-- ภาพรวม -->
   <section class="view on" id="v-overview" role="tabpanel">
     <div class="card">
@@ -893,12 +902,14 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
     const db = firebase.firestore();
     db.collection(COL).doc('pharmacy_ha').onSnapshot((snap) => {
       try { ha = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) { ha = null; }
+      document.body.classList.toggle('ha-empty', !ha); $('ha-empty').hidden = !!ha;
       if (!ha) { $('updated').textContent = 'ยังไม่มีข้อมูล — รอโปรแกรมดึงตัวชี้วัดจาก HOSxP รันรอบแรก'; return; }
       $('updated').textContent = `อัปเดตจาก HOSxP ${thDate(ha.generated.slice(0, 10))} ${ha.generated.slice(11, 16)} น. · ดึงอัตโนมัติทุกวัน`;
       fillFy();
       drawDrugGroups();
       render();
-    }, (e) => { $('updated').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; });
+    }, (e) => { $('updated').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message; document.body.classList.add('ha-empty'); $('ha-empty').hidden = false;
+      $('ha-empty-msg').textContent = 'เชื่อมต่อฐานข้อมูลกลางไม่สำเร็จ (' + e.message + ') — ลองรีเฟรชหน้า หรือตรวจการต่อเน็ต'; });
     const watch = (doc, fn) => db.collection(COL).doc(doc).onSnapshot((s) => { fn(s.exists ? s.data() : {}); render(); }, () => {});
     watch('hosxp_records', (d) => { hxRecs = d.records || []; });
     watch('er_records', (d) => { erRecs = d.records || []; });
