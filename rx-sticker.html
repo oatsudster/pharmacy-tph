@@ -219,6 +219,11 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .md-row .src input.mdx-dt { width: 128px; }
 .mdx-dts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
 .mdx-add .mdx-dts input { width: auto; font-size: 13px; padding: 2px 6px; }
+.be-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.be-wrap input.be-txt { width: 104px !important; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
+.be-wrap input.be-txt.bad { border-color: #C0392B; background: #FDECEC; }
+.be-wrap .be-cal { border: 0; background: none; cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
+.be-wrap input[type=date].be { position: absolute !important; left: 0; bottom: 0; width: 1px !important; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 .xd { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 10px; padding: 0 7px; }
 .xd.ok { background: #dcfce7; color: #166534; } .xd.warn { background: #fef3c7; color: #92400e; }
 .mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
@@ -275,7 +280,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       <span class="hint" style="margin:0">กด 🖨 ท้ายชื่อ = พิมพ์คนนั้นทันที · เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
     </div>
     <div class="actions" style="margin:0 0 6px">
-      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" id="mr-date" onchange="mrDateSync(this)"></label>
+      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" class="be" id="mr-date" onchange="mrDateSync(this)"></label>
       <button class="btn btn-gold" id="mr-print-sel" onclick="printMr(ipdSelected())" disabled>📋 พิมพ์ MR ที่เลือก</button>
       <span class="hint" style="margin:0">1 ดวง = 2 ชุด: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา</span>
     </div>
@@ -290,7 +295,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
     <div class="actions" style="margin:0 0 6px">
       <input type="text" id="mdp-q" placeholder="ค้นหา ชื่อ / HN / เตียง" autocomplete="off" style="max-width:260px" oninput="renderMdPts()">
       <div class="chips" id="mdp-wards" style="margin:0"></div>
-      <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" id="md-mrdate" onchange="mrDateSync(this)"></label>
+      <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" class="be" id="md-mrdate" onchange="mrDateSync(this)"></label>
     </div>
     <div id="mdp-list" class="mdp-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
@@ -328,8 +333,8 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       <input id="mdx-name" list="mdx-drugs" placeholder="ชื่อยา + ความแรง (พิมพ์ 2-3 ตัวแล้วเลือก)" autocomplete="off">
       <input id="mdx-usage" list="mdx-usages" placeholder="วิธีใช้ หรือรหัสย่อ เช่น 11pt 12pt 11ht" autocomplete="off">
       <button class="btn btn-primary btn-sm" onclick="mdExtAdd()">➕ เพิ่ม</button>
-      <div class="mdx-dts">📦 ได้รับยาล่าสุด <input type="date" id="mdx-got">
-        📅 นัดครั้งถัดไป <input type="date" id="mdx-inext">
+      <div class="mdx-dts">📦 ได้รับยาล่าสุด <input type="date" class="be" id="mdx-got">
+        📅 นัดครั้งถัดไป <input type="date" class="be" id="mdx-inext">
         <span class="hint" style="margin:0">ของยาตัวนี้ (ดูจากซองยา/ใบนัด) — ใส่หรือไม่ใส่ก็ได้ · วันที่ยังอยู่ในช่องสำหรับยาตัวถัดไปจากที่เดียวกัน</span></div>
       <div class="hint" style="grid-column:1/-1;margin:0">Enter ที่ชื่อยา = ไปช่องวิธีใช้ · Enter ที่วิธีใช้ = เพิ่มรายการ · รหัสวิธีใช้เหมือนใน HOSxP · ยาที่ไม่มีในรายการพิมพ์เองได้ ·
         จำรายการ + วันนัดไว้ตาม HN ทุกเครื่องเห็น admit ครั้งหน้าขึ้นให้ตรวจเลย (ไม่ต้องตามยาใหม่) · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
@@ -1130,11 +1135,12 @@ async function openMd(an) {
 // จำไว้ตาม HN ในเครื่องนี้ (mr_ext_meds) — admit ครั้งหน้าขึ้นให้ติ๊กไว้พร้อมวันที่บันทึก ให้เภสัชตรวจกับผู้ป่วยอีกครั้ง
 let MD_DICT = null, MD_UCODE = {};
 async function mdLoadDict() {
+  mdXLoad();
   if (MD_DICT) return;
   const r = await tphHosxp.mrDict();
   if (!r) { document.getElementById('mdx-meta').textContent = '· โหลดรายการยาจาก HOSxP ไม่ได้ — พิมพ์ชื่อยา/วิธีใช้เองได้'; return; }
   MD_DICT = r;
-  const names = new Set(), uses = new Map();
+  const names = MD_HNAMES, uses = new Map();
   (r.drugs || []).forEach(d => { const n = mdClean([d.name, d.strength].filter(Boolean).join(' ')); if (n) names.add(n); });
   (r.usages || []).forEach(u => {
     const t = mdClean(u.text); if (!t || /^[.\s]+$/.test(t)) return;
@@ -1142,10 +1148,51 @@ async function mdLoadDict() {
     if (c && !MD_UCODE[c]) MD_UCODE[c] = t;
     if (!uses.has(t)) uses.set(t, c);
   });
-  document.getElementById('mdx-drugs').innerHTML = [...names].sort().map(n => `<option value="${escHtml(n)}">`).join('');
+  mdDrugList();
   document.getElementById('mdx-usages').innerHTML = [...uses].map(([t, c]) => `<option value="${escHtml(t)}" label="${escHtml(c)}">`).join('');
   document.getElementById('mdx-meta').textContent = `· ยา ${names.size} รายการ · วิธีใช้ ${uses.size} แบบจาก HOSxP`;
 }
+// ── ชื่อยาที่ไม่มีใน HOSxP ที่เภสัชพิมพ์เอง (ผู้ใช้ขอ 2026-11-03 เช่น "Calciferol 20000 unit") — จำไว้ขึ้นในรายการให้เลือกครั้งหน้า
+//   พร้อมวิธีใช้ที่คีย์ล่าสุด (เลือกชื่อแล้วช่องวิธีใช้ว่าง = ใส่ให้) · ใช้ร่วมทุกเครื่อง: mr_meds_00.xdrugs { ชื่อ: { u, at } }
+//   (อยู่ในเอกสาร mr_meds_ ที่ rules อนุญาตอยู่แล้ว) + สำรองใน localStorage mr_ext_drugs
+const MD_HNAMES = new Set();
+let MD_X = null;
+const mdXKey = n => mdClean(n).toLowerCase();
+function mdXLoad() {
+  if (MD_X) return;
+  try { MD_X = JSON.parse(localStorage.getItem('mr_ext_drugs') || '{}'); } catch (e) { MD_X = {}; }
+  mdDrugList();
+  const ref = mdHistRef('00'); if (!ref) return;
+  ref.get().then(snap => {
+    const x = snap.exists && snap.data().xdrugs;
+    if (!x) return;
+    Object.entries(x).forEach(([n, v]) => { if (v && (!MD_X[n] || String(v.at) > String(MD_X[n].at))) MD_X[n] = v; });
+    try { localStorage.setItem('mr_ext_drugs', JSON.stringify(MD_X)); } catch (e) {}
+    mdDrugList();
+  }).catch(() => {});
+}
+function mdDrugList() {
+  const hk = new Set([...MD_HNAMES].map(mdXKey));
+  const mine = Object.keys(MD_X || {}).filter(n => !hk.has(mdXKey(n))).sort();
+  document.getElementById('mdx-drugs').innerHTML = mine.map(n => `<option value="${escHtml(n)}" label="คีย์ไว้เอง">`).join('') +
+    [...MD_HNAMES].sort().map(n => `<option value="${escHtml(n)}">`).join('');
+}
+function mdXRemember(name, usage) {
+  name = mdClean(name); if (!name || !MD_X) return;
+  if ([...MD_HNAMES].some(n => mdXKey(n) === mdXKey(name))) return;   // มีใน HOSxP อยู่แล้ว
+  const old = Object.keys(MD_X).find(n => mdXKey(n) === mdXKey(name));
+  if (old && old !== name) delete MD_X[old];
+  const v = { u: mdClean(usage) || (MD_X[name] && MD_X[name].u) || '', at: new Date().toISOString() };
+  if (MD_X[name] && MD_X[name].u === v.u) return;   // เหมือนเดิม ไม่ต้องเขียนซ้ำ
+  MD_X[name] = v;
+  const keys = Object.keys(MD_X).sort((a, b) => String(MD_X[b].at).localeCompare(String(MD_X[a].at)));
+  keys.slice(500).forEach(k => delete MD_X[k]);
+  try { localStorage.setItem('mr_ext_drugs', JSON.stringify(MD_X)); } catch (e) {}
+  mdDrugList();
+  const ref = mdHistRef('00');
+  if (ref) ref.set({ xdrugs: { [name]: v } }, { merge: true }).catch(() => {});
+}
+const mdXUsage = name => { const k = mdXKey(name), n = Object.keys(MD_X || {}).find(x => mdXKey(x) === k); return n ? MD_X[n].u : ''; };
 const mdUsage = v => MD_UCODE[String(v || '').trim().toLowerCase()] || mdClean(v);
 // วันที่ของยา รพ.อื่นแต่ละตัว (ผู้ใช้ขอ 2026-11-03): got = ได้รับยาล่าสุด · next = นัดครั้งถัดไป (YYYY-MM-DD หรือ '')
 const mdExtOut = d => ({ name: d.namePrint, usage: d.usage || '', src: d.src || '', got: d.got || '', next: d.next || '' });
@@ -1154,14 +1201,63 @@ function mdExtDates(d) {
   const reg = MD && MD.x.regdate, out = [];
   if (d.got) {
     const days = reg ? Math.round((new Date(reg) - new Date(d.got)) / 864e5) : null;
-    out.push(`ได้ยา ${escHtml(thIso(d.got))}${days != null && days >= 0 ? ` (${days} วันก่อน admit)` : ''}`);
+    if (days != null && days >= 0) out.push(`ได้ยา ${days} วันก่อน admit`);
   }
   if (d.next) {
     const st = reg ? (reg <= d.next ? 'ok' : 'warn') : '';
-    out.push(st ? `<span class="xd ${st}">${st === 'ok' ? '✅ admit ก่อนนัด' : '⚠️ เลยนัด'} ${escHtml(thIso(d.next))}</span>` : `นัด ${escHtml(thIso(d.next))}`);
+    if (st) out.push(`<span class="xd ${st}">${st === 'ok' ? '✅ admit ก่อนนัด' : '⚠️ เลยนัดแล้ว'}</span>`);
   }
   return out.length ? ' · ' + out.join(' · ') : '';
 }
+// ── ช่องวันที่ วว/ดด/ปปปป (พ.ศ.) (ผู้ใช้ขอ 2026-11-03: ช่องวันที่ของเบราว์เซอร์แสดงตามภาษาเครื่อง Mac ขึ้น 11/13/2026)
+// input[type=date].be เดิมยังอยู่ (ซ่อน) ค่า .value = YYYY-MM-DD ค.ศ. เหมือนเดิม — โค้ดอื่นไม่ต้องเปลี่ยน
+// ข้างหน้าเพิ่มช่องพิมพ์ "13/11/2569" (พิมพ์ 13112569, 13/11/69 หรือปี ค.ศ. 2026 ก็ได้) + ปุ่ม 📅 เปิดปฏิทินของเบราว์เซอร์
+const beText = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${+m[1] + 543}` : ''; };
+function beParse(t) {
+  t = String(t || '').trim(); if (!t) return '';
+  const m = /^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{2}|\d{4})$/.exec(t) || /^(\d{2})(\d{2})(\d{4}|\d{2})$/.exec(t);
+  if (!m) return null;
+  const d = +m[1], mo = +m[2]; let y = +m[3];
+  if (y < 100) y += 2500;
+  if (y >= 2400) y -= 543;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (y < 1900 || y > 2200 || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function beEnhance(root) {
+  (root || document).querySelectorAll('input[type=date].be:not([data-be])').forEach(el => {
+    el.dataset.be = '1';
+    const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    const wrap = document.createElement('span'); wrap.className = 'be-wrap';
+    const tx = document.createElement('input');
+    tx.type = 'text'; tx.className = 'be-txt' + (el.classList.contains('mdx-in') ? ' mdx-in' : ''); tx.inputMode = 'numeric';
+    tx.placeholder = 'วว/ดด/ปปปป'; tx.autocomplete = 'off'; tx.maxLength = 10; tx.title = 'วัน/เดือน/ปี พ.ศ. เช่น 13/11/2569';
+    if (el.id) tx.id = el.id + '-be';
+    const bt = document.createElement('button');
+    bt.type = 'button'; bt.className = 'be-cal'; bt.textContent = '📅'; bt.title = 'เลือกจากปฏิทิน'; bt.tabIndex = -1;
+    el.parentNode.insertBefore(wrap, el); wrap.append(tx, bt, el);
+    el.tabIndex = -1; el.setAttribute('aria-hidden', 'true');
+    // ตั้ง .value จากโค้ด → ช่องพิมพ์เปลี่ยนตาม
+    Object.defineProperty(el, 'value', { configurable: true, get() { return proto.get.call(this); },
+      set(v) { proto.set.call(this, v); tx.value = beText(proto.get.call(this)); tx.classList.remove('bad'); } });
+    tx.value = beText(el.value);
+    tx.addEventListener('input', e => {
+      if (e.inputType === 'insertText' && /^(\d{2}|\d{2}\/\d{2})$/.test(tx.value)) tx.value += '/';
+      tx.classList.remove('bad');
+    });
+    const commit = () => {
+      const iso = beParse(tx.value);
+      if (iso === null) { tx.classList.add('bad'); return; }
+      tx.value = beText(iso);
+      if (iso !== el.value) { el.value = iso; el.dispatchEvent(new Event('change', { bubbles: true })); }
+    };
+    tx.addEventListener('change', commit);
+    tx.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
+    el.addEventListener('change', () => { tx.value = beText(el.value); tx.classList.remove('bad'); });
+    bt.onclick = () => { try { el.showPicker(); } catch (e) { tx.focus(); } };
+  });
+}
+document.addEventListener('DOMContentLoaded', () => beEnhance(document));
 function mdExtAll() { try { return JSON.parse(localStorage.getItem('mr_ext_meds') || '{}'); } catch (e) { return {}; } }
 function mdExtLoad(hn) {
   const s = mdExtAll()['h' + hn];
@@ -1192,6 +1288,7 @@ function mdExtAdd() {
   if (!name) { nEl.focus(); return; }
   const got = document.getElementById('mdx-got').value || '', next = document.getElementById('mdx-inext').value || '';
   MD.items.push({ ext: true, namePrint: name, usage: mdUsage(uEl.value), src, got, next, on: true });
+  mdXRemember(name, mdUsage(uEl.value));
   mdSrcRemember(src); mdExtSave();
   nEl.value = ''; uEl.value = ''; nEl.focus();
   renderMd();
@@ -1202,6 +1299,7 @@ function mdExtEdit(el, i, f) {
   d[f] = f === 'usage' ? mdUsage(el.value) : f === 'got' || f === 'next' ? (el.value || '') : mdClean(el.value);
   el.value = d[f];
   if (f === 'src') mdSrcRemember(d.src);
+  if (f === 'namePrint' || f === 'usage') mdXRemember(d.namePrint, d.usage);
   if (f === 'got' || f === 'next') { const st = el.closest('.src').querySelector('.dts'); if (st) st.innerHTML = mdExtDates(d); }
   mdExtSave();
 }
@@ -1214,6 +1312,11 @@ function mdExtDel(i) { MD.items.splice(i, 1); mdExtSave(); renderMd(); }
 document.addEventListener('DOMContentLoaded', () => {
   mdSrcList();
   document.getElementById('mdx-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('mdx-usage').focus(); } });
+  // เลือกชื่อยาที่เคยคีย์เอง → ใส่วิธีใช้ครั้งล่าสุดให้ (ถ้าช่องวิธีใช้ยังว่าง)
+  document.getElementById('mdx-name').addEventListener('change', e => {
+    const u = document.getElementById('mdx-usage');
+    if (!u.value.trim()) { const v = mdXUsage(e.target.value); if (v) u.value = v; }
+  });
   document.getElementById('mdx-usage').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); mdExtAdd(); } });
   document.getElementById('mdx-src').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('mdx-name').focus(); } });
 });
@@ -1282,8 +1385,8 @@ function renderMd() {
       <div style="display:flex;gap:6px"><input class="mdx-in" list="mdx-usages" value="${escHtml(d.usage)}" onchange="mdExtEdit(this, ${i}, 'usage')">
         <button class="btn btn-sm" onclick="mdExtDel(${i})" title="ลบรายการนี้">✕</button></div>
       <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">
-        · 📦 ได้รับล่าสุด <input class="mdx-in mdx-dt" type="date" value="${escHtml(d.got || '')}" onchange="mdExtEdit(this, ${i}, 'got')">
-        · 📅 นัดถัดไป <input class="mdx-in mdx-dt" type="date" value="${escHtml(d.next || '')}" onchange="mdExtEdit(this, ${i}, 'next')"><span class="dts">${mdExtDates(d)}</span>${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
+        · 📦 ได้รับล่าสุด <input class="mdx-in mdx-dt be" type="date" value="${escHtml(d.got || '')}" onchange="mdExtEdit(this, ${i}, 'got')">
+        · 📅 นัดถัดไป <input class="mdx-in mdx-dt be" type="date" value="${escHtml(d.next || '')}" onchange="mdExtEdit(this, ${i}, 'next')"><span class="dts">${mdExtDates(d)}</span>${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
     </div>` : d.editing ? `<div class="md-row ed">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <div class="ed-name"><input class="mdx-in" list="mdx-drugs" value="${escHtml(d.nameEdit)}" placeholder="ชื่อยา" onchange="mdEditSet(this, ${i}, 'nameEdit')">
@@ -1299,6 +1402,7 @@ function renderMd() {
         <button class="eb" onclick="mdEdit(${i})" title="แก้ชื่อยา/ความแรง/วิธีใช้">✏️</button></span>
       <div class="src">${d.date ? escHtml(thIso(d.date)) + ' · ' : ''}${escHtml(mdClean(d.dep) || '-')}${d.qty !== '' && d.qty != null ? ` · #${escHtml(d.qty)} ${escHtml(mdClean(d.units))}` : ''}${d.why ? ' · ' + escHtml(d.why) : ''}${d.chronic === false ? ' · ยาบรรเทาอาการ/ระยะสั้น' : ''}${mdEdited(d) ? ` · เดิม: ${escHtml(mdName(d))} — ${escHtml(mdAbbr(mdUse(d)))}` : ''}</div>
     </div>`).join('') || '<div class="empty">ไม่พบยาจาก visit ตามนัด หรือยากลับบ้าน ใน 1 ปีก่อน admit</div>';
+  beEnhance(document.getElementById('md-list'));
 }
 function mdStickers(rows, grid) {
   const c = mdCal(), per = mdPer();

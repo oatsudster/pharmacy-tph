@@ -183,7 +183,7 @@ test('ยาเดิม รพ.อื่น: คีย์ครั้งเด�
   await page.fill('#mdx-src', 'รพ.สกลนคร');
   await page.fill('#mdx-name', 'Clopidogrel 75 mg');
   await page.fill('#mdx-usage', '1 x 1 pc');
-  await page.fill('#mdx-inext', '2027-01-15');
+  await page.fill('#mdx-inext-be', '15012570'); await page.dispatchEvent('#mdx-inext-be', 'change');   // พิมพ์ติดกัน ไม่มี / ก็ได้
   await page.click('.mdx-add button.btn-primary');
   await page.waitForFunction(() => window.__fs.mr_meds_01 && window.__fs.mr_meds_01.ext && window.__fs.mr_meds_01.ext.h9999001);
   const rec = await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001);
@@ -228,17 +228,23 @@ test('ยาเดิม รพ.อื่น: วันที่ได้รั�
   await page.fill('#mdx-src', 'รพ.สกลนคร');
   await page.fill('#mdx-name', 'Clopidogrel 75 mg');
   await page.fill('#mdx-usage', '1 x 1 pc');
-  await page.fill('#mdx-got', '2026-09-01');
-  await page.fill('#mdx-inext', '2026-12-01');
+  await page.fill('#mdx-got-be', '01/09/2569'); await page.dispatchEvent('#mdx-got-be', 'change');
+  await page.fill('#mdx-inext-be', '1/12/69'); await page.dispatchEvent('#mdx-inext-be', 'change');
   await page.click('.mdx-add button.btn-primary');
   await page.waitForFunction(() => { const r = window.__fs.mr_meds_01 && window.__fs.mr_meds_01.ext && window.__fs.mr_meds_01.ext.h9999001; return r && r.items.length; });
   const rec = await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001);
   assert.deepEqual(rec.items, [{ name: 'Clopidogrel 75 mg', usage: '1 x 1 pc', src: 'รพ.สกลนคร', got: '2026-09-01', next: '2026-12-01' }]);
   assert.equal(rec.next, '2026-12-01'); assert.equal(rec.nextSrc, 'รพ.สกลนคร');   // นัดรวม (ทำป้าย) = นัดเร็วสุดของยารายตัว
-  assert.match(await page.textContent('#md-list .md-row.ext .src'), /ได้ยา 1 ก\.ย\. 69/);
+  assert.deepEqual(await page.$$eval('#md-list .md-row.ext .be-txt', a => a.map(e => e.value)), ['01/09/2569', '01/12/2569']);
+  assert.match(await page.textContent('#md-list .md-row.ext .src'), /ได้ยา \d+ วันก่อน admit/);
+  // พิมพ์ผิด → ขอบแดง ค่าเดิมไม่เปลี่ยน
+  await page.locator('#md-list .md-row.ext .be-txt').first().fill('31/02/2569');
+  await page.locator('#md-list .md-row.ext .be-txt').first().dispatchEvent('change');
+  assert.equal(await page.locator('#md-list .md-row.ext .be-txt.bad').count(), 1);
+  assert.equal(await page.evaluate(() => MD.items.find(d => d.ext).got), '2026-09-01');
   // แก้วันได้รับยาในแถว → บันทึกตาม
-  const dt = page.locator('#md-list .md-row.ext input[type=date]').first();
-  await dt.fill('2026-10-01'); await dt.dispatchEvent('change');
+  const dt = page.locator('#md-list .md-row.ext .be-txt').first();
+  await dt.fill('01/10/2569'); await dt.dispatchEvent('change');
   await page.waitForFunction(() => window.__fs.mr_meds_01.ext.h9999001.items[0].got === '2026-10-01');
   // พิมพ์ → ประวัติที่พิมพ์มีวันที่ติดไปด้วย
   await page.click('#md-print');
@@ -259,10 +265,34 @@ test('ยาเดิม รพ.อื่น: บันทึกเก่าท�
   await page.waitForFunction(() => MD && MD.items.some(d => d.ext));
   assert.deepEqual(await page.evaluate(() => MD.items.filter(d => d.ext).map(d => d.next)), ['2027-01-15', '']);
   assert.equal(await page.$('#mdx-next'), null);
-  const dt = page.locator('#md-list .md-row.ext').nth(1).locator('input[type=date]').nth(1);
-  await dt.fill('2026-12-20'); await dt.dispatchEvent('change');
+  const dt = page.locator('#md-list .md-row.ext').nth(1).locator('.be-txt').nth(1);
+  await dt.fill('20/12/2569'); await dt.dispatchEvent('change');
   await page.waitForFunction(() => window.__fs.mr_meds_01.ext.h9999001.next === '2026-12-20');
   assert.equal(await page.evaluate(() => window.__fs.mr_meds_01.ext.h9999001.nextSrc), 'คลินิก ก');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('ชื่อยาที่ไม่มีใน HOSxP ที่พิมพ์เอง → จำไว้ทุกเครื่อง ขึ้นในรายการครั้งหน้า + ใส่วิธีใช้ล่าสุดให้', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => { tphHosxp.mrDict = async () => ({ drugs: [{ name: 'Amlodipine', strength: '5 mg' }], usages: [] }); openMd('690000001'); });
+  await page.waitForSelector('#md-list .md-row');
+  await page.waitForFunction(() => document.querySelectorAll('#mdx-drugs option').length === 1);
+  await page.fill('#mdx-name', 'Calciferol 20000 unit');
+  await page.fill('#mdx-usage', '1 cap สัปดาห์ละครั้ง');
+  await page.click('.mdx-add button.btn-primary');
+  // ชื่อที่มีใน HOSxP ไม่ต้องจำ
+  await page.fill('#mdx-name', 'Amlodipine 5 mg'); await page.fill('#mdx-usage', '1 x 1 pc');
+  await page.click('.mdx-add button.btn-primary');
+  await page.waitForFunction(() => window.__fs.mr_meds_00 && window.__fs.mr_meds_00.xdrugs);
+  assert.deepEqual(Object.keys(await page.evaluate(() => window.__fs.mr_meds_00.xdrugs)), ['Calciferol 20000 unit']);
+  assert.equal(await page.evaluate(() => window.__fs.mr_meds_00.xdrugs['Calciferol 20000 unit'].u), '1 cap สัปดาห์ละครั้ง');
+  // อีกเครื่อง (localStorage ว่าง) → รายการให้เลือกมีชื่อนี้ และเลือกแล้วได้วิธีใช้
+  await page.evaluate(() => { localStorage.removeItem('mr_ext_drugs'); MD_X = null; mdXLoad(); });
+  await page.waitForFunction(() => [...document.querySelectorAll('#mdx-drugs option')].some(o => o.value === 'Calciferol 20000 unit'));
+  await page.fill('#mdx-name', 'Calciferol 20000 unit'); await page.fill('#mdx-usage', '');
+  await page.dispatchEvent('#mdx-name', 'change');
+  assert.equal(await page.inputValue('#mdx-usage'), '1 cap สัปดาห์ละครั้ง');
   assert.deepEqual(errors, []);
   await ctx.close();
 });
