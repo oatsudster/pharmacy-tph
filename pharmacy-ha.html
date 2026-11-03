@@ -67,7 +67,7 @@ button { font: inherit; }
 .hero .actions button:hover { background: rgba(255,255,255,.24); }
 
 /* sticky bar: tabs + filters */
-.bar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.bar { position: sticky; top: var(--tph-top, 0px); z-index: 10; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
 .bar-in { max-width: 1600px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -910,6 +910,11 @@ details.groups summary { cursor: pointer; color: var(--primary); font-size: 13.5
   }
   if (window.tphHosxp && tphHosxp.haCases) tphHosxp.haCases().then((j) => { cases = j && j.data ? j.data : null; render(); });
 })();
+</script>
+<!-- แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) — ต้องมาก่อนแถบซ้าย -->
+<script src="lib/tph-header.js"></script>
+<script>
+TphHeader.mount({ from: 'header.hero', home: 'a.back', title: 'h1', sub: '#updated', actions: ['#btn-xlsx', 'button[onclick="window.print()"]'] });
 </script>
 <!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
 <script src="lib/side-tabs.js"></script>

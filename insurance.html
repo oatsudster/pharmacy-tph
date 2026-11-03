@@ -1336,6 +1336,13 @@ td small { display: block; color: var(--text-light); }
   show(fromHash() || saved || 'overview', !!fromHash());
 })();
 </script>
+<!-- แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) — ต้องมาก่อนแถบซ้าย -->
+<script src="lib/tph-header.js"></script>
+<script>
+TphHeader.mount({ from: '.topbar', home: 'a.pharm-only', title: 'h1', sub: ':scope > div > .sub', sticky: false,
+    status: ['#run-status', '#status'], actions: ['label[for="fy"]', '#fy', '#qtr'], primary: '#run-btn',
+    more: ['a[href="#v=glossary"]', 'a[href="insurance-audit.html"]', 'a.ins-only'] });
+</script>
 <script src="lib/tph-ui.js"></script>
 </body>
 </html>

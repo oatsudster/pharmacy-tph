@@ -63,3 +63,52 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .tph-badge.bad { background: var(--tph-danger-bg); color: var(--tph-danger); }
 .tph-empty { text-align: center; padding: 40px 24px; color: var(--tph-muted); font-size: var(--tph-fs-sm); }
 .tph-empty b { display: block; color: var(--tph-text); font-size: var(--tph-fs-lg); margin-bottom: 6px; }
+
+/* ── แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) ── */
+.tph-hd-old { display: none !important; }
+.tph-hd { position: sticky; top: 0; z-index: 60; box-sizing: border-box; min-height: 64px; padding: 8px 24px; display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap;
+  background: var(--tph-surface); border-bottom: 1px solid var(--tph-line); box-shadow: 0 1px 3px rgba(18,66,40,.06); font-family: var(--tph-font); color: var(--tph-text); }
+.tph-hd.tph-hd-static { position: relative; }
+.tph-hd-home { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 38px; box-sizing: border-box; padding: 6px 14px; border-radius: 8px;
+  background: var(--tph-primary-soft); border: 1px solid var(--tph-line); color: var(--tph-primary-dark); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.tph-hd-home:hover { background: #E1EDE5; }
+.tph-hd-title { flex: 1 1 280px; min-width: 0; }
+.tph-hd .tph-hd-h { display: block; margin: 0; font-size: 20px !important; line-height: 1.3; font-weight: 700; color: var(--tph-primary-dark) !important; letter-spacing: -.01em; flex: none; }
+.tph-hd .tph-hd-sub { display: block; margin: 1px 0 0; font-size: 13px !important; line-height: 1.45; color: var(--tph-muted) !important; opacity: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tph-hd-right, .tph-hd-status, .tph-hd-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tph-hd-right { margin-left: auto; justify-content: flex-end; }
+.tph-hd-status .status, .tph-hd-status .sub { color: var(--tph-muted) !important; opacity: 1 !important; font-size: 13px; }
+.tph-hd .sync-dot { background: var(--tph-bg) !important; border: 1px solid var(--tph-line) !important; border-radius: 999px; padding: 6px 12px; font: 600 13px var(--tph-font); cursor: pointer; }
+/* ปุ่มคำสั่ง = ปุ่มรองขาวขอบเขียว · ปุ่มหลัก = เขียวทึบ · ช่องเลือก/กรอก = สูงเท่ากัน */
+.tph-hd-actions > button, .tph-hd-actions > a, .tph-hd-morebtn { font: 600 14px var(--tph-font) !important; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; box-sizing: border-box;
+  padding: 6px 14px !important; border-radius: 8px !important; border: 1px solid var(--tph-line) !important; background: var(--tph-surface) !important; color: var(--tph-primary) !important;
+  cursor: pointer; text-decoration: none; white-space: nowrap; box-shadow: none !important; transition: background-color .14s ease, border-color .14s ease; }
+.tph-hd-actions > button:hover, .tph-hd-actions > a:hover, .tph-hd-morebtn:hover, .tph-hd-morebtn[aria-expanded="true"] { background: var(--tph-primary-soft) !important; border-color: #C7D8CD !important; }
+.tph-hd-actions > .tph-hd-primary { background: var(--tph-primary) !important; border-color: var(--tph-primary) !important; color: #fff !important; }
+.tph-hd-actions > .tph-hd-primary:hover { background: var(--tph-primary-dark) !important; }
+.tph-hd-actions > button:disabled { opacity: .55; cursor: default; }
+.tph-hd-actions > select, .tph-hd-actions > input { font: 14px var(--tph-font); height: 38px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid var(--tph-line);
+  background: var(--tph-surface); color: var(--tph-text); }
+.tph-hd-actions > label { font-size: 13px; color: var(--tph-muted) !important; opacity: 1 !important; }
+.tph-hd-more { position: relative; }
+.tph-hd-caret { font-size: 11px; opacity: .7; }
+.tph-hd-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 80; min-width: 240px; max-height: 70vh; overflow-y: auto; padding: 6px; box-sizing: border-box;
+  background: var(--tph-surface); border: 1px solid var(--tph-line); border-radius: 12px; box-shadow: 0 10px 30px rgba(18,66,40,.16); }
+.tph-hd-menu[hidden] { display: none; }
+.tph-hd-menu > .tph-hd-mi { display: flex !important; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; margin: 0 !important; padding: 9px 12px !important; min-height: 0;
+  border: 0 !important; border-radius: 8px !important; background: none !important; box-shadow: none !important; color: var(--tph-text) !important;
+  font: 500 14px var(--tph-font) !important; text-align: left; justify-content: flex-start; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.tph-hd-menu > .tph-hd-mi:hover, .tph-hd-menu > .tph-hd-mi:focus-visible { background: var(--tph-primary-soft) !important; color: var(--tph-primary-dark) !important; }
+.tph-hd-menu > .tph-hd-mi[hidden] { display: none !important; }
+.tph-hd-mlbl { font-size: 11.5px; font-weight: 700; color: var(--tph-muted); padding: 10px 12px 4px; }
+.tph-hd-mlbl:first-child { padding-top: 4px; }
+@media (max-width: 760px) {
+  /* จอแคบ: หัวขึ้นหลายบรรทัด ไม่ติดบนจอ (ให้ที่กับเนื้อหา — แถบหัวข้อซ้ายที่เป็นแถบแนวนอนติดบนจอแทน) */
+  .tph-hd { position: relative; padding: 8px 12px; min-height: 56px; gap: 6px 10px; }
+  .tph-hd .tph-hd-h { font-size: 16px !important; }
+  .tph-hd .tph-hd-sub { display: none; }
+  .tph-hd-title { flex-basis: 160px; }
+  .tph-hd-right { margin-left: 0; width: 100%; justify-content: flex-start; }
+  .tph-hd-menu { right: auto; left: 0; }
+}
+@media print { .tph-hd { position: static; box-shadow: none; border: 0; padding: 0 0 8px; } .tph-hd-home, .tph-hd-right { display: none !important; } }

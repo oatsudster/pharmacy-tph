@@ -1789,6 +1789,11 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => { if (!document.hidden) loadQueue(); }, 60000);
 });
 </script>
+<!-- แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) — ต้องมาก่อนแถบซ้าย -->
+<script src="lib/tph-header.js"></script>
+<script>
+TphHeader.mount({ from: '.topbar', title: 'h1', sub: '.sub' });
+</script>
 <!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
 <script src="lib/side-tabs.js"></script>
 <script>

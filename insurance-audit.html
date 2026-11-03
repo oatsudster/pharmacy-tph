@@ -425,6 +425,12 @@ details.tech dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
   });
 })();
 </script>
+<!-- แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) — ต้องมาก่อนแถบซ้าย -->
+<script src="lib/tph-header.js"></script>
+<script>
+TphHeader.mount({ from: '.topbar', home: 'a[href="insurance.html"]', title: 'h1', sub: '#sub',
+    status: ['#status'], actions: ['#me', '#mine', 'a.ins-only'] });
+</script>
 <!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
 <script src="lib/side-tabs.js"></script>
 <script>
