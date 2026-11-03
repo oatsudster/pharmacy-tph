@@ -529,7 +529,7 @@ function DbDmScreen {
   }
   $byHn = @{}
   foreach ($p in $pts) { $byHn[$p['hn']] = [ordered]@{ hn = $p['hn']; name = $p['ptname'].Trim(); birthday = $p['birthday']; sex = $p['sex']
-    nextDm = $p['next_dm']; inRemission = ([int]$p['in_remission'] -gt 0); dmReg = $null; dmBeginYear = $null; dmFirstDx = $null; a1c = New-Object System.Collections.ArrayList; rx = New-Object System.Collections.ArrayList } }
+    nextDm = $p['next_dm']; inRemission = ([int]$p['in_remission'] -gt 0); dmReg = $null; dmBeginYear = $null; dmFirstDx = $null; rxLast = $null; a1c = New-Object System.Collections.ArrayList; rx = New-Object System.Collections.ArrayList } }
   foreach ($r in $dmReg) { if ($byHn.ContainsKey($r['hn'])) { $byHn[$r['hn']].dmReg = $r['regdate']; $byHn[$r['hn']].dmBeginYear = $r['begin_year'] } }
   foreach ($r in $dmDx) { if ($byHn.ContainsKey($r['hn'])) { $byHn[$r['hn']].dmFirstDx = $r['fd'] } }
   foreach ($r in $a1c) { if ($byHn.ContainsKey($r['hn'])) { [void]$byHn[$r['hn']].a1c.Add(@($r['order_date'], $r['lab_order_result'])) } }
@@ -539,7 +539,15 @@ function DbDmScreen {
     try { if ($r['iperday'] -and $r['iperdose']) { $perDay = [double]$r['iperday'] * [double]$r['iperdose'] } } catch {}
     [void]$byHn[$r['hn']].rx.Add(@($r['d'], $r['name'], $r['qty'], $perDay, $r['appt_days'], ($r['ipd'] -eq '1')))
   }
-  [ordered]@{ ok = $true; patients = @($byHn.Values) }
+  # คนที่ไม่มียาลดน้ำตาลใน 2 ปี: เคยได้ยาแบบผู้ป่วยนอกครั้งสุดท้ายเมื่อไร (ไม่จำกัดปี, null = ไม่เคย)
+  # ถามเฉพาะกลุ่มนี้ (~300 คน, ~1.6 วินาที) — ถามทั้ง cohort ใช้ 9-14 วินาที
+  $noRx = @($byHn.Values | Where-Object { $_.rx.Count -eq 0 } | ForEach-Object { "'" + [HxDb]::Digits($_.hn) + "'" } | Where-Object { $_ -ne "''" })
+  if ($ic -and $noRx.Count) {
+    $ever = DbQuery ("SELECT r.hn, MAX(IFNULL(r.rxdate, r.vstdate)) AS l FROM opitemrece r " +
+      "WHERE r.hn IN (" + ($noRx -join ',') + ") AND r.icode IN ($ic) AND (r.an IS NULL OR r.an='') GROUP BY r.hn")
+    foreach ($r in $ever) { if ($byHn.ContainsKey($r['hn'])) { $byHn[$r['hn']].rxLast = $r['l'] } }
+  }
+  [ordered]@{ ok = $true; rxEver = $true; patients = @($byHn.Values) }
 }
 
 # ── สติกเกอร์ยา (พิมพ์เองเมื่อ VN ถูกพยาบาลล็อกอยู่ใน HOSxP) ──
