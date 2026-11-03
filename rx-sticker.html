@@ -218,6 +218,11 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .mdx-add .mdx-next input { width: auto; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
 .md-row input.mdx-in, .mdx-add input { font: inherit; font-size: 13.5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; width: 100%; min-width: 0; }
 .md-row .src input.mdx-in { width: 200px; font-size: 12px; padding: 1px 5px; }
+.md-row .src input.mdx-dt { width: 128px; }
+.mdx-dts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.mdx-add .mdx-dts input { width: auto; font-size: 13px; padding: 2px 6px; }
+.xd { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 10px; padding: 0 7px; }
+.xd.ok { background: #dcfce7; color: #166534; } .xd.warn { background: #fef3c7; color: #92400e; }
 .mdx-add { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 6px; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px; margin-top: 10px; }
 .mdx-add .t { grid-column: 1 / -1; font-weight: 600; font-size: 13.5px; }
 @media (max-width: 860px) { .mdx-add { grid-template-columns: 1fr; } }
@@ -328,6 +333,9 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       <input id="mdx-name" list="mdx-drugs" placeholder="ชื่อยา + ความแรง (พิมพ์ 2-3 ตัวแล้วเลือก)" autocomplete="off">
       <input id="mdx-usage" list="mdx-usages" placeholder="วิธีใช้ หรือรหัสย่อ เช่น 11pt 12pt 11ht" autocomplete="off">
       <button class="btn btn-primary btn-sm" onclick="mdExtAdd()">➕ เพิ่ม</button>
+      <div class="mdx-dts">📦 ได้รับยาล่าสุด <input type="date" id="mdx-got">
+        📅 นัดครั้งถัดไป <input type="date" id="mdx-inext">
+        <span class="hint" style="margin:0">ของยาตัวนี้ (ดูจากซองยา/ใบนัด) — ใส่หรือไม่ใส่ก็ได้ · วันที่ยังอยู่ในช่องสำหรับยาตัวถัดไปจากที่เดียวกัน</span></div>
       <div class="hint" style="grid-column:1/-1;margin:0">Enter ที่ชื่อยา = ไปช่องวิธีใช้ · Enter ที่วิธีใช้ = เพิ่มรายการ · รหัสวิธีใช้เหมือนใน HOSxP · ยาที่ไม่มีในรายการพิมพ์เองได้ ·
         จำรายการ + วันนัดไว้ตาม HN ทุกเครื่องเห็น admit ครั้งหน้าขึ้นให้ตรวจเลย (ไม่ต้องตามยาใหม่) · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
     </div>
@@ -1145,16 +1153,31 @@ async function mdLoadDict() {
   document.getElementById('mdx-meta').textContent = `· ยา ${names.size} รายการ · วิธีใช้ ${uses.size} แบบจาก HOSxP`;
 }
 const mdUsage = v => MD_UCODE[String(v || '').trim().toLowerCase()] || mdClean(v);
+// วันที่ของยา รพ.อื่นแต่ละตัว (ผู้ใช้ขอ 2026-11-03): got = ได้รับยาล่าสุด · next = นัดครั้งถัดไป (YYYY-MM-DD หรือ '')
+const mdExtOut = d => ({ name: d.namePrint, usage: d.usage || '', src: d.src || '', got: d.got || '', next: d.next || '' });
+const mdExtIn = (d, saved) => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', got: d.got || '', next: d.next || '', on: true, saved });
+function mdExtDates(d) {
+  const reg = MD && MD.x.regdate, out = [];
+  if (d.got) {
+    const days = reg ? Math.round((new Date(reg) - new Date(d.got)) / 864e5) : null;
+    out.push(`ได้ยา ${escHtml(thIso(d.got))}${days != null && days >= 0 ? ` (${days} วันก่อน admit)` : ''}`);
+  }
+  if (d.next) {
+    const st = reg ? (reg <= d.next ? 'ok' : 'warn') : '';
+    out.push(st ? `<span class="xd ${st}">${st === 'ok' ? '✅ admit ก่อนนัด' : '⚠️ เลยนัด'} ${escHtml(thIso(d.next))}</span>` : `นัด ${escHtml(thIso(d.next))}`);
+  }
+  return out.length ? ' · ' + out.join(' · ') : '';
+}
 function mdExtAll() { try { return JSON.parse(localStorage.getItem('mr_ext_meds') || '{}'); } catch (e) { return {}; } }
 function mdExtLoad(hn) {
   const s = mdExtAll()['h' + hn];
-  return s ? s.items.map(d => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', on: true, saved: s.at })) : [];
+  return s ? s.items.map(d => mdExtIn(d, s.at)) : [];
 }
 function mdExtSave(local) {
   if (!MD) return;
   if (!local) mdExtSync();
   const m = mdExtAll(), k = 'h' + MD.x.hn;
-  const items = MD.items.filter(d => d.ext && d.namePrint).map(d => ({ name: d.namePrint, usage: d.usage, src: d.src }));
+  const items = MD.items.filter(d => d.ext && d.namePrint).map(mdExtOut);
   delete m[k];   // key ขึ้นต้น h ให้เรียงตามลำดับที่บันทึก — ตัดคนที่เก่าสุดเมื่อเกิน 500 HN
   if (items.length) m[k] = { at: new Date().toISOString().slice(0, 10), items };
   const keys = Object.keys(m); keys.slice(0, Math.max(0, keys.length - 500)).forEach(x => delete m[x]);
@@ -1173,7 +1196,9 @@ function mdExtAdd() {
   const nEl = document.getElementById('mdx-name'), uEl = document.getElementById('mdx-usage');
   const name = mdClean(nEl.value), src = mdClean(document.getElementById('mdx-src').value);
   if (!name) { nEl.focus(); return; }
-  MD.items.push({ ext: true, namePrint: name, usage: mdUsage(uEl.value), src, on: true });
+  const got = document.getElementById('mdx-got').value || '', next = document.getElementById('mdx-inext').value || '';
+  MD.items.push({ ext: true, namePrint: name, usage: mdUsage(uEl.value), src, got, next, on: true });
+  mdNextFill(next, src);
   mdSrcRemember(src); mdExtSave();
   nEl.value = ''; uEl.value = ''; nEl.focus();
   renderMd();
@@ -1181,10 +1206,19 @@ function mdExtAdd() {
 // แก้ในรายการ: ไม่ render ใหม่ (Tab ไปช่องถัดไปได้ไม่หลุด focus) — อัปเดตแค่ค่าในช่องนั้น
 function mdExtEdit(el, i, f) {
   const d = MD.items[i];
-  d[f] = f === 'usage' ? mdUsage(el.value) : mdClean(el.value);
+  d[f] = f === 'usage' ? mdUsage(el.value) : f === 'got' || f === 'next' ? (el.value || '') : mdClean(el.value);
   el.value = d[f];
   if (f === 'src') mdSrcRemember(d.src);
+  if (f === 'next') mdNextFill(d.next, d.src);
+  if (f === 'got' || f === 'next') { const st = el.closest('.src').querySelector('.dts'); if (st) st.innerHTML = mdExtDates(d); }
   mdExtSave();
+}
+// นัดของยาตัวไหนก็ได้ → ช่อง "นัดครั้งถัดไปที่ รพ.อื่น" (ใช้ทำป้ายในรายชื่อ) ถ้ายังว่าง หรือนัดนี้มาก่อน
+function mdNextFill(next, src) {
+  if (!next || !MD || (MD.extNext && MD.extNext <= next)) return;
+  document.getElementById('mdx-next').value = next;
+  if (src) document.getElementById('mdx-nextsrc').value = src;
+  mdExtNextSet();
 }
 function mdExtDel(i) { MD.items.splice(i, 1); mdExtSave(); renderMd(); }
 document.addEventListener('DOMContentLoaded', () => {
@@ -1257,7 +1291,9 @@ function renderMd() {
       <input class="mdx-in" list="mdx-drugs" value="${escHtml(d.namePrint)}" onchange="mdExtEdit(this, ${i}, 'namePrint')">
       <div style="display:flex;gap:6px"><input class="mdx-in" list="mdx-usages" value="${escHtml(d.usage)}" onchange="mdExtEdit(this, ${i}, 'usage')">
         <button class="btn btn-sm" onclick="mdExtDel(${i})" title="ลบรายการนี้">✕</button></div>
-      <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
+      <div class="src">🏥 ยาจากที่อื่น · ได้จาก <input class="mdx-in" list="mdx-srcs" value="${escHtml(d.src)}" placeholder="รพ./คลินิก" onchange="mdExtEdit(this, ${i}, 'src')">
+        · 📦 ได้รับล่าสุด <input class="mdx-in mdx-dt" type="date" value="${escHtml(d.got || '')}" onchange="mdExtEdit(this, ${i}, 'got')">
+        · 📅 นัดถัดไป <input class="mdx-in mdx-dt" type="date" value="${escHtml(d.next || '')}" onchange="mdExtEdit(this, ${i}, 'next')"><span class="dts">${mdExtDates(d)}</span>${d.saved ? ` · คีย์ไว้ ${escHtml(thIso(d.saved))} — ตรวจกับผู้ป่วยว่ายังใช้อยู่` : ''}</div>
     </div>` : d.editing ? `<div class="md-row ed">
       <input type="checkbox" ${d.on ? 'checked' : ''} onchange="mdToggle(${i}, this.checked)">
       <div class="ed-name"><input class="mdx-in" list="mdx-drugs" value="${escHtml(d.nameEdit)}" placeholder="ชื่อยา" onchange="mdEditSet(this, ${i}, 'nameEdit')">
@@ -1363,7 +1399,7 @@ function mdHistSave() {
   const ref = mdHistRef(MD.x.hn), on = MD.items.filter(d => d.on);
   if (!ref || !on.length) return;
   const items = on.map(d => {
-    const o = { name: mdNameOut(d), use: mdUseOut(d), ext: !!d.ext, src: d.src || '', icode: String(d.icode || ''), vn: String(d.vn || ''),
+    const o = { name: mdNameOut(d), use: mdUseOut(d), ext: !!d.ext, src: d.src || '', got: d.got || '', next: d.next || '', icode: String(d.icode || ''), vn: String(d.vn || ''),
       date: d.date || '', dep: mdClean(d.dep), qty: d.qty == null ? '' : String(d.qty), units: mdClean(d.units) };
     if (!d.ext && mdEdited(d)) o.e = { n: d.nameEdit, s: d.strEdit || '', u: d.useEdit };
     return o;
@@ -1381,7 +1417,7 @@ function mdHistApply(h, auto) {
   if (!MD || !h || !h.items) return;
   const cur = MD.items.filter(d => !d.ext), used = new Set(), out = [];
   h.items.forEach(s => {
-    if (s.ext) { out.push({ ext: true, namePrint: s.name, usage: s.use, src: s.src || '', on: true, saved: String(h.at || '').slice(0, 10) }); return; }
+    if (s.ext) { out.push(mdExtIn({ name: s.name, usage: s.use, src: s.src, got: s.got, next: s.next }, String(h.at || '').slice(0, 10))); return; }
     let d = cur.find(c => !used.has(c) && String(c.icode) === s.icode && String(c.vn) === s.vn);
     if (d) {
       ['nameEdit', 'strEdit', 'useEdit', 'editing'].forEach(k => delete d[k]);
@@ -1429,7 +1465,7 @@ function mdExtSync() {
   mdExtTimer = setTimeout(() => {
     if (!MD || MD.x !== x) return;
     const ref = mdHistRef(x.hn); if (!ref) return;
-    const items = MD.items.filter(d => d.ext && d.namePrint).map(d => ({ name: d.namePrint, usage: d.usage || '', src: d.src || '' }));
+    const items = MD.items.filter(d => d.ext && d.namePrint).map(mdExtOut);
     const next = MD.extNext || '', nextSrc = MD.extNextSrc || '';
     const FV = firebase.firestore.FieldValue, k = 'h' + x.hn;
     const rec = items.length || next ? { at: new Date().toISOString(), an: x.an, regdate: x.regdate || '', items, next, nextSrc } : null;
@@ -1450,7 +1486,7 @@ function mdExtRecApply(rec, early) {
     if (early || !mine.length || mine.every(d => d.saved)) {
       const at = MD.items.findIndex(d => d.ext);
       MD.items = MD.items.filter(d => !d.ext);
-      const add = (rec.items || []).map(d => ({ ext: true, namePrint: d.name, usage: d.usage, src: d.src || '', on: true, saved: String(rec.at || '').slice(0, 10) }));
+      const add = (rec.items || []).map(d => mdExtIn(d, String(rec.at || '').slice(0, 10)));
       MD.items.splice(at < 0 ? MD.items.length : Math.min(at, MD.items.length), 0, ...add);
       mdExtSave(true);
     }
