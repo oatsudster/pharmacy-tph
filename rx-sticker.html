@@ -124,7 +124,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
 .ipd-row .bed { font-size: 22px; font-weight: 800; color: var(--primary-dark); }
 .ipd-row .nm { font-weight: 600; }
 .ipd-row .mt { font-size: 12.5px; color: var(--text-mid); }
-.mdp-list { max-height: 340px; overflow-y: auto; }
+/* รายชื่อแสดงครบทุกคนเหมือนแท็บหัวสติกเกอร์ (ผู้ใช้ขอ 2026-11-03) — ไม่มีกรอบเลื่อนในตัว */
 .mdp-row { cursor: pointer; border-radius: 8px; }
 .mdp-row:hover { background: #f3f8f4; }
 .mdp-row.on { background: #e6f2ea; box-shadow: inset 3px 0 0 var(--primary); }
@@ -296,7 +296,8 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
   </div>
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
-      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('view-md').scrollIntoView({ behavior: 'smooth' })" title="กลับไปรายชื่อผู้ป่วย">⬆ รายชื่อ</button>
+      <button class="btn btn-sm" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
     <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · กด ✏️ แก้ชื่อยา/ความแรง/วิธีใช้ได้ · กดพิมพ์ = บันทึกรายการที่ติ๊กไว้ตาม HN (ทุกเครื่องเห็น) · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
       <button class="btn btn-gold" id="mrmd-print" onclick="printMrMd()" title="หัวสติกเกอร์ MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมที่ติ๊ก — พิมพ์รวดเดียว">📋💊 พิมพ์หัว MR + ยาเดิม</button>
