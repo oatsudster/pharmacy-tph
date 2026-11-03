@@ -677,6 +677,47 @@ const DashUX = {
   }
 };
 </script>
+<style id="home-v2">
+/* หน้าหลักแบบใหม่ (UI ขั้นที่ 3, 2026-11-03) — ทับสไตล์เดิมด้านบน ไม่แก้โครง HTML/ตัวเลข/ฟังก์ชัน
+   หัวขาวเหมือนทุกหน้า · หัวเรื่องสั้น (เห็นระบบงานตั้งแต่จอแรก) · ปุ่ม "เปิดระบบ" เขียวสีเดียว · สีประจำระบบเหลือที่ไอคอน
+   ป้าย/แถบตัวเลขสีกลาง · การ์ด 4 ใบต่อแถวบนจอคอม (กลุ่มละ 4 ระบบเต็มแถวพอดี) */
+body[data-suite-page='index'] .header { background: #fff !important; color: var(--tph-text) !important; border-bottom: 1px solid var(--tph-line) !important;
+  box-shadow: 0 1px 3px rgba(18,66,40,.06) !important; height: 64px; }
+body[data-suite-page='index'] .header-pill { background: var(--tph-primary-soft); border: 1px solid var(--tph-line); font-size: 20px; padding: 6px 10px; }
+body[data-suite-page='index'] .header-name { color: var(--tph-primary-dark); }
+body[data-suite-page='index'] .header-sub { color: var(--tph-muted) !important; }
+body[data-suite-page='index'] .header-date { color: var(--tph-muted) !important; background: var(--tph-bg) !important; border: 1px solid var(--tph-line) !important; }
+body[data-suite-page='index'] .header > button { background: #fff !important; border: 1px solid var(--tph-line) !important; color: var(--tph-primary) !important; border-radius: 8px !important; }
+body[data-suite-page='index'] #idx-sync { color: var(--tph-muted) !important; }
+body[data-suite-page='index'] .hero { background: transparent !important; color: var(--tph-text) !important; padding: 24px max(24px, calc((100vw - 1440px) / 2 + 24px)) 0 !important; }
+body[data-suite-page='index'] .hero-badge { display: none; }
+body[data-suite-page='index'] .hero h1 { font-size: 26px !important; line-height: 1.35; margin: 0 0 4px; color: var(--tph-primary-dark); max-width: none !important; }
+body[data-suite-page='index'] .hero h1 br, body[data-suite-page='index'] .hero p br { display: none; }
+body[data-suite-page='index'] .hero h1 span { color: var(--tph-primary-dark); }
+body[data-suite-page='index'] .hero p { font-size: 14px; color: var(--tph-muted); max-width: none !important; }
+body[data-suite-page='index'] .cards-wrap { max-width: 1440px; margin: 16px auto 0 !important; }
+body[data-suite-page='index'] .cards-grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)) !important; gap: 16px; }
+body[data-suite-page='index'] .home-group > .section-label { font-size: 15px; font-weight: 700; color: var(--tph-primary-dark); margin-bottom: 10px; }
+body[data-suite-page='index'] .card-stripe { display: none !important; }
+body[data-suite-page='index'] .app-card { border: 1px solid var(--tph-line); border-radius: 14px; box-shadow: var(--tph-shadow) !important; transition: border-color .14s ease, box-shadow .14s ease; }
+body[data-suite-page='index'] .app-card:hover { transform: none !important; border-color: #B9D0C1 !important; box-shadow: 0 4px 16px rgba(18,66,40,.10) !important; }
+body[data-suite-page='index'] .card-body { padding: 18px 18px 12px; }
+body[data-suite-page='index'] .card-title-wrap h2 { font-size: 17px; font-weight: 700; }
+body[data-suite-page='index'] .card-desc { font-size: 13.5px; line-height: 1.6; }
+body[data-suite-page='index'] .tag { background: #F1F5F2 !important; color: #3E5547 !important; border-color: transparent !important; }
+body[data-suite-page='index'] .card-stat-bar, body[data-suite-page='index'] .card-stat-bar.gold-bar { background: #F6F9F7 !important; }
+body[data-suite-page='index'] .open-btn, body[data-suite-page='index'] .open-btn.gold-btn { background: var(--tph-primary) !important; color: #fff !important; border-radius: 8px; }
+body[data-suite-page='index'] .open-btn:hover { background: var(--tph-primary-dark) !important; }
+body[data-suite-page='index'] .app-card { background: var(--tph-surface) !important; }
+body[data-suite-page='index'] .stat-val, body[data-suite-page='index'] .stat-val.gold-val { color: var(--tph-primary-dark) !important; }
+body[data-suite-page='index'] .dash-context { padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+@media (max-width: 760px) {
+  body[data-suite-page='index'] .header { height: auto; }
+  body[data-suite-page='index'] .hero { padding: 16px 16px 0 !important; }
+  body[data-suite-page='index'] .hero h1 { font-size: 20px !important; }
+  body[data-suite-page='index'] .hero p { display: none; }
+}
+</style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="index">

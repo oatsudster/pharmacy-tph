@@ -93,3 +93,17 @@ test('contrast: ปุ่มทองใช้ตัวเขียวเข้�
   assert.ok(a >= 0.6, col);
   await c.ctx.close();
 });
+
+test('หน้าหลัก: ปุ่ม "เปิดระบบ" เขียวสีเดียวทุกการ์ด · หัวขาว · การ์ด 4 ใบต่อแถวบนจอคอม', async () => {
+  const { ctx, page, errors } = await open('index.html');
+  const r = await page.evaluate(() => ({
+    btn: [...new Set([...document.querySelectorAll('.open-btn')].map(b => getComputedStyle(b).backgroundColor))],
+    hd: getComputedStyle(document.querySelector('.header')).backgroundColor,
+    cols: getComputedStyle([...document.querySelectorAll('.cards-grid')].find(g => g.offsetWidth)).gridTemplateColumns.split(' ').length,   // กลุ่มรายการโปรดที่ว่างซ่อนอยู่
+    n: document.querySelectorAll('.open-btn').length,
+  }));
+  assert.deepEqual(r.btn, ['rgb(26, 94, 56)']); assert.ok(r.n >= 10);
+  assert.equal(r.hd, 'rgb(255, 255, 255)'); assert.equal(r.cols, 4);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
