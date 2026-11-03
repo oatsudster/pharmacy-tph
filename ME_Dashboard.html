@@ -10,6 +10,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบบันทึก ME — รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/chart.min.js"></script>
 <script src="lib/chart-month-note.js"></script>
@@ -484,6 +487,7 @@
   }
   .landing-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(26,94,56,.18); border-color: var(--primary); }
   .lc-icon { font-size: 48px; margin-bottom: 12px; }
+  .lc-icon img { display: block; width: 112px; height: 112px; margin: -6px auto 0; }
   .lc-title { font-size: 26px; font-weight: 800; color: var(--primary-dark); margin-bottom: 2px; }
   .lc-sub { font-size: 16px; color: var(--text-light); font-weight: 500; margin-bottom: 10px; }
   .lc-desc { font-size: 15px; color: var(--text-mid); line-height: 1.6; }
@@ -595,6 +599,7 @@
     .landing-hosp { font-size: 22px; }
     .landing-sys { font-size: 16px; }
     .lc-icon { font-size: 38px; }
+    .lc-icon img { width: 84px; height: 84px; }
     .modal-box { padding: 16px; }
     .filter-bar .form-group { min-width: 0; flex: 1 1 140px; }
   }
@@ -836,28 +841,28 @@ const DashUX = {
 <div class="section active" id="section-home">
   <div class="landing-wrap">
     <div class="landing-hero">
-      <div class="landing-logo">💊</div>
+      <div class="landing-logo"><img src="img/ui/app-icon.png" alt="" width="72" height="72" style="display:block;margin:0 auto;border-radius:18px"></div>
       <div class="landing-hosp">โรงพยาบาลถ้ำพรรณรา</div>
       <div class="landing-sys">ระบบบันทึกและวิเคราะห์ความคลาดเคลื่อนทางยา</div>
       <div class="landing-sub">เลือกแผนกเพื่อเริ่มต้นใช้งาน</div>
     </div>
     <div class="landing-cards">
       <div class="landing-card" onclick="showSection('opd')">
-        <div class="lc-icon">📋</div>
+        <div class="lc-icon"><img src="img/ui/me-opd.png" alt="" width="112" height="112"></div>
         <div class="lc-title">OPD</div>
         <div class="lc-sub">ผู้ป่วยนอก</div>
         <div class="lc-desc">ดึงข้อมูลจาก HOSxP อัตโนมัติ<br>วิเคราะห์ Dashboard และรายงาน</div>
         <div class="lc-count" id="land-opd-count">0 รายการ</div>
       </div>
       <div class="landing-card" onclick="showSection('ipd')">
-        <div class="lc-icon">🏥</div>
+        <div class="lc-icon"><img src="img/ui/me-ipd.png" alt="" width="112" height="112"></div>
         <div class="lc-title">IPD</div>
         <div class="lc-sub">ผู้ป่วยใน</div>
         <div class="lc-desc">ดึงข้อมูลจาก HOSxP อัตโนมัติ<br>วิเคราะห์ Dashboard และรายงาน</div>
         <div class="lc-count" id="land-ipd-count">0 รายการ</div>
       </div>
       <div class="landing-card" onclick="showSection('er')">
-        <div class="lc-icon">🚑</div>
+        <div class="lc-icon"><img src="img/ui/me-er.png" alt="" width="112" height="112"></div>
         <div class="lc-title">ER</div>
         <div class="lc-sub">ห้องฉุกเฉิน</div>
         <div class="lc-desc">บันทึก ME ด้วยตนเอง<br>Dashboard + Rx Rate + นอกเวลา</div>

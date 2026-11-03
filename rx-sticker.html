@@ -7,6 +7,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>สติกเกอร์ยา — รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
@@ -351,7 +354,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
   </div>
   <div>
     <div class="status" id="status"></div>
-    <div class="card" id="detail"><div class="empty">เลือกผู้ป่วยจากรายการ หรือใส่ HN</div></div>
+    <div class="card" id="detail"><div class="empty"><img class="tph-art" src="img/ui/empty-patient.png" alt="" width="180" height="180">เลือกผู้ป่วยจากรายการ หรือใส่ HN</div></div>
   </div>
 </div>
 
@@ -646,7 +649,7 @@ function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x 
 async function loadIpd() {
   const md = document.getElementById('md-mrdate'); if (!md.value) md.value = todayIso();
   const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
-  if (!r) { document.getElementById('ipd-list').innerHTML = document.getElementById('mdp-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
+  if (!r) { document.getElementById('ipd-list').innerHTML = document.getElementById('mdp-list').innerHTML = `<div class="empty"><img class="tph-art sm" src="img/ui/offline.png" alt="" width="120" height="120">${escHtml(NOBRIDGE)}</div>`; return; }
   IPD = (r.items || []).sort((a, b) => admitKey(a).localeCompare(admitKey(b)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
   document.getElementById('ipd-meta').textContent = document.getElementById('mdp-meta').textContent = `${IPD.length} ราย · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
   renderIpd();

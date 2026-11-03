@@ -8,7 +8,7 @@
 - **วาง "Style" ด้านล่างนำหน้าทุก prompt** ให้ทุกภาพเป็นชุดเดียวกัน
 - **ห้ามมีตัวหนังสือในภาพ** (AI เขียนภาษาไทยเพี้ยน) — ข้อความอยู่ในหน้าเว็บ
 - PNG พื้นหลังโปร่งใส · ไม่เกิน ~150 KB ต่อไฟล์ (Claude ย่อให้ได้)
-- ภาพทางคลินิก (สอนฉีดอินซูลิน) ต้องให้เภสัชกรตรวจความถูกต้องก่อนใช้ทุกภาพ
+- ไม่ทำภาพสอนฉีดอินซูลิน (หน้า insulin-teach ยังไม่ได้ใช้อย่างเป็นทางการ — ตัดออก 2026-11-03) · ภาพทางคลินิกในอนาคตต้องให้เภสัชกรตรวจก่อนใช้
 - ไม่ใช้กับ: ตาราง, กราฟ, ฟอร์มกรอกข้อมูล, พื้นหลังหลังเนื้อหา · โลโก้ รพ. ใช้ไฟล์จริง ไม่ให้ AI สร้าง
 
 ### Style (วางนำหน้าทุก prompt)
@@ -51,16 +51,20 @@ no numbers, no logos, no watermark. Single centered subject with generous empty 
 |---|---|
 | `app-icon.png` | `App icon: one capsule pill tilted 45 degrees, half deep green #1A5E38 and half gold #C49A22, on a rounded-square background of soft mint #EDF4EF. Extremely simple, bold shapes that stay recognisable at 16x16 pixels. No text, no outline details, no shadow.` |
 
-## 5. สอนฉีดอินซูลินปากกา (insulin-teach.html) — 800×600 · ต้องให้เภสัชกรตรวจทุกภาพ
+## ใส่แล้ว (2026-11-03)
 
-ต่อท้าย Style: `Close-up of hands only (no face), insulin pen device generic (no brand), clinically accurate, step N of a teaching series, same framing in every step.`
+ไฟล์ในโฟลเดอร์นี้ย่อแล้ว (ตัดขอบโปร่งใสให้เท่ากัน · 400 px / การ์ด ME 256 px · 1–20 KB) — ต้นฉบับ 1254 px เก็บไว้ที่ `design-mockups/ui-originals/` (ไม่ขึ้น git)
 
-| ไฟล์ | ขั้น | Prompt (ต่อท้ายข้างบน) |
-|---|---|---|
-| `insulin-1-wash.png` | ล้างมือ | `Hands washing with soap and water under a tap.` |
-| `insulin-2-mix.png` | กลิ้ง/คว่ำปากกาให้ยาขุ่นเข้ากัน (เฉพาะยาขุ่น เช่น NPH/Mixtard) | `Hands gently rolling an insulin pen horizontally between palms, small curved arrows showing rolling motion.` |
-| `insulin-3-needle.png` | ใส่เข็ม | `Hands screwing a new pen needle onto the tip of the insulin pen, needle caps beside it.` |
-| `insulin-4-prime.png` | ไล่อากาศ 2 ยูนิต | `Insulin pen held needle pointing up, thumb pressing the button, a tiny drop at the needle tip.` |
-| `insulin-5-dial.png` | หมุนตั้งขนาดยา | `Hand turning the dose dial at the end of the insulin pen, a blank small window on the pen (no numbers).` |
-| `insulin-6-inject.png` | ฉีดใต้ผิวหนังหน้าท้อง ตั้งฉาก ค้าง 10 วินาที | `Insulin pen inserted at 90 degrees into a gently pinched skin fold of the abdomen beside the navel area, thumb pressing the button, a small simple timer icon nearby.` |
-| `insulin-7-dispose.png` | ถอดเข็มทิ้งในภาชนะแข็ง | `Hands removing the used pen needle with its outer cap and dropping it into a hard plastic sharps container.` |
+| ไฟล์ | ใช้ที่ |
+|---|---|
+| `empty-ha.png` | pharmacy-ha.html `#ha-empty` |
+| `empty-audit.png` | insurance-audit.html `#audit-empty` |
+| `empty-patient.png` | rx-sticker.html ช่องรายละเอียดก่อนเลือกผู้ป่วย |
+| `empty-visit.png` | dm-remission.html ประวัติ/แล็บ ยังไม่มีการตรวจ |
+| `empty-search.png` | index.html ค้นระบบไม่พบ · expiry-tracker ไม่พบตามตัวกรอง · night-meds ไม่พบใบสั่งยา |
+| `offline.png` | lib/hosxp-db.js กล่องเตือนไม่พบ HOSxP Bridge · rx-sticker รายชื่อ IPD ดึงไม่ได้ |
+| `me-opd/ipd/er.png` | ME_Dashboard.html การ์ดหน้าแรก |
+| `login.png` | index.html หน้าใส่รหัส · insurance-login.html |
+| `app-icon.png`, `apple-touch-icon.png`, `favicon-32.png` | ไอคอนแท็บทุกหน้า + โลโก้หน้าใส่รหัส/ME (ทำจาก app-icon ต้นฉบับ พื้นปรับเป็นสีมิ้นต์เรียบ) |
+
+CSS กลาง: `.tph-art` (และ `.tph-art.sm`) ใน lib/theme.css — ซ่อนตอนพิมพ์

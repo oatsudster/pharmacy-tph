@@ -190,3 +190,19 @@ test('วันที่ พ.ศ.: ยาเวรบ่าย-ดึก ช่�
   assert.deepEqual(e.errors, []);
   await e.ctx.close();
 });
+
+test('ภาพ img/ui ที่หน้าเว็บอ้างถึงมีไฟล์จริง ขนาดไม่เกิน 150 KB และทุกหน้ามี favicon', () => {
+  const files = fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).concat(['lib/hosxp-db.js']);
+  const refs = new Set();
+  for (const f of files) {
+    const s = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    for (const m of s.matchAll(/img\/ui\/([\w-]+\.png)/g)) refs.add(m[1]);
+    if (f.endsWith('.html')) assert.match(s, /<link rel="icon"[^>]+img\/ui\/favicon-32\.png/, f);
+  }
+  assert.ok(refs.size >= 12, [...refs].join(','));
+  for (const r of refs) {
+    const p = path.join(ROOT, 'img/ui', r);
+    assert.ok(fs.existsSync(p), r);
+    assert.ok(fs.statSync(p).size < 150 * 1024, r + ' ใหญ่เกิน');
+  }
+});

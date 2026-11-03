@@ -9,6 +9,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>กลุ่มงานเภสัชกรรมและคุ้มครองผู้บริโภค รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <style>
@@ -734,11 +737,12 @@ body[data-suite-page='index'] .dash-context { padding: 10px 14px; font-size: 13p
 <!-- ── LOGIN OVERLAY ─────────────────────────────────── -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--primary-dark);align-items:center;justify-content:center;flex-direction:column;gap:24px;">
   <div style="text-align:center;color:#fff;margin-bottom:8px;">
-    <div style="font-size:52px;margin-bottom:8px;">💊</div>
+    <img src="img/ui/app-icon.png" alt="" width="64" height="64" style="display:block;margin:0 auto 10px;border-radius:16px">
     <div style="font-size:20px;font-weight:800;">กลุ่มงานเภสัชกรรม</div>
     <div style="font-size:14px;opacity:.7;margin-top:4px;">รพ.ถ้ำพรรณรา</div>
   </div>
   <div style="background:#fff;border-radius:16px;padding:32px;width:min(340px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.3);text-align:center;">
+    <img class="tph-art" src="img/ui/login.png" alt="" width="160" height="160" style="width:160px;margin-top:-8px">
     <div style="font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:20px;">🔒 กรอกรหัสเพื่อเข้าใช้งาน</div>
     <input id="pin-input" type="password" placeholder="รหัสผ่าน"
       onkeydown="if(event.key==='Enter') checkPin()"
@@ -850,7 +854,7 @@ async function checkPin() {
   <div class="recent-row" id="recent-row" hidden></div>
 <div class="dash-context">ตัวเลขด้านล่างเป็นข้อมูลสรุปจากข้อมูลที่โหลดไว้ในเครื่องนี้ · เปิดแต่ละระบบเพื่อดูรายละเอียดและสถานะการอัปเดต<span class="dash-caption">เดือนปัจจุบันยังไม่สิ้นสุด จึงไม่ควรเทียบจำนวนตรง ๆ กับเดือนเต็ม</span></div>
 <p class="suite-search-status" id="suite-search-status" role="status"></p>
-<div class="suite-no-results" id="suite-no-results" hidden>ไม่พบระบบที่ตรงกับคำค้น ลองใช้คำสั้นลงหรือกดล้างคำค้น</div>
+<div class="suite-no-results" id="suite-no-results" hidden><img class="tph-art sm" src="img/ui/empty-search.png" alt="" width="140" height="140">ไม่พบระบบที่ตรงกับคำค้น ลองใช้คำสั้นลงหรือกดล้างคำค้น</div>
 <div id="suite-apps">
 
     <!-- ME Dashboard -->

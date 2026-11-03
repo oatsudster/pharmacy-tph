@@ -7,6 +7,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ตัวชี้วัดงานเภสัชกรรม (HA) — รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
 <script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
@@ -267,6 +270,7 @@ body.ha-empty .view { display: none !important; }
 <main class="wrap" id="main">
   <!-- ตอนยังไม่มีข้อมูล (UI ขั้นที่ 5) — แทนการ์ดขีด "—" ที่ดูเหมือนหน้าพัง -->
   <div class="tph-card tph-empty" id="ha-empty" hidden>
+    <img class="tph-art" src="img/ui/empty-ha.png" alt="" width="180" height="180">
     <b>ยังไม่มีข้อมูลตัวชี้วัด</b>
     <span id="ha-empty-msg">ตัวชี้วัดดึงจาก HOSxP อัตโนมัติทุกวัน 08:30 ผ่านเครื่องที่ตั้งโปรแกรมไว้ — ยังไม่มีรอบไหนส่งข้อมูลขึ้นมา</span><br>
     <span style="font-size:13px">ถ้าเคยมีข้อมูลแล้วหายไป: ตรวจว่าเครื่องที่รันโปรแกรมดึงข้อมูลเปิดอยู่และต่อเน็ตได้ · หรือเครื่องนี้ต่อฐานข้อมูลกลางไม่ได้ (ดูสถานะใต้ชื่อหน้า)</span>
