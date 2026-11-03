@@ -107,3 +107,19 @@ test('หน้าหลัก: ปุ่ม "เปิดระบบ" เข�
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('คลินิก: แถบ ล้างฟอร์ม/บันทึก ติดท้ายจอระหว่างเลื่อนฟอร์ม · หัวข้อมีเลข 1-3 · ปุ่มล้างฟอร์มยังทำงาน', async () => {
+  const { ctx, page, errors } = await open('clinic.html', { width: 1408, height: 614 });
+  await page.waitForSelector('.cl-savebar .btn-submit');
+  const nums = await page.$$eval('.entry-col > .form-title, .lo-section-wrap > .form-title', a => a.map(e => getComputedStyle(e, '::before').content));
+  assert.deepEqual(nums, Array(3).fill('counter(clsec)'));   // 3 หัวข้อมีเลขลำดับ (ภาพจริงขึ้น 1 2 3)
+  // เลื่อนไปกลางฟอร์ม: ปุ่มบันทึกอยู่ในจอ (ติดล่าง)
+  await page.evaluate(() => scrollTo(0, 300));
+  const b = await page.evaluate(() => { const r = document.querySelector('.cl-savebar .btn-submit').getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; });
+  assert.ok(b.bottom <= 614 && b.top > 450, JSON.stringify(b));
+  await page.fill('#f-hn', '9999001');
+  await page.click('.cl-savebar .btn-clear');
+  await page.waitForFunction(() => document.getElementById('f-hn').value === '');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

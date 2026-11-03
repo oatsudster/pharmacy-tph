@@ -563,6 +563,38 @@ const DashUX = {
   }
 };
 </script>
+<style id="clinic-v2">
+/* ฟอร์มบันทึกแบบใหม่ (UI ขั้นที่ 4, 2026-11-03) — ทับสไตล์เดิม ไม่เอาช่องไหนออก
+   กรอบชั้นเดียว 1px (เดิม 2.5px/เส้นประ/พื้นเขียว-ทองซ้อนกัน) · หัวข้อมีเลขลำดับ · ปุ่มเพิ่มเป็นปุ่มรอง · แถบบันทึกติดท้ายจอ */
+body[data-suite-page='clinic'] .entry-grid { counter-reset: clsec; }
+body[data-suite-page='clinic'] .entry-col { border: 1px solid var(--tph-line); border-radius: 14px; box-shadow: var(--tph-shadow); padding: 24px; }
+body[data-suite-page='clinic'] .entry-col > .form-title, body[data-suite-page='clinic'] .lo-section-wrap > .form-title {
+  counter-increment: clsec; font-size: 16px !important; font-weight: 700; color: var(--tph-primary-dark) !important; border-left: 0 !important; padding-left: 0 !important; margin-bottom: 14px; }
+body[data-suite-page='clinic'] .entry-col > .form-title::before, body[data-suite-page='clinic'] .lo-section-wrap > .form-title::before {
+  content: counter(clsec); display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%;
+  background: var(--tph-primary); color: #fff; font-size: 13px; vertical-align: 1px; }
+body[data-suite-page='clinic'] .check-group { border: 0 !important; background: #F6F9F7; }
+body[data-suite-page='clinic'] .hx-paste { border: 1px solid var(--tph-line) !important; background: #F6F9F7 !important; }
+body[data-suite-page='clinic'] .drp-quick { border: 1px solid var(--tph-line) !important; }
+body[data-suite-page='clinic'] .drp-quick.active { border-color: var(--tph-success) !important; background: var(--tph-success-bg) !important; }
+body[data-suite-page='clinic'] div:has(> div > #drp-suggest-text) { border: 1px solid var(--tph-line) !important; background: #F6F9F7 !important; border-radius: 10px !important; }
+body[data-suite-page='clinic'] .lo-section-wrap { border: 1px solid var(--tph-line) !important; }
+body[data-suite-page='clinic'] .lo-section-wrap.highlighted { border-color: var(--tph-success) !important; background: var(--tph-success-bg) !important; }
+body[data-suite-page='clinic'] .hx-note { border: 1px solid #EAD99F !important; }
+body[data-suite-page='clinic'] .btn-add { border: 1px solid var(--tph-line) !important; background: var(--tph-surface) !important; color: var(--tph-primary) !important; font-weight: 600; }
+body[data-suite-page='clinic'] .btn-add:hover { background: var(--tph-primary-soft) !important; border-color: #C7D8CD !important; }
+/* แถบบันทึก: ติดท้ายจอตลอดที่ยังอยู่ในการ์ดฝั่งขวา */
+body[data-suite-page='clinic'] .cl-savebar { position: sticky; bottom: 0; z-index: 6; display: flex; gap: 10px; margin: 16px -24px -24px; padding: 12px 24px;
+  background: rgba(255,255,255,.96); border-top: 1px solid var(--tph-line); border-radius: 0 0 14px 14px; box-shadow: 0 -4px 12px rgba(18,66,40,.06); backdrop-filter: blur(4px); }
+/* เว้นที่ขวาให้ปุ่มผู้ช่วย AI ที่ลอยมุมล่างขวา (ไม่ทับปุ่มบันทึก) */
+body[data-suite-page='clinic'] .cl-savebar { padding-right: 92px; }
+body[data-suite-page='clinic'] .cl-savebar .btn-clear { width: auto; flex: none; margin: 0 !important; padding: 10px 16px; }
+body[data-suite-page='clinic'] .cl-savebar .btn-submit { flex: 1; margin: 0 !important; padding: 12px; }
+@media (max-width: 760px) {
+  body[data-suite-page='clinic'] .entry-col { padding: 16px; }
+  body[data-suite-page='clinic'] .cl-savebar { margin: 16px -16px -16px; padding: 10px 84px 10px 16px; }
+}
+</style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="clinic">
@@ -752,8 +784,11 @@ const DashUX = {
         </div>
       </div>
 
-      <button class="btn-submit" onclick="submitVisit()" style="margin-top:14px">✅ บันทึกการให้คำปรึกษา</button>
-      <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
+      <!-- แถบบันทึกติดท้ายจอระหว่างกรอกฟอร์ม (UI ขั้นที่ 4) -->
+      <div class="cl-savebar">
+        <button class="btn-clear" onclick="clearForm()">🗑️ ล้างฟอร์ม</button>
+        <button class="btn-submit" onclick="submitVisit()">✅ บันทึกการให้คำปรึกษา</button>
+      </div>
     </div>
 
   </div><!-- /entry-grid -->
