@@ -112,3 +112,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .tph-hd-menu { right: auto; left: 0; }
 }
 @media print { .tph-hd { position: static; box-shadow: none; border: 0; padding: 0 0 8px; } .tph-hd-home, .tph-hd-right { display: none !important; } }
+
+/* ── ไอคอนเส้น (lib/tph-icons.js แทน emoji) ── */
+.tph-ic { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; margin-right: .4em; stroke-width: 2; }
+/* ที่ที่เป็น flex มีช่องไฟ (gap) อยู่แล้ว */
+.tph-it .tph-ic, .tph-hd-mi .tph-ic, .tph-hd-home .tph-ic, .tph-hd-actions > * .tph-ic, .side .ic .tph-ic { margin-right: 0; }
+.tph-hd .tph-hd-h .tph-ic { color: var(--tph-primary); width: 1.05em; height: 1.05em; vertical-align: -0.15em; margin-right: .35em; }
+.tph-side .tph-it .tph-ic { width: 18px; height: 18px; opacity: .9; }
+.tph-hd-menu .tph-hd-mi .tph-ic { color: var(--tph-primary); width: 17px; height: 17px; }
+/* ไอคอนที่อยู่ในกรอบของตัวเอง (การ์ดหน้าหลัก, ไอคอนเมนู ME/insurance) */
+.card-icon .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic, .side .ic .tph-ic, .header-pill .tph-ic { margin: 0; width: 22px; height: 22px; vertical-align: middle; }
+.side .ic .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic { width: 19px; height: 19px; }
+.card-icon { display: flex; align-items: center; justify-content: center; }

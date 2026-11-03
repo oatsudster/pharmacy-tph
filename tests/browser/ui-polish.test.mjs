@@ -123,3 +123,28 @@ test('คลินิก: แถบ ล้างฟอร์ม/บันทึ�
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('ไอคอนเส้นแทน emoji ในแถบซ้าย/หัว/เมนู/การ์ดหน้าหลัก · ข้อความปุ่มคงเดิม · ปุ่มที่สคริปต์เปลี่ยนข้อความได้ไอคอนใหม่', async () => {
+  const lead = /^\s*\p{Extended_Pictographic}/u;
+  const c = await open('clinic.html');
+  await c.page.waitForSelector('.tph-side .tph-it .tph-ic');
+  const r = await c.page.evaluate(re => ({
+    side: [...document.querySelectorAll('.tph-side .tph-it')].filter(e => !e.hidden).map(e => [!!e.querySelector('.tph-ic'), new RegExp(re, 'u').test(e.textContent)]),
+    home: document.querySelector('.tph-hd-home').innerHTML.includes('tph-ic'),
+    menuTxt: [...document.querySelectorAll('.tph-hd-menu .tph-hd-mi')].map(e => e.textContent.trim()),
+  }), lead.source);
+  assert.ok(r.side.length >= 5 && r.side.every(([ic, emo]) => ic && !emo), JSON.stringify(r.side));
+  assert.equal(r.home, true);
+  assert.ok(r.menuTxt.includes('Export รายงาน') && r.menuTxt.includes('ทะเบียนผู้ป่วย'), r.menuTxt.join('|'));
+  await c.ctx.close();
+  // ปุ่ม "ลงข้อมูลเอง" (ADR) สคริปต์เปลี่ยนข้อความ → ไอคอนกลับมาเอง ไม่มี emoji ค้าง
+  const a = await open('adr.html');
+  await a.page.evaluate(() => { const b = document.querySelector('.hx-manual-toggle'); b.textContent = '⚙️ ทดสอบเปลี่ยนข้อความ'; });
+  await a.page.waitForFunction(() => { const b = document.querySelector('.hx-manual-toggle'); return b.querySelector('.tph-ic') && !/⚙/.test(b.textContent); });
+  assert.deepEqual(a.errors, []);
+  await a.ctx.close();
+  const i = await open('index.html');
+  await i.page.waitForSelector('.card-icon .tph-ic');
+  assert.equal(await i.page.evaluate(() => [...document.querySelectorAll('.card-icon')].every(e => e.querySelector('.tph-ic'))), true);
+  await i.ctx.close();
+});

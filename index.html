@@ -707,6 +707,16 @@ body[data-suite-page='index'] .card-desc { font-size: 13.5px; line-height: 1.6; 
 body[data-suite-page='index'] .tag { background: #F1F5F2 !important; color: #3E5547 !important; border-color: transparent !important; }
 body[data-suite-page='index'] .card-stat-bar, body[data-suite-page='index'] .card-stat-bar.gold-bar { background: #F6F9F7 !important; }
 body[data-suite-page='index'] .open-btn, body[data-suite-page='index'] .open-btn.gold-btn { background: var(--tph-primary) !important; color: #fff !important; border-radius: 8px; }
+body[data-suite-page='index'] .card-icon .tph-ic { width: 24px; height: 24px; color: var(--tph-primary-dark); }
+body[data-suite-page='index'] [data-href="ME_Dashboard.html"] .card-icon { color: #B42318; }
+body[data-suite-page='index'] [data-href="waiting-time.html"] .card-icon, body[data-suite-page='index'] [data-href="insurance.html"] .card-icon { color: #8A6A0F; }
+body[data-suite-page='index'] [data-href="clinic.html"] .card-icon { color: #6D28D9; }
+body[data-suite-page='index'] [data-href="adr.html"] .card-icon { color: #B91C1C; }
+body[data-suite-page='index'] [data-href="rx-sticker.html"] .card-icon { color: #92400E; }
+body[data-suite-page='index'] [data-href="night-meds.html"] .card-icon { color: #4338CA; }
+body[data-suite-page='index'] [data-href="expiry-tracker.html"] .card-icon { color: #C2410C; }
+body[data-suite-page='index'] .card-icon .tph-ic { color: inherit; }
+body[data-suite-page='index'] .header-pill { color: var(--tph-primary); }
 body[data-suite-page='index'] .open-btn:hover { background: var(--tph-primary-dark) !important; }
 body[data-suite-page='index'] .app-card { background: var(--tph-surface) !important; }
 body[data-suite-page='index'] .stat-val, body[data-suite-page='index'] .stat-val.gold-val { color: var(--tph-primary-dark) !important; }
@@ -1534,6 +1544,7 @@ ClinicStore.watch(db, ({ visits, fromCache }) => {
   place(); renderRecent(); renderMonthly(); filterApps();
 })();
 </script>
+<script src="lib/tph-icons.js"></script>
 <script src="lib/tph-ui.js"></script>
 </body>
 </html>
