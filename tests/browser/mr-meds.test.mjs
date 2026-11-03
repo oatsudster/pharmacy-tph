@@ -296,3 +296,16 @@ test('ชื่อยาที่ไม่มีใน HOSxP ที่พิม�
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('แท็บ MR + ยาเดิม: ปุ่ม 📋 หัว MR ท้ายชื่อ = พิมพ์หัว MR คนนั้นทันที ไม่เปิดยาเดิม', async () => {
+  const { ctx, page, errors } = await openPage();
+  await page.evaluate(() => { window.print = () => { window.__printed = document.getElementById('print-area').innerHTML; }; tphHosxp.ipdList = async () => ({ items: IPD.slice() }); setView('md'); });
+  await page.waitForSelector('#mdp-list .mdp-row');
+  await page.locator('#mdp-list .mdp-row').first().getByText('📋 หัว MR').click();
+  await page.waitForFunction(() => window.__printed);
+  assert.equal(await page.evaluate(() => (window.__printed.match(/class="mrstk"/g) || []).length), 1);
+  assert.match(await page.evaluate(() => window.__printed), /9999001/);
+  assert.equal(await page.isVisible('#md-card'), false);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

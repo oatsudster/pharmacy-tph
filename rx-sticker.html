@@ -682,7 +682,8 @@ function renderMdPts() {
       <div></div><div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))}</div>${ipdRecBadge(x)}</div>
-      <div><button class="btn btn-sm${x.an === MD_AN ? ' btn-gold' : ''}">💊 ยาเดิม</button></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="event.stopPropagation();printMr(['${escHtml(x.an)}'])" title="พิมพ์เฉพาะหัวสติกเกอร์ MR ทันที (ไม่ต้องเปิดยาเดิม) — 1 ดวง: ครึ่งบนตัวจริง · ครึ่งล่างสำเนา">📋 หัว MR</button>
+        <button class="btn btn-sm${x.an === MD_AN ? ' btn-gold' : ''}">💊 ยาเดิม</button></div>
     </div>`).join('') || `<div class="empty">${IPD.length ? 'ไม่พบผู้ป่วยตามคำค้น' : 'ไม่มีผู้ป่วยใน'}</div>`;
 }
 
