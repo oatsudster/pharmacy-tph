@@ -438,16 +438,17 @@ function statusOf(exp) {
   if (d <= 180) return 'warning';
   return 'ok';
 }
+// วันที่แสดง/กรอกเป็น วว/ดด/ปปปป พ.ศ. (ผู้ใช้ขอ 2026-11-03 ให้เหมือนแท็บยาเดิม) — เก็บข้อมูลเป็น YYYY-MM-DD ค.ศ. เหมือนเดิม
 function thDate(iso) {
   if (!iso) return '—';
   const [y,m,d] = iso.split('-');
-  return d+'/'+m+'/'+y;
+  return d+'/'+m+'/'+(+y+543);
 }
-// ช่องกรอกวันที่แบบ วว/ดด/ปปปป (ค.ศ.) — เลี่ยงปัญหา <input type="date"> ที่แสดงผลตาม locale เครื่อง (เช่น MM/DD/YYYY)
+// ช่องกรอกวันที่แบบ วว/ดด/ปปปป (พ.ศ.) — เลี่ยงปัญหา <input type="date"> ที่แสดงผลตาม locale เครื่อง (เช่น MM/DD/YYYY)
 function isoToThFull(iso) {
   if (!iso) return '';
   const [y,m,d] = iso.split('-');
-  return d+'/'+m+'/'+y;
+  return d+'/'+m+'/'+(+y+543);
 }
 function autoDateFull(el) {
   let v = el.value.replace(/\D/g,'').slice(0,8);
@@ -458,9 +459,13 @@ function autoDateFull(el) {
 function thFullToISO(s) {
   if (!s || !s.includes('/')) return null;
   const [dd,mm,yyyy] = s.trim().split('/');
-  if (!dd||!mm||!yyyy||yyyy.length<4) return null;
-  const iso = `${parseInt(yyyy)}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
-  return isNaN(new Date(iso+'T00:00:00').getTime()) ? null : iso;
+  if (!dd||!mm||!yyyy||(yyyy.length!==2&&yyyy.length!==4)) return null;
+  // ปี พ.ศ. (2569) หรือ 2 หลัก (69) → ค.ศ. · ปี ค.ศ. (2026) รับได้เหมือนเดิม
+  let y = parseInt(yyyy); if (y < 100) y += 2500; if (y >= 2400) y -= 543;
+  const d = parseInt(dd), m = parseInt(mm);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (y < 1900 || y > 2200 || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
 // ── OVERRIDES / EXTRA LOTS / REMOVED ROWS (manual edits) ──
@@ -518,7 +523,7 @@ function onEditExpText(id, el) {
   if (!raw) { onEditExp(id, null); return; }
   const iso = thFullToISO(raw);
   if (!iso) {
-    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป (พ.ศ.) เช่น 17/07/2569');
     render();
     return;
   }
@@ -577,7 +582,7 @@ function onEditBoxChecked(boxId, el) {
   if (!raw) { delete boxChecked[boxId]; persistState(); return; }
   const iso = thFullToISO(raw);
   if (!iso) {
-    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เช่น 17/07/2026');
+    showToast('⚠️ รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป (พ.ศ.) เช่น 17/07/2569');
     render();
     return;
   }

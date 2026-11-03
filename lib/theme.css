@@ -124,3 +124,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .card-icon .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic, .side .ic .tph-ic, .header-pill .tph-ic { margin: 0; width: 22px; height: 22px; vertical-align: middle; }
 .side .ic .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic { width: 19px; height: 19px; }
 .card-icon { display: flex; align-items: center; justify-content: center; }
+
+/* ── ช่องวันที่ วว/ดด/ปปปป พ.ศ. (lib/tph-ui.js TphUi.beDate) ── */
+.be-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.be-wrap input.be-txt { width: 104px !important; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
+.be-wrap input.be-txt.bad { border-color: #C0392B; background: #FDECEC; }
+.be-wrap .be-cal { border: 0; background: none; cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
+.be-wrap input[type=date].be { position: absolute !important; left: 0; bottom: 0; width: 1px !important; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

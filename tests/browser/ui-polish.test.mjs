@@ -172,3 +172,21 @@ test('ยังไม่มีข้อมูล: HA และตรวจสอ
   assert.deepEqual(e.errors, []);
   await e.ctx.close();
 });
+
+test('วันที่ พ.ศ.: ยาเวรบ่าย-ดึก ช่อง "เช้าวันที่" เป็น วว/ดด/ปปปป พ.ศ. · ยาใกล้หมดอายุ แสดง/รับ พ.ศ. (ปี ค.ศ. ก็ยังรับ)', async () => {
+  const n = await open('night-meds.html', undefined, '2026-11-03T09:00:00+07:00');
+  await n.page.waitForSelector('#f-date-be');
+  assert.equal(await n.page.inputValue('#f-date-be'), '03/11/2569');
+  await n.page.fill('#f-date-be', '1/11/69'); await n.page.dispatchEvent('#f-date-be', 'change');
+  assert.equal(await n.page.evaluate(() => document.getElementById('f-date').value), '2026-11-01');
+  assert.deepEqual(n.errors, []);
+  await n.ctx.close();
+  const e = await open('expiry-tracker.html');
+  await e.page.waitForSelector('#tbody .edit-exp');
+  const v = await e.page.evaluate(() => [...document.querySelectorAll('#tbody .edit-exp')].map(i => i.value).filter(Boolean).slice(0, 5));
+  assert.ok(v.length && v.every(x => /^\d{2}\/\d{2}\/25\d\d$/.test(x)), v.join(','));
+  assert.deepEqual(await e.page.evaluate(() => [thFullToISO('17/07/2569'), thFullToISO('17/07/2026'), thFullToISO('17/07/69'), thFullToISO('31/02/2569')]),
+    ['2026-07-17', '2026-07-17', '2026-07-17', null]);
+  assert.deepEqual(e.errors, []);
+  await e.ctx.close();
+});

@@ -118,6 +118,7 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 }
 </style>
 <link rel="stylesheet" href="lib/theme.css">
+<style>/* ช่องวันที่ พ.ศ. ให้สูงเท่าช่องเวลาข้างกัน */ .be-wrap input.be-txt { width: 132px !important; height: 40px; font-size: 15px; border-radius: 8px; }</style>
 </head>
 <body data-suite-page="night-meds">
 
@@ -132,7 +133,7 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 <div class="wrap">
   <div class="card">
     <div class="controls">
-      <div><label for="f-date">เช้าวันที่ (สิ้นสุดเวร)</label><input type="date" id="f-date"></div>
+      <div><label for="f-date">เช้าวันที่ (สิ้นสุดเวร)</label><input type="date" class="be" id="f-date"></div>
       <div><label for="f-from">ตั้งแต่ (เมื่อวาน)</label><input type="time" id="f-from" value="19:30"></div>
       <div><label for="f-to">ถึง (วันนี้)</label><input type="time" id="f-to" value="08:00"></div>
       <button class="btn btn-primary" id="btn-load" onclick="load()">🗄 ดึงจาก HOSxP</button>
