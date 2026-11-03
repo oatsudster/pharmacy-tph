@@ -118,6 +118,10 @@ td small { display: block; color: var(--text-light); }
 .term:hover { color: var(--primary); }
 .term.q { border: 1px solid var(--border); border-radius: 999px; width: 18px; height: 18px; font-size: 11px; line-height: 16px; text-align: center; color: var(--text-mid); background: #fff; margin-left: 4px; vertical-align: 1px; }
 .gl-pop { position: absolute; z-index: 50; width: min(340px, calc(100vw - 32px)); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 10px 12px; font-size: 13.5px; line-height: 1.5; display: grid; gap: 4px; }
+.gl-pop[hidden] { display: none; }
+.gl-pop { padding-right: 34px; }
+.gl-pop .x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border: 0; border-radius: 999px; background: none; color: var(--text-mid); font-size: 16px; line-height: 26px; cursor: pointer; }
+.gl-pop .x:hover { background: var(--primary-light); color: var(--primary-dark); }
 .gl-pop b { color: var(--primary-dark); font-size: 14.5px; }
 .gl-pop .k { font-size: 12px; color: var(--text-light); }
 .gl-pop .who { font-size: 12.5px; color: var(--text-mid); }
@@ -467,12 +471,12 @@ td small { display: block; color: var(--text-light); }
   // ชื่อรายการที่กดดูคำอธิบายได้ (ไม่มีในคำศัพท์ = ข้อความธรรมดา)
   const term = (k, text) => gl(k) ? `<button type="button" class="term" data-t="${esc(k)}">${esc(text)}</button>` : esc(text);
   const qm = (k) => k && gl(k) ? `<button type="button" class="term q" data-t="${esc(k)}" aria-label="ความหมาย">?</button>` : '';
-  const glBody = (k) => { const g = gl(k); return `<span class="k">${esc(k)}</span><b>${esc(g[0])}</b>${g[1] ? `<span>${esc(g[1])}</span>` : ''}${g[2] ? `<span class="who">${esc(g[2])}</span>` : ''}${g[3] ? '<span class="unv">ยังไม่ยืนยันกับทีมประกัน</span>' : ''}`; };
+  const glBody = (k) => { const g = gl(k); return `<button type="button" class="x" aria-label="ปิด" title="ปิด">✕</button><span class="k">${esc(k)}</span><b>${esc(g[0])}</b>${g[1] ? `<span>${esc(g[1])}</span>` : ''}${g[2] ? `<span class="who">${esc(g[2])}</span>` : ''}${g[3] ? '<span class="unv">ยังไม่ยืนยันกับทีมประกัน</span>' : ''}`; };
   // กดคำที่มีเส้นประ → กล่องคำอธิบายใต้คำนั้น · กดที่อื่นปิด
   const glPop = document.getElementById('gl-pop');
   document.addEventListener('click', (e) => {
     const b = e.target.closest('.term');
-    if (!b) { if (!e.target.closest('#gl-pop')) glPop.hidden = true; return; }
+    if (!b) { if (!e.target.closest('#gl-pop') || e.target.closest('#gl-pop .x')) glPop.hidden = true; return; }
     e.preventDefault();
     if (!glPop.hidden && glPop.dataset.t === b.dataset.t) { glPop.hidden = true; return; }
     glPop.dataset.t = b.dataset.t; glPop.innerHTML = glBody(b.dataset.t); glPop.hidden = false;
