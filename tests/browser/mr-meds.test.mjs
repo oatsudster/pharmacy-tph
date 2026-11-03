@@ -208,9 +208,9 @@ test('ยาเดิม รพ.อื่น: คีย์ครั้งเด�
 
   // รายชื่อผู้ป่วยใน: ป้ายตามวันนัด
   await page.evaluate(() => loadIpd());
-  await page.waitForSelector('#mdp-list .xb.ok');   // แท็บยาเดิม (เปิดอยู่) แสดงป้ายเหมือนแท็บหัวสติกเกอร์
-  assert.equal(await page.isVisible('#view-ipd'), false);
-  const badges = await page.$$eval('#ipd-list .ipd-row', rs => rs.map(r => [...r.querySelectorAll('.xb')].map(b => b.className + ' ' + b.textContent).join(' | ')));
+  await page.waitForSelector('#mdp-list .xb.ok');   // ป้ายอยู่ในแท็บ MR + ยาเดิม เท่านั้น (แท็บหัวสติกเกอร์ไม่มีแล้ว)
+  assert.equal(await page.locator('#ipd-list .xb').count(), 0);
+  const badges = await page.$$eval('#mdp-list .ipd-row', rs => rs.map(r => [...r.querySelectorAll('.xb')].map(b => b.className + ' ' + b.textContent).join(' | ')));
   assert.match(badges[0], /xb ok 🏥 ยาเดิม รพ\.อื่น 1 รายการ · ก่อนนัด 15 ม\.ค\. 70/);
   assert.match(badges[1], /xb warn 🏥 ยาเดิม รพ\.อื่น 1 รายการ · เลยนัด 15 ม\.ค\. 70/);
 

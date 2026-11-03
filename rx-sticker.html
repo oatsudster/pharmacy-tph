@@ -242,14 +242,14 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
   <a href="index.html">🏠 หน้าหลัก</a>
   <div>
     <h1>🏷️ พิมพ์สติกเกอร์ยา (จาก HOSxP)</h1>
-    <div class="sub">สติกเกอร์ยาเมื่อใบสั่งถูกล็อกใน HOSxP · หัวสติกเกอร์ผู้ป่วยในแปะรถยา/MR · ยาเดิมแปะตารางใบ MR — พิมพ์จากฐานข้อมูล HOSxP ได้ในคลิกเดียว</div>
+    <div class="sub">สติกเกอร์ยาเมื่อใบสั่งถูกล็อกใน HOSxP · หัวสติกเกอร์ผู้ป่วยในแปะรถยา · หัว MR + ยาเดิมแปะใบ MR — พิมพ์จากฐานข้อมูล HOSxP ได้ในคลิกเดียว</div>
   </div>
 </div>
 
 <div class="tabbar">
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
-  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (รถยา / MR)</button>
-  <button class="tab" data-v="md" onclick="setView('md')">💊 ยาเดิมผู้ป่วยใน (ตารางใบ MR)</button>
+  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน (แปะรถยา)</button>
+  <button class="tab" data-v="md" onclick="setView('md')">📋💊 MR + ยาเดิมผู้ป่วยใน</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
 </div>
 
@@ -279,11 +279,6 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
       <label class="hint" style="margin:0">ดวงละคน × <input class="cp" type="number" id="ipd-copies" min="1" max="9" value="1"></label>
       <span class="hint" style="margin:0">กด 🖨 ท้ายชื่อ = พิมพ์คนนั้นทันที · เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
     </div>
-    <div class="actions" style="margin:0 0 6px">
-      <label class="hint" style="margin:0;font-weight:600">📋 หัวสติกเกอร์ MR · วันที่ทำ MR <input type="date" class="be" id="mr-date" onchange="mrDateSync(this)"></label>
-      <button class="btn btn-gold" id="mr-print-sel" onclick="printMr(ipdSelected())" disabled>📋 พิมพ์ MR ที่เลือก</button>
-      <span class="hint" style="margin:0">1 ดวง = 2 ชุด: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา</span>
-    </div>
     <div id="ipd-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
 </div>
@@ -295,7 +290,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
     <div class="actions" style="margin:0 0 6px">
       <input type="text" id="mdp-q" placeholder="ค้นหา ชื่อ / HN / เตียง" autocomplete="off" style="max-width:260px" oninput="renderMdPts()">
       <div class="chips" id="mdp-wards" style="margin:0"></div>
-      <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" class="be" id="md-mrdate" onchange="mrDateSync(this)"></label>
+      <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" class="be" id="md-mrdate"></label>
     </div>
     <div id="mdp-list" class="mdp-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
@@ -306,6 +301,7 @@ td.use .pic-warn { color: #b45309; font-size: 12px; }
     <div class="actions" style="margin:0 0 6px">
       <button class="btn btn-gold" id="mrmd-print" onclick="printMrMd()" title="หัวสติกเกอร์ MR 1 ดวง (ตัวจริง/สำเนา) ตามด้วยยาเดิมที่ติ๊ก — พิมพ์รวดเดียว">📋💊 พิมพ์หัว MR + ยาเดิม</button>
       <button class="btn" id="md-print" onclick="printMd()">🖨 พิมพ์เฉพาะยาเดิม</button>
+      <button class="btn" onclick="MD && printMr([MD.x.an])" title="หัวสติกเกอร์ MR 1 ดวง: ครึ่งบนแปะใบ MR ตัวจริง · ครึ่งล่างแปะใบสำเนา">📋 พิมพ์เฉพาะหัว MR</button>
       <label class="hint" style="margin:0">ชุด × <input class="cp" type="number" id="md-sets" min="1" max="4" value="2"></label>
       <button class="btn btn-sm" onclick="mdAll(true)">เลือกทั้งหมด</button>
       <button class="btn btn-sm" onclick="mdAll(false)">ไม่เลือกเลย</button>
@@ -649,7 +645,7 @@ const bedKey = b => String(b || '').replace(/\d+/g, d => d.padStart(4, '0'));
 function ipdShown() { return IPD.filter(x => !IPD_WARD || x.ward === IPD_WARD); }
 function ipdSelected() { return ipdShown().filter(x => IPD_SEL.has(x.an)).map(x => x.an); }
 async function loadIpd() {
-  const md = document.getElementById('mr-date'); if (!md.value) { md.value = todayIso(); mrDateSync(md); }
+  const md = document.getElementById('md-mrdate'); if (!md.value) md.value = todayIso();
   const r = window.tphHosxp && tphHosxp.ipdList ? await tphHosxp.ipdList() : null;
   if (!r) { document.getElementById('ipd-list').innerHTML = document.getElementById('mdp-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
   IPD = (r.items || []).sort((a, b) => String(a.wardName).localeCompare(String(b.wardName)) || bedKey(a.bed).localeCompare(bedKey(b.bed)));
@@ -667,15 +663,11 @@ function renderIpd() {
       <input type="checkbox" ${IPD_SEL.has(x.an) ? 'checked' : ''} onchange="this.checked?IPD_SEL.add('${escHtml(x.an)}'):IPD_SEL.delete('${escHtml(x.an)}');renderIpd()">
       <div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
-        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div>${ipdRecBadge(x)}</div>
-      <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button>
-        <button class="btn btn-sm" onclick="printMr(['${escHtml(x.an)}'])" title="หัวสติกเกอร์ Medication Reconciliation">📋 MR</button>
-        <button class="btn btn-sm" onclick="openMd('${escHtml(x.an)}')" title="ไปแท็บยาเดิม — สติกเกอร์ยาเดิมแปะตารางใบ MR">💊 ยาเดิม</button></div>
+        <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button></div>
     </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
   const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
   b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
-  const mb = document.getElementById('mr-print-sel');
-  mb.disabled = !n; mb.textContent = `📋 พิมพ์ MR ที่เลือก${n ? ` (${n})` : ''}`;
   renderMdPts();
 }
 // ── แท็บยาเดิมผู้ป่วยใน (ผู้ใช้ขอ 2026-11-03: แยกจากแท็บหัวสติกเกอร์) — รายชื่อเดียวกับ IPD กดชื่อ = เปิดยาเดิมคนนั้น
@@ -693,7 +685,7 @@ function renderMdPts() {
       <div><button class="btn btn-sm${x.an === MD_AN ? ' btn-gold' : ''}">💊 ยาเดิม</button></div>
     </div>`).join('') || `<div class="empty">${IPD.length ? 'ไม่พบผู้ป่วยตามคำค้น' : 'ไม่มีผู้ป่วยใน'}</div>`;
 }
-function mrDateSync(src) { ['mr-date', 'md-mrdate'].forEach(id => { const e = document.getElementById(id); if (e !== src) e.value = src.value; }); }
+
 function printIpd(ans) {
   const copies = Math.max(1, Math.min(9, +document.getElementById('ipd-copies').value || 1));
   const list = IPD.filter(x => ans.includes(x.an));
@@ -737,7 +729,7 @@ function mrHalf(x, mrDate, tag) {
     </div>`;
 }
 function mrHtml(list) {
-  const mrDate = document.getElementById('mr-date').value || todayIso();
+  const mrDate = document.getElementById('md-mrdate').value || todayIso();
   return list.map(x => `<div class="mrstk">${mrHalf(x, mrDate, 'ตัวจริง')}${mrHalf(x, mrDate, 'สำเนา')}</div>`).join('');
 }
 // สติกเกอร์ 9×6 ซม. ชนิดต่างๆ พิมพ์ในงานเดียวกันได้ — fits = ฟังก์ชันย่อตัวอักษรของแต่ละชนิด (วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว)
