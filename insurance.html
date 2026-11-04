@@ -161,7 +161,26 @@ td small { display: block; color: var(--text-light); }
   .side button, .side a { width: auto; min-height: 0; white-space: nowrap; flex: none; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 12px; font-size: 13px; box-shadow: none; }
   .side button.on { border-color: #C49A22; box-shadow: none; }
 }
-@media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 40px; } .gaps { grid-template-columns: 1fr; } }
+/* สรุปภาพรวม (2026-11-04): สรุปสั้นๆ 2 ส่วน : ประมาณการ 1 ส่วน · ประมาณการเป็นแผงกระชับ ตัวเลข 32px · การ์ดที่มาเคลมแสดงเมื่อมีข้อมูล */
+.ov-top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; align-items: stretch; }
+.ov-top > * { min-width: 0; }
+.ov-top .hero { display: block; }
+.ov-top .hero-main { height: 100%; box-sizing: border-box; padding: 16px 18px; gap: 12px; justify-content: flex-start; }
+.ov-top .hero-main .k { font-size: 14px; }
+.ov-top .hero-main .v { font-size: 32px; margin: 2px 0 4px; }
+.ov-top .hero-main .s { font-size: 14px; line-height: 1.6; }
+.ov-top .gaps { grid-template-columns: 1fr; gap: 6px; }
+.ov-top .gap { grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 12px; align-items: baseline; }
+.ov-top .gap .t { font-size: 14px; }
+.ov-top .gap .a { font-size: 16px; white-space: nowrap; }
+.ov-top .gap .d { grid-column: 1 / -1; font-size: 12.5px; }
+.hero-src { font-size: 12.5px; opacity: .85; line-height: 1.6; margin-top: auto; }
+.hero-more { font: inherit; font-weight: 700; color: #F6D77B; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.hero-more:hover { color: #fff; }
+.src-cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.src-cards:empty { display: none; }
+@media (max-width: 1100px) { .ov-top { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .hero-main .v { font-size: 28px !important; } .gaps { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
@@ -204,6 +223,7 @@ td small { display: block; color: var(--text-light); }
 <main class="wrap">
   <div class="view" data-view="overview">
     <div class="view-head"><h2>สรุปภาพรวม</h2><p class="note">สรุปสั้นๆ · ประมาณการรายได้ที่เพิ่มได้ · ตัวชี้วัดหลักรายเดือน</p></div>
+  <div class="ov-top">
   <section class="card" id="sum">
     <div class="sum-head"><h2 id="sum-title">สรุปสั้นๆ</h2><button id="sum-copy" class="upbtn sec" type="button">📋 คัดลอกข้อความสรุป</button></div>
     <ul id="sum-list"><li><span>⏳</span><span>กำลังโหลดข้อมูล…</span></li></ul>
@@ -213,18 +233,20 @@ td small { display: block; color: var(--text-light); }
   <section class="hero">
     <div class="hero-main">
       <div>
-        <div class="k">ประมาณการรายได้ที่เพิ่มได้ต่อปี (จากการวิเคราะห์ปีงบ 69)</div>
+        <div class="k">ประมาณการรายได้ที่เพิ่มได้ต่อปี</div>
         <div class="v" id="hero-total">~1.2 ล้านบาท</div>
-        <div class="s">ส่งข้อมูลเคลมตรงเวลาดีแล้ว เงินที่ยังขาดมาจาก 3 เรื่องนี้ ตัวชี้วัดด้านล่างอัปเดตจาก HOSxP ทุกเดือน</div>
+        <div class="s">ส่งข้อมูลเคลมตรงเวลาดีแล้ว เงินที่ยังขาดมาจาก 3 เรื่องนี้</div>
       </div>
       <div class="gaps">
-        <div class="gap"><span class="t">ก. เคลมบริการที่ทำแล้วให้ครบ</span><span class="d">นอกเขต, ค่ารถ refer, HbA1c, วัคซีน, LGO, Palliative, Clopidogrel</span><span class="a" id="gap-A">—</span></div>
-        <div class="gap"><span class="t">ข. เพิ่มบริการที่ สปสช. จ่ายแยก</span><span class="d">คัดกรองไวรัสตับ, แม่และเด็ก, สมุนไพร, วัคซีนไข้หวัดใหญ่</span><span class="a" id="gap-B">—</span></div>
-        <div class="gap"><span class="t">ค. ผู้ป่วยใน</span><span class="d">ลงรหัสโรคร่วมให้ครบ เพิ่มค่า RW</span><span class="a" id="gap-C">—</span></div>
+        <div class="gap"><span class="t">ก. เคลมบริการที่ทำแล้วให้ครบ</span><span class="a" id="gap-A">—</span><span class="d">นอกเขต, ค่ารถ refer, HbA1c, วัคซีน, LGO, Palliative, Clopidogrel</span></div>
+        <div class="gap"><span class="t">ข. เพิ่มบริการที่ สปสช. จ่ายแยก</span><span class="a" id="gap-B">—</span><span class="d">คัดกรองไวรัสตับ, แม่และเด็ก, สมุนไพร, วัคซีนไข้หวัดใหญ่</span></div>
+        <div class="gap"><span class="t">ค. ผู้ป่วยใน</span><span class="a" id="gap-C">—</span><span class="d">ลงรหัสโรคร่วมให้ครบ เพิ่มค่า RW</span></div>
       </div>
+      <div class="hero-src">ที่มา: วิเคราะห์ข้อมูลปีงบ 2569 (ตัวเลขคงที่ ไม่เปลี่ยนตามปีงบที่เลือก) · <button type="button" class="hero-more" onclick="var b=document.querySelector('.side button[data-v=opp]');if(b)b.click()">ดูรายละเอียด →</button></div>
     </div>
-    <div class="src-cards" id="src-cards"></div>
   </section>
+  </div>
+  <div class="src-cards" id="src-cards"></div>
 
   <section>
     <div class="kpis" id="kpis"></div>

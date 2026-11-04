@@ -124,6 +124,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .card-icon .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic, .side .ic .tph-ic, .header-pill .tph-ic { margin: 0; width: 22px; height: 22px; vertical-align: middle; }
 .side .ic .tph-ic, .si-icon .tph-ic, .sb-icon .tph-ic { width: 19px; height: 19px; }
 .card-icon { display: flex; align-items: center; justify-content: center; }
+/* ปุ่มคำสั่งในเนื้อหา (บันทึก/ล้าง/ส่งออก/แท็บ) — ไอคอน 18px กึ่งกลางกับข้อความ */
+:is(.btn, .btn-submit, .btn-clear, .btn-export, .btn-stamp, .upbtn, .tab-btn, .nav-tab, .view-btn) > .tph-ic { width: 18px; height: 18px; vertical-align: -4px; margin-right: 6px; }
 
 /* ── ช่องวันที่ วว/ดด/ปปปป พ.ศ. (lib/tph-ui.js TphUi.beDate) ── */
 .be-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }

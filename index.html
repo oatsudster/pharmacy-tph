@@ -731,6 +731,35 @@ body[data-suite-page='index'] .dash-context { padding: 10px 14px; font-size: 13p
   body[data-suite-page='index'] .hero p { display: none; }
 }
 </style>
+<style id="home-compact">
+/* จอเตี้ย (2026-11-04): หัวเรื่อง/ช่องค้นหา/หมายเหตุกระชับ ระยะ 12–16px · ป้าย chip ในการ์ดซ่อน (ยังอยู่ใน DOM ให้ค้นหาเจอ)
+   เป้า: 1408×614 เห็นชื่อระบบและปุ่ม "เปิดระบบ" ของการ์ดแถวแรก */
+body[data-suite-page='index'] .hero { padding-top: 16px !important; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 12px; }
+body[data-suite-page='index'] .hero h1 { font-size: 24px !important; margin: 0; }
+body[data-suite-page='index'] .hero p { margin: 0; }
+body[data-suite-page='index'] .cards-wrap { margin-top: 12px !important; }
+.home-top { margin-bottom: 8px; }
+body[data-suite-page='index'] .home-top .suite-search { padding: 10px 14px; gap: 10px; }
+body[data-suite-page='index'] .suite-search input { min-height: 42px; padding: 8px 14px; }
+body[data-suite-page='index'] .suite-search button { min-height: 42px; padding: 8px 14px; }
+body[data-suite-page='index'] .monthly-btn { padding: 10px 16px; min-height: 0; }
+.home-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 0 0 12px; }
+.home-meta .suite-search-status { margin: 0; }
+.data-note { font-size: 13px; color: var(--tph-muted); }
+.data-note summary { cursor: pointer; color: var(--tph-muted); list-style: none; }
+.data-note summary::-webkit-details-marker { display: none; }
+.data-note summary::after { content: ' ▾'; font-size: 11px; }
+.data-note[open] summary::after { content: ' ▴'; }
+.data-note summary:hover { color: var(--tph-primary); }
+.data-note > div { margin-top: 6px; padding: 8px 12px; background: #fff; border: 1px solid var(--tph-line); border-left: 3px solid var(--tph-primary); border-radius: 8px; line-height: 1.7; color: #3D5A47; }
+body[data-suite-page='index'] .home-group { margin-bottom: 20px; }
+body[data-suite-page='index'] .home-group > .section-label { margin-bottom: 8px; }
+body[data-suite-page='index'] .card-tags { display: none; }
+body[data-suite-page='index'] .card-body { padding: 14px 16px 8px; }
+body[data-suite-page='index'] .card-desc { margin-top: 8px; }
+body[data-suite-page='index'] .app-card > .dash-caption { padding: 0 16px 6px !important; }
+@media print { .data-note { display: none; } }
+</style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
 <body data-suite-page="index">
@@ -852,8 +881,12 @@ async function checkPin() {
     <div id="monthly-list"></div>
   </section>
   <div class="recent-row" id="recent-row" hidden></div>
-<div class="dash-context">ตัวเลขด้านล่างเป็นข้อมูลสรุปจากข้อมูลที่โหลดไว้ในเครื่องนี้ · เปิดแต่ละระบบเพื่อดูรายละเอียดและสถานะการอัปเดต<span class="dash-caption">เดือนปัจจุบันยังไม่สิ้นสุด จึงไม่ควรเทียบจำนวนตรง ๆ กับเดือนเต็ม</span></div>
-<p class="suite-search-status" id="suite-search-status" role="status"></p>
+<div class="home-meta">
+  <p class="suite-search-status" id="suite-search-status" role="status"></p>
+  <details class="data-note"><summary>ตัวเลขในการ์ดมาจากข้อมูลในเครื่องนี้ · ที่มาข้อมูล</summary>
+    <div>ตัวเลขในการ์ดเป็นข้อมูลสรุปจากข้อมูลที่โหลดไว้ในเครื่องนี้ · เปิดแต่ละระบบเพื่อดูรายละเอียดและสถานะการอัปเดต<br>เดือนปัจจุบันยังไม่สิ้นสุด จึงไม่ควรเทียบจำนวนตรง ๆ กับเดือนเต็ม</div>
+  </details>
+</div>
 <div class="suite-no-results" id="suite-no-results" hidden><img class="tph-art sm" src="img/ui/empty-search.png" alt="" width="140" height="140">ไม่พบระบบที่ตรงกับคำค้น ลองใช้คำสั้นลงหรือกดล้างคำค้น</div>
 <div id="suite-apps">
 

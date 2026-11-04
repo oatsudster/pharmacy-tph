@@ -206,3 +206,108 @@ test('ภาพ img/ui ที่หน้าเว็บอ้างถึงม
     assert.ok(fs.statSync(p).size < 150 * 1024, r + ' ใหญ่เกิน');
   }
 });
+
+// ── เก็บรายละเอียด UI จอเตี้ย (2026-11-04) ──
+test('หน้าหลัก 1408×614: เห็นชื่อระบบและปุ่ม "เปิดระบบ" ของการ์ดแถวแรกโดยไม่ต้องเลื่อน · หมายเหตุที่มาข้อมูลกดเปิดได้', async () => {
+  const { ctx, page, errors } = await open('index.html', { width: 1408, height: 614 });
+  await page.waitForSelector('.home-group .app-card');
+  const r = await page.evaluate(() => [...[...document.querySelectorAll('.home-group')].find(g => !g.hidden && g.querySelector('.app-card')).querySelectorAll('.app-card')].slice(0, 4).map(c => {
+    const h = c.querySelector('h2').getBoundingClientRect(), b = c.querySelector('.open-btn').getBoundingClientRect();
+    return { h2: h.top, btn: b.bottom, fs: parseFloat(getComputedStyle(c.querySelector('.card-desc')).fontSize) };
+  }));
+  assert.equal(r.length, 4);
+  for (const c of r) { assert.ok(c.h2 > 0 && c.btn <= 614, JSON.stringify(c)); assert.ok(c.fs >= 13, 'ข้อความคำอธิบายไม่เล็กเกิน'); }
+  assert.equal(await page.isVisible('.data-note > div'), false);
+  await page.click('.data-note summary');
+  assert.equal(await page.isVisible('.data-note > div'), true);
+  await page.fill('#suite-search', 'สติกเกอร์');            // ค้นหายังเจอแม้ป้าย chip ถูกซ่อน
+  assert.match(await page.textContent('#suite-search-status'), /^พบ [1-9]/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('ประกัน: สรุปสั้นๆ กับประมาณการอยู่แถวเดียวกัน (2:1) บนจอคอม · มือถือคอลัมน์เดียว ไม่ล้นจอ · ระบุปีที่มา', async () => {
+  const d = await open('insurance.html', { width: 1366, height: 800 });
+  await d.page.waitForSelector('.ov-top .hero-main');
+  const [s, h] = await d.page.evaluate(() => ['#sum', '.ov-top .hero-main'].map(q => document.querySelector(q).getBoundingClientRect()).map(r => ({ x: r.left, y: r.top, w: r.width })));
+  assert.equal(Math.round(s.y), Math.round(h.y));
+  assert.ok(h.x > s.x && s.w > h.w * 1.6, JSON.stringify([s, h]));
+  assert.match(await d.page.textContent('.hero-src'), /ปีงบ 2569/);
+  assert.equal(await d.page.isVisible('#src-cards'), false);   // ไม่มีข้อมูล = ไม่มีการ์ดว่าง
+  await d.page.click('.hero-more');
+  assert.equal(await d.page.evaluate(() => document.querySelector('.view[data-view="opp"]').classList.contains('on')), true);
+  assert.deepEqual(d.errors, []);
+  await d.ctx.close();
+  const m = await open('insurance.html', { width: 390, height: 844 });
+  await m.page.waitForSelector('.ov-top .hero-main');
+  const [ms, mh] = await m.page.evaluate(() => ['#sum', '.ov-top .hero-main'].map(q => document.querySelector(q).getBoundingClientRect().top));
+  assert.ok(mh > ms);
+  assert.ok(await m.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await m.ctx.close();
+});
+
+test('คลินิก: ปุ่มผู้ช่วย AI ห่างแถบบันทึก ≥ 16px · เลื่อนหา/โฟกัสช่องไหนก็ไม่ถูกแถบบันทึกหรือปุ่มผู้ช่วยบัง', async () => {
+  for (const vp of [{ width: 1408, height: 614 }, { width: 390, height: 844 }]) {
+    const { ctx, page, errors } = await open('clinic.html', vp);
+    await page.waitForSelector('#aiw-fab');
+    for (let i = 0; i < 4; i++) await page.evaluate(() => addLoRow());
+    for (let i = 0; i < 2; i++) await page.evaluate(() => addDrpRow());
+    const res = await page.evaluate(async () => {
+      const bad = [];
+      for (const e of document.querySelectorAll('.entry-col input:not([type=hidden]), .entry-col select, .entry-col textarea, .entry-col button')) {
+        if (!e.offsetParent || e.closest('.cl-savebar')) continue;
+        e.focus(); e.scrollIntoView({ block: 'nearest' });
+        await new Promise(r => requestAnimationFrame(r));
+        const r = e.getBoundingClientRect(); if (!r.width) continue;
+        for (const x of [r.left + 4, r.left + r.width / 2, r.right - 4]) {
+          const t = document.elementFromPoint(x, r.top + r.height / 2);
+          if (t && t !== e && !e.contains(t) && !t.contains(e) && (t.closest('.cl-savebar') || t.closest('#aiw-fab'))) { bad.push(e.id || e.className); break; }
+        }
+      }
+      // แถบบันทึกติดท้ายจอ → ระยะห่างจากปุ่มผู้ช่วย
+      document.querySelector('.cl-savebar').scrollIntoView({ block: 'end' });
+      await new Promise(r => requestAnimationFrame(r));
+      const f = document.getElementById('aiw-fab').getBoundingClientRect();
+      const btns = [...document.querySelectorAll('.cl-savebar button')].map(b => b.getBoundingClientRect());
+      const gap = Math.min(...btns.map(b => Math.max(f.left - b.right, b.left - f.right, f.top - b.bottom, b.top - f.bottom)));
+      return { bad, gap };
+    });
+    assert.deepEqual(res.bad, [], JSON.stringify(vp));
+    assert.ok(res.gap >= 16, `${vp.width}: ปุ่มผู้ช่วยห่างปุ่มบันทึก ${res.gap}px`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  }
+});
+
+test('ME หน้าแรก 1408×614: การ์ด OPD/IPD/ER เห็นครบทั้งใบ · hover ไม่ขยับการ์ด · มือถือการ์ดกดง่าย', async () => {
+  const { ctx, page } = await open('ME_Dashboard.html', { width: 1408, height: 614 });
+  await page.waitForSelector('.landing-card');
+  const r = await page.evaluate(() => [...document.querySelectorAll('.landing-card')].map(c => c.getBoundingClientRect()).map(x => [x.top, x.bottom]));
+  assert.equal(r.length, 3);
+  for (const [t, b] of r) assert.ok(t > 56 && b <= 614, JSON.stringify(r));
+  await page.hover('.landing-card');
+  await page.waitForTimeout(250);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.landing-card')).transform), 'none');
+  await ctx.close();
+  const m = await open('ME_Dashboard.html', { width: 390, height: 844 });
+  await m.page.waitForSelector('.landing-card');
+  const hs = await m.page.evaluate(() => [...document.querySelectorAll('.landing-card')].map(c => c.getBoundingClientRect().height));
+  for (const h of hs) assert.ok(h >= 100 && h <= 220, String(h));
+  await m.ctx.close();
+});
+
+test('ปุ่มคำสั่งหลักในเนื้อหาใช้ไอคอนเส้นชุดเดียว 18px (ล้างฟอร์ม/บันทึก/วันนี้ ในคลินิก) · ปุ่ม ✕ รายแถวคง emoji', async () => {
+  const { ctx, page } = await open('clinic.html');
+  await page.waitForSelector('.cl-savebar .btn-submit .tph-ic');
+  const r = await page.evaluate(() => ({
+    sub: document.querySelector('.cl-savebar .btn-submit').textContent.trim(),
+    clr: !!document.querySelector('.cl-savebar .btn-clear .tph-ic[data-ic="trash-2"]'),
+    w: document.querySelector('.cl-savebar .btn-submit .tph-ic').getBoundingClientRect().width,
+  }));
+  assert.equal(r.sub, 'บันทึกการให้คำปรึกษา');
+  assert.ok(r.clr);
+  assert.ok(r.w >= 17 && r.w <= 20, String(r.w));
+  await page.evaluate(() => addLoRow());
+  assert.match(await page.textContent('#lo-list .btn-rm'), /✕/);
+  await ctx.close();
+});

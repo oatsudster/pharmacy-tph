@@ -589,13 +589,23 @@ body[data-suite-page='clinic'] .btn-add:hover { background: var(--tph-primary-so
 /* แถบบันทึก: ติดท้ายจอตลอดที่ยังอยู่ในการ์ดฝั่งขวา */
 body[data-suite-page='clinic'] .cl-savebar { position: sticky; bottom: 0; z-index: 6; display: flex; gap: 10px; margin: 16px -24px -24px; padding: 12px 24px;
   background: rgba(255,255,255,.96); border-top: 1px solid var(--tph-line); border-radius: 0 0 14px 14px; box-shadow: 0 -4px 12px rgba(18,66,40,.06); backdrop-filter: blur(4px); }
-/* เว้นที่ขวาให้ปุ่มผู้ช่วย AI ที่ลอยมุมล่างขวา (ไม่ทับปุ่มบันทึก) */
-body[data-suite-page='clinic'] .cl-savebar { padding-right: 92px; }
 body[data-suite-page='clinic'] .cl-savebar .btn-clear { width: auto; flex: none; margin: 0 !important; padding: 10px 16px; }
 body[data-suite-page='clinic'] .cl-savebar .btn-submit { flex: 1; margin: 0 !important; padding: 12px; }
+/* ช่องที่ถูก focus/เลื่อนหา ไม่ไปอยู่ใต้แถบบันทึก (สูง ~73px + 16px) */
+html:has(body[data-suite-page='clinic']) { scroll-padding-bottom: 92px; }
+/* ปุ่มผู้ช่วย AI (lib/ai-assistant.js) ไม่ชิดแถบบันทึก (2026-11-04):
+   จอคอม = มุมล่างซ้ายบนแถบเมนูเขียว (ส่วนล่างของแถบว่าง) ห่างแถบบันทึกหลายร้อย px · หน้าต่างแชตเปิดจากซ้าย */
+@media (min-width: 861px) {
+  body[data-suite-page='clinic'] #aiw-fab { right: auto; left: 18px; }
+  body[data-suite-page='clinic'] #aiw-panel { right: auto; left: 18px; }
+}
 @media (max-width: 760px) {
   body[data-suite-page='clinic'] .entry-col { padding: 16px; }
-  body[data-suite-page='clinic'] .cl-savebar { margin: 16px -16px -16px; padding: 10px 84px 10px 16px; }
+  /* มือถือ: ปุ่มผู้ช่วยย่อเป็น 44px อยู่ช่องของตัวเองท้ายแถบ เว้นจากปุ่มบันทึก 16px (44 + ขอบขวา 12 + 16 = 72) */
+  body[data-suite-page='clinic'] .cl-savebar { margin: 16px -16px -16px; padding: 10px 72px 10px 16px; }
+  body[data-suite-page='clinic'] #aiw-fab { width: 44px; height: 44px; right: 12px; bottom: 12px; }
+  body[data-suite-page='clinic'] #aiw-fab { font-size: 21px; }
+  body[data-suite-page='clinic'] #aiw-panel { bottom: 66px; }
 }
 </style>
 <link rel="stylesheet" href="lib/theme.css">
