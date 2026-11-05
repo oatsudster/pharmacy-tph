@@ -825,15 +825,18 @@ const mdUse = d => { const o = mdOld(d); return o ? o.use : d.usage; };
 //   "... เวลามีอาการหอบ ทุก 4 ชั่วโมง" → "2 puff prn q 4 hr", "1 ที วันละ 1 ครั้ง ก่อนนอน" → "1 puff hs",
 //   "ทุก 20 นาที ใน 1 ชั่วโมงแรก ... หลังจากนั้นทุก 4 ชั่วโมงเมื่อมีอาการ" → "2 puff q 20 min x3, then prn q 4 hr"
 //   ยาพ่นฝอยละออง (cc + NSS, nebule) ไม่แปลง
+//   2026-11-05: วิธีใช้ MDI อีกแบบ "สูดลมหายใจเข้าทางปากพร้อมกดยา 1 ครั้ง วันละ 2 เวลา เช้า-เย็น" (Budesonide/Seroflo/Berodual MDI)
+//   → "1 puff bid", "... ทุก 4-6 ชั่วโมงเวลาหอบ" → "1 puff prn q 4-6 hr", "วันละ 2 เวลา เช้า-ก่อนนอน" → "1 puff เช้า, hs"
+const MD_INH_RE = /^(?:(?:กด)?พ่น(?:ยา)?(?:เข้า)?ทางปาก|สูดลมหายใจเข้าทางปาก(?:พร้อม)?(?:กด|พ่น)ยา)\s*(\d+(?:\s*-\s*\d+)?)\s*(?:ที|ครั้ง)/;
 function mdAbbrInh(s) {
-  const m = s.match(/^(?:กด)?พ่น(?:ยา)?(?:เข้า)?ทางปาก\s*(\d+(?:\s*-\s*\d+)?)\s*(?:ที|ครั้ง)/);
+  const m = s.match(MD_INH_RE);
   if (!m || /cc|ซีซี|ซี\.ซี|nss|nebule|\bNB\b/i.test(s)) return s;
   const puff = `${m[1].replace(/\s/g, '')} puff`;
   let r = ' ' + s.slice(m[0].length) + ' ', freq = null, qh = null, hs = false, prn = false, stat = '';
   r = r.replace(/แต่ละครั้ง\s*เว้น\s*(ช่วง)?\s*ห่าง\s*\d+\s*นาที/g, ' ')
     .replace(/ทุก\s*20\s*นาที\s*ใน\s*1\s*ชั่วโมงแรก\s*(หาก\s*ยัง\s*หอบ)?\s*หลังจากนั้น\s*(พ่นยาทางปาก)?/, () => { stat = 'q 20 min x3, then '; return ' '; })
     .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)/, (_, n) => { freq = +n; return ' '; })
-    .replace(/(ซ้ำได้)?\s*ทุก\s*(\d+)\s*(ชั่วโมง|ชม\.?)/, (_, x, n) => { qh = +n; return ' '; })
+    .replace(/(ซ้ำได้)?\s*ทุก\s*(\d+(?:\s*-\s*\d+)?)\s*(ชั่วโมง|ชม\.?)/, (_, x, n) => { qh = n.replace(/\s/g, ''); return ' '; })
     .replace(/(เวลา|เมื่อ)\s*(มี)?\s*(อาการ)?\s*(หอบ|เหนื่อย)?(\s*,?\s*(หอบ|เหนื่อย))?/g, w => { prn = true; return ' '; })
     .replace(/ก่อนนอน/, () => { hs = true; return ' '; })
     .replace(/เช้า|เย็น/g, ' ');
@@ -841,6 +844,7 @@ function mdAbbrInh(s) {
   if (prn) return `${puff} ${stat}prn${qh ? ' q ' + qh + ' hr' : ''}`;
   if (qh && !freq) return `${puff} q ${qh} hr`;
   if (freq === 1 && hs) return `${puff} hs`;
+  if (freq === 2 && hs && /เช้า/.test(s) && !/เย็น/.test(s)) return `${puff} เช้า, hs`;
   const F = { 1: 'od', 2: 'bid', 3: 'tid', 4: 'qid' }[freq];
   return F && !qh ? `${puff} ${F}${hs ? ', hs' : ''}` : s;
 }
@@ -956,7 +960,7 @@ const MD_DOW = [['จันทร์', 'จ'], ['อังคาร', 'อ'], ['
 const MD_DOW_RE = MD_DOW.map(d => d[0]).join('|');
 const MD_DOW_TAIL = new RegExp(`^(.*?\\S)\\s*\\(?\\s*(?:สัปดาห์ละ\\s*\\d+\\s*วัน\\s*)?(?:เฉพาะ|ทุก)?\\s*(?:วัน)?\\s*((?:${MD_DOW_RE})(?:\\s*(?:,|และ|ถึง|-)?\\s*(?:วัน)?\\s*(?:${MD_DOW_RE}))*)\\s*\\)?$`);
 function mdAbbr0(s) {
-  if (/^(กด)?พ่น/.test(s)) return mdAbbrInh(s);
+  if (/^(กด)?พ่น|^สูดลมหายใจ/.test(s)) return mdAbbrInh(s);
   if (/^ฉีด|ยูนิต|\bunits?\b|\d\s*u\b/i.test(s) && !/รับประทาน/.test(s)) return mdAbbrIns(s);
   // ทันที (ผู้ใช้ขอ 2026-10-26): "1 เม็ด ทันที" → "1 tab stat", ยาน้ำ "30 cc po stat" (KCl), ยาซอง "6 sack stat"
   const st = s.match(/^(?:รับประทาน|ละลายน้ำ(?:แล้วดื่ม)?)?\s*(?:ครั้งละ)?\s*(ครึ่ง|½|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(เม็ด|แคปซูล|แคป|ซอง|ช้อนชา|ช้อนโต๊ะ|ซีซี|ซี\.ซี\.?|cc\.?|มล\.?|ml\.?)\s*(?:รับประทาน)?\s*ทันที$/i);

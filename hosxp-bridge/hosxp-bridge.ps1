@@ -320,7 +320,14 @@ function DbNightMeds($path) {
   if ($path -match '[?&]to=(\d{1,2}):(\d{2})') { $to = '{0:00}:{1}:00' -f [int]$Matches[1], $Matches[2] }
   $d0 = $d.AddDays(-1).ToString('yyyy-MM-dd'); $d1 = $d.ToString('yyyy-MM-dd')
   # วิธีใช้: ข้อความวิธีใช้พิเศษ (sp_use) ถ้ามี ไม่งั้นรหัสวิธีใช้ปกติ — ใช้ตรวจขนาดยา
-  $rows = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(o.rxtime,'%H:%i') AS rxtime, " +
+  # ยาที่สั่งที่ ER แล้ว admit: HOSxP ย้ายรายการไป AN และตั้ง rxtime = เวลามา รพ. ครั้งแรกของวัน (เช่น OPD เช้า 10:41)
+  # แต่ vsttime = เวลาของ visit ที่สั่งจริง (ER 20:10) และ last_modified = เวลาคีย์จริง (HN 6000651 4/11/69)
+  # ใช้ max(rxtime, min(เวลาคีย์, vsttime)) — ยา OPD กลางวันที่ถูกย้ายเข้า AN ตอน admit ค่ำ (คีย์ 13:47) ยังเป็นเวลากลางวัน
+  # และยาเวรดึกที่ถูกแก้ตอนสาย (คีย์ 11:49) ยังอยู่ในเวร; last_modified ว่าง = vsttime, แก้ข้ามวัน = rxtime เดิม
+  # (ทดสอบ ก.ย.-ต.ค. 69: เปลี่ยนเฉพาะรายการที่เวลาผิดจริง ไม่มีรายการเดิมหลุด)
+  $rxt = ("IF(IFNULL(o.an,'')<>'' AND o.vstdate=o.rxdate AND o.vsttime>o.rxtime, " +
+    "IF(o.last_modified IS NULL, o.vsttime, IF(DATE(o.last_modified)=o.rxdate, GREATEST(o.rxtime, LEAST(TIME(o.last_modified), o.vsttime)), o.rxtime)), o.rxtime)")
+  $rows = DbQuery ("SELECT o.vn, o.an, o.hn, DATE_FORMAT(o.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT($rxt,'%H:%i') AS rxtime, " +
     "o.dep_code, k.department, o.staff, o.icode, d.name, d.strength, d.units, d.dosageform, o.qty, " +
     "TRIM(IF(o.sp_use IS NOT NULL AND o.sp_use<>'', CONCAT_WS(' ', sp.name1, sp.name2, sp.name3), CONCAT_WS(' ', u.name1, u.name2, u.name3))) AS usage_text, " +
     "u.iperday, u.iperdose, " +
@@ -338,8 +345,8 @@ function DbNightMeds($path) {
     "LEFT JOIN opdscreen s ON s.vn=IF(o.vn IS NULL OR o.vn='', i.vn, o.vn) " +
     "LEFT JOIN opi_dispense od ON od.hos_guid=o.hos_guid LEFT JOIN drughint h ON h.hc=d.hintcode AND IFNULL(d.hintcode,'')<>'' " +
     "LEFT JOIN ovst ov ON ov.vn=o.vn " +
-    "WHERE o.rxdate IN ('$d0','$d1') AND ((o.rxdate='$d0' AND o.rxtime>='$from') OR (o.rxdate='$d1' AND o.rxtime<'$to')) " +
-    "ORDER BY o.rxdate, o.rxtime, o.hn, o.item_no LIMIT 5000")
+    "WHERE o.rxdate IN ('$d0','$d1') AND ((o.rxdate='$d0' AND $rxt>='$from') OR (o.rxdate='$d1' AND $rxt<'$to')) " +
+    "ORDER BY o.rxdate, $rxt, o.hn, o.item_no LIMIT 5000")
   $items = @($rows | ForEach-Object {
     [ordered]@{ vn = $_['vn']; an = $_['an']; hn = $_['hn']; name = $_['ptname']; date = $_['rxdate']; time = $_['rxtime']
       dep = $_['dep_code']; depName = $_['department']; staff = $_['staff']; icode = $_['icode']; drug = $_['name']; strength = $_['strength']
