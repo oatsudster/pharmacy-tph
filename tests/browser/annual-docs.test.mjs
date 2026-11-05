@@ -81,3 +81,33 @@ test('แจ้งเตือน: ใกล้ครบกำหนด → แ�
   await ctx.close();
   function fyOf(d) { return d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0); }
 });
+
+test('ฟอร์มรายชื่อเจ้าหน้าที่ (staff-update.html): เปิดได้ไม่ต้องใส่ PIN, เลือกหน่วยงานแล้วมีช่องกรอก, ตรวจช่องบังคับ', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route('**/*', r => r.request().url().startsWith('file:') ? r.continue() : r.abort());
+  const page = await ctx.newPage();
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(pathToFileURL(path.join(ROOT, 'staff-update.html')).href);
+  assert.match(page.url(), /staff-update\.html/, 'ไม่ถูกเด้งไปหน้า PIN');
+  assert.equal(await page.locator('#unit option').count(), 8);
+  await page.selectOption('#unit', 'รพ.สต.บ้านแพรกกลาง');
+  await page.waitForSelector('#adds .person');
+  await page.locator('#adds .person [data-k="first"]').fill('ทดสอบ');
+  await page.click('#send');
+  assert.match(await page.textContent('#err'), /ให้ครบ/);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'ไม่ล้นจอมือถือ');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('หมวดทะเบียนเจ้าหน้าที่: มีลิงก์ฟอร์ม + ทุกหน่วยงาน + ช่องเลือกจากทะเบียนในคำสั่ง', async () => {
+  const { ctx, page, errors } = await open();
+  await page.evaluate(() => document.querySelector('[data-v="staff"]').click());
+  await page.waitForSelector('#st-url');
+  assert.match(await page.inputValue('#st-url'), /staff-update\.html$/);
+  assert.equal(await page.locator('.reg-unit').count(), 7);
+  await page.evaluate(() => document.querySelector('[data-v="vac_order"]').click());
+  await page.waitForSelector('#v-vac_order [data-pick]');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

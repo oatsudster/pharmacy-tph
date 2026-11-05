@@ -14,6 +14,7 @@
 <script src="lib/session-timeout.js"></script>
 <script src="lib/firebase-app-compat-10.js"></script>
 <script src="lib/firebase-firestore-compat-10.js"></script>
+<script src="lib/staff-registry.js"></script>
 <style>
 /* ฟอนต์ราชการ — แปลงจาก TH SarabunIT๙ / TH Sarabun New (ฟอนต์แห่งชาติ SIPA ใช้ได้เสรี) ไว้ในเว็บ ทุกเครื่องพิมพ์ออกมาเหมือนกัน */
 @font-face { font-family: 'TPH SarabunIT9'; src: url('lib/fonts/thsarabunit9.woff2') format('woff2'); font-weight: 400; }
@@ -193,6 +194,23 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
 .chart .contacts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 18pt; }
 .chart .warnsig { color: #b91c1c; font-weight: 700; }
 
+/* ทะเบียนเจ้าหน้าที่ */
+.card h2 { margin-top: 0; }
+.share { display: grid; gap: 8px; }
+.share .lnk { display: flex; gap: 8px; flex-wrap: wrap; }
+.share .lnk input { flex: 1 1 320px; }
+.share .lnk a.btn { text-decoration: none; }
+.units { display: flex; gap: 6px; flex-wrap: wrap; }
+.req { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; background: var(--surface-2); }
+.req ul { margin: 0; padding-left: 20px; font-size: 14px; }
+.req .t-add { color: var(--good); } .req .t-leave { color: var(--bad); } .req .t-edit { color: var(--warn); }
+.reg-unit h3 { font-size: 14.5px; margin: 14px 0 4px; color: var(--primary); display: flex; gap: 8px; align-items: center; }
+.reg-row { display: grid; grid-template-columns: 112px 1fr 1fr 1.6fr 120px auto; gap: 4px; margin-bottom: 4px; }
+.reg-row input, .reg-row select { padding: 4px 6px; font-size: 13.5px; min-width: 0; }
+.reg-head { font-size: 12px; color: var(--text-2); font-weight: 600; }
+@media (max-width: 900px) { .reg-row { grid-template-columns: 100px 1fr 1fr; } }
+.pick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pick select { flex: 1 1 260px; width: auto; }
 #print-area { display: none; }
 @media print {
   body > *:not(#print-area) { display: none !important; }
@@ -224,6 +242,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
 <nav aria-label="หัวข้อ">
   <div class="tabs" id="tabs-ov" role="tablist">
     <button class="tab" type="button" data-v="overview" aria-selected="true">📅 กำหนดการ / แจ้งเตือน<span class="cnt" id="cnt-ov" hidden></span></button>
+    <button class="tab" type="button" data-v="staff">👥 ทะเบียนเจ้าหน้าที่<span class="cnt" id="cnt-staff" hidden></span></button>
   </div>
   <div class="tabs" id="tabs-kbs" role="tablist">
     <button class="tab" type="button" data-v="kbs_order">📜 คำสั่งแต่งตั้ง คกก.คุ้มครองผู้บริโภค<span class="cnt" data-cnt="kbs_order" hidden></span></button>
@@ -254,6 +273,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
   <section class="view" id="v-vac_chart"></section>
   <section class="view" id="v-vac_guide"></section>
   <section class="view" id="v-vac_report"></section>
+  <section class="view" id="v-staff"></section>
 </main>
 
 <div id="print-area"></div>
@@ -525,6 +545,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     try { history.replaceState(null, '', '#' + v); } catch (e) {}
     if (EDITORS[v] && !EDITORS[v].built) { EDITORS[v].build(); EDITORS[v].built = true; }
     if (EDITORS[v]) EDITORS[v].preview();
+    if (v === 'staff') renderStaff();
     window.scrollTo({ top: 0 });
   }
   document.querySelectorAll('nav .tab').forEach((t) => t.addEventListener('click', () => go(t.dataset.v)));
@@ -947,6 +968,18 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
             box.appendChild(listTable(tm.members, [
               { label: 'คำนำหน้า / ชื่อ', ph: 'ชื่อ', prefix: true }, { label: 'นามสกุล' }, { label: 'ตำแหน่งทางราชการ', w: '34%' }, { label: 'หน้าที่ในคณะ', list: 'roles-' + id, w: '22%' },
             ], changed, { addLabel: 'เพิ่มรายชื่อ', grid: true }));
+            // เลือกจากทะเบียนเจ้าหน้าที่ (หมวด 👥) — เติมคำนำหน้า ชื่อ สกุล ตำแหน่งให้เอง
+            const pk = document.createElement('div'); pk.className = 'pick';
+            pk.innerHTML = `<select data-pick>${pickOptions()}</select>`;
+            pk.querySelector('select').addEventListener('change', (e) => {
+              const x = REG.staff.find((y) => y.id === e.target.value); if (!x) return;
+              const blank = tm.members.findIndex((m) => !m.some((v) => String(v || '').trim()));
+              const row = [(x.prefix || '') + (x.first || ''), x.last || '', x.pos || '', id === 'kbs_order' ? 'กรรมการ' : 'คณะทำงาน'];
+              if (blank >= 0) tm.members[blank] = row; else tm.members.push(row);
+              drawTeams(); changed();
+            });
+            box.appendChild(pk);
+
             if (d.teams.length > 1) {
               const del = document.createElement('button'); del.className = 'btn sm danger'; del.type = 'button'; del.textContent = 'ลบทีมนี้';
               armed(del, () => { d.teams.splice(ti, 1); drawTeams(); changed(); });
@@ -1090,12 +1123,126 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     }, (e) => setSaved('ต่อฐานข้อมูลกลางไม่ได้: ' + e.message + ' (ใช้ข้อมูลในเครื่องนี้)'));
   } catch (e) { setSaved('ต่อฐานข้อมูลกลางไม่ได้ (ใช้ข้อมูลในเครื่องนี้)'); }
 
+  // ═══════════════ ทะเบียนเจ้าหน้าที่ + คำขอจากฟอร์มไลน์ (staff-update.html) ═══════════════
+  let REG = { staff: [] }, REQS = [], DONE = {}, regT = 0;
+  const pendingReqs = () => REQS.filter((q) => !DONE[q.id]).sort((a, b) => (a.at < b.at ? -1 : 1));
+  function saveReg() {
+    clearTimeout(regT);
+    regT = setTimeout(() => {
+      if (db) db.collection(TphStaff.COL).doc(TphStaff.REG).set({ json: JSON.stringify(REG), updated: new Date().toISOString() })
+        .catch((e) => setSaved('บันทึกทะเบียนไม่สำเร็จ: ' + e.message));
+    }, 600);
+  }
+  // ตัวเลือก "+ เลือกจากทะเบียน" ในคำสั่ง (สร้างใหม่ทุกครั้งที่ทะเบียนเปลี่ยน)
+  function pickOptions() {
+    return `<option value="">+ เลือกจากทะเบียนเจ้าหน้าที่ (${REG.staff.length} คน)…</option>` + TphStaff.UNITS.map((u) => {
+      const list = REG.staff.filter((x) => x.unit === u); if (!list.length) return '';
+      return `<optgroup label="${esc(u)}">${list.map((x) => `<option value="${esc(x.id)}">${esc(TphStaff.fullName(x))} — ${esc(x.pos || '')}</option>`).join('')}</optgroup>`;
+    }).join('');
+  }
+  function staffBadge() { const n = pendingReqs().length, c = $('cnt-staff'); c.hidden = !n; c.textContent = n; c.classList.add('warn'); }
+  const TYPE_TH = { keep: 'ยังอยู่', edit: 'แก้ไข', leave: 'ย้ายออก', add: 'เพิ่มใหม่' };
+  const fmtAt = (iso) => { const d = new Date(iso); return `${d.getDate()} ${TH_MS[d.getMonth()]} ${d.getFullYear() + 543} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} น.`; };
+  function acceptReq(q) {
+    const now = q.at;
+    q.items.forEach((it) => {
+      const idx = REG.staff.findIndex((x) => x.id === it.staffId);
+      if (it.type === 'keep' && idx >= 0) REG.staff[idx].at = now;
+      else if (it.type === 'leave' && idx >= 0) REG.staff.splice(idx, 1);
+      else if (it.type === 'edit' && idx >= 0) {
+        const x = REG.staff[idx];
+        ['prefix', 'first', 'last', 'pos', 'phone'].forEach((k) => { if (it[k]) x[k] = it[k]; });
+        x.at = now;
+      } else if (it.type === 'add') {
+        // คนเดิม (ชื่อ+สกุลตรงกันในหน่วยเดียวกัน) → อัปเดตแทนเพิ่มซ้ำ
+        const same = REG.staff.find((x) => x.unit === q.unit && x.first === it.first && x.last === it.last);
+        const o = { prefix: it.prefix || '', first: it.first, last: it.last, pos: it.pos, at: now };
+        if (same) Object.assign(same, o, { phone: it.phone || same.phone || '' });
+        else REG.staff.push(Object.assign({ id: TphStaff.uid(), unit: q.unit, phone: it.phone || '' }, o));
+      }
+    });
+    saveReg(); markReq(q.id, 'ok');
+  }
+  function markReq(rid, v) {
+    DONE[rid] = v;
+    if (db) db.collection(TphStaff.COL).doc(TphStaff.REQ).update(new firebase.firestore.FieldPath('done', rid), v)
+      .catch((e) => setSaved('บันทึกสถานะคำขอไม่สำเร็จ: ' + e.message));
+    staffBadge(); renderStaff();
+  }
+  function renderStaff() {
+    const sec = $('v-staff'); if (!sec || cur !== 'staff') return;
+    const url = TphStaff.formUrl();
+    const msg = `📋 ขอความร่วมมือ รพ.สต./หน่วยงาน อัปเดตรายชื่อเจ้าหน้าที่ปัจจุบัน เพื่อจัดทำคำสั่งแต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภค และคณะทำงานบริหารจัดการวัคซีน เครือข่ายสุขภาพอำเภอถ้ำพรรณรา\nกรอกได้ที่ลิงก์นี้ (เลือกหน่วยงาน → ยืนยัน/แก้ไข/เพิ่มรายชื่อ → ส่ง)\n${url}\nขอบคุณครับ/ค่ะ`;
+    const lastBy = {}; REQS.forEach((q) => { if (!lastBy[q.unit] || q.at > lastBy[q.unit]) lastBy[q.unit] = q.at; });
+    const pend = pendingReqs();
+    const pfxOpts = (v) => ['', ...TphStaff.PREFIXES].map((x) => `<option value="${esc(x)}"${x === v ? ' selected' : ''}>${x || '—'}</option>`).join('');
+    const itemLine = (it) => {
+      const x = REG.staff.find((y) => y.id === it.staffId);
+      const nm = it.type === 'add' ? TphStaff.fullName(it) + ' — ' + (it.pos || '') + (it.phone ? ' โทร ' + it.phone : '')
+        : x ? TphStaff.fullName(x) + ' — ' + (x.pos || '') : '(ไม่พบในทะเบียนแล้ว)';
+      const ch = it.type === 'edit' ? ' → ' + [TphStaff.fullName(it), it.pos ? ' — ' + it.pos : '', it.phone ? ' โทร ' + it.phone : ''].join('') : '';
+      return `<li class="t-${esc(it.type)}">${esc(TYPE_TH[it.type] || it.type)}: ${esc(nm)}${esc(ch)}</li>`;
+    };
+    sec.innerHTML = `<div class="card share"><h2>📨 ลิงก์ฟอร์มสำหรับส่งในกลุ่มไลน์ — ลิงก์เดียวใช้ทุกหน่วยงาน ไม่ต้องใส่ PIN</h2>
+        <div class="lnk"><input readonly value="${esc(url)}" id="st-url"><button class="btn" type="button" data-copy="url">📋 คัดลอกลิงก์</button><button class="btn pri" type="button" data-copy="msg">💬 คัดลอกข้อความพร้อมลิงก์</button><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">เปิดดูฟอร์ม ↗</a></div>
+        <span class="note" id="st-copied"></span>
+        <div class="note">หน่วยงานที่ส่งข้อมูลแล้ว (ครั้งล่าสุด):</div>
+        <div class="units">${TphStaff.UNITS.map((u) => `<span class="chip ${lastBy[u] ? 'ok' : 'idle'}">${esc(u)} · ${lastBy[u] ? esc(fmtAt(lastBy[u])) : 'ยังไม่ส่ง'}</span>`).join('')}</div></div>
+      <div class="card" style="margin-top:14px"><h2>📥 คำขอที่รอตรวจรับ (${pend.length})</h2>
+        ${pend.length ? '<p class="note">กด "รับ" แล้วทะเบียนจะอัปเดตตามคำขอ (ยังไม่แก้คำสั่งที่ทำไว้ — เลือกจากทะเบียนลงคำสั่งเองอีกที)</p>' : '<p class="note">ไม่มีคำขอค้าง</p>'}
+        <div style="display:grid;gap:10px">${pend.map((q) => `<div class="req" data-r="${esc(q.id)}">
+          <div><b>${esc(q.unit)}</b> · ${esc(fmtAt(q.at))} · ผู้กรอก ${esc(q.by)}${q.byPhone ? ' (' + esc(q.byPhone) + ')' : ''}${q.note ? ' · หมายเหตุ: ' + esc(q.note) : ''}</div>
+          <ul>${(q.items || []).map(itemLine).join('')}</ul>
+          <div class="row-btns" style="margin:0"><button class="btn ok" type="button" data-ok>✓ รับ (อัปเดตทะเบียน)</button><button class="btn danger" type="button" data-no>ไม่รับ</button></div></div>`).join('')}</div></div>
+      <div class="card" style="margin-top:14px"><h2>👥 ทะเบียนเจ้าหน้าที่ (${REG.staff.length} คน)</h2>
+        <p class="note">แก้ในตารางได้โดยตรง · ตอนทำคำสั่ง ใช้ช่อง "+ เลือกจากทะเบียนเจ้าหน้าที่" ใต้รายชื่อ เพื่อเติมชื่อ–ตำแหน่งให้อัตโนมัติ</p>
+        ${TphStaff.UNITS.map((u) => { const list = REG.staff.filter((x) => x.unit === u);
+          return `<div class="reg-unit" data-u="${esc(u)}"><h3>${esc(u)} <span class="chip idle">${list.length} คน</span><button class="btn sm" type="button" data-addst>+ เพิ่ม</button></h3>
+            ${list.length ? '<div class="reg-row reg-head"><span>คำนำหน้า</span><span>ชื่อ</span><span>นามสกุล</span><span>ตำแหน่ง</span><span>โทร</span><span></span></div>' : ''}
+            ${list.map((x) => `<div class="reg-row" data-id="${esc(x.id)}"><select data-k="prefix">${pfxOpts(x.prefix || '')}</select><input data-k="first" value="${esc(x.first || '')}" placeholder="ชื่อ"><input data-k="last" value="${esc(x.last || '')}" placeholder="นามสกุล"><input data-k="pos" list="st-pos" value="${esc(x.pos || '')}" placeholder="ตำแหน่ง"><input data-k="phone" value="${esc(x.phone || '')}" placeholder="โทร"><button class="btn sm ghost danger" type="button" data-delst title="ลบ">✕</button></div>`).join('')}</div>`; }).join('')}
+        <datalist id="st-pos">${TphStaff.POSITIONS.map((x) => `<option value="${esc(x)}">`).join('')}</datalist></div>`;
+    const copied = (t) => { const e = $('st-copied'); if (e) e.textContent = t; };
+    sec.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+      const txt = b.dataset.copy === 'url' ? url : msg;
+      try { await navigator.clipboard.writeText(txt); copied('✓ คัดลอกแล้ว — ไปวางในกลุ่มไลน์ได้เลย'); }
+      catch (e) { $('st-url').select(); copied('คัดลอกอัตโนมัติไม่ได้ — กด Ctrl+C ที่ช่องลิงก์'); }
+    }));
+    sec.querySelectorAll('.req').forEach((el) => {
+      const q = REQS.find((x) => x.id === el.dataset.r);
+      el.querySelector('[data-ok]').addEventListener('click', () => acceptReq(q));
+      armed(el.querySelector('[data-no]'), () => markReq(q.id, 'no'));
+    });
+    sec.querySelectorAll('.reg-row[data-id]').forEach((row) => {
+      const x = REG.staff.find((y) => y.id === row.dataset.id);
+      row.querySelectorAll('[data-k]').forEach((f) => f.addEventListener(f.tagName === 'SELECT' ? 'change' : 'input', () => { x[f.dataset.k] = f.value.trim(); saveReg(); }));
+      armed(row.querySelector('[data-delst]'), () => { REG.staff = REG.staff.filter((y) => y !== x); saveReg(); renderStaff(); });
+    });
+    sec.querySelectorAll('[data-addst]').forEach((b) => b.addEventListener('click', () => {
+      REG.staff.push({ id: TphStaff.uid(), unit: b.closest('.reg-unit').dataset.u, prefix: '', first: '', last: '', pos: '', phone: '', at: new Date().toISOString() });
+      saveReg(); renderStaff();
+    }));
+  }
+  if (db) {
+    db.collection(TphStaff.COL).doc(TphStaff.REG).onSnapshot((snap) => {
+      try { REG = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : { staff: [] }; } catch (e) { REG = { staff: [] }; }
+      REG.staff = REG.staff || [];
+      document.querySelectorAll('[data-pick]').forEach((sel) => { sel.innerHTML = pickOptions(); });
+      const a = document.activeElement;
+      if (!(a && $('v-staff').contains(a) && /INPUT|SELECT/.test(a.tagName))) renderStaff();
+    }, () => {});
+    db.collection(TphStaff.COL).doc(TphStaff.REQ).onSnapshot((snap) => {
+      const d = snap.exists ? snap.data() : {};
+      REQS = d.reqs || []; DONE = d.done || {};
+      staffBadge(); renderStaff();
+    }, () => {});
+  }
+
   renderAlerts(); renderOverview();
   const h0 = (location.hash || '').slice(1);
-  go(EDITORS[h0] ? h0 : 'overview');
+  go(EDITORS[h0] || h0 === 'staff' ? h0 : 'overview');
   // เผื่อเปิดหน้าทิ้งไว้ข้ามวัน
   setInterval(() => { renderAlerts(); if (cur === 'overview') renderOverview(); }, 3600e3);
-  window.TphAnnualDocs = { status, render: { renderOrder, renderPlan, renderChart, renderGuide, renderReport }, get state() { return S; } };
+  window.TphAnnualDocs = { get registry() { return REG; }, get requests() { return REQS; }, status, render: { renderOrder, renderPlan, renderChart, renderGuide, renderReport }, get state() { return S; } };
 })();
 </script>
 <script src="lib/tph-header.js"></script>

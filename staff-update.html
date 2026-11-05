@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<!-- ฟอร์มสาธารณะ (ไม่ต้องใส่ PIN) — ส่งลิงก์ในกลุ่มไลน์ให้ รพ.สต./หน่วยงาน อัปเดตรายชื่อเจ้าหน้าที่
+     คำขอเข้า pharmacy_tph/staff_requests แล้วรอเภสัชกรกดรับในหน้า annual-docs.html (หมวด ทะเบียนเจ้าหน้าที่) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>อัปเดตรายชื่อเจ้าหน้าที่ — เครือข่ายสุขภาพอำเภอถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<script src="lib/staff-registry.js"></script>
+<style>
+:root { color-scheme: light; --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE; --gold: #C49A22;
+  --bg: #F4F7F5; --surface: #fff; --border: #D6E4DA; --text: #1C2B22; --text-2: #4A6354; --bad: #b91c1c; --bad-bg: #FDECEC; --warn-bg: #FBF3DC; }
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; --primary: #5FBF86; --primary-dark: #0E2A1A; --primary-light: #1B2E23; --bg: #0F1612; --surface: #16211B;
+    --border: #2A3A30; --text: #E6EFE9; --text-2: #B3C6BA; --bad: #F87171; --bad-bg: #3A1B1B; --warn-bg: #2E2915; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', sans-serif; font-size: 16px; line-height: 1.55; }
+header { background: linear-gradient(120deg, #124228, #1A5E38); color: #fff; padding: 18px 16px 20px; }
+header h1 { margin: 0; font-size: 19px; }
+header p { margin: 4px 0 0; font-size: 13.5px; opacity: .85; }
+main { max-width: 680px; margin: 0 auto; padding: 14px 16px 40px; display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+.card h2 { margin: 0 0 8px; font-size: 16px; }
+label.f { display: grid; gap: 4px; font-size: 14px; color: var(--text-2); }
+input, select, textarea { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; }
+input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--primary) 50%, transparent); border-color: var(--primary); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pname { display: grid; grid-template-columns: 112px 1fr; gap: 8px; }
+.person { border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
+.person.leave { opacity: .6; background: var(--bad-bg); }
+.person.edit { background: var(--warn-bg); }
+.who { font-weight: 600; }
+.who small { display: block; font-weight: 400; color: var(--text-2); font-size: 13.5px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { flex: 1 1 0; min-width: 90px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 7px 8px; font: inherit; font-size: 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.seg button.l[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; cursor: pointer; }
+.btn.pri { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; width: 100%; padding: 13px; font-size: 17px; }
+.btn.del { color: var(--bad); padding: 6px 10px; font-size: 14px; justify-self: end; }
+.hint { font-size: 13.5px; color: var(--text-2); }
+.err { color: var(--bad); font-size: 14px; }
+.done { text-align: center; padding: 28px 14px; }
+.done b { font-size: 20px; color: var(--primary); display: block; margin-bottom: 6px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>แบบสำรวจรายชื่อเจ้าหน้าที่</h1>
+  <p>เครือข่ายสุขภาพอำเภอถ้ำพรรณรา — ใช้จัดทำคำสั่งแต่งตั้งคณะกรรมการ/คณะทำงานประจำปี (งาน คบส. และงานวัคซีน)</p>
+</header>
+<main id="form">
+  <div class="card">
+    <label class="f">หน่วยงาน <select id="unit"><option value="">— เลือกหน่วยงาน —</option></select></label>
+  </div>
+
+  <div class="card" id="list-card" hidden>
+    <h2>รายชื่อเจ้าหน้าที่ปัจจุบันของหน่วยงาน</h2>
+    <p class="hint" id="list-hint"></p>
+    <div id="list" style="display:grid;gap:10px"></div>
+  </div>
+
+  <div class="card" id="add-card" hidden>
+    <h2>เพิ่มเจ้าหน้าที่ (ย้ายมาใหม่ / ยังไม่มีในรายชื่อ)</h2>
+    <div id="adds" style="display:grid;gap:10px"></div>
+    <button class="btn" type="button" id="add-btn" style="margin-top:10px">+ เพิ่มอีก 1 คน</button>
+  </div>
+
+  <div class="card" id="by-card" hidden>
+    <h2>ผู้กรอกข้อมูล</h2>
+    <div class="row2">
+      <label class="f">ชื่อ–สกุล <input id="by" autocomplete="name"></label>
+      <label class="f">เบอร์โทร <input id="by-phone" inputmode="tel" autocomplete="tel"></label>
+    </div>
+    <label class="f" style="margin-top:8px">หมายเหตุ (ถ้ามี) <input id="note"></label>
+    <p class="err" id="err" hidden></p>
+    <button class="btn pri" type="button" id="send" style="margin-top:12px">ส่งข้อมูล</button>
+    <p class="hint" style="margin:8px 0 0">ข้อมูลจะถูกตรวจสอบโดยผู้รับผิดชอบก่อนนำไปใช้ในคำสั่ง</p>
+  </div>
+</main>
+<main id="thanks" hidden>
+  <div class="card done"><b>✓ ส่งข้อมูลเรียบร้อย ขอบคุณครับ/ค่ะ</b><span id="thanks-msg"></span>
+    <div style="margin-top:16px"><button class="btn" type="button" id="again">ส่งข้อมูลอีกหน่วยงาน / แก้ไขเพิ่ม</button></div></div>
+</main>
+<datalist id="pos-list"></datalist>
+
+<script>
+(function () {
+  'use strict';
+  const T = window.TphStaff, $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  $('unit').innerHTML += T.UNITS.map((u) => `<option>${esc(u)}</option>`).join('');
+  $('pos-list').innerHTML = T.POSITIONS.map((p) => `<option value="${esc(p)}">`).join('');
+  const pfxSel = (v) => `<select data-k="prefix">${['', ...T.PREFIXES].map((x) => `<option value="${esc(x)}"${x === v ? ' selected' : ''}>${x || 'คำนำหน้า'}</option>`).join('')}</select>`;
+  const fields = (s) => `<div class="pname">${pfxSel(s.prefix || '')}<input data-k="first" placeholder="ชื่อ" value="${esc(s.first || '')}"></div>
+    <div class="row2"><input data-k="last" placeholder="นามสกุล" value="${esc(s.last || '')}"><input data-k="phone" inputmode="tel" placeholder="เบอร์โทร (ถ้ามี)" value=""></div>
+    <input data-k="pos" list="pos-list" placeholder="ตำแหน่งทางราชการ เช่น นักวิชาการสาธารณสุขปฏิบัติการ" value="${esc(s.pos || '')}">`;
+  const read = (el) => { const o = {}; el.querySelectorAll('[data-k]').forEach((x) => { o[x.dataset.k] = x.value.trim(); }); return o; };
+
+  let staff = [], db = null;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(T.FB);
+    db = firebase.firestore();
+    db.collection(T.COL).doc(T.REG).onSnapshot((snap) => {
+      try { staff = (snap.exists && snap.data().json ? JSON.parse(snap.data().json).staff : []) || []; } catch (e) { staff = []; }
+      if ($('unit').value && !$('list').dataset.touched) drawUnit();
+    }, () => {});
+  } catch (e) {}
+
+  function addPerson() {
+    const el = document.createElement('div'); el.className = 'person'; el.dataset.add = '1';
+    el.innerHTML = fields({}) + '<button class="btn del" type="button">ลบแถวนี้</button>';
+    el.querySelector('.del').addEventListener('click', () => el.remove());
+    $('adds').appendChild(el);
+  }
+  function drawUnit() {
+    const u = $('unit').value;
+    ['list-card', 'add-card', 'by-card'].forEach((id) => { $(id).hidden = !u; });
+    if (!u) return;
+    const mine = staff.filter((s) => s.unit === u);
+    $('list-card').hidden = !mine.length;
+    $('list-hint').textContent = 'เลือกสถานะของแต่ละคน — ยังอยู่ / แก้ไขข้อมูล (ชื่อ ตำแหน่ง) / ย้ายออกแล้ว';
+    $('list').innerHTML = mine.map((s) => `<div class="person" data-id="${esc(s.id)}" data-type="keep">
+      <div class="who">${esc(T.fullName(s))}<small>${esc(s.pos || '')}</small></div>
+      <div class="seg"><button type="button" data-t="keep" aria-pressed="true">✔ ยังอยู่</button><button type="button" data-t="edit" aria-pressed="false">✎ แก้ไข</button><button type="button" class="l" data-t="leave" aria-pressed="false">✕ ย้ายออก</button></div>
+      <div class="ed" hidden>${fields(s)}</div></div>`).join('');
+    $('list').querySelectorAll('.person').forEach((p) => p.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+      $('list').dataset.touched = '1';
+      p.dataset.type = b.dataset.t;
+      p.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+      p.classList.toggle('edit', b.dataset.t === 'edit'); p.classList.toggle('leave', b.dataset.t === 'leave');
+      p.querySelector('.ed').hidden = b.dataset.t !== 'edit';
+    })));
+    if (!$('adds').children.length && !mine.length) addPerson();
+    $('add-card').querySelector('h2').textContent = mine.length ? 'เพิ่มเจ้าหน้าที่ (ย้ายมาใหม่ / ยังไม่มีในรายชื่อ)' : 'รายชื่อเจ้าหน้าที่ทุกคนในหน่วยงาน (ยังไม่มีข้อมูลเดิม — กรุณากรอกทุกคน)';
+  }
+  $('unit').addEventListener('change', () => { delete $('list').dataset.touched; $('adds').innerHTML = ''; drawUnit(); });
+  $('add-btn').addEventListener('click', addPerson);
+
+  $('send').addEventListener('click', async () => {
+    const err = (m) => { $('err').textContent = m; $('err').hidden = !m; };
+    err('');
+    const items = [];
+    $('list').querySelectorAll('.person').forEach((p) => {
+      const it = { type: p.dataset.type, staffId: p.dataset.id };
+      if (p.dataset.type === 'edit') Object.assign(it, read(p.querySelector('.ed')));
+      items.push(it);
+    });
+    let bad = false;
+    $('adds').querySelectorAll('.person').forEach((p) => {
+      const o = read(p);
+      if (!o.first && !o.last && !o.pos) return;            // แถวว่าง ข้าม
+      if (!o.first || !o.last || !o.pos) { bad = true; p.style.borderColor = 'var(--bad)'; return; }
+      p.style.borderColor = '';
+      items.push(Object.assign({ type: 'add' }, o));
+    });
+    if (bad) return err('กรุณากรอก ชื่อ นามสกุล และตำแหน่ง ให้ครบในแถวที่เพิ่ม');
+    if (!$('by').value.trim()) return err('กรุณากรอกชื่อผู้กรอกข้อมูล');
+    if (!items.length) return err('ยังไม่มีรายชื่อ — กดเพิ่มเจ้าหน้าที่ก่อน');
+    if (!db) return err('เชื่อมต่อฐานข้อมูลไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่');
+    const req = { id: T.uid(), at: new Date().toISOString(), unit: $('unit').value, by: $('by').value.trim(), byPhone: $('by-phone').value.trim(), note: $('note').value.trim(), items };
+    $('send').disabled = true; $('send').textContent = 'กำลังส่ง…';
+    try {
+      await db.collection(T.COL).doc(T.REQ).set({ reqs: firebase.firestore.FieldValue.arrayUnion(req) }, { merge: true });
+      const n = items.filter((x) => x.type !== 'keep').length;
+      $('thanks-msg').textContent = `${req.unit} · ยืนยัน ${items.filter((x) => x.type === 'keep').length} คน, เปลี่ยนแปลง ${n} รายการ`;
+      $('form').hidden = true; $('thanks').hidden = false; window.scrollTo({ top: 0 });
+    } catch (e) {
+      err('ส่งไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง');
+    } finally { $('send').disabled = false; $('send').textContent = 'ส่งข้อมูล'; }
+  });
+  $('again').addEventListener('click', () => { $('thanks').hidden = true; $('form').hidden = false; $('adds').innerHTML = ''; delete $('list').dataset.touched; drawUnit(); });
+})();
+</script>
+</body>
+</html>
