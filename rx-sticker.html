@@ -1616,10 +1616,11 @@ function hmeDrug(i) {
   //   คีย์ชื่อ+วิธีใช้รวมบรรทัดเดียว ("Ertapenem 1 g IV 1 g OD") = แยกแบบเดียวกับสติกเกอร์ยาเดิม ไม่ให้ช่องวิธีใช้ว่าง
   if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) {
     const [n, u] = lines.length === 1 && /^[A-Za-z]/.test(lines[0]) ? mdOldSplit(lines[0]) : [lines[0], lines.slice(1).join(' ')];
-    return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? u : '' };
+    return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? mdAbbr(u) : '' };
   }
   const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
-  return { name, use: lines.join(' ') };
+  // วิธีใช้ย่อภาษาอังกฤษแบบเดียวกับสติกเกอร์ยาเดิม MR (ผู้ใช้ขอ 2026-11-05): "1 x 3 pc" "0.5 x 1 hs" "2 puff bid" — แปลงไม่ได้ = ข้อความเดิม
+  return { name, use: mdAbbr(lines.join(' ')) };
 }
 // แอลกอฮอล์ (เช็ดแผล/ล้างมือ) ไม่นับเป็นยากลับบ้าน — ไม่แสดง ไม่นับจำนวนรายการ ไม่พิมพ์ (ใบที่มีแต่แอลกอฮอล์ = ไม่มีรายการ)
 const HME_SKIP = /^\s*(ETHYL\s+)?ALCOHOL\b|แอลกอฮอล์/i;
