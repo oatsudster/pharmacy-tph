@@ -47,6 +47,8 @@ export default {
       await handleCheck(env, chatId);
     } else if (cmd === '/search') {
       await handleSearch(env, chatId, arg);
+    } else if (cmd === '/annual') {
+      await replyTelegram(env, chatId, (await annualDocsReminder(new Date(), true)) || '✅ งานเอกสารประจำปี (คบส./วัคซีน) ยังไม่ถึงช่วงเตือน หรือทำครบแล้ว');
     } else if (cmd === '/monthly') {
       await replyTelegram(env, chatId, monthlyReminder(new Date(), true));
     } else if (cmd === '/help') {
@@ -67,6 +69,8 @@ export default {
     // วันที่ 1 ของเดือน (เวลาไทย) — เตือนส่งข้อมูลเดือนที่แล้วเข้า HRMS และ SKYNET
     const reminder = monthlyReminder(new Date(event.scheduledTime));
     if (reminder) ctx.waitUntil(replyTelegram(env, env.ALLOWED_CHAT_ID, reminder));
+    // งานเอกสารประจำปี (annual-docs.html): เหลือ 14/7/3/1/0 วัน และทุกวันจันทร์ถ้าเลยกำหนด
+    ctx.waitUntil(annualDocsReminder(new Date(event.scheduledTime)).then((t) => t && replyTelegram(env, env.ALLOWED_CHAT_ID, t)).catch((e) => console.error('annual docs', e)));
   },
 };
 
@@ -91,6 +95,47 @@ function monthlyReminder(now, force) {
   );
 }
 
+const ANNUAL_TASKS = {
+  kbs_order: 'คำสั่งแต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภคอำเภอ (งาน คบส.)',
+  vac_order: 'คำสั่งแต่งตั้งคณะทำงานบริหารจัดการวัคซีนฯ (งานวัคซีน)',
+  vac_plan: 'ทบทวนแผน/ผังเตรียมความพร้อม Cold Chain + ซ้อมแผน (งานวัคซีน)',
+};
+const TH_MS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+// ตรรกะเดียวกับ status() ใน annual-docs.html (ปีงบ ต.ค.–ก.ย., doneFy = ปีงบที่ทำเสร็จล่าสุด)
+async function annualDocsReminder(now, force) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/pharmacy_tph/annual_docs?key=${FIREBASE_API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const doc = await res.json();
+  const js = doc.fields && doc.fields.json && doc.fields.json.stringValue;
+  if (!js) return null;
+  const S = JSON.parse(js);
+  const bkk = new Date(now.getTime() + 7 * 3600 * 1000);
+  const today = Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), bkk.getUTCDate());
+  const fy = bkk.getUTCFullYear() + 543 + (bkk.getUTCMonth() >= 9 ? 1 : 0);
+  const monday = bkk.getUTCDay() === 1;
+  const lines = [];
+  for (const [id, name] of Object.entries(ANNUAL_TASKS)) {
+    const sch = S.schedule && S.schedule[id];
+    if (!sch || (sch.doneFy || 0) >= fy) continue;
+    const dueY = fy - 543 - (sch.month >= 10 ? 1 : 0);
+    const days = Math.round((Date.UTC(dueY, sch.month - 1, sch.day) - today) / 864e5);
+    const due = `${sch.day} ${TH_MS[sch.month - 1]} ${dueY + 543}`;
+    const lead = Math.max(7, sch.lead || 14);
+    if (days < 0 && (monday || force)) lines.push(`⛔ <b>${name}</b>
+   เลยกำหนด ${-days} วัน (${due})`);
+    else if (days >= 0 && (force ? days <= lead : [lead, 14, 7, 3, 1, 0].includes(days))) lines.push(`⚠️ <b>${name}</b>
+   ${days === 0 ? 'ครบกำหนดวันนี้' : 'อีก ' + days + ' วัน'} (${due})`);
+  }
+  if (!lines.length) return null;
+  return `📜 <b>งานเอกสารประจำปีงบ ${fy}</b>
+
+${lines.join('\n\n')}
+
+แก้ไข/พิมพ์ที่หน้า "งานเอกสารประจำปี" แล้วกด ✓ ทำเสร็จแล้ว เพื่อหยุดเตือน
+https://tph-pharmacy.pages.dev/annual-docs`;
+}
+
 function dispatchWorkflow(env) {
   return fetch(
     `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`,
@@ -111,6 +156,7 @@ async function handleHelp(env, chatId) {
     '🤖 <b>คำสั่งที่ใช้ได้</b>\n\n' +
     '/check — ตรวจสอบยาใกล้หมดอายุทั้งหมดทันที (≤90 วัน)\n' +
     '/search ชื่อยา — ค้นหายาตามชื่อ ดูวันหมดอายุและตำแหน่งเก็บ\n' +
+    '/annual — ดูงานเอกสารประจำปี (คำสั่ง คบส./วัคซีน, แผน Cold Chain) ที่ใกล้/เลยกำหนด\n' +
     '/monthly — ดูรายการที่ต้องส่ง HRMS / SKYNET ประจำเดือน (เตือนเองทุกวันที่ 1)\n' +
     '/help — แสดงคำสั่งทั้งหมดนี้';
   await replyTelegram(env, chatId, text);

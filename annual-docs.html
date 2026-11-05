@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>งานเอกสารประจำปี (คบส. / วัคซีน) — รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<style>
+/* ฟอนต์ราชการ — แปลงจาก TH SarabunIT๙ / TH Sarabun New (ฟอนต์แห่งชาติ SIPA ใช้ได้เสรี) ไว้ในเว็บ ทุกเครื่องพิมพ์ออกมาเหมือนกัน */
+@font-face { font-family: 'TPH SarabunIT9'; src: url('lib/fonts/thsarabunit9.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'TPH SarabunIT9'; src: url('lib/fonts/thsarabunit9-bold.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'TPH SarabunNew'; src: url('lib/fonts/thsarabunnew.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'TPH SarabunNew'; src: url('lib/fonts/thsarabunnew-bold.woff2') format('woff2'); font-weight: 700; }
+:root {
+  color-scheme: light;
+  --primary: #1A5E38; --primary-dark: #124228; --primary-light: #EAF4EE; --gold: #C49A22; --gold-light: #FBF3DC;
+  --bg: #F4F7F5; --surface: #ffffff; --surface-2: #F7FAF8; --border: #DDE7E0;
+  --text: #1C2B22; --text-2: #4A6354; --text-3: #587363;
+  --good: #15803d; --good-bg: #E6F4EA; --bad: #b91c1c; --bad-bg: #FDECEC; --warn: #8a5a00; --warn-bg: #FBF3DC;
+  --desk: #E3E9E5;
+  --shadow: 0 1px 2px rgba(18, 66, 40, .06), 0 4px 14px rgba(18, 66, 40, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --primary: #5FBF86; --primary-dark: #0E2A1A; --primary-light: #1B2E23; --gold: #D9B347; --gold-light: #2E2915;
+    --bg: #0F1612; --surface: #16211B; --surface-2: #1B2821; --border: #2A3A30;
+    --text: #E6EFE9; --text-2: #B3C6BA; --text-3: #85A091;
+    --good: #4ADE80; --good-bg: #163222; --bad: #F87171; --bad-bg: #3A1B1B; --warn: #E5B94E; --warn-bg: #2E2915;
+    --desk: #0B110E; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #5FBF86; --primary-dark: #0E2A1A; --primary-light: #1B2E23; --gold: #D9B347; --gold-light: #2E2915;
+  --bg: #0F1612; --surface: #16211B; --surface-2: #1B2821; --border: #2A3A30;
+  --text: #E6EFE9; --text-2: #B3C6BA; --text-3: #85A091;
+  --good: #4ADE80; --good-bg: #163222; --bad: #F87171; --bad-bg: #3A1B1B; --warn: #E5B94E; --warn-bg: #2E2915;
+  --desk: #0B110E; --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.hero { background: linear-gradient(120deg, #124228 0%, #1A5E38 60%, #2d6e45 100%); color: #fff; padding: 14px 16px 18px; }
+.hero-in { max-width: 1600px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.hero .back { color: #fff; text-decoration: none; background: rgba(255,255,255,.14); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+.hero h1 { margin: 0; font-size: 20px; }
+.hero .sub { font-size: 12.5px; opacity: .82; margin-top: 2px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 16px; }
+.tab { border: 0; background: transparent; color: var(--text-2); padding: 7px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+.tab[aria-selected="true"] { background: var(--primary); color: #fff; }
+.tab .cnt { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.tab .cnt.warn { background: #b45309; }
+.tab .cnt[hidden] { display: none; }
+.wrap { max-width: 1600px; margin: 0 auto; padding: 16px; }
+.view { display: none; }
+.view.on { display: block; }
+
+/* แถบเตือน */
+.alerts { display: grid; gap: 8px; margin-bottom: 14px; }
+.alert { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; border: 1px solid; font-size: 14.5px; }
+.alert.warn { background: var(--warn-bg); border-color: #e7c66a; color: var(--warn); }
+.alert.bad { background: var(--bad-bg); border-color: #f1a7a7; color: var(--bad); }
+.alert b { font-weight: 700; }
+.alert button { margin-left: auto; }
+
+/* การ์ดภาพรวม */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
+.card h2 { font-size: 16px; margin: 0 0 4px; }
+.card .grp { font-size: 12px; color: var(--text-3); letter-spacing: .04em; }
+.card .meta { font-size: 13.5px; color: var(--text-2); margin: 8px 0; line-height: 1.7; }
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+.chip.ok { background: var(--good-bg); color: var(--good); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.idle { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.due-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--text-2); margin-top: 8px; }
+.due-edit input, .due-edit select { width: auto !important; padding: 4px 6px; }
+.due-edit input { width: 66px !important; }
+.note { font-size: 13px; color: var(--text-3); line-height: 1.7; }
+
+/* ปุ่ม */
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 7px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.btn:hover { border-color: var(--primary); }
+.btn.pri { background: var(--primary); border-color: var(--primary); color: #fff; }
+:root[data-theme="dark"] .btn.pri { color: #0F1612; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.pri { color: #0F1612; } }
+.btn.ok { background: var(--good-bg); border-color: var(--good); color: var(--good); }
+.btn.sm { padding: 3px 9px; font-size: 13px; border-radius: 8px; }
+.btn.ghost { border-color: transparent; background: none; }
+.btn.danger { color: var(--bad); }
+.btn.arm { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* หน้าแก้ไข: ซ้ายฟอร์ม ขวาตัวอย่าง A4 */
+.doc-layout { display: grid; grid-template-columns: minmax(360px, 520px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.editor { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); display: grid; gap: 12px; }
+.editor h3 { margin: 4px 0 0; font-size: 14.5px; color: var(--primary); }
+.editor .toolbar { display: flex; gap: 8px; flex-wrap: wrap; position: sticky; top: calc(var(--tph-top, 0px) + 4px); z-index: 3; background: var(--surface); padding: 4px 0 8px; border-bottom: 1px solid var(--border); }
+.fg { display: grid; gap: 4px; }
+.fg > span { font-size: 12.5px; color: var(--text-2); }
+.f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.f3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+input, select, textarea { width: 100%; border: 1px solid var(--border); background: var(--surface-2); border-radius: 8px; padding: 6px 8px; font-size: 14px; }
+textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent); border-color: var(--primary); }
+details.fmt { border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; }
+details.fmt summary { cursor: pointer; font-size: 13.5px; color: var(--text-2); }
+details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
+.mtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mtable th { text-align: left; font-weight: 600; color: var(--text-2); font-size: 12px; padding: 2px 3px; }
+.mtable td { padding: 2px 2px; vertical-align: top; }
+.mtable td.n { width: 26px; text-align: right; color: var(--text-3); padding-top: 8px; }
+.mtable td.ops { white-space: nowrap; width: 1%; }
+.mtable input { padding: 4px 6px; font-size: 13px; }
+.team { border: 1px solid var(--border); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
+.hint { font-size: 12.5px; color: var(--text-3); }
+.saved { font-size: 12.5px; color: var(--text-3); margin-left: auto; align-self: center; }
+
+.preview-pane { position: sticky; top: calc(var(--tph-top, 0px) + 8px); background: var(--desk); border-radius: 14px; padding: 14px; overflow: auto; max-height: calc(100vh - var(--tph-top, 0px) - 24px); }
+.preview-info { font-size: 12.5px; color: var(--text-2); margin: 0 0 8px; display: flex; gap: 10px; flex-wrap: wrap; }
+.paper-wrap { margin: 0 auto; overflow: hidden; }
+.paper { background: #fff; color: #000; box-shadow: 0 2px 12px rgba(0,0,0,.18); position: relative; margin: 0 auto; }
+.pbreak { position: absolute; left: 0; right: 0; border-top: 2px dashed #e11d48; pointer-events: none; }
+.pbreak span { position: absolute; right: 4px; top: -18px; font: 11px 'Noto Sans Thai', sans-serif; color: #e11d48; background: #fff; padding: 0 4px; }
+
+/* ── เอกสาร (ทั้งตัวอย่างบนจอและตอนพิมพ์) ── */
+.doc { color: #000; font-size: 16pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.doc p { margin: 0; }
+.doc .c { text-align: center; }
+.doc .b { font-weight: 700; }
+.doc .j { text-align: justify; text-justify: inter-character; }
+.doc .garuda { display: block; margin: 0 auto; }
+.doc .mrow { display: flex; align-items: baseline; }
+.doc .mrow .no { display: inline-block; text-align: right; flex: none; }
+.doc .mrow .c1 { flex: none; display: flex; }
+.doc .mrow .fn { flex: none; }
+.doc .mrow .c2 { flex: none; }
+.doc .mrow .c3 { flex: 1 1 auto; white-space: nowrap; }
+.doc .duty { display: flex; }
+.doc .duty .dn { flex: none; }
+.doc .sig { text-align: center; }
+.doc .blank { display: inline-block; }
+.doc table.grid { border-collapse: collapse; width: 100%; }
+.doc table.grid th, .doc table.grid td { border: 1px solid #000; padding: 0 4pt; vertical-align: top; }
+.doc table.grid th { font-weight: 700; text-align: center; vertical-align: middle; }
+.doc .dots { border-bottom: 1px dotted #000; display: inline-block; min-width: 2cm; text-align: center; padding: 0 4pt; }
+.doc .box { display: inline-block; width: 11pt; height: 11pt; border: 1px solid #000; margin: 0 4pt 0 10pt; vertical-align: -1pt; text-align: center; line-height: 10pt; font-size: 11pt; }
+.doc h4 { font-size: 16pt; font-weight: 700; margin: 6pt 0 0; }
+.doc ol, .doc ul { margin: 0; }
+/* ผัง (แนวนอน) */
+.doc.chart { font-size: 15pt; line-height: 1.2; }
+.chart .ctitle { font-size: 20pt; font-weight: 700; text-align: center; margin-bottom: 6pt; }
+.chart .fbox { border: 1.5px solid #000; padding: 3pt 8pt; background: #fff; }
+.chart .fbox.head { font-weight: 700; text-align: center; }
+.chart .fbox.top { width: 21cm; margin: 0 auto; text-align: center; }
+.chart .vline { width: 0; height: 10pt; border-left: 1.5px solid #000; margin: 0 auto; }
+.chart .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14pt; position: relative; padding-top: 10pt; }
+.chart .cols::before { content: ''; position: absolute; top: 0; left: 16.66%; right: 16.66%; border-top: 1.5px solid #000; }
+.chart .col { display: flex; flex-direction: column; align-items: stretch; position: relative; }
+.chart .col::before { content: ''; position: absolute; top: -10pt; left: 50%; height: 10pt; border-left: 1.5px solid #000; }
+.chart .col .fbox + .fbox { margin-top: 0; }
+.chart .sub { margin-left: 12pt; border-left: 1.5px solid #000; padding: 6pt 0 0 10pt; display: grid; gap: 6pt; }
+.chart .sub .fbox { position: relative; }
+.chart .sub .fbox::before { content: ''; position: absolute; left: -11.5pt; top: 12pt; width: 10pt; border-top: 1.5px solid #000; }
+.chart .fbox b { display: block; }
+.chart .all { margin-top: 10pt; border: 2px solid #b91c1c; padding: 4pt 10pt; }
+.chart .all b { color: #b91c1c; }
+.chart .contacts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 18pt; }
+.chart .warnsig { color: #b91c1c; font-weight: 700; }
+
+#print-area { display: none; }
+@media print {
+  body > *:not(#print-area) { display: none !important; }
+  #print-area { display: block !important; }
+  body { background: #fff; }
+}
+@media (max-width: 1100px) {
+  .doc-layout { grid-template-columns: 1fr; }
+  .preview-pane { position: static; max-height: none; }
+}
+@media (max-width: 600px) {
+  .f2, .f3 { grid-template-columns: 1fr; }
+  .wrap { padding: 10px; }
+}
+</style>
+<link rel="stylesheet" href="lib/theme.css">
+</head>
+<body>
+<header class="hero">
+  <div class="hero-in">
+    <a class="back" href="index.html">← หน้าหลัก</a>
+    <div>
+      <h1>งานเอกสารประจำปี</h1>
+      <div class="sub" id="updated">คำสั่งแต่งตั้ง คบส. / วัคซีน และแผนลูกโซ่ความเย็น — แก้ไขแล้วพิมพ์ A4 ได้ทันที</div>
+    </div>
+  </div>
+</header>
+
+<nav aria-label="หัวข้อ">
+  <div class="tabs" id="tabs-ov" role="tablist">
+    <button class="tab" type="button" data-v="overview" aria-selected="true">📅 กำหนดการ / แจ้งเตือน<span class="cnt" id="cnt-ov" hidden></span></button>
+  </div>
+  <div class="tabs" id="tabs-kbs" role="tablist">
+    <button class="tab" type="button" data-v="kbs_order">📜 คำสั่งแต่งตั้ง คกก.คุ้มครองผู้บริโภค<span class="cnt" data-cnt="kbs_order" hidden></span></button>
+  </div>
+  <div class="tabs" id="tabs-vac" role="tablist">
+    <button class="tab" type="button" data-v="vac_order">📜 คำสั่งคณะทำงานวัคซีน<span class="cnt" data-cnt="vac_order" hidden></span></button>
+    <button class="tab" type="button" data-v="vac_plan">🧊 แผนเตรียมความพร้อม Cold Chain<span class="cnt" data-cnt="vac_plan" hidden></span></button>
+    <button class="tab" type="button" data-v="vac_chart">🗺️ ผังการเตรียมความพร้อม</button>
+    <button class="tab" type="button" data-v="vac_guide">🌡️ แนวทางแก้ไขอุณหภูมิผิดปกติ</button>
+    <button class="tab" type="button" data-v="vac_report">📝 แบบรายงานเหตุฉุกเฉิน</button>
+  </div>
+</nav>
+
+<main class="wrap" id="main">
+  <div class="alerts" id="alerts"></div>
+  <section class="view on" id="v-overview">
+    <div class="cards" id="ov-cards"></div>
+    <p class="note" style="margin-top:14px">
+      • แต่ละงานมีกำหนดทำปีละ 1 ครั้งต่อปีงบประมาณ (ต.ค.–ก.ย.) — แถบเตือนขึ้นบนหน้านี้และในการ์ดหน้าหลักตั้งแต่ก่อนถึงกำหนดตามจำนวนวันที่ตั้งไว้ (ค่าเริ่มต้น 14 วัน, อย่างน้อย 7 วัน)
+      และส่งเตือนในกลุ่ม Telegram ของกลุ่มงานเมื่อเหลือ 14, 7, 3, 1 วัน วันครบกำหนด และทุกวันจันทร์ถ้าเลยกำหนด<br>
+      • ทำเอกสารเสร็จแล้วกด <b>✓ ทำเสร็จแล้ว</b> — การเตือนหยุดจนถึงรอบปีงบถัดไป · เริ่มรอบใหม่กด <b>↻ เริ่มฉบับปีถัดไป</b> ในหน้าเอกสาร (เลื่อน พ.ศ. +1 ล้างเลขที่/วันที่สั่ง รายชื่อเดิมยังอยู่ให้แก้ต่อ)<br>
+      • ข้อมูลทั้งหมดบันทึกในฐานข้อมูลกลาง เปิดเครื่องไหนก็เห็นฉบับล่าสุด
+    </p>
+  </section>
+  <section class="view" id="v-kbs_order"></section>
+  <section class="view" id="v-vac_order"></section>
+  <section class="view" id="v-vac_plan"></section>
+  <section class="view" id="v-vac_chart"></section>
+  <section class="view" id="v-vac_guide"></section>
+  <section class="view" id="v-vac_report"></section>
+</main>
+
+<div id="print-area"></div>
+<style id="page-style"></style>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const TH_M = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const TH_MS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const thDig = (s) => String(s).replace(/[0-9]/g, (d) => '๐๑๒๓๔๕๖๗๘๙'[d]);
+  const COL = 'pharmacy_tph', DOC = 'annual_docs', LS = 'tph_annual_docs_v1';
+
+  // ── ค่าเริ่มต้น = ต้นฉบับ docx ของปี 2569 (D:\OAT\คบส\คำสั่ง-แผน, D:\OAT\วัคซีน\คำสั่ง แผน) ──
+  const M = (s) => s.trim().split('\n').map((l) => l.split('|').map((x) => x.trim()));
+  const DEFAULTS = {
+    kbs_order: {
+      year: 2569, no: '', signDay: '', signMonth: 3,
+      head: 'คำสั่ง เครือข่ายบริการสุขภาพอำเภอถ้ำพรรณรา', headBold: false,
+      subject: 'แต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภคอำเภอถ้ำพรรณรา ปี {ปี}',
+      preamble: 'ตามที่รัฐบาลได้กำหนดให้การคุ้มครองผู้บริโภคเป็นนโยบายและยุทธศาสตร์ที่สำคัญ ตามแผนพัฒนาแห่งชาติ ฉบับที่ 10   โดยกำหนดให้การคุ้มครองผู้บริโภคเป็นภารกิจหลักที่ต้องเอาใจใส่ดูแลให้ประชาชนผู้บริโภคได้รับความปลอดภัยและเป็นธรรม จากการซื้อสินค้าหรือบริการตามที่กฎหมายบัญญัติไว้แล้ว ยังต้องส่งเสริมให้เห็นความสำคัญในสิทธิของผู้บริโภคด้วย  ในขณะเดียวกันก็ต้องส่งเสริมสนับสนุนให้มีการพัฒนาบทบาทองค์กรที่เกี่ยวข้องกับการคุ้มครองผู้บริโภค ให้มีประสิทธิภาพยิ่งขึ้น   คณะกรรมการประสานงานสำนักงานสาธารณสุขอำเภอถ้ำพรรณรา จึงขอแต่งตั้งคณะกรรมการเพื่อดำเนินงานคุ้มครองผู้บริโภคอำเภอถ้ำพรรณรา ดังมีรายนามดังต่อไปนี้',
+      teams: [{ title: '', members: M(`
+        นางสาวเกษราภรณ์|สุขะวัลลิ|นายแพทย์ชำนาญการ|ประธานกรรมการ
+        นายอนันท์|พรมนิน|นักวิชาการสาธารณสุขชำนาญการ|รองประธานกรรมการ
+        นางสาวสมฤดี|คงศรี|เภสัชกรชำนาญการ|กรรมการ
+        นายพงศ์ไพสิฐ|บรรจงเมือง|เภสัชกรปฏิบัติการ|กรรมการ
+        นางสาวอัจฉรา|สายเภอ|นักวิชาการสาธารณสุขปฏิบัติการ|กรรมการ
+        นางเปมิกา|สิงหบุญพงศ์|เจ้าพนักงานเภสัชกรรมชำนาญงาน|กรรมการ
+        นางศิริวรรณ|สวัสดิวงค์|เจ้าพนักงานเภสัชกรรมชำนาญงาน|กรรมการ
+        นางสาวเกศินี|ศรีเทพ|นักสาธารณสุขปฏิบัติการ|กรรมการ
+        นายนนทชัย|ชนะฤทธิ์|นักวิชาการสาธารณสุขชำนาญการ|กรรมการ
+        นางสาวจิตติมา|ประพันธ์|นักวิชาการสาธารณสุข|กรรมการ
+        นายนิติศาสตร์|ผสม|นักวิชาการสาธารณสุข|กรรมการ
+        นางบุษกร|ศรีแก้ว|พยาบาลวิชาชีพชำนาญการ|กรรมการ
+        นางสาวผกาวัลย์|พรมกูล|ผู้ช่วยนักวิชาการสาธารณสุข|กรรมการ
+        นางสาวศรัญญา|จันทร์ธิบดี|เภสัชกรชำนาญการ|กรรมการ/เลขานุการ`) }],
+      dutiesTitle: 'โดยให้คณะกรรมการดังกล่าวมีหน้าที่ดังต่อไปนี้', dutiesBold: false,
+      duties: 'เฝ้าระวังตรวจสอบอาหารและยา  ติดตามควบคุมกำกับ การโฆษณา ฉลาก ผลิตภัณฑ์สินค้าในชุมชน\nเฝ้าระวังดูแลผลิตภัณฑ์สุขภาพและบริการสุขภาพ ในชุมชน\nให้สุขศึกษาประชาสัมพันธ์ข้อมูลด้านคุ้มครองผู้บริโภค แก่ผู้ประกอบการและประชาชน\nประเมินโครงการอย.น้อยและนมโรงเรียน\nอื่นๆที่ได้รับมอบหมาย',
+      closing: 'ทั้งนี้  ตั้งแต่บัดนี้เป็นต้นไป',
+      signer: 'นางสาวเกษราภรณ์  สุขะวัลลิ',
+      signerTitles: 'ผู้อำนวยการโรงพยาบาลถ้ำพรรณรา\nประธานเครือข่ายสุขภาพอำเภอถ้ำพรรณรา',
+      // ระยะจากต้นฉบับ (วัดจาก PDF ที่ Word พิมพ์): ขอบ บน 1.0 ล่าง 0.25 ซ้าย 2.54 ขวา 1.95 ซม., ครุฑกว้าง 2.05 ซม., บรรทัดละ 18 pt
+      fmt: { font: 'it9', size: 16, lh: 18, gap: 0, mt1: 1.0, mt: 1.0, mb: 0.25, ml: 2.54, mr: 1.95, garuda: 2.05, garudaH: 2.23, gTop: 0.09, titleTop: 0.72,
+        sep: '------------------', indent: 2.54, col1: 3.81, col2: 6.35, col3: 12.7, noW: 0.75, dutyIndent: 1.1,
+        closeIndent: 2.54, dateLeft: 7.62, sigLeft: 6.6, sigW: 9.0, sigGap: 2, blankAfterSep: true, blankAfterList: true, thai: true },
+    },
+    vac_order: {
+      year: 2569, no: '', signDay: '', signMonth: 3,
+      head: 'คำสั่งเครือข่ายสุขภาพอำเภอถ้ำพรรณรา', headBold: true,
+      subject: 'แต่งตั้งคณะทำงานบริหารจัดการวัคซีนสร้างเสริมภูมิคุ้มกันโรค เครือข่ายสุขภาพอำเภอถ้ำพรรณรา ปี {ปี}',
+      preamble: 'ด้วยกระทรวงสาธารณสุข ได้กำหนดให้มีการแต่งตั้งคณะทำงาน เพื่อกำหนดแนวทางการบริหารจัดการ ประสาน สนับสนุนการดำเนินงาน และแก้ไขปัญหาอุปสรรค การบริหารจัดการให้วัคซีนสร้างเสริมภูมิคุ้มกันโรค เครือข่ายสุขภาพอำเภอถ้ำพรรณรา รวมถึงติดตามความก้าวหน้า ผลลัพธ์ในการดำเนินให้เป็นไปอย่างมีประสิทธิภาพ\n\nดังนั้น เพื่อให้มีความพร้อมในด้านการบริหารจัดการวัคซีน การสื่อสารให้ความรู้และประชาสัมพันธ์การให้บริการวัคซีน การติดตามผลการดำเนินงาน และเฝ้าระวังอาการไม่พึงประสงค์ ภายหลังได้รับวัคซีน สร้างเสริมภูมิคุ้มกันโรค การดำเนินงานเป็นไปอย่างเหมาะสม มีประสิทธิภาพ และเป็นที่เชื่อมั่นของประชาชน จึงเห็นควรแต่งตั้งคณะทำงานบริหารจัดการให้วัคซีนสร้างเสริมภูมิคุ้มกันโรค  เครือข่ายสุขภาพอำเภอถ้ำพรรณรา ดังนี้',
+      teams: [{ title: 'ทีมระบบการจัดเก็บ การขนส่ง การจัดส่งวัคซีนและระบบลูกโซ่ความเย็น (Cold Chain)', members: M(`
+        นางสาวเกษราภรณ์|สุขะวัลลิ|นายแพทย์ชำนาญการ|ประธานคณะทำงาน
+        นายอนันท์|พรมนิน|นักวิชาการสาธารณสุขชำนาญการ|รองประธานคณะทำงาน
+        นางเปมิกา|สิงหบุญพงศ์|เจ้าพนักงานเภสัชกรรมชำนาญงาน|คณะทำงาน
+        นางสาวอัจฉรา|สายเภอ|นักวิชาการสาธารณสุขปฏิบัติการ|คณะทำงาน
+        นางสาวภัทรลภา|แก้วหนู|นักวิชาการสาธารณสุขปฏิบัติการ|คณะทำงาน
+        นางสาวธมลวรรณ|อินทอง|นักวิชาการสาธารณสุข|คณะทำงาน
+        นางบุษกร|ศรีแก้ว|พยาบาลวิชาชีพชำนาญการ|คณะทำงาน
+        นางสาวจิตติมา|ประพันธ์|นักวิชาการสาธารณสุข|คณะทำงาน
+        นางสุโลชนา|สุขาทิพย์|พยาบาลชำนาญการ|คณะทำงาน
+        นางสาวเกศินี|ศรีเทพ|นักสาธารณสุขปฏิบัติการ|คณะทำงาน
+        นางสาวสุพัณณิกา|สวนอ้อย|พยาบาลวิชาชีพปฏิบัติการ|คณะทำงาน
+        นางสาวศรัญญา|จันทร์ธิบดี|เภสัชกรชำนาญการ|คณะทำงานและเลขานุการ`) }],
+      dutiesTitle: 'บทบาทหน้าที่', dutiesBold: true,
+      duties: 'บันทึกข้อมูลความต้องการ การเบิกจ่ายวัคซีนผ่านระบบ VMI\nบริหารจัดการวัคซีนและระบบลูกโซ่ความเย็น\nตรวจรับวัคซีนจากองค์การเภสัชกรรมหรือหน่วยงานที่ส่งมอบวัคซีน\nเตรียมความพร้อมวัคซีนและเบิก จ่าย การลำเลียงวัคซีนไปยังหน่วยบริการพร้อมทั้งควบคุมอุณหภูมิให้อยู่ในสภาวะที่เหมาะสมตลอดการขนส่ง\nจัดทำบัญชี รายงานรับจ่าย วัคซีนให้เป็นปัจจุบัน\nให้คำแนะนำปรึกษาเกี่ยวกับวัคซีนและอาการภายหลังได้รับวัคซีน\nปฏิบัติงานอื่นๆตามที่ได้รับมอบหมาย',
+      closing: 'ทั้งนี้ ตั้งแต่บัดนี้เป็นต้นไป',
+      signer: 'นางสาวเกษราภรณ์  สุขะวัลลิ',
+      signerTitles: 'ผู้อำนวยการโรงพยาบาลถ้ำพรรณรา\nประธานเครือข่ายสุขภาพอำเภอถ้ำพรรณรา',
+      // ต้นฉบับ: ขอบ บน 2.54 (ครุฑชิดบน ~1 ซม.) ล่าง 0.5 ซ้าย 2.54 ขวา 2.0, บรรทัด 22.7 pt + เว้นหลังย่อหน้า 8 pt (2 หน้า)
+      fmt: { font: 'new', size: 16, lh: 22.7, gap: 8, mt1: 0.98, mt: 2.54, mb: 0.5, ml: 2.54, mr: 2.0, garuda: 2.07, garudaH: 2.37, gTop: 0, titleTop: 0.27,
+        sep: '.....................................................................................................', indent: 1.27, col1: 3.81, col2: 6.35, col3: 12.7, noW: 0.75, dutyIndent: 0,
+        closeIndent: 1.27, dateLeft: 3.81, sigLeft: 5.0, sigW: 9.0, sigGap: 2, blankAfterSep: false, blankAfterList: false, thai: true },
+    },
+    vac_common: {
+      year: 2569,
+      hospital: 'โรงพยาบาลถ้ำพรรณรา', district: 'ถ้ำพรรณรา', province: 'นครศรีธรรมราช',
+      units: 'โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านแพรกกลาง, บ้านพรรณราชลเขต, บ้านควนกอ, บ้านปลายเส, บ้านเกาะขวัญ',
+      backupSite: 'หน่วยบริการวัคซีนใกล้เคียง หรือคลังวัคซีนของโรงพยาบาลแม่ข่าย',
+      reportTo: 'กลุ่มงานควบคุมโรคติดต่อ สำนักงานสาธารณสุขจังหวัดนครศรีธรรมราช',
+      contacts: [
+        { role: 'ผู้รับผิดชอบงานวัคซีน (หลัก)', name: 'นางสาวศรัญญา จันทร์ธิบดี', phone: '087-8281796' },
+        { role: 'ผู้รับผิดชอบงานวัคซีน (สำรอง)', name: 'นางเปมิกา สิงหบุญพงศ์', phone: '089-9081930' },
+        { role: 'หัวหน้ากลุ่มงานเภสัชกรรมฯ', name: '', phone: '' },
+        { role: 'ผู้อำนวยการโรงพยาบาล', name: 'นางสาวเกษราภรณ์ สุขะวัลลิ', phone: '' },
+        { role: 'งานซ่อมบำรุง / ช่างไฟฟ้า รพ.', name: '', phone: '' },
+        { role: 'การไฟฟ้าส่วนภูมิภาค (แจ้งไฟดับ)', name: 'PEA Call Center', phone: '1129' },
+      ],
+      drillDay: 17, drillMonth: 3,
+      attendees: M(`
+        น.ส.สมฤดี คงศรี|เภสัชกร ชำนาญการ
+        น.ส.ศรัญญา จันทร์ธิบดี|เภสัชกร ชำนาญการ
+        นายพงศ์ไพสิฐ บรรจงเมือง|เภสัชกร ปฏิบัติการ
+        นางศิริวรรณ สวัสดิวงค์|จพ.เภสัชกรรม ชำนาญงาน
+        นางเปมิกา สิงหบุญพงศ์|จพ.เภสัชกรรม ชำนาญงาน
+        น.ส.สุนิษา หล้าเปี้ย|จพ.เภสัชกรรม ปฏิบัติงาน
+        นายสายันต์ รักวงค์|พนักงานประจำห้องยา
+        นางสาวเกศินี ศรีเทพ|นักสาธารณสุข ปฏิบัติการ`),
+    },
+    vac_report: {
+      unit: 'โรงพยาบาลถ้ำพรรณรา', causes: [], causeOther: '', date: '', time: '', tempFound: '', tempMax: '', tempMin: '', hours: '',
+      movedTo: '', movedTemp: '', rows: [], reporter: '', position: '', phone: '', reportDate: '', blankRows: 8,
+    },
+    // กำหนดทำงานประจำปี: วัน/เดือนครบกำหนดในแต่ละปีงบ, เตือนล่วงหน้ากี่วัน, ปีงบที่ทำเสร็จล่าสุด
+    schedule: {
+      kbs_order: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
+      vac_order: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
+      vac_plan: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
+    },
+  };
+  const TASKS = {
+    kbs_order: { name: 'คำสั่งแต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภคอำเภอ', grp: 'งาน คบส.' },
+    vac_order: { name: 'คำสั่งแต่งตั้งคณะทำงานบริหารจัดการวัคซีนฯ เครือข่ายสุขภาพอำเภอ', grp: 'งานวัคซีน' },
+    vac_plan: { name: 'ทบทวนแผน/ผังเตรียมความพร้อม Cold Chain + ซ้อมแผน (Table Top) ปีละ 1 ครั้ง', grp: 'งานวัคซีน' },
+  };
+
+  let S = load();
+  function merge(def, v) {
+    if (v === undefined || v === null) return clone(def);
+    if (Array.isArray(def) || typeof def !== 'object') return v;
+    const o = {};
+    for (const k of Object.keys(def)) o[k] = merge(def[k], v[k]);
+    for (const k of Object.keys(v)) if (!(k in o)) o[k] = v[k];
+    return o;
+  }
+  function load() {
+    let v = null;
+    try { v = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) {}
+    return merge(DEFAULTS, v || {});
+  }
+
+  // ── บันทึก: เครื่องนี้ทันที + ฐานข้อมูลกลาง (หน่วง 1 วินาที) ──
+  let db = null, saveT = 0, lastRemote = '', savedMsg = '';
+  function save() {
+    S.updated = new Date().toISOString();
+    const js = JSON.stringify(S);
+    try { localStorage.setItem(LS, js); } catch (e) {}
+    setSaved('กำลังบันทึก…');
+    clearTimeout(saveT);
+    saveT = setTimeout(() => {
+      if (!db) { setSaved('บันทึกในเครื่องนี้แล้ว (ยังต่อฐานข้อมูลกลางไม่ได้)'); return; }
+      lastRemote = js;
+      db.collection(COL).doc(DOC).set({ json: js, updated: S.updated })
+        .then(() => setSaved('บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'))
+        .catch((e) => setSaved('บันทึกฐานข้อมูลกลางไม่สำเร็จ: ' + e.message + ' (เก็บในเครื่องนี้แล้ว)'));
+    }, 1000);
+  }
+  function setSaved(t) { savedMsg = t; document.querySelectorAll('.saved').forEach((el) => { el.textContent = t; }); }
+
+  // ── ปีงบ / กำหนดส่ง ──
+  const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const fyOf = (d) => d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0);
+  const dueDate = (sch, fy) => new Date(fy - 543 - (sch.month >= 10 ? 1 : 0), sch.month - 1, sch.day);
+  const fmtDate = (d) => `${d.getDate()} ${TH_MS[d.getMonth()]} ${d.getFullYear() + 543}`;
+  function status(id) {
+    const sch = S.schedule[id], now = today0(), fy = fyOf(now);
+    const done = (sch.doneFy || 0) >= fy;
+    const tfy = done ? fy + 1 : fy;
+    const due = dueDate(sch, tfy);
+    const days = Math.round((due - now) / 864e5);
+    const lead = Math.max(7, sch.lead || 14);
+    let level = 'idle';
+    if (!done && days < 0) level = 'bad';
+    else if (!done && days <= lead) level = 'warn';
+    else if (done) level = 'ok';
+    return { fy, tfy, due, days, done, level, lead };
+  }
+  function statusText(st) {
+    if (st.level === 'bad') return `เลยกำหนด ${-st.days} วัน (${fmtDate(st.due)})`;
+    if (st.level === 'warn') return st.days === 0 ? `ครบกำหนดวันนี้ (${fmtDate(st.due)})` : `อีก ${st.days} วัน ถึงกำหนด (${fmtDate(st.due)})`;
+    if (st.done) return `ปีงบ ${st.fy} ทำแล้ว · รอบถัดไป ${fmtDate(st.due)}`;
+    return `ปีงบ ${st.fy} ครบกำหนด ${fmtDate(st.due)} (อีก ${st.days} วัน)`;
+  }
+
+  // ── แถบเตือน + การ์ดภาพรวม ──
+  function renderAlerts() {
+    const box = $('alerts'); let html = '', n = 0;
+    for (const id of Object.keys(TASKS)) {
+      const st = status(id);
+      const b = document.querySelector(`[data-cnt="${id}"]`);
+      if (st.level === 'bad' || st.level === 'warn') {
+        n++;
+        html += `<div class="alert ${st.level}">${st.level === 'bad' ? '⛔' : '⚠️'} <span><b>${esc(TASKS[id].grp)}: ${esc(TASKS[id].name)}</b> ปีงบ ${st.fy} — ${esc(statusText(st))}</span>
+          <button class="btn sm" type="button" data-open="${id}">เปิดเอกสาร</button></div>`;
+        if (b) { b.hidden = false; b.textContent = '!'; b.classList.toggle('warn', st.level === 'warn'); }
+      } else if (b) b.hidden = true;
+    }
+    box.innerHTML = html;
+    const c = $('cnt-ov'); c.hidden = !n; c.textContent = n;
+    box.querySelectorAll('[data-open]').forEach((x) => x.addEventListener('click', () => go(x.dataset.open)));
+  }
+  function renderOverview() {
+    const mopts = (sel) => TH_M.map((m, i) => `<option value="${i + 1}"${i + 1 === sel ? ' selected' : ''}>${m}</option>`).join('');
+    $('ov-cards').innerHTML = Object.keys(TASKS).map((id) => {
+      const st = status(id), sch = S.schedule[id];
+      const chip = { ok: 'ok', warn: 'warn', bad: 'bad', idle: 'idle' }[st.level];
+      return `<div class="card">
+        <div class="grp">${esc(TASKS[id].grp)}</div>
+        <h2>${esc(TASKS[id].name)}</h2>
+        <span class="chip ${chip}">${esc(statusText(st))}</span>
+        <div class="meta">ทำเสร็จล่าสุด: ${sch.doneFy ? 'ปีงบ ' + sch.doneFy : '—'}${sch.doneAt ? ' (กดเมื่อ ' + fmtDate(new Date(sch.doneAt)) + ')' : ''}</div>
+        <div class="due-edit" data-id="${id}">ครบกำหนดทุกปีวันที่
+          <input type="number" min="1" max="31" value="${sch.day}" data-k="day" style="width:60px">
+          <select data-k="month">${mopts(sch.month)}</select>
+          เตือนล่วงหน้า <input type="number" min="7" max="120" value="${sch.lead}" data-k="lead" style="width:64px"> วัน
+        </div>
+        <div class="row-btns">
+          <button class="btn pri" type="button" data-open="${id}">เปิดเอกสาร</button>
+          ${st.done ? `<button class="btn" type="button" data-undo="${id}">ยกเลิก "ทำแล้ว" ปีงบ ${st.fy}</button>`
+            : `<button class="btn ok" type="button" data-done="${id}">✓ ทำเสร็จแล้ว (ปีงบ ${st.fy})</button>`}
+        </div>
+      </div>`;
+    }).join('');
+    $('ov-cards').querySelectorAll('[data-open]').forEach((x) => x.addEventListener('click', () => go(x.dataset.open)));
+    $('ov-cards').querySelectorAll('[data-done]').forEach((x) => x.addEventListener('click', () => markDone(x.dataset.done, true)));
+    $('ov-cards').querySelectorAll('[data-undo]').forEach((x) => x.addEventListener('click', () => markDone(x.dataset.undo, false)));
+    $('ov-cards').querySelectorAll('.due-edit').forEach((row) => row.addEventListener('change', (e) => {
+      const sch = S.schedule[row.dataset.id], k = e.target.dataset.k; let v = parseInt(e.target.value, 10);
+      if (!v) return;
+      if (k === 'lead') v = Math.max(7, v);
+      if (k === 'day') v = Math.min(31, Math.max(1, v));
+      sch[k] = v; save(); renderAlerts(); renderOverview();
+    }));
+  }
+  function markDone(id, on) {
+    const sch = S.schedule[id], fy = fyOf(today0());
+    if (on) { sch.doneFy = fy; sch.doneAt = new Date().toISOString(); }
+    else { sch.doneFy = fy - 1; sch.doneAt = ''; }
+    save(); renderAlerts(); renderOverview(); refreshDoneButtons();
+  }
+
+  // ── tab ──
+  let cur = 'overview';
+  function go(v) {
+    cur = v;
+    document.querySelectorAll('nav .tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v ? 'true' : 'false'));
+    document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v));
+    try { history.replaceState(null, '', '#' + v); } catch (e) {}
+    if (EDITORS[v] && !EDITORS[v].built) { EDITORS[v].build(); EDITORS[v].built = true; }
+    if (EDITORS[v]) EDITORS[v].preview();
+    window.scrollTo({ top: 0 });
+  }
+  document.querySelectorAll('nav .tab').forEach((t) => t.addEventListener('click', () => go(t.dataset.v)));
+
+  // ═══════════════ ตัวแสดงเอกสาร ═══════════════
+  const FONT = { it9: "'TPH SarabunIT9', 'TH SarabunIT๙', 'TPH SarabunNew', serif", new: "'TPH SarabunNew', 'TH Sarabun New', 'TH SarabunPSK', serif" };
+  const paras = (s) => String(s || '').split(/\n\s*\n/).map((x) => x.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+  const lines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  const blank = (w) => `<span class="blank" style="width:${w}cm"></span>`;
+
+  function renderOrder(d) {
+    const f = d.fmt, T = (s) => esc(f.thai ? thDig(s) : s);
+    const gap = f.gap ? `margin-bottom:${f.gap}pt;` : '';
+    const P = (cls, html, st) => `<p class="${cls}" style="${gap}${st || ''}">${html}</p>`;
+    const subject = String(d.subject || '').replace(/\{ปี\}/g, d.year);
+    let h = `<div class="doc" style="font-family:${FONT[f.font]};font-size:${f.size}pt;line-height:${f.lh}pt">`;
+    h += `<img class="garuda" src="img/garuda.png" alt="" style="width:${f.garuda}cm;height:${f.garudaH || 'auto'}${f.garudaH ? 'cm' : ''};margin-top:${f.gTop}cm;margin-bottom:${f.titleTop}cm">`;
+    h += P('c' + (d.headBold ? ' b' : ''), T(d.head));
+    h += P('c', 'ที่ ' + (d.no ? T(d.no) : blank(1.6)) + ' / ' + T(d.year));
+    h += P('c', 'เรื่อง ' + T(subject));
+    h += P('c', T(f.sep));
+    if (f.blankAfterSep) h += `<p style="line-height:${f.lh / 2}pt">&nbsp;</p>`;
+    paras(d.preamble).forEach((p) => { h += P('j', T(p), `text-indent:${f.indent}cm`); });
+    let n = 0;
+    d.teams.forEach((tm) => {
+      if (tm.title) h += P('', T(tm.title));
+      tm.members.forEach((m) => {
+        if (!m.some((x) => String(x || '').trim())) return;
+        n++;
+        h += `<div class="mrow" style="${gap}">
+          <span class="c1" style="min-width:${f.col2}cm"><span class="fn" style="min-width:${f.col1}cm"><span class="no" style="min-width:${f.noW}cm">${T(n + '.')}</span>&nbsp;${T(m[0])}&nbsp;</span><span>${T(m[1])}&nbsp;</span></span>
+          <span class="c2" style="min-width:${f.col3 - f.col2}cm">${T(m[2])}&nbsp;</span>
+          <span class="c3">${T(m[3])}</span></div>`;
+      });
+    });
+    if (f.blankAfterList) h += `<p style="line-height:${f.lh / 2}pt">&nbsp;</p>`;
+    if (d.dutiesTitle) h += P(d.dutiesBold ? 'b' : '', T(d.dutiesTitle));
+    lines(d.duties).forEach((t, i) => {
+      h += `<div class="duty j" style="${gap}padding-left:${f.dutyIndent}cm"><span class="dn" style="min-width:0.6cm">${T((i + 1) + '.')}</span><span>&nbsp;${T(t)}</span></div>`;
+    });
+    if (d.closing) h += P('', T(d.closing), `padding-left:${f.closeIndent}cm`);
+    const day = d.signDay ? T(d.signDay) : blank(1.2);
+    h += P('', `สั่ง ณ วันที่ ${day} ${T(TH_M[(d.signMonth || 1) - 1])} พ.ศ. ${T(d.year)}`, `padding-left:${f.dateLeft}cm;margin-top:${f.lh / 2}pt`);
+    h += `<div class="sig" style="margin-left:${f.sigLeft}cm;width:${f.sigW}cm;margin-top:${f.sigGap * f.lh}pt">`;
+    h += `<p>(${T(d.signer)})</p>` + lines(d.signerTitles).map((t) => `<p>${T(t)}</p>`).join('');
+    h += '</div></div>';
+    return h;
+  }
+
+  // ── แผนเตรียมความพร้อม (ปรับปรุงตามมาตรฐานปัจจุบัน) ──
+  function renderPlan(c) {
+    const H = c.hospital, Y = c.year, contacts = c.contacts.filter((x) => x.name || x.phone);
+    const main = contacts.filter((x) => /ผู้รับผิดชอบ/.test(x.role));
+    const S2 = 'style="text-indent:1.27cm"';
+    let h = `<div class="doc" style="font-family:${FONT.new};font-size:16pt;line-height:21pt">`;
+    h += `<p class="c b" style="font-size:18pt;line-height:24pt">แผนการเตรียมความพร้อมกรณีเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น</p>`;
+    h += `<p class="c b">คลังวัคซีน${esc(H)} อำเภอ${esc(c.district)} จังหวัด${esc(c.province)} ปีงบประมาณ ${esc(Y)}</p>`;
+    h += `<p class="c" style="margin-top:6pt">ผู้รับผิดชอบงานวัคซีนและระบบลูกโซ่ความเย็น</p>`;
+    main.forEach((x) => { h += `<p style="padding-left:2.54cm;display:flex"><span style="min-width:7.5cm">${esc(x.name)}</span><span>โทรศัพท์มือถือ ${esc(x.phone || '..................')}</span></p>`; });
+    h += `<h4>สถานการณ์</h4>`;
+    h += `<p class="j" ${S2}>คลังวัคซีน${esc(H)} เป็นส่วนงานซึ่งมีหน้าที่เก็บรักษาวัคซีน ประกอบด้วย วัคซีนขั้นพื้นฐานที่ใช้ในแผนงานสร้างเสริมภูมิคุ้มกันโรคของประเทศไทย วัคซีนสำหรับโครงการรณรงค์ให้วัคซีนชนิดต่างๆ และวัคซีนเพื่อการป้องกันควบคุมการระบาดของโรค เป็นต้น รวมถึงมีหน้าที่กระจายวัคซีนให้แก่หน่วยปฐมภูมิและองค์รวม ได้แก่ ${esc(c.units)} วัคซีนที่จัดเก็บส่วนใหญ่ทั้งชนิดเชื้อเป็นอ่อนฤทธิ์ ชนิดเชื้อตาย และชนิดท็อกซอยด์ ต้องควบคุมอุณหภูมิให้อยู่ระหว่าง +2 ถึง +8 องศาเซลเซียส ตลอดเวลา ส่วนวัคซีนที่กำหนดให้เก็บในช่องแช่แข็ง (–15 ถึง –25 องศาเซลเซียส) ให้เก็บตามชนิดวัคซีนและระดับคลังที่กรมควบคุมโรคกำหนด ตามมาตรฐานการดำเนินงานสร้างเสริมภูมิคุ้มกันโรค และมาตรฐานการดำเนินงานด้านคลังและการเก็บรักษาวัคซีน กรมควบคุมโรค กระทรวงสาธารณสุข</p>`;
+    h += `<p class="j" ${S2}>แม้หน่วยงานจะดำเนินการตามข้อควรปฏิบัติของกรมควบคุมโรคแล้ว ก็ยังอาจเกิดเหตุการณ์ที่ทำให้วัคซีนอยู่ในอุณหภูมิที่ไม่เหมาะสม หรือที่เรียกว่า <b>เหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น (Cold chain breakdown)</b> หมายถึง เหตุการณ์ที่พบอุณหภูมิสูงกว่า +8 องศาเซลเซียส หรือต่ำกว่า +2 องศาเซลเซียส (โดยเฉพาะต่ำกว่า 0 องศาเซลเซียส ซึ่งทำให้วัคซีนที่ไวต่อการแข็งตัวเสื่อมสภาพ) ในระหว่างจัดเก็บหรือขนส่งวัคซีน ซึ่งเกิดได้จากหลายสาเหตุ ทั้งที่ควบคุมได้และควบคุมไม่ได้ คลังวัคซีน${esc(H)} จึงจัดทำแผนนี้เพื่อเตรียมความพร้อมรองรับเหตุการณ์ฉุกเฉิน ตอบโต้ได้ทันสถานการณ์ และใช้เป็นแนวทางซักซ้อมบุคลากรภายในหน่วยงานอย่างน้อยปีละ 1 ครั้ง</p>`;
+    h += `<h4>วัตถุประสงค์</h4>
+      <p class="j">1. เพื่อเตรียมความพร้อมรองรับเหตุการณ์ฉุกเฉินที่อาจเกิดขึ้นในระบบลูกโซ่ความเย็นของคลังวัคซีน${esc(H)} และสามารถตอบโต้ได้ทันสถานการณ์</p>
+      <p class="j">2. เพื่อป้องกันความเสียหายของวัคซีน และให้ผู้รับบริการได้รับวัคซีนที่มีคุณภาพ</p>
+      <p class="j">3. เพื่อใช้เป็นแนวทางประกอบการซ้อมแผนกรณีเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็นของคลังวัคซีน${esc(H)}</p>`;
+    h += `<h4>ขั้นตอนการดำเนินงาน</h4>
+      <p class="b">1. การเตรียมความพร้อมและป้องกันไม่ให้เกิดเหตุการณ์</p>
+      <p class="j" style="padding-left:1.27cm">1.1 ใช้ตู้เย็นสำหรับเก็บวัคซีนโดยเฉพาะ ไม่เก็บอาหาร เครื่องดื่ม หรือสิ่งของอื่น เสียบปลั๊กเต้าเสียบแยกเฉพาะ พันเทปให้ปลั๊กติดแน่น ปิดเต้าเสียบที่เหลือ ติดป้าย “ห้ามถอดปลั๊กตู้เย็น” และ “ห้ามปิดสวิตช์ Breaker ของตู้เย็น” และต่อเข้ากับระบบไฟฟ้าสำรอง (เครื่องกำเนิดไฟฟ้า) ของโรงพยาบาล</p>
+      <p class="j" style="padding-left:1.27cm">1.2 ตรวจและบันทึกอุณหภูมิตู้เย็นวันละ 2 ครั้ง (เช้า–บ่าย) ทุกวันรวมวันหยุดราชการ ด้วยเทอร์โมมิเตอร์ที่สอบเทียบแล้ว และ/หรือเครื่องบันทึกอุณหภูมิต่อเนื่อง (Data logger) ที่ตั้งสัญญาณเตือนเมื่ออุณหภูมิออกนอกช่วง +2 ถึง +8 องศาเซลเซียส</p>
+      <p class="j" style="padding-left:1.27cm">1.3 วางขวดน้ำ (ขวดน้ำเย็น) ในช่องล่างหรือช่องที่ไม่ได้ใช้เก็บวัคซีน เพื่อช่วยรักษาความเย็นเมื่อไฟฟ้าดับ และเตรียมไอซ์แพคแช่แข็งสำรองไว้ในช่องแช่แข็ง</p>
+      <p class="j" style="padding-left:1.27cm">1.4 เตรียมอุปกรณ์สำรองให้พร้อมใช้ ได้แก่ หีบเย็นวัคซีน (Cold box) หรือกระติกวัคซีนมาตรฐาน พร้อมเทอร์โมมิเตอร์ ก่อนบรรจุวัคซีนให้ปรับสภาพไอซ์แพค (Conditioning) จนผิวน้ำแข็งเริ่มละลาย เพื่อป้องกันวัคซีนแข็งตัว</p>
+      <p class="j" style="padding-left:1.27cm">1.5 ติดผังการเตรียมความพร้อมฯ พร้อมชื่อและเบอร์โทรศัพท์ผู้รับผิดชอบไว้หน้าตู้เย็น ประสานหน่วยฝากวัคซีนสำรองไว้ล่วงหน้า (${esc(c.backupSite)}) ทบทวนแผนและซ้อมแผนอย่างน้อยปีละ 1 ครั้ง</p>`;
+    h += `<p class="b">2. วิเคราะห์เหตุการณ์ฉุกเฉินที่อาจเกิดขึ้น</p>
+      <p style="padding-left:1.27cm">2.1 เหตุการณ์ฉุกเฉินของตู้เย็นเก็บวัคซีน ได้แก่ ไฟฟ้าดับ ตู้เย็นเสีย ปลั๊กหลุด/หลวม ประตูปิดไม่สนิท และอุณหภูมิต่ำเกินไป</p>
+      <p style="padding-left:1.27cm">2.2 เหตุการณ์ฉุกเฉินของรถส่งวัคซีน ได้แก่ รถเสียหรืออุบัติเหตุระหว่างขนส่ง</p>`;
+    const I = 'style="padding-left:2.54cm"', I2 = 'style="padding-left:3.3cm"';
+    h += `<p class="b">3. การดำเนินการเมื่อเกิดเหตุการณ์</p>
+      <p style="padding-left:1.27cm" class="b">3.1 กรณีไฟฟ้าดับ</p>
+      <p class="j" ${I}>1) ผู้ที่พบเหตุการณ์แจ้งผู้รับผิดชอบงานวัคซีนทราบโดยเร็วที่สุด หากผู้รับผิดชอบมาไม่ได้ ให้แจ้งข้อปฏิบัติแก่ผู้พบเหตุการณ์เพื่อดำเนินการต่อ</p>
+      <p class="j" ${I}>2) ตรวจสอบว่าระบบไฟฟ้าสำรองของโรงพยาบาลจ่ายไฟให้ตู้เย็นหรือไม่ และสอบถามการไฟฟ้าส่วนภูมิภาค (โทร 1129) ถึงระยะเวลาที่ไฟฟ้าจะดับ</p>
+      <p class="j" ${I}>3) ห้ามเปิดตู้เย็น ติดป้าย “ห้ามเปิดตู้เย็น” และติดตามอุณหภูมิจากเทอร์โมมิเตอร์/Data logger ทุก 30–60 นาที</p>
+      <p class="j" ${I2}>3.1) ไฟฟ้าดับไม่เกิน 3 ชั่วโมง และอุณหภูมิยังอยู่ระหว่าง +2 ถึง +8 องศาเซลเซียส ให้ปิดตู้เย็นไว้ จนกว่าไฟฟ้าจะกลับมาและอุณหภูมิคงที่ จึงนำป้ายออก</p>
+      <p class="j" ${I2}>3.2) ไฟฟ้าดับเกิน 3 ชั่วโมง หรืออุณหภูมิในตู้สูงขึ้นใกล้ +8 องศาเซลเซียส ให้ย้ายวัคซีนทั้งหมดไปเก็บในตู้เย็นที่มีไฟฟ้าสำรอง หรือหีบเย็น/กระติกวัคซีนมาตรฐานที่มีเทอร์โมมิเตอร์และอุณหภูมิ +2 ถึง +8 องศาเซลเซียส</p>
+      <p class="j" ${I}>4) เมื่อไฟฟ้ากลับมา ห้ามปรับ Thermostat ทันที รอให้อุณหภูมิกลับเข้าสู่ +2 ถึง +8 องศาเซลเซียสและคงที่ก่อน จึงนำวัคซีนกลับเข้าตู้</p>
+      <p style="padding-left:1.27cm" class="b">3.2 กรณีตู้เย็นเก็บวัคซีนเสีย หรืออุณหภูมิสูงกว่า +8 องศาเซลเซียส</p>
+      <p class="j" ${I}>1) แจ้งผู้รับผิดชอบงานวัคซีนโดยเร็ว และสำรวจความเพียงพอของอุปกรณ์ลูกโซ่ความเย็นสำรอง</p>
+      <p class="j" ${I2}>1.1) อุปกรณ์สำรองเพียงพอ: ย้ายวัคซีนทั้งหมดไปเก็บในตู้เย็นอื่น หรือหีบเย็น/กระติกวัคซีนมาตรฐาน ที่ +2 ถึง +8 องศาเซลเซียส ชั่วคราว แล้วแจ้งงานซ่อมบำรุง หรือจัดหาตู้ใหม่หากซ่อมไม่ได้</p>
+      <p class="j" ${I2}>1.2) อุปกรณ์สำรองไม่เพียงพอ หรือไม่มีตู้เย็นอื่น: นำวัคซีนไปฝากไว้ที่${esc(c.backupSite)} ชั่วคราว (ขนส่งในกระติกที่มีเทอร์โมมิเตอร์)</p>
+      <p class="j" ${I}>2) ตรวจหาสาเหตุ เช่น ประตูปิดไม่สนิท ขอบยางเสื่อม น้ำแข็งในช่องแช่แข็งหนาเกิน 5 มม. แล้วแก้ไข</p>
+      <p style="padding-left:1.27cm" class="b">3.3 กรณีอุณหภูมิต่ำกว่า +2 องศาเซลเซียส</p>
+      <p class="j" ${I}>ปรับปุ่ม Thermostat ให้อุณหภูมิสูงขึ้น หากต่ำกว่า 0 องศาเซลเซียส ให้แยกวัคซีนที่ไวต่อการแข็งตัว (เช่น วัคซีนที่มีส่วนประกอบของ DTP, HB, Td/dT) และทำ Shake test ก่อนพิจารณาใช้</p>
+      <p style="padding-left:1.27cm" class="b">3.4 กรณีรถส่งวัคซีนเสียหรืออุบัติเหตุระหว่างขนส่ง</p>
+      <p class="j" ${I}>ตรวจอุณหภูมิในกระติก ไม่เปิดกระติกโดยไม่จำเป็น ผู้รับผิดชอบรีบขอยืมรถจากหน่วยบริการใกล้เคียงหรือโรงพยาบาลแม่ข่าย ขนส่งต่อโดยมีเทอร์โมมิเตอร์ในกระติก และดำเนินการซ่อมรถต่อไป</p>`;
+    h += `<p class="b">4. การจัดการวัคซีนหลังเกิดเหตุการณ์ (ทุกกรณีที่วัคซีนสัมผัสอุณหภูมินอกช่วง +2 ถึง +8 องศาเซลเซียส)</p>
+      <p class="j" style="padding-left:1.27cm">4.1 แยกวัคซีนที่ได้รับผลกระทบเก็บไว้ที่ +2 ถึง +8 องศาเซลเซียส ติดป้าย “ห้ามใช้ รอผลพิจารณา” <b>ห้ามใช้และห้ามทิ้ง</b> จนกว่าจะได้รับคำแนะนำ</p>
+      <p class="j" style="padding-left:1.27cm">4.2 บันทึกอุณหภูมิที่พบ (สูงสุด/ต่ำสุด) ระยะเวลาที่อยู่นอกช่วง ชนิดวัคซีน ผู้ผลิต เลขที่ผลิต (Lot No.) วันหมดอายุ จำนวน สถานะ VVM และผล Shake test (ถ้ามี)</p>
+      <p class="j" style="padding-left:1.27cm">4.3 กรอก “แบบรายงานเมื่อเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น” ส่ง${esc(c.reportTo)} ทันทีในวันที่พบเหตุการณ์ เพื่อประสานพิจารณาข้อมูลความคงตัว (Stability) ของวัคซีนตามลำดับ (สำนักงานป้องกันควบคุมโรคที่ 11 / กองโรคป้องกันด้วยวัคซีน กรมควบคุมโรค)</p>
+      <p class="j" style="padding-left:1.27cm">4.4 วัคซีนที่ VVM ถึงจุดห้ามใช้ (สี่เหลี่ยมด้านในสีเข้มเท่าหรือเข้มกว่าวงกลม) หรือได้รับแจ้งว่าใช้ไม่ได้ ให้ตัดออกจากทะเบียนรับ–จ่าย และทำลายแบบขยะติดเชื้อ พร้อมบันทึกหลักฐาน</p>
+      <p class="j" style="padding-left:1.27cm">4.5 ทบทวนหาสาเหตุ (RCA) และกำหนดแนวทางป้องกันการเกิดซ้ำ บันทึกเป็นความเสี่ยงของหน่วยงาน</p>`;
+    h += `<p class="b">5. ลำดับการประสานงาน</p>
+      <p style="padding-left:1.27cm">ผู้พบเหตุการณ์ → ผู้รับผิดชอบงานวัคซีน (หลัก/สำรอง) → หัวหน้ากลุ่มงาน → ผู้อำนวยการโรงพยาบาล</p>
+      <p style="padding-left:1.27cm">และแจ้งงานซ่อมบำรุง/การไฟฟ้าตามสาเหตุ · รายงาน${esc(c.reportTo)} กรณีวัคซีนสัมผัสอุณหภูมินอกช่วง</p>`;
+    h += `<p class="b" style="margin-top:4pt">รายชื่อและเบอร์โทรศัพท์ติดต่อกรณีฉุกเฉิน</p>
+      <table class="grid" style="margin-top:2pt"><tr><th style="width:1.2cm">ที่</th><th>หน้าที่</th><th>ชื่อ – สกุล</th><th style="width:3.6cm">โทรศัพท์</th></tr>
+      ${c.contacts.map((x, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.name)}</td><td style="text-align:center">${esc(x.phone)}</td></tr>`).join('')}</table>`;
+    // หน้าลงชื่อซ้อมแผน
+    const dd = c.drillDay ? `${c.drillDay} ${TH_M[(c.drillMonth || 1) - 1]} พ.ศ. ${drillYear(c)}` : `........ ${TH_M[(c.drillMonth || 1) - 1]} พ.ศ. ${drillYear(c)}`;
+    h += `<div style="break-before:page;page-break-before:always"></div>`;
+    h += `<p class="c b" style="font-size:18pt;line-height:24pt">รายชื่อผู้เข้าร่วมซ้อมแผนการเตรียมความพร้อมบนโต๊ะ (Table Top Exercise)</p>
+      <p class="c b" style="font-size:18pt;line-height:24pt">กรณีเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น</p>
+      <p class="c b" style="font-size:18pt;line-height:24pt">วันที่ ${esc(dd)}</p><p>&nbsp;</p>
+      <table class="grid" style="line-height:30pt"><tr><th style="width:1.6cm">ลำดับที่</th><th>ชื่อ – สกุล</th><th style="width:5.2cm">ตำแหน่ง</th><th style="width:4cm">ลายมือชื่อ</th></tr>
+      ${c.attendees.filter((a) => a[0] || a[1]).map((a, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${esc(a[0])}</td><td>${esc(a[1])}</td><td></td></tr>`).join('')}
+      ${Array.from({ length: 3 }).map((_, i) => `<tr><td style="text-align:center">${c.attendees.filter((a) => a[0] || a[1]).length + i + 1}</td><td></td><td></td><td></td></tr>`).join('')}</table>`;
+    h += '</div>';
+    return h;
+  }
+  // วันซ้อมแผน: ปีงบ Y → เดือน ต.ค.–ธ.ค. อยู่ปี พ.ศ. Y-1
+  const drillYear = (c) => (c.drillMonth >= 10 ? c.year - 1 : c.year);
+
+  function renderChart(c) {
+    const ct = c.contacts.filter((x) => x.name || x.phone);
+    let h = `<div class="doc chart" style="font-family:${FONT.new}">`;
+    h += `<div class="ctitle">ผังการเตรียมความพร้อมกรณีเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น</div>`;
+    h += `<div class="fbox top"><b>คลังวัคซีนระดับอำเภอ / หน่วยให้บริการวัคซีน ${esc(c.hospital)} อ.${esc(c.district)} จ.${esc(c.province)}</b></div><div class="vline"></div>`;
+    h += `<div class="fbox" style="width:24cm;margin:0 auto"><div class="contacts">${ct.map((x) => `<div><b style="display:inline">${esc(x.role)}:</b> ${esc(x.name)} ${x.phone ? ' โทร ' + esc(x.phone) : ''}</div>`).join('')}</div></div>`;
+    h += `<div class="vline"></div><div class="cols">
+      <div class="col"><div class="fbox head">ไฟฟ้าดับ</div><div class="sub">
+        <div class="fbox"><b>ไม่เกิน 3 ชั่วโมง และอุณหภูมิยัง +2 ถึง +8 °C</b>- ปิดประตูตู้เย็นไว้ <span class="warnsig">ห้ามเปิดเด็ดขาด</span><br>- ติดป้าย “ห้ามเปิดตู้เย็น”<br>- ดูอุณหภูมิทุก 30–60 นาที<br>- ตรวจไฟสำรอง / โทร กฟภ. 1129</div>
+        <div class="fbox"><b>เกิน 3 ชั่วโมง หรืออุณหภูมิใกล้ +8 °C</b>- ย้ายวัคซีนทั้งหมดไปตู้ที่มีไฟสำรอง หรือหีบเย็น/กระติกที่มีอุณหภูมิ +2 ถึง +8 °C (มีเทอร์โมมิเตอร์)</div>
+        <div class="fbox"><b>ไฟกลับมา</b>- ห้ามปรับ Thermostat ทันที รออุณหภูมิคงที่ +2 ถึง +8 °C แล้วจึงนำวัคซีนกลับ</div>
+      </div></div>
+      <div class="col"><div class="fbox head">ตู้เย็นเก็บวัคซีนเสีย / อุณหภูมิผิดปกติ</div><div class="sub">
+        <div class="fbox"><b>มีอุปกรณ์สำรองเพียงพอ</b>- ย้ายวัคซีนไปตู้เย็นอื่น หรือหีบเย็น/กระติก +2 ถึง +8 °C<br>- แจ้งซ่อมหรือจัดหาตู้ใหม่</div>
+        <div class="fbox"><b>ไม่มีตู้อื่น / อุปกรณ์ไม่พอ</b>- นำวัคซีนไปฝากที่${esc(c.backupSite)}</div>
+        <div class="fbox"><b>ต่ำกว่า +2 °C</b>- ปรับ Thermostat ให้อุ่นขึ้น<br>- ต่ำกว่า 0 °C: แยกวัคซีนที่ไวต่อการแข็งตัว ทำ Shake test</div>
+      </div></div>
+      <div class="col"><div class="fbox head">รถส่งวัคซีนเสีย / อุบัติเหตุ</div><div class="sub">
+        <div class="fbox"><b>ระหว่างขนส่ง</b>- ตรวจอุณหภูมิในกระติก ไม่เปิดกระติกโดยไม่จำเป็น<br>- ขอยืมรถจากหน่วยงานใกล้เคียง / รพ.แม่ข่าย<br>- ขนส่งต่อโดยมีเทอร์โมมิเตอร์ในกล่องโฟมหรือกระติกที่ได้มาตรฐาน</div>
+      </div></div></div>`;
+    h += `<div class="all"><b>ทุกกรณีที่วัคซีนสัมผัสอุณหภูมินอก +2 ถึง +8 °C:</b> ① แยกวัคซีนเก็บที่ +2 ถึง +8 °C ติดป้าย “ห้ามใช้ รอผลพิจารณา” — ห้ามใช้และห้ามทิ้ง &nbsp;② บันทึกอุณหภูมิ ระยะเวลา ชนิด/Lot/วันหมดอายุ/VVM &nbsp;③ กรอกแบบรายงานฯ ส่ง${esc(c.reportTo)} ทันที &nbsp;④ ใช้ต่อหรือทำลายตามคำแนะนำ แล้วบันทึกตัดจ่าย</div>`;
+    h += '</div>';
+    return h;
+  }
+
+  function renderGuide(c) {
+    let h = `<div class="doc" style="font-family:${FONT.new};font-size:16pt;line-height:21pt">`;
+    h += `<p class="c b" style="font-size:18pt;line-height:24pt">แผนเตรียมความพร้อม กรณีฉุกเฉินในระบบลูกโซ่ความเย็น และแนวทางแก้ไข</p>
+      <p class="c">คลังวัคซีน${esc(c.hospital)} ปีงบประมาณ ${esc(c.year)}</p>
+      <p class="j" style="text-indent:1.27cm;margin-top:6pt">เหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็นเกิดขึ้นได้จากหลายสาเหตุ เช่น ไฟฟ้าดับ ตู้เย็นเสีย ปลั๊กตู้เย็นหลุดหรือหลวม ประตูปิดไม่สนิท ทำให้อุณหภูมิสูงหรือต่ำผิดปกติ ควรดำเนินการป้องกันดังต่อไปนี้</p>
+      <p style="padding-left:1.27cm">• ติดป้าย “ห้ามถอดปลั๊กตู้เย็น” และ “ห้ามปิดสวิตช์ Breaker ของตู้เย็น”</p>
+      <p style="padding-left:1.27cm">• ติดป้าย “ห้ามเปิดตู้เย็น” เมื่อเกิดไฟฟ้าดับ</p>
+      <p class="j" style="padding-left:1.27cm">• ปลั๊กตู้เย็นควรมีเต้าเสียบแยกต่างหาก พันเทปกาวให้ปลั๊กติดแน่น ถ้ามีหลายเต้าเสียบให้ใช้เทปปิดเต้าเสียบที่เหลือ เพื่อไม่ให้เสียบเครื่องใช้ไฟฟ้าชนิดอื่นที่อาจทำให้กระแสไฟฟ้าเข้าตู้เย็นไม่สม่ำเสมอ และป้องกันการดึงผิดปลั๊ก</p>
+      <p class="j" style="padding-left:1.27cm">• ตรวจและบันทึกอุณหภูมิวันละ 2 ครั้ง (เช้า–บ่าย) ทุกวันรวมวันหยุด และใช้ Data logger/เทอร์โมมิเตอร์ที่สอบเทียบแล้ว</p>
+      <h4>แนวทางการปรับอุณหภูมิในตู้เย็น ในกรณีที่พบว่าอุณหภูมิต่ำหรือสูงกว่าที่กำหนด</h4>
+      <p class="b">1. ถ้าอุณหภูมิต่ำกว่า +2 °C</p>
+      <p class="j" style="padding-left:1.27cm">- ปรับปุ่ม Thermostat จากที่ตั้งไว้เดิม เพื่อทำให้อุณหภูมิสูงขึ้น</p>
+      <p class="j" style="padding-left:1.27cm">- <b>หากอุณหภูมิต่ำกว่า 0 °C</b> ให้แยกวัคซีนที่ไวต่อความเย็นจัด (เช่น วัคซีนที่มีส่วนประกอบของ DTP, HB, Td/dT) ตรวจลักษณะทางกายภาพว่าเสื่อมสภาพจากการแข็งตัวหรือไม่ โดยการทำ Shake test และรายงานตามแบบรายงานฯ</p>
+      <p class="b">2. ถ้าอุณหภูมิสูงกว่า +8 °C</p>
+      <p class="j" style="padding-left:1.27cm">- ตรวจดูว่าตู้เย็นยังทำงาน หรือมีกระแสไฟฟ้าเข้าตู้เย็นหรือไม่</p>
+      <p class="j" style="padding-left:1.27cm">- ตรวจสอบประตูว่าปิดสนิทดีหรือไม่ ขอบยางเสื่อมสภาพหรือไม่</p>
+      <p class="j" style="padding-left:1.27cm">- ตรวจสอบช่องแช่แข็งว่ามีน้ำแข็งหนาเกินกว่า 5 มม. หรือท่อกระจายความเย็นอุดตันหรือไม่</p>
+      <p class="j" style="padding-left:1.27cm">- ปรับปุ่ม Thermostat จากที่ตั้งไว้เดิม เพื่อทำให้อุณหภูมิต่ำลง และติดตามดูอุณหภูมิไม่ให้ต่ำกว่า +2 °C</p>
+      <p class="j" style="padding-left:1.27cm">- ระหว่างซ่อมตู้เย็นหรือละลายน้ำแข็ง ให้ย้ายวัคซีนไปเก็บไว้ในตู้เย็นอื่น หรือหีบเย็น/กระติกวัคซีนที่มีอุณหภูมิ +2 ถึง +8 °C</p>
+      <p class="c b" style="margin-top:6pt">คำเตือน ห้ามปรับ Thermostat ให้อุณหภูมิต่ำลง ในกรณีต่อไปนี้</p>
+      <p class="j" style="padding-left:1.27cm">- หลังไฟฟ้าดับ ให้รอจนกระแสไฟฟ้ากลับเข้าสู่ภาวะปกติและอุณหภูมิกลับมาคงที่แล้ว จึงค่อยปรับ Thermostat ตามความเหมาะสม</p>
+      <p class="j" style="padding-left:1.27cm">- เมื่อนำวัคซีนที่เบิกมาใหม่เข้าตู้เย็น (เพราะอาจทำให้อุณหภูมิลดต่ำเกินไป)</p>
+      <h4 class="c" style="margin-top:10pt">แนวทางการจัดการเมื่อเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น (Cold chain breakdown)</h4>
+      <p class="j" style="text-indent:1.27cm">Cold chain breakdown หมายถึง เหตุการณ์ที่พบอุณหภูมิสูงกว่า +8 °C หรือต่ำกว่า +2 °C (โดยเฉพาะต่ำกว่า 0 °C) ในระหว่างขนส่งหรือจัดเก็บวัคซีน ส่วนใหญ่ป้องกันได้ และเมื่อเกิดขึ้นให้จัดการดังนี้</p>
+      <p class="j" style="padding-left:1.27cm">1. มีเจ้าหน้าที่รับผิดชอบเฉพาะ ระบุชื่อและเบอร์โทรศัพท์ไว้ในผังการเตรียมความพร้อมฯ ติดไว้หน้าตู้เย็น และซักซ้อมเจ้าหน้าที่ที่ทำงานร่วมกันอย่างน้อยปีละ 1 ครั้ง</p>
+      <p class="j" style="padding-left:1.27cm">2. เมื่ออุณหภูมิในตู้สูงขึ้นมาก ให้ย้ายวัคซีนไปเก็บในตู้เย็นอื่น หรือกล่องโฟม/กระติกวัคซีนที่มีอุณหภูมิ +2 ถึง +8 °C</p>
+      <p class="j" style="padding-left:1.27cm">3. <b>แยกวัคซีนที่ได้รับผลกระทบ ติดป้าย “ห้ามใช้ รอผลพิจารณา” เก็บไว้ที่ +2 ถึง +8 °C — ห้ามใช้และห้ามทิ้ง</b> จนกว่าจะได้รับคำแนะนำ</p>
+      <p class="j" style="padding-left:1.27cm">4. ตรวจสอบและบันทึกข้อมูล: อุณหภูมิที่พบ (สูงสุด/ต่ำสุด) และระยะเวลา (ชั่วโมง/วัน) · ชนิดวัคซีน ผู้ผลิต/ผู้นำเข้า เลขที่ผลิต (Lot No.) วันหมดอายุ จำนวน · การเปลี่ยนแปลงของ VVM (ถึงจุดห้ามใช้เมื่อสี่เหลี่ยมด้านในเข้มเท่าหรือเข้มกว่าวงกลม) · ผล Shake test</p>
+      <p class="j" style="padding-left:1.27cm">5. กรอก “แบบรายงานเมื่อเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น” ส่ง${esc(c.reportTo)} ทันที เพื่อพิจารณาข้อมูลความคงตัว (Stability data) ของวัคซีนร่วมกับผู้ผลิต/ผู้นำเข้า และกองโรคป้องกันด้วยวัคซีน กรมควบคุมโรค</p>
+      <p class="j" style="padding-left:1.27cm">6. ถ้าวัคซีนไม่สามารถใช้ต่อได้ ให้ตัดออกจากทะเบียนรับ–จ่าย และทำลายแบบขยะติดเชื้อ พร้อมบันทึกหลักฐานและทบทวนหาสาเหตุ</p>`;
+    h += '</div>';
+    return h;
+  }
+
+  function renderReport(r, c) {
+    const v = (x, w) => `<span class="dots" style="min-width:${w}cm">${esc(x || '')}</span>`;
+    const chk = (k) => `<span class="box">${r.causes.includes(k) ? '✓' : ''}</span>`;
+    const rows = r.rows.filter((x) => x.some((y) => String(y || '').trim()));
+    const nBlank = Math.max(0, (r.blankRows || 0) - rows.length);
+    let h = `<div class="doc" style="font-family:${FONT.new};font-size:15pt;line-height:21pt">`;
+    h += `<p class="c b" style="font-size:17pt">แบบรายงานเมื่อเกิดเหตุการณ์ฉุกเฉินในระบบลูกโซ่ความเย็น (Cold Chain Breakdown)</p><p>&nbsp;</p>
+      <p>หน่วยงาน/คลังวัคซีน ${v(r.unit, 6)} อำเภอ ${v(c.district, 3)} จังหวัด ${v(c.province, 3.5)}</p>
+      <p>สาเหตุ ${chk('ไฟฟ้าดับ')}ไฟฟ้าดับ/ขัดข้อง ${chk('ตู้เย็นเสีย')}ตู้เย็นเสีย ${chk('ปลั๊ก')}ปลั๊กหลุด/หลวม ${chk('ประตู')}ประตูปิดไม่สนิท ${chk('ขนส่ง')}ระหว่างขนส่ง</p>
+      <p>${chk('อื่นๆ')}อื่นๆ (ระบุ) ${v(r.causeOther, 6)} &nbsp;พบเมื่อวันที่ ${v(r.date, 3.2)} เวลา ${v(r.time, 1.8)} น.</p>
+      <p>อุณหภูมิขณะตรวจพบ ${v(r.tempFound, 1.6)} °C &nbsp;สูงสุด ${v(r.tempMax, 1.6)} °C &nbsp;ต่ำสุด ${v(r.tempMin, 1.6)} °C &nbsp;ระยะเวลาที่อยู่นอก +2 ถึง +8 °C ${v(r.hours, 1.6)} ชั่วโมง</p>
+      <p>การแก้ไขเบื้องต้น: ย้ายวัคซีนไปเก็บไว้ใน ${v(r.movedTo, 6.5)} อุณหภูมิ ${v(r.movedTemp, 1.6)} °C &nbsp;${'<span class="box"></span>'}แยกวัคซีน ติดป้าย “ห้ามใช้ รอผลพิจารณา” แล้ว</p>
+      <table class="grid" style="margin-top:6pt;font-size:13.5pt;line-height:19pt">
+      <tr><th style="width:3.2cm">วัคซีน</th><th style="width:2.6cm">ผู้ผลิต/บริษัท</th><th style="width:2.2cm">Lot No.</th><th style="width:2.1cm">วันหมดอายุ</th><th style="width:2.3cm">VVM<br>(ระยะ 1–4/ไม่มี)</th><th style="width:1.8cm">Shake test</th><th style="width:1.5cm">จำนวน<br>(ขวด)</th><th>ผลการพิจารณา<br>(สสจ./ผู้พิจารณา)</th></tr>
+      ${rows.map((x) => `<tr style="height:0.85cm">${[0, 1, 2, 3, 4, 5, 6].map((i) => `<td${i >= 4 ? ' style="text-align:center"' : ''}>${esc(x[i] || '')}</td>`).join('')}<td></td></tr>`).join('')}
+      ${Array.from({ length: nBlank }).map(() => '<tr style="height:0.85cm"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
+      </table>
+      <div style="display:flex;justify-content:flex-end;margin-top:10pt"><div style="width:9.5cm">
+        <p>ผู้รายงาน ${v(r.reporter, 6.8)}</p><p>ตำแหน่ง ${v(r.position, 7)}</p><p>โทรศัพท์ ${v(r.phone, 6.9)}</p><p>วัน เดือน ปี ที่รายงาน ${v(r.reportDate, 4.6)}</p>
+        <p style="margin-top:14pt">ลงชื่อ ${v('', 6)} หัวหน้าหน่วยงาน</p></div></div>
+      <p style="margin-top:8pt"><b>หมายเหตุ :</b> 1. กรุณาส่งแบบรายงานฯ นี้ทันทีที่พบเหตุการณ์ฉุกเฉิน และเก็บวัคซีนที่แยกไว้ที่ +2 ถึง +8 °C จนกว่าจะได้รับผลพิจารณา (ห้ามทิ้ง)</p>
+      <p style="padding-left:2.1cm">2. แนบสำเนาบันทึกอุณหภูมิ/Data logger ช่วงที่เกิดเหตุการณ์</p>
+      <p style="padding-left:2.1cm">3. VVM ระยะ 1–2 = ใช้ได้, ระยะ 3–4 (สี่เหลี่ยมเข้มเท่า/เข้มกว่าวงกลม) = ห้ามใช้</p>
+      <p><b>สถานที่ส่ง :</b> ${esc(c.reportTo)} (เพื่อประสานสำนักงานป้องกันควบคุมโรคที่ 11 และกองโรคป้องกันด้วยวัคซีน กรมควบคุมโรค)</p>`;
+    h += '</div>';
+    return h;
+  }
+
+  // ═══════════════ ตัวแก้ไข ═══════════════
+  const PAGE = {
+    order: (d) => ({ size: 'A4 portrait', w: 21, h: 29.7, mt1: d.fmt.mt1, mt: d.fmt.mt, mb: d.fmt.mb, ml: d.fmt.ml, mr: d.fmt.mr }),
+    plan: () => ({ size: 'A4 portrait', w: 21, h: 29.7, mt: 1.5, mb: 1.5, ml: 2.54, mr: 1.75 }),
+    guide: () => ({ size: 'A4 portrait', w: 21, h: 29.7, mt: 1.5, mb: 1.5, ml: 2.54, mr: 2.0 }),
+    chart: () => ({ size: 'A4 landscape', w: 29.7, h: 21, mt: 0.9, mb: 0.8, ml: 1.6, mr: 1.6 }),
+    report: () => ({ size: 'A4 portrait', w: 21, h: 29.7, mt: 1.5, mb: 1.2, ml: 1.2, mr: 1.0 }),
+  };
+  const CM = 96 / 2.54;
+
+  // ตัวอย่างบนจอ = กระดาษ A4 ขนาดจริง (ย่อด้วย zoom) + เส้นประบอกจุดขึ้นหน้าใหม่
+  function paint(sec, html, pg) {
+    const pane = sec.querySelector('.preview-pane'), wrap = pane.querySelector('.paper-wrap');
+    const mt1 = pg.mt1 != null ? pg.mt1 : pg.mt;
+    wrap.innerHTML = `<div class="paper" style="width:${pg.w}cm;padding:${mt1}cm ${pg.mr}cm ${pg.mb}cm ${pg.ml}cm;min-height:${pg.h}cm;transform-origin:0 0">${html}</div>`;
+    const paper = wrap.firstChild;
+    const fit = () => {
+      const p = wrap.firstChild; if (!p) return;
+      const sc = Math.min(1, (pane.clientWidth - 28) / (pg.w * CM));
+      p.style.transform = `scale(${sc})`;
+      wrap.style.width = (pg.w * CM * sc) + 'px';
+      wrap.style.height = (p.offsetHeight * sc) + 'px';
+    };
+    pane._fit = fit;
+    if (!pane._ro && window.ResizeObserver) { pane._ro = new ResizeObserver(() => pane._fit && pane._fit()); pane._ro.observe(pane); }
+    const draw = () => {
+      paper.querySelectorAll('.pbreak').forEach((x) => x.remove());
+      // หน้าแรกเนื้อหาสูง (h - ขอบบนหน้าแรก - ขอบล่าง), หน้าถัดไป (h - ขอบบน - ขอบล่าง)
+      const first = (pg.h - mt1 - pg.mb) * CM, per = (pg.h - pg.mt - pg.mb) * CM, top = mt1 * CM;
+      const contentH = paper.scrollHeight - top - pg.mb * CM;
+      let pages = 1, y = first;
+      while (contentH - 2 > y) {
+        const ln = document.createElement('div'); ln.className = 'pbreak'; ln.style.top = (top + y) + 'px';
+        ln.innerHTML = `<span>ขึ้นหน้า ${pages + 1}</span>`; paper.appendChild(ln);
+        pages++; y += per;
+      }
+      fit();
+      const info = sec.querySelector('.pages-info');
+      if (info) info.textContent = `กระดาษ ${pg.size.replace('portrait', 'แนวตั้ง').replace('landscape', 'แนวนอน')} · ขอบ บน ${mt1}${mt1 !== pg.mt ? '/' + pg.mt : ''} ล่าง ${pg.mb} ซ้าย ${pg.ml} ขวา ${pg.mr} ซม. · ประมาณ ${pages} หน้า` + (pages > 1 && pg.size.includes('landscape') ? ' ⚠️ ผังควรอยู่ในหน้าเดียว — ลดข้อความหรือรายชื่อ' : '');
+    };
+    fit();
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(draw));
+  }
+
+  function printDoc(html, pg) {
+    $('page-style').textContent = `@page { size: ${pg.size}; margin: ${pg.mt}cm ${pg.mr}cm ${pg.mb}cm ${pg.ml}cm; }` + (pg.mt1 != null && pg.mt1 !== pg.mt ? ` @page :first { margin-top: ${pg.mt1}cm; }` : '');
+    $('print-area').innerHTML = html;
+    const go2 = () => setTimeout(() => window.print(), 50);
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
+      const imgs = [...$('print-area').querySelectorAll('img')].filter((i) => !i.complete);
+      if (!imgs.length) return go2();
+      Promise.all(imgs.map((i) => new Promise((r) => { i.onload = i.onerror = r; }))).then(go2);
+    });
+  }
+
+  // ── ตัวช่วยสร้างฟอร์ม ──
+  function bindInputs(root, obj, onChange) {
+    root.querySelectorAll('[data-f]').forEach((el) => {
+      const k = el.dataset.f;
+      const get = () => k.split('.').reduce((o, x) => (o == null ? o : o[x]), obj);
+      const set = (val) => { const ks = k.split('.'), last = ks.pop(); ks.reduce((o, x) => o[x], obj)[last] = val; };
+      const v = get();
+      if (el.type === 'checkbox') el.checked = !!v; else el.value = v == null ? '' : v;
+      el.addEventListener('input', () => {
+        let val = el.type === 'checkbox' ? el.checked : el.value;
+        if (el.type === 'number') { val = el.value === '' ? '' : Number(el.value); }
+        set(val); onChange();
+      });
+    });
+  }
+  const inp = (label, f, type, extra) => `<label class="fg"><span>${label}</span><input data-f="${f}" type="${type || 'text'}" ${extra || ''}></label>`;
+  const ta = (label, f, rows, hint) => `<label class="fg"><span>${label}</span><textarea data-f="${f}" rows="${rows || 3}"></textarea>${hint ? `<span class="hint">${hint}</span>` : ''}</label>`;
+  const msel = (label, f) => `<label class="fg"><span>${label}</span><select data-f="${f}">${TH_M.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}</select></label>`;
+  // แก้ select เดือนให้เก็บเป็นตัวเลข
+  function numSelects(root, obj, onChange) {
+    root.querySelectorAll('select[data-f]').forEach((el) => el.addEventListener('change', () => {
+      const ks = el.dataset.f.split('.'), last = ks.pop(); ks.reduce((o, x) => o[x], obj)[last] = Number(el.value); onChange();
+    }));
+  }
+
+  // ปุ่มลบ 2 จังหวะ (ไม่ใช้ confirm() — กดครั้งแรกเปลี่ยนเป็น "กดอีกครั้งเพื่อยืนยัน")
+  function armed(btn, fn) {
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('arm')) { btn.classList.remove('arm'); btn.textContent = btn._t; fn(); return; }
+      btn._t = btn.textContent; btn.classList.add('arm'); btn.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+      setTimeout(() => { if (btn.classList.contains('arm')) { btn.classList.remove('arm'); btn.textContent = btn._t; } }, 3500);
+    });
+  }
+
+  // ตารางรายชื่อแก้ได้ (แถว = array)
+  function listTable(rows, cols, onChange, opts) {
+    opts = opts || {};
+    const wrap = document.createElement('div');
+    const draw = () => {
+      wrap.innerHTML = `<table class="mtable"><tr><th></th>${cols.map((c) => `<th>${c.label}</th>`).join('')}<th></th></tr>
+        ${rows.map((r, i) => `<tr data-i="${i}"><td class="n">${i + 1}</td>${cols.map((c, j) => `<td style="${c.w ? 'width:' + c.w : ''}"><input data-j="${j}" value="${esc(r[j] || '')}" ${c.list ? `list="${c.list}"` : ''} placeholder="${esc(c.ph || '')}"></td>`).join('')}
+        <td class="ops"><button class="btn sm ghost" type="button" data-up title="เลื่อนขึ้น">↑</button><button class="btn sm ghost" type="button" data-dn title="เลื่อนลง">↓</button><button class="btn sm ghost danger" type="button" data-del title="ลบแถว">✕</button></td></tr>`).join('')}
+        </table><div class="row-btns" style="margin-top:6px"><button class="btn sm" type="button" data-add>+ ${opts.addLabel || 'เพิ่มแถว'}</button></div>`;
+      wrap.querySelectorAll('tr[data-i]').forEach((tr) => {
+        const i = +tr.dataset.i;
+        tr.querySelectorAll('input').forEach((el) => el.addEventListener('input', () => { rows[i][+el.dataset.j] = el.value; onChange(); }));
+        tr.querySelector('[data-up]').addEventListener('click', () => { if (i > 0) { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; draw(); onChange(); } });
+        tr.querySelector('[data-dn]').addEventListener('click', () => { if (i < rows.length - 1) { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; draw(); onChange(); } });
+        tr.querySelector('[data-del]').addEventListener('click', () => { rows.splice(i, 1); draw(); onChange(); });
+      });
+      wrap.querySelector('[data-add]').addEventListener('click', () => { rows.push(cols.map(() => '')); draw(); onChange(); const ins = wrap.querySelectorAll('tr[data-i]:last-child input'); if (ins[0]) ins[0].focus(); });
+    };
+    draw();
+    return wrap;
+  }
+
+  function shell(id, title, extraBtns) {
+    const sec = $('v-' + id);
+    sec.innerHTML = `<div class="doc-layout"><div class="editor">
+      <div class="toolbar"><button class="btn pri" type="button" data-print>🖨 พิมพ์ A4</button>${extraBtns || ''}<span class="saved">${esc(savedMsg)}</span></div>
+      <div class="ed-body"></div></div>
+      <div class="preview-pane"><div class="preview-info"><b>ตัวอย่างก่อนพิมพ์</b><span class="pages-info"></span></div><div class="paper-wrap"></div></div></div>`;
+    return sec;
+  }
+  function doneBtnHtml(id) { return TASKS[id] ? `<button class="btn ok" type="button" data-done-btn="${id}"></button>` : ''; }
+  function refreshDoneButtons() {
+    document.querySelectorAll('[data-done-btn]').forEach((b) => {
+      const st = status(b.dataset.doneBtn);
+      b.textContent = st.done ? `✓ ปีงบ ${st.fy} ทำแล้ว` : `✓ ทำเสร็จแล้ว (ปีงบ ${st.fy})`;
+      b.classList.toggle('pri', false);
+      b.disabled = st.done;
+    });
+  }
+  function wireDone(sec, id) {
+    const b = sec.querySelector('[data-done-btn]'); if (!b) return;
+    b.addEventListener('click', () => markDone(id, true));
+    refreshDoneButtons();
+  }
+
+  // ── คำสั่งแต่งตั้ง ──
+  const ROLE_LIST = (id) => '<datalist id="roles-' + id + '"><option>ประธานกรรมการ</option><option>รองประธานกรรมการ</option><option>กรรมการ</option><option>กรรมการ/เลขานุการ</option><option>กรรมการและผู้ช่วยเลขานุการ</option><option>ประธานคณะทำงาน</option><option>รองประธานคณะทำงาน</option><option>คณะทำงาน</option><option>คณะทำงานและเลขานุการ</option><option>คณะทำงานและผู้ช่วยเลขานุการ</option></datalist>';
+  function orderEditor(id) {
+    let t = 0;
+    const ed = {
+      preview() { const sec = $('v-' + id); paint(sec, renderOrder(S[id]), PAGE.order(S[id])); },
+      build() {
+        const d = S[id];
+        const sec = shell(id, '', doneBtnHtml(id) + `<button class="btn" type="button" data-next>↻ เริ่มฉบับปีถัดไป</button><button class="btn danger" type="button" data-reset>คืนค่าต้นฉบับ</button>`);
+        const body = sec.querySelector('.ed-body');
+        const changed = () => { save(); clearTimeout(t); t = setTimeout(ed.preview, 120); };
+        body.innerHTML = ROLE_LIST(id) + `
+          <div class="f3">${inp('ปี พ.ศ.', 'year', 'number')}${inp('เลขที่คำสั่ง (เว้นว่าง = เขียนมือ)', 'no')}${inp('สั่ง ณ วันที่ (ว่าง = เขียนมือ)', 'signDay')}</div>
+          <div class="f2">${msel('เดือนที่สั่ง', 'signMonth')}<label class="fg"><span>&nbsp;</span><span class="hint">พ.ศ. ท้ายคำสั่งใช้ปีเดียวกับช่องปี</span></label></div>
+          ${inp('หัวคำสั่ง', 'head')}
+          ${inp('เรื่อง ( {ปี} = ใส่ปี พ.ศ. ให้อัตโนมัติ )', 'subject')}
+          ${ta('ข้อความนำ (เว้น 1 บรรทัดว่าง = ขึ้นย่อหน้าใหม่)', 'preamble', 6)}
+          <h3>รายชื่อ</h3><div class="teams"></div>
+          <div class="row-btns"><button class="btn sm" type="button" data-addteam>+ เพิ่มทีม/คณะย่อย</button></div>
+          <h3>หน้าที่</h3>
+          ${inp('หัวข้อหน้าที่', 'dutiesTitle')}
+          ${ta('หน้าที่ (1 บรรทัด = 1 ข้อ ใส่เลขข้อให้เอง)', 'duties', 6)}
+          ${inp('ข้อความปิด', 'closing')}
+          <h3>ผู้ลงนาม</h3>
+          ${inp('ชื่อผู้ลงนาม (ไม่ต้องใส่วงเล็บ)', 'signer')}
+          ${ta('ตำแหน่งผู้ลงนาม (บรรทัดละ 1 ตำแหน่ง)', 'signerTitles', 2)}
+          <details class="fmt"><summary>⚙️ การจัดหน้า (ค่าเริ่มต้นวัดจากไฟล์ Word ต้นฉบับ — ปกติไม่ต้องแก้)</summary>
+            <div class="f3">
+              <label class="fg"><span>ฟอนต์</span><select data-fmt-font><option value="it9">TH SarabunIT๙</option><option value="new">TH Sarabun New/PSK</option></select></label>
+              ${inp('ขนาดตัวอักษร (pt)', 'fmt.size', 'number', 'step="0.5"')}${inp('ระยะบรรทัด (pt)', 'fmt.lh', 'number', 'step="0.1"')}
+              ${inp('เว้นหลังบรรทัด (pt)', 'fmt.gap', 'number', 'step="1"')}${inp('ขอบบนหน้าแรก (ซม.)', 'fmt.mt1', 'number', 'step="0.05"')}${inp('ขอบบนหน้าถัดไป (ซม.)', 'fmt.mt', 'number', 'step="0.05"')}${inp('ขอบล่าง (ซม.)', 'fmt.mb', 'number', 'step="0.05"')}
+              ${inp('ขอบซ้าย (ซม.)', 'fmt.ml', 'number', 'step="0.05"')}${inp('ขอบขวา (ซม.)', 'fmt.mr', 'number', 'step="0.05"')}${inp('ครุฑกว้าง (ซม.)', 'fmt.garuda', 'number', 'step="0.05"')}${inp('ครุฑสูง (ซม.)', 'fmt.garudaH', 'number', 'step="0.05"')}
+              ${inp('ย่อหน้า (ซม.)', 'fmt.indent', 'number', 'step="0.01"')}${inp('คอลัมน์นามสกุล (ซม.)', 'fmt.col1', 'number', 'step="0.01"')}${inp('คอลัมน์ตำแหน่ง (ซม.)', 'fmt.col2', 'number', 'step="0.01"')}
+              ${inp('คอลัมน์หน้าที่ (ซม.)', 'fmt.col3', 'number', 'step="0.01"')}${inp('ระยะ "สั่ง ณ วันที่" (ซม.)', 'fmt.dateLeft', 'number', 'step="0.01"')}${inp('ระยะลายเซ็นจากซ้าย (ซม.)', 'fmt.sigLeft', 'number', 'step="0.1"')}
+              ${inp('บรรทัดว่างเหนือชื่อผู้ลงนาม', 'fmt.sigGap', 'number', 'step="1"')}${inp('เส้นคั่นใต้เรื่อง', 'fmt.sep')}
+              <label class="fg"><span>ตัวเลขไทย</span><input type="checkbox" data-f="fmt.thai" style="width:auto"></label>
+            </div></details>`;
+        bindInputs(body, d, changed);
+        numSelects(body, d, changed);
+        const fs = body.querySelector('[data-fmt-font]'); fs.value = d.fmt.font; fs.addEventListener('change', () => { d.fmt.font = fs.value; changed(); });
+        const teamsEl = body.querySelector('.teams');
+        const drawTeams = () => {
+          teamsEl.innerHTML = '';
+          d.teams.forEach((tm, ti) => {
+            const box = document.createElement('div'); box.className = 'team';
+            box.innerHTML = `<label class="fg"><span>หัวข้อทีม/คณะ ${d.teams.length > 1 ? ti + 1 : ''} (เว้นว่างได้)</span><input value="${esc(tm.title)}" data-title></label>`;
+            box.querySelector('[data-title]').addEventListener('input', (e) => { tm.title = e.target.value; changed(); });
+            box.appendChild(listTable(tm.members, [
+              { label: 'คำนำหน้า+ชื่อ', ph: 'นางสาว...' }, { label: 'นามสกุล' }, { label: 'ตำแหน่งทางราชการ', w: '34%' }, { label: 'หน้าที่ในคณะ', list: 'roles-' + id, w: '22%' },
+            ], changed, { addLabel: 'เพิ่มรายชื่อ' }));
+            if (d.teams.length > 1) {
+              const del = document.createElement('button'); del.className = 'btn sm danger'; del.type = 'button'; del.textContent = 'ลบทีมนี้';
+              armed(del, () => { d.teams.splice(ti, 1); drawTeams(); changed(); });
+              box.appendChild(del);
+            }
+            teamsEl.appendChild(box);
+          });
+        };
+        drawTeams();
+        body.querySelector('[data-addteam]').addEventListener('click', () => { d.teams.push({ title: '', members: [['', '', '', '']] }); drawTeams(); changed(); });
+        sec.querySelector('[data-print]').addEventListener('click', () => printDoc(renderOrder(S[id]), PAGE.order(S[id])));
+        sec.querySelector('[data-next]').addEventListener('click', () => {
+          d.year = Number(d.year) + 1; d.no = ''; d.signDay = ''; save(); ed.built = false; ed.build(); ed.built = true; ed.preview();
+        });
+        armed(sec.querySelector('[data-reset]'), () => { const sch = S.schedule; S[id] = clone(DEFAULTS[id]); S.schedule = sch; save(); ed.build(); ed.preview(); });
+        wireDone(sec, id);
+      },
+    };
+    return ed;
+  }
+
+  // ── แผน / ผัง / แนวทาง ใช้ข้อมูลร่วม vac_common ──
+  function commonEditor(id, kind, render) {
+    let t = 0;
+    const ed = {
+      preview() { paint($('v-' + id), render(S.vac_common), PAGE[kind]()); },
+      build() {
+        const c = S.vac_common;
+        const extra = (id === 'vac_plan' ? doneBtnHtml('vac_plan') + `<button class="btn" type="button" data-next>↻ เริ่มฉบับปีถัดไป</button>` : '');
+        const sec = shell(id, '', extra);
+        const body = sec.querySelector('.ed-body');
+        const changed = () => { save(); clearTimeout(t); t = setTimeout(ed.preview, 120); };
+        body.innerHTML = `<p class="hint">ข้อมูลส่วนนี้ใช้ร่วมกันใน แผนเตรียมความพร้อม · ผัง · แนวทางแก้ไข · แบบรายงาน — แก้ที่เดียวเปลี่ยนทุกเอกสาร</p>
+          <div class="f3">${inp('ปีงบประมาณ', 'year', 'number')}${inp('ชื่อหน่วยงาน', 'hospital')}${inp('อำเภอ', 'district')}</div>
+          <div class="f2">${inp('จังหวัด', 'province')}${inp('หน่วยฝากวัคซีนสำรอง', 'backupSite')}</div>
+          ${ta('หน่วยบริการที่รับวัคซีนจากคลัง (รพ.สต.)', 'units', 2)}
+          ${inp('ส่งแบบรายงานเหตุฉุกเฉินถึง', 'reportTo')}
+          <h3>ผู้รับผิดชอบ / เบอร์ติดต่อฉุกเฉิน</h3><div class="contacts-ed"></div>
+          <p class="hint">แถวที่หน้าที่มีคำว่า "ผู้รับผิดชอบ" จะขึ้นที่หัวแผน · ทุกแถวขึ้นในผังและตารางเบอร์ฉุกเฉิน (แถวว่างไม่พิมพ์)</p>
+          ${id === 'vac_plan' ? `<h3>ซ้อมแผน (Table Top Exercise)</h3>
+          <div class="f2">${inp('วันที่ซ้อม (ว่าง = เขียนมือ)', 'drillDay', 'number', 'min="1" max="31"')}${msel('เดือน', 'drillMonth')}</div>
+          <div class="att-ed"></div>` : ''}`;
+        bindInputs(body, c, changed);
+        numSelects(body, c, changed);
+        const crow = c.contacts.map((x) => [x.role, x.name, x.phone]);
+        const syncC = () => { c.contacts = crow.map((r) => ({ role: r[0] || '', name: r[1] || '', phone: r[2] || '' })); changed(); };
+        body.querySelector('.contacts-ed').appendChild(listTable(crow, [{ label: 'หน้าที่' }, { label: 'ชื่อ – สกุล' }, { label: 'โทรศัพท์', w: '24%' }], syncC, { addLabel: 'เพิ่มผู้ติดต่อ' }));
+        if (id === 'vac_plan') body.querySelector('.att-ed').appendChild(listTable(c.attendees, [{ label: 'ชื่อ – สกุล' }, { label: 'ตำแหน่ง' }], changed, { addLabel: 'เพิ่มผู้เข้าร่วม' }));
+        sec.querySelector('[data-print]').addEventListener('click', () => printDoc(render(S.vac_common), PAGE[kind]()));
+        const nx = sec.querySelector('[data-next]');
+        if (nx) nx.addEventListener('click', () => { c.year = Number(c.year) + 1; c.drillDay = ''; save(); ed.build(); ed.preview(); });
+        wireDone(sec, id);
+      },
+    };
+    return ed;
+  }
+
+  function reportEditor() {
+    let t = 0;
+    const ed = {
+      preview() { paint($('v-vac_report'), renderReport(S.vac_report, S.vac_common), PAGE.report()); },
+      build() {
+        const r = S.vac_report;
+        const sec = shell('vac_report', '', `<button class="btn" type="button" data-blank>🖨 พิมพ์แบบฟอร์มเปล่า</button><button class="btn danger" type="button" data-clear>ล้างข้อมูล</button>`);
+        const body = sec.querySelector('.ed-body');
+        const changed = () => { save(); clearTimeout(t); t = setTimeout(ed.preview, 120); };
+        const CAUSES = [['ไฟฟ้าดับ', 'ไฟฟ้าดับ/ขัดข้อง'], ['ตู้เย็นเสีย', 'ตู้เย็นเสีย'], ['ปลั๊ก', 'ปลั๊กหลุด/หลวม'], ['ประตู', 'ประตูปิดไม่สนิท'], ['ขนส่ง', 'ระหว่างขนส่ง'], ['อื่นๆ', 'อื่นๆ']];
+        body.innerHTML = `<p class="hint">ใช้เมื่อเกิดเหตุการณ์ — กรอกในเว็บแล้วพิมพ์ หรือพิมพ์ฟอร์มเปล่าไปเขียนมือ (ไม่มีกำหนดรายปี)</p>
+          ${inp('หน่วยงาน/คลังวัคซีน', 'unit')}
+          <div class="fg"><span style="font-size:12.5px;color:var(--text-2)">สาเหตุ</span><div class="row-btns" style="margin:0">${CAUSES.map(([k, l]) => `<label style="display:flex;gap:4px;align-items:center;font-size:14px"><input type="checkbox" data-cause="${k}" style="width:auto">${l}</label>`).join('')}</div></div>
+          ${inp('อื่นๆ (ระบุ)', 'causeOther')}
+          <div class="f2">${inp('พบเมื่อวันที่', 'date', 'text', 'placeholder="เช่น 5 พ.ย. 2569"')}${inp('เวลา', 'time', 'text', 'placeholder="08.30"')}</div>
+          <div class="f3">${inp('อุณหภูมิขณะพบ (°C)', 'tempFound')}${inp('สูงสุด (°C)', 'tempMax')}${inp('ต่ำสุด (°C)', 'tempMin')}</div>
+          <div class="f3">${inp('ระยะเวลานอกช่วง (ชม.)', 'hours')}${inp('ย้ายวัคซีนไปเก็บที่', 'movedTo')}${inp('อุณหภูมิที่ใหม่ (°C)', 'movedTemp')}</div>
+          <h3>วัคซีนที่ได้รับผลกระทบ</h3><div class="rows-ed"></div>
+          ${inp('จำนวนแถวตารางที่พิมพ์ (อย่างน้อย)', 'blankRows', 'number', 'min="0" max="20"')}
+          <div class="f2">${inp('ผู้รายงาน', 'reporter')}${inp('ตำแหน่ง', 'position')}</div>
+          <div class="f2">${inp('โทรศัพท์', 'phone')}${inp('วันที่รายงาน', 'reportDate')}</div>`;
+        bindInputs(body, r, changed);
+        body.querySelectorAll('[data-cause]').forEach((el) => {
+          el.checked = r.causes.includes(el.dataset.cause);
+          el.addEventListener('change', () => { r.causes = [...body.querySelectorAll('[data-cause]:checked')].map((x) => x.dataset.cause); changed(); });
+        });
+        body.querySelector('.rows-ed').appendChild(listTable(r.rows, [{ label: 'วัคซีน' }, { label: 'ผู้ผลิต' }, { label: 'Lot' }, { label: 'หมดอายุ' }, { label: 'VVM' }, { label: 'Shake' }, { label: 'จำนวน' }], changed, { addLabel: 'เพิ่มวัคซีน' }));
+        sec.querySelector('[data-print]').addEventListener('click', () => printDoc(renderReport(S.vac_report, S.vac_common), PAGE.report()));
+        sec.querySelector('[data-blank]').addEventListener('click', () => {
+          const b = clone(DEFAULTS.vac_report); b.unit = r.unit; printDoc(renderReport(b, S.vac_common), PAGE.report());
+        });
+        armed(sec.querySelector('[data-clear]'), () => { const u = r.unit; S.vac_report = clone(DEFAULTS.vac_report); S.vac_report.unit = u; save(); ed.build(); ed.preview(); });
+      },
+    };
+    return ed;
+  }
+
+  const EDITORS = {
+    kbs_order: orderEditor('kbs_order'),
+    vac_order: orderEditor('vac_order'),
+    vac_plan: commonEditor('vac_plan', 'plan', renderPlan),
+    vac_chart: commonEditor('vac_chart', 'chart', renderChart),
+    vac_guide: commonEditor('vac_guide', 'guide', renderGuide),
+    vac_report: reportEditor(),
+  };
+
+  // ── ฐานข้อมูลกลาง ──
+  function applyRemote(js) {
+    if (!js || js === lastRemote) return;
+    let v; try { v = JSON.parse(js); } catch (e) { return; }
+    const mine = S.updated || '';
+    if (v.updated && mine && v.updated < mine && JSON.stringify(S) !== js) {
+      // เครื่องนี้แก้ใหม่กว่า (ยังไม่ได้ส่ง) → ส่งขึ้นไปแทน
+      save(); return;
+    }
+    lastRemote = js;
+    S = merge(DEFAULTS, v);
+    try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {}
+    // สร้างฟอร์มใหม่เฉพาะหน้าที่ผู้ใช้ไม่ได้พิมพ์อยู่
+    const active = document.activeElement;
+    Object.keys(EDITORS).forEach((k) => {
+      const ed = EDITORS[k];
+      if (!ed.built) return;
+      if (k === cur && active && $('v-' + k).contains(active) && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
+      ed.build();
+      if (k === cur) ed.preview();
+    });
+    renderAlerts(); renderOverview();
+  }
+  try {
+    const config = {
+      apiKey: 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE',
+      authDomain: 'pharmacy-tph.firebaseapp.com',
+      projectId: 'pharmacy-tph',
+      storageBucket: 'pharmacy-tph.firebasestorage.app',
+    };
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    db = firebase.firestore();
+    db.collection(COL).doc(DOC).onSnapshot((snap) => {
+      const d = snap.exists ? snap.data() : null;
+      if (d && d.json) { applyRemote(d.json); setSaved('ซิงค์กับฐานข้อมูลกลางแล้ว'); }
+      else if (!d) save(); // ครั้งแรก: ส่งค่าเริ่มต้นขึ้นไป
+    }, (e) => setSaved('ต่อฐานข้อมูลกลางไม่ได้: ' + e.message + ' (ใช้ข้อมูลในเครื่องนี้)'));
+  } catch (e) { setSaved('ต่อฐานข้อมูลกลางไม่ได้ (ใช้ข้อมูลในเครื่องนี้)'); }
+
+  renderAlerts(); renderOverview();
+  const h0 = (location.hash || '').slice(1);
+  go(EDITORS[h0] ? h0 : 'overview');
+  // เผื่อเปิดหน้าทิ้งไว้ข้ามวัน
+  setInterval(() => { renderAlerts(); if (cur === 'overview') renderOverview(); }, 3600e3);
+  window.TphAnnualDocs = { status, render: { renderOrder, renderPlan, renderChart, renderGuide, renderReport }, get state() { return S; } };
+})();
+</script>
+<script src="lib/tph-header.js"></script>
+<script>
+TphHeader.mount({ from: 'header.hero', home: 'a.back', title: 'h1', sub: '#updated' });
+</script>
+<script src="lib/side-tabs.js"></script>
+<script>
+TphSideTabs.mount({ tabs: '#tabs-ov', start: 'nav[aria-label="หัวข้อ"]' });
+TphSideTabs.mount({ tabs: '#tabs-kbs', group: 'งาน คบส.' });
+TphSideTabs.mount({ tabs: '#tabs-vac', group: 'งานวัคซีน' });
+</script>
+<script src="lib/tph-icons.js"></script>
+<script src="lib/tph-ui.js"></script>
+</body>
+</html>

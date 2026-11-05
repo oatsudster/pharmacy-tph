@@ -1206,6 +1206,30 @@ async function checkPin() {
       </div>
     </div>
 
+    <!-- ANNUAL DOCS (คบส./วัคซีน) -->
+    <div class="app-card" data-href="annual-docs.html" data-cat="track" data-short="เอกสารประจำปี" data-keywords="คำสั่ง แต่งตั้ง คบส คุ้มครองผู้บริโภค วัคซีน cold chain ลูกโซ่ความเย็น แผน ผัง ซ้อมแผน table top แบบรายงาน ประจำปี เอกสาร พิมพ์" onclick="window.location.href='annual-docs.html'">
+      <div class="card-stripe" style="background:linear-gradient(90deg,#0e7490,#1A5E38)"></div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon" style="background:#e0f2fe">📜</div>
+          <div class="card-title-wrap">
+            <h2>งานเอกสารประจำปี (คบส. / วัคซีน)</h2>
+            <div class="en">Annual Orders &amp; Cold Chain Plan</div>
+          </div>
+        </div>
+        <div class="card-desc">คำสั่งแต่งตั้ง คกก.คุ้มครองผู้บริโภค, คำสั่งคณะทำงานวัคซีน, แผน/ผังเตรียมความพร้อม Cold Chain และแบบรายงานเหตุฉุกเฉิน — แก้รายชื่อ/ปี แล้วพิมพ์ A4 ตามแบบเดิม พร้อมเตือนก่อนครบกำหนด</div>
+        <div class="card-tags">
+          <span class="tag tag-gray">คบส.</span>
+          <span class="tag tag-gray">วัคซีน</span>
+          <span class="tag tag-red" id="annual-alert" hidden></span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="last-update" id="annual-updated"></span>
+        <button class="open-btn" style="background:#0e7490" onclick="event.stopPropagation();window.location.href='annual-docs.html'">เปิดระบบ →</button>
+      </div>
+    </div>
+
   </div><!-- /suite-apps -->
 
   <!-- Suggest Section -->
@@ -1262,6 +1286,26 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 db.enablePersistence().catch(() => {});
+
+// ── งานเอกสารประจำปี: เตือนบนการ์ดเมื่อใกล้/เลยกำหนด (ตรรกะเดียวกับ annual-docs.html status()) ──
+db.collection('pharmacy_tph').doc('annual_docs').onSnapshot((snap) => {
+  const el = document.getElementById('annual-alert'), up = document.getElementById('annual-updated');
+  let S = null; try { S = snap.exists && snap.data().json ? JSON.parse(snap.data().json) : null; } catch (e) {}
+  if (!S || !S.schedule || !el) return;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const fy = now.getFullYear() + 543 + (now.getMonth() >= 9 ? 1 : 0);
+  let warn = 0, bad = 0, soon = null;
+  for (const sch of Object.values(S.schedule)) {
+    const done = (sch.doneFy || 0) >= fy, tfy = done ? fy + 1 : fy;
+    const due = new Date(tfy - 543 - (sch.month >= 10 ? 1 : 0), sch.month - 1, sch.day);
+    const days = Math.round((due - now) / 864e5);
+    if (!done && days < 0) bad++; else if (!done && days <= Math.max(7, sch.lead || 14)) warn++;
+    if (!done && (soon == null || days < soon)) soon = days;
+  }
+  el.hidden = !(warn || bad);
+  el.textContent = bad ? `⛔ เลยกำหนด ${bad} งาน` : `⚠️ ใกล้ครบกำหนด ${warn} งาน`;
+  if (up) up.textContent = soon == null ? '✓ ปีงบนี้ทำครบแล้ว' : soon < 0 ? 'มีงานเลยกำหนด' : `ครบกำหนดถัดไปอีก ${soon} วัน`;
+}, () => {});
 
 // ── Header date ──
 function updateDate() {
