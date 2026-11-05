@@ -3269,15 +3269,32 @@ function nameIsTablet(name) { return /เม็ด|แค[ป็บ]/.test(Strin
 
 // ── ยา prepack: จ่ายเป็นซอง/แผง แสดงผลเป็น "N ซอง + M เม็ด" ──
 // แสดงเฉพาะหน้าต่างจ่ายยาของเภสัชกร (นับซองที่จัดมาได้ง่าย) — หน้าต่าง จพ. ใช้แค่จำนวนเม็ดไป key ใน HOSxP
-// key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches) ค่า = [เม็ดต่อหน่วย, หน่วย] — เพิ่มยาอื่นที่นี่
-const PREPACK_DRUGS = { FERROUS: [30, 'ซอง'], LOSARTAN: [15, 'แผง'] };
+// key = ชื่อยาภาษาอังกฤษคำหนึ่ง (เทียบแบบเดียวกับ drugMatches), packs = [[เม็ดต่อหน่วย, หน่วย], ...] เรียงใหญ่ → เล็ก
+//   (ใช้หน่วยใหญ่ให้เต็มก่อน ที่เหลือใช้หน่วยถัดไป แล้วจึงเป็นเม็ด), only = เงื่อนไขชื่อเพิ่ม (แยกความแรง) — เพิ่มยาอื่นที่นี่
+// 2026-11-05 (ผู้ใช้ขอ): Phenytoin prompt 100 mg 30 เม็ด/ซอง (ไม่รวม 50 mg), Furosemide 40 mg 15 เม็ด/ซอง,
+//   Sodamint 100 เม็ด/ขวด + 30 เม็ด/ซอง — สั่ง 100 เม็ดขึ้นไปใช้ขวดก่อน ที่เหลือเป็นซอง
+const PREPACK_DRUGS = [
+  { key: 'FERROUS', packs: [[30, 'ซอง']] },
+  { key: 'LOSARTAN', packs: [[15, 'แผง']] },
+  { key: 'PHENYTOIN', packs: [[30, 'ซอง']], only: t => /\(\s*100\s*\)|\b100\s*mg|pro?mp?t/i.test(t) && !/\(\s*50\s*\)|\b50\s*mg/i.test(t) },
+  { key: 'FUROSEMIDE', packs: [[15, 'ซอง']], only: t => !/\b(20|250|500)\s*mg|\binj|\bamp|vial/i.test(t) },
+  { key: 'SODAMINT', packs: [[100, 'ขวด'], [30, 'ซอง']] },
+];
 function prepackOf(...texts) {
+  const all = texts.filter(Boolean).join(' ');
   for (const t of texts) {
     const toks = drugTokens(String(t || '').replace(/(?<=[A-Za-z])0|0(?=[A-Za-z])/g, 'O'));
-    for (const [k, [size, unit]] of Object.entries(PREPACK_DRUGS))
-      if (toks.some(x => x === k || (x.length >= 6 && k.length >= 6 && editDist(x, k) <= 2))) return { size, unit };
+    for (const d of PREPACK_DRUGS)
+      if (toks.some(x => x === d.key || (x.length >= 6 && d.key.length >= 6 && editDist(x, d.key) <= 2)) && (!d.only || d.only(all)))
+        return { packs: d.packs, size: d.packs[d.packs.length - 1][0], unit: d.packs[d.packs.length - 1][1] };
   }
   return null;
+}
+// จำนวนเม็ด → "1 ขวด + 2 ซอง + 5 เม็ด" (หน่วยใหญ่ก่อน)
+function prepackSplit(need, packs) {
+  let rem = need; const parts = [];
+  for (const [size, unit] of packs) { const n = Math.floor(rem / size); if (n) parts.push([n, unit]); rem -= n * size; }
+  return { parts, rem };
 }
 
 // ── อินซูลิน: คิดเป็น vial (1 vial = 1,000 ยูนิต) ─────────────
@@ -3359,12 +3376,12 @@ function updateFloatNeed(tr) {
     return;
   }
   const need = Math.max(0, Math.ceil(days * perDay - lo));
-  const pack = +tr.dataset.pack || 0, packUnit = tr.dataset.packUnit || 'ซอง';
-  if (pack && need > 0) {
-    // ยา prepack: แยกเป็นซอง/แผงเต็ม + เม็ดที่เหลือ
-    const packs = Math.floor(need / pack), rem = need % pack;
-    cell.innerHTML = `${packs ? packs + ' ' + escHtml(packUnit) : ''}${packs && rem ? ' + ' : ''}${rem ? rem + ' ' + escHtml(unit || 'เม็ด') : ''}`
-      + `<div class="muted">รวม ${need} ${escHtml(unit || 'เม็ด')} (${pack} เม็ด/${escHtml(packUnit)})</div>`;
+  const packs = (tr.dataset.packs || '').split(',').filter(Boolean).map(x => { const [n, u] = x.split(':'); return [+n, u]; });
+  if (packs.length && need > 0) {
+    // ยา prepack: แยกเป็นขวด/ซอง/แผงเต็ม (หน่วยใหญ่ก่อน) + เม็ดที่เหลือ
+    const { parts, rem } = prepackSplit(need, packs), u = escHtml(unit || 'เม็ด');
+    cell.innerHTML = [...parts.map(([n, pu]) => `${n} ${escHtml(pu)}`), ...(rem ? [`${rem} ${u}`] : [])].join(' + ')
+      + `<div class="muted">รวม ${need} ${u} (${packs.map(([n, pu]) => `${n} เม็ด/${escHtml(pu)}`).join(', ')})</div>`;
     cell.className = 'need';
     return;
   }
@@ -3482,10 +3499,10 @@ function renderFloatLeftover() {
         const insulin = r.kind === 'insulin';
         const adjust = (r.kind === 'tablet' || insulin) && !r.userNoAdj;
         const pk = floatMode === 'rph' && r.kind === 'tablet' ? prepackOf(r.name, r.use && r.use.name) : null;
-        const pack = pk ? pk.size : 0;
-        // ยาเหลือที่บันทึกเป็นซอง/แผง → เม็ด (หน้าต่าง จพ. ก็แปลง เพื่อให้จำนวนเม็ดที่ต้องจ่ายถูก)
-        const pkLo = r.kind === 'tablet' && /ซอง|แผง/.test(r.loUnit || '') ? prepackOf(r.name, r.use && r.use.name) : null;
-        const loTabs = pkLo ? r.lo * pkLo.size : r.lo;
+        // ยาเหลือที่บันทึกเป็นขวด/ซอง/แผง → เม็ด (หน้าต่าง จพ. ก็แปลง เพื่อให้จำนวนเม็ดที่ต้องจ่ายถูก)
+        const pkLo = r.kind === 'tablet' && /ซอง|แผง|ขวด/.test(r.loUnit || '') ? prepackOf(r.name, r.use && r.use.name) : null;
+        const loPack = pkLo && (pkLo.packs.find(([, u]) => (r.loUnit || '').includes(u)) || pkLo.packs[pkLo.packs.length - 1]);
+        const loTabs = loPack ? r.lo * loPack[0] : r.lo;
         const pendingMark = r.userNoAdj && Object.keys(noAdjPending).some(k => noAdjPending[k] && drugMatches(k, r.cname)) ? ' — ยังไม่บันทึก' : '';
         const tag = r.userNoAdj ? `<span class="tag info">🚫 ไม่ต้องปรับตามนัด${pendingMark}</span>`
           : insulin ? `<span class="tag info">💉 อินซูลิน — คิดเป็น vial (1 vial = ${INSULIN_VIAL_UNITS.toLocaleString()} ยูนิต) · ใช้ = ยูนิต/วัน${r.use && r.use.insulinPerDay == null ? ' · อ่านวิธีใช้ไม่ครบ — กรอกเอง' : ''}</span>`
@@ -3498,7 +3515,7 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pack ? ` data-pack="${pack}" data-pack-unit="${escHtml(pk.unit)}"` : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pk ? ` data-packs="${escHtml(pk.packs.map(([n, u]) => n + ':' + u).join(','))}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
