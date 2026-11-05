@@ -952,7 +952,12 @@ function mdNorm(s) {
   return s.replace(/\s+/g, ' ').trim();
 }
 function mdAbbr(t) {
-  const o = String(t || '').replace(/\s+/g, ' ').trim(), s = mdNorm(o), r = mdAbbr0(s);
+  const o = String(t || '').replace(/\s+/g, ' ').trim();
+  // ป้ายที่เภสัชเขียนนำหน้าวิธีใช้ "[รับยา SRH] รับประทาน…" (เตือนแพทย์ว่ารับยาที่ รพ.อื่น — ผู้ใช้ขอ 2026-11-05)
+  //   = คงป้ายไว้ แปลงเฉพาะวิธีใช้ด้านหลัง → "[รับยา SRH] 1 x 1 hs"
+  const tg = o.match(/^((?:\[[^\]]*\]\s*)+)(\S.*)$/);
+  if (tg) { const r = mdAbbr(tg[2]); return r === tg[2] ? o : `${tg[1].trim()} ${r}`; }
+  const s = mdNorm(o), r = mdAbbr0(s);
   return r === s ? o : r;
 }
 // วันในสัปดาห์ → อักษรย่อ (ผู้ใช้ขอ 2026-10-26): "จันทร์ พุธ ศุกร์" → "(จ พ ศ)", "จันทร์ - ศุกร์" → "(จ-ศ)"
