@@ -1425,7 +1425,7 @@ function HmeWatch {
   Start-Process cmd.exe -ArgumentList '/c', "`"$hmeBat`" bridge" -WindowStyle Hidden
 }
 # ── ปุ่มลัดเปิดหน้าต่างลอย ─────────────────────────
-$CLINIC_URL = 'https://oatsudster.github.io/pharmacy-tph/clinic.html'
+$CLINIC_URL = 'https://tph-pharmacy.pages.dev/clinic'   # Cloudflare Pages (ผู้ใช้ขอ 2026-11-05 แทน GitHub Pages)
 $CLINIC_TITLE = 'งานเภสัชกรรมคลินิก'                                    # <title> ของ clinic.html
 $FLOAT_TITLES = @{ rph = 'จ่ายยา (เภสัชกร)'; tech = 'ยาคงเหลือ (จพ.)' }   # <title> ของหน้าต่างลอยแต่ละแบบ
 $HOTKEYS = @{ 1 = 'rph'; 2 = 'tech' }
