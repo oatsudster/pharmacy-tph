@@ -44,7 +44,8 @@ test('คำสั่ง คบส.: แก้ปี/ชื่อแล้วต
   const { ctx, page, errors } = await open();
   await page.evaluate(() => document.querySelector('[data-v="kbs_order"]').click());
   await page.waitForSelector('#v-kbs_order .paper .doc');
-  await page.fill('#v-kbs_order [data-f="year"]', '2570');
+  await page.fill('#v-kbs_order [data-f="signYear"]', '2570');
+  await page.selectOption('#v-kbs_order select[data-f="signMonth"]', '11');
   // คำนำหน้าเลือกจากรายการ + ชื่อ → เก็บรวม "นายทดสอบ"; ชื่อเดิม "นางสาวเกษราภรณ์" แยกเป็น นางสาว + เกษราภรณ์
   const first = page.locator('#v-kbs_order .mgrid').first();
   assert.equal(await first.locator('[data-pfx]').inputValue(), 'นางสาว');
