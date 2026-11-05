@@ -45,7 +45,13 @@ test('คำสั่ง คบส.: แก้ปี/ชื่อแล้วต
   await page.evaluate(() => document.querySelector('[data-v="kbs_order"]').click());
   await page.waitForSelector('#v-kbs_order .paper .doc');
   await page.fill('#v-kbs_order [data-f="year"]', '2570');
-  await page.locator('#v-kbs_order .mtable input[data-j="0"]').first().fill('นายทดสอบ');
+  // คำนำหน้าเลือกจากรายการ + ชื่อ → เก็บรวม "นายทดสอบ"; ชื่อเดิม "นางสาวเกษราภรณ์" แยกเป็น นางสาว + เกษราภรณ์
+  const first = page.locator('#v-kbs_order .mgrid').first();
+  assert.equal(await first.locator('[data-pfx]').inputValue(), 'นางสาว');
+  assert.equal(await first.locator('[data-name]').inputValue(), 'เกษราภรณ์');
+  await first.locator('[data-pfx]').selectOption('นาย');
+  await first.locator('[data-name]').fill('ทดสอบ');
+  assert.equal(await page.evaluate(() => TphAnnualDocs.state.kbs_order.teams[0].members[0][0]), 'นายทดสอบ');
   await page.waitForFunction(() => /๒๕๗๐/.test(document.querySelector('#v-kbs_order .paper').textContent) && /นายทดสอบ/.test(document.querySelector('#v-kbs_order .paper').textContent));
   await page.locator('#v-kbs_order [data-print]').click();
   await page.waitForFunction(() => window.__printed === 1);
