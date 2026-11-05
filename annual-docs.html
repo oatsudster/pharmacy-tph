@@ -103,7 +103,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.arm { background: var(--bad); border-color: var(--bad); color: #fff; }
 
 /* หน้าแก้ไข: ซ้ายฟอร์ม ขวาตัวอย่าง A4 */
-.doc-layout { display: grid; grid-template-columns: minmax(360px, 520px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.doc-layout { display: grid; grid-template-columns: minmax(380px, 560px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .editor { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); display: grid; gap: 12px; }
 .editor h3 { margin: 4px 0 0; font-size: 14.5px; color: var(--primary); }
 .editor .toolbar { display: flex; gap: 8px; flex-wrap: wrap; position: sticky; top: calc(var(--tph-top, 0px) + 4px); z-index: 3; background: var(--surface); padding: 4px 0 8px; border-bottom: 1px solid var(--border); }
@@ -123,6 +123,17 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
 .mtable td.n { width: 26px; text-align: right; color: var(--text-3); padding-top: 8px; }
 .mtable td.ops { white-space: nowrap; width: 1%; }
 .mtable input { padding: 4px 6px; font-size: 13px; }
+/* รายชื่อคณะ: 2 บรรทัดต่อคน */
+.mgrid-h, .mgrid { display: grid; grid-template-columns: 24px 1fr 1fr auto; gap: 4px 6px; align-items: center; }
+.mgrid-h { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 0 0 2px; }
+.mgrid-h span:nth-child(4) { grid-column: 2; grid-row: 2; } .mgrid-h span:nth-child(5) { grid-column: 3; grid-row: 2; }
+.mgrid { padding: 6px 0; border-top: 1px solid var(--border); }
+.mgrid .n { grid-row: 1 / span 2; align-self: start; padding-top: 7px; text-align: right; color: var(--text-3); font-size: 13px; }
+.mgrid input { padding: 5px 8px; font-size: 13.5px; min-width: 0; }
+.mgrid input[data-j="2"] { grid-column: 2; grid-row: 2; }
+.mgrid input[data-j="3"] { grid-column: 3; grid-row: 2; }
+.mgrid .ops { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+.mgrid .ops .btn { padding: 1px 8px; }
 .team { border: 1px solid var(--border); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
 .hint { font-size: 12.5px; color: var(--text-3); }
 .saved { font-size: 12.5px; color: var(--text-3); margin-left: auto; align-self: center; }
@@ -260,9 +271,9 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
   const M = (s) => s.trim().split('\n').map((l) => l.split('|').map((x) => x.trim()));
   const DEFAULTS = {
     kbs_order: {
-      year: 2569, no: '', signDay: '', signMonth: 3,
+      year: 2569, no: '', signDay: '', signMonth: 3, signYear: '',
       head: 'คำสั่ง เครือข่ายบริการสุขภาพอำเภอถ้ำพรรณรา', headBold: false,
-      subject: 'แต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภคอำเภอถ้ำพรรณรา ปี {ปี}',
+      subject: 'แต่งตั้งคณะกรรมการดำเนินงานคุ้มครองผู้บริโภคอำเภอถ้ำพรรณรา ประจำปีงบประมาณ พ.ศ. {ปี}',
       preamble: 'ตามที่รัฐบาลได้กำหนดให้การคุ้มครองผู้บริโภคเป็นนโยบายและยุทธศาสตร์ที่สำคัญ ตามแผนพัฒนาแห่งชาติ ฉบับที่ 10   โดยกำหนดให้การคุ้มครองผู้บริโภคเป็นภารกิจหลักที่ต้องเอาใจใส่ดูแลให้ประชาชนผู้บริโภคได้รับความปลอดภัยและเป็นธรรม จากการซื้อสินค้าหรือบริการตามที่กฎหมายบัญญัติไว้แล้ว ยังต้องส่งเสริมให้เห็นความสำคัญในสิทธิของผู้บริโภคด้วย  ในขณะเดียวกันก็ต้องส่งเสริมสนับสนุนให้มีการพัฒนาบทบาทองค์กรที่เกี่ยวข้องกับการคุ้มครองผู้บริโภค ให้มีประสิทธิภาพยิ่งขึ้น   คณะกรรมการประสานงานสำนักงานสาธารณสุขอำเภอถ้ำพรรณรา จึงขอแต่งตั้งคณะกรรมการเพื่อดำเนินงานคุ้มครองผู้บริโภคอำเภอถ้ำพรรณรา ดังมีรายนามดังต่อไปนี้',
       teams: [{ title: '', members: M(`
         นางสาวเกษราภรณ์|สุขะวัลลิ|นายแพทย์ชำนาญการ|ประธานกรรมการ
@@ -290,9 +301,9 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
         closeIndent: 2.54, dateLeft: 7.62, sigLeft: 6.6, sigW: 9.0, sigGap: 2, blankAfterSep: true, blankAfterList: true, thai: true },
     },
     vac_order: {
-      year: 2569, no: '', signDay: '', signMonth: 3,
+      year: 2569, no: '', signDay: '', signMonth: 3, signYear: '',
       head: 'คำสั่งเครือข่ายสุขภาพอำเภอถ้ำพรรณรา', headBold: true,
-      subject: 'แต่งตั้งคณะทำงานบริหารจัดการวัคซีนสร้างเสริมภูมิคุ้มกันโรค เครือข่ายสุขภาพอำเภอถ้ำพรรณรา ปี {ปี}',
+      subject: 'แต่งตั้งคณะทำงานบริหารจัดการวัคซีนสร้างเสริมภูมิคุ้มกันโรค เครือข่ายสุขภาพอำเภอถ้ำพรรณรา ประจำปีงบประมาณ พ.ศ. {ปี}',
       preamble: 'ด้วยกระทรวงสาธารณสุข ได้กำหนดให้มีการแต่งตั้งคณะทำงาน เพื่อกำหนดแนวทางการบริหารจัดการ ประสาน สนับสนุนการดำเนินงาน และแก้ไขปัญหาอุปสรรค การบริหารจัดการให้วัคซีนสร้างเสริมภูมิคุ้มกันโรค เครือข่ายสุขภาพอำเภอถ้ำพรรณรา รวมถึงติดตามความก้าวหน้า ผลลัพธ์ในการดำเนินให้เป็นไปอย่างมีประสิทธิภาพ\n\nดังนั้น เพื่อให้มีความพร้อมในด้านการบริหารจัดการวัคซีน การสื่อสารให้ความรู้และประชาสัมพันธ์การให้บริการวัคซีน การติดตามผลการดำเนินงาน และเฝ้าระวังอาการไม่พึงประสงค์ ภายหลังได้รับวัคซีน สร้างเสริมภูมิคุ้มกันโรค การดำเนินงานเป็นไปอย่างเหมาะสม มีประสิทธิภาพ และเป็นที่เชื่อมั่นของประชาชน จึงเห็นควรแต่งตั้งคณะทำงานบริหารจัดการให้วัคซีนสร้างเสริมภูมิคุ้มกันโรค  เครือข่ายสุขภาพอำเภอถ้ำพรรณรา ดังนี้',
       teams: [{ title: 'ทีมระบบการจัดเก็บ การขนส่ง การจัดส่งวัคซีนและระบบลูกโซ่ความเย็น (Cold Chain)', members: M(`
         นางสาวเกษราภรณ์|สุขะวัลลิ|นายแพทย์ชำนาญการ|ประธานคณะทำงาน
@@ -348,8 +359,8 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     },
     // กำหนดทำงานประจำปี: วัน/เดือนครบกำหนดในแต่ละปีงบ, เตือนล่วงหน้ากี่วัน, ปีงบที่ทำเสร็จล่าสุด
     schedule: {
-      kbs_order: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
-      vac_order: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
+      kbs_order: { day: 30, month: 11, lead: 14, doneFy: 2569, doneAt: '' },
+      vac_order: { day: 30, month: 11, lead: 14, doneFy: 2569, doneAt: '' },
       vac_plan: { day: 15, month: 3, lead: 14, doneFy: 2569, doneAt: '' },
     },
   };
@@ -371,8 +382,24 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
   function load() {
     let v = null;
     try { v = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) {}
-    return merge(DEFAULTS, v || {});
+    const st = merge(DEFAULTS, v || {});
+    migrate(st);
+    return st;
   }
+  // 2026-11-05: คำสั่งเปลี่ยนเป็น "ประจำปีงบประมาณ" (เดิม "ปี {ปี}") และครบกำหนดต้นปีงบ 30 พ.ย. (เดิม 15 มี.ค.) — ปรับข้อมูลที่บันทึกไว้แล้วครั้งเดียว
+  function migrate(st) {
+    if (st.fyOrders) return false;
+    ['kbs_order', 'vac_order'].forEach((id) => {
+      const d = st[id];
+      if (d && / ปี \{ปี\}\s*$/.test(d.subject || '')) d.subject = d.subject.replace(/ ปี \{ปี\}\s*$/, ' ประจำปีงบประมาณ พ.ศ. {ปี}');
+      const sch = st.schedule && st.schedule[id];
+      if (sch && sch.day === 15 && sch.month === 3) { sch.day = 30; sch.month = 11; }
+    });
+    st.fyOrders = 1;
+    return true;
+  }
+  // ปี พ.ศ. ที่ลงนาม: ระบุเองได้ · ว่าง = คำนวณจากปีงบ (ต.ค.–ธ.ค. อยู่ปี พ.ศ. ก่อนปีงบ 1 ปี)
+  const signYearOf = (d) => (d.signYear ? Number(d.signYear) : (Number(d.signMonth) >= 10 ? Number(d.year) - 1 : Number(d.year)));
 
   // ── บันทึก: เครื่องนี้ทันที + ฐานข้อมูลกลาง (หน่วง 1 วินาที) ──
   let db = null, saveT = 0, lastRemote = '', savedMsg = '';
@@ -501,8 +528,10 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     let h = `<div class="doc" style="font-family:${FONT[f.font]};font-size:${f.size}pt;line-height:${f.lh}pt">`;
     h += `<img class="garuda" src="img/garuda.png" alt="" style="width:${f.garuda}cm;height:${f.garudaH || 'auto'}${f.garudaH ? 'cm' : ''};margin-top:${f.gTop}cm;margin-bottom:${f.titleTop}cm">`;
     h += P('c' + (d.headBold ? ' b' : ''), T(d.head));
-    h += P('c', 'ที่ ' + (d.no ? T(d.no) : blank(1.6)) + ' / ' + T(d.year));
-    h += P('c', 'เรื่อง ' + T(subject));
+    h += P('c', 'ที่ ' + (d.no ? T(d.no) : blank(1.6)) + ' / ' + T(signYearOf(d)));
+    // "ประจำปีงบประมาณ พ.ศ. xxxx" ไม่ให้ตัดกลางวลีตอนขึ้นบรรทัดใหม่
+    const fyAt = subject.indexOf('ประจำปีงบประมาณ');
+    h += P('c', 'เรื่อง ' + (fyAt > 0 ? T(subject.slice(0, fyAt)) + '<span style="white-space:nowrap">' + T(subject.slice(fyAt)) + '</span>' : T(subject)));
     h += P('c', T(f.sep));
     if (f.blankAfterSep) h += `<p style="line-height:${f.lh / 2}pt">&nbsp;</p>`;
     paras(d.preamble).forEach((p) => { h += P('j', T(p), `text-indent:${f.indent}cm`); });
@@ -525,7 +554,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     });
     if (d.closing) h += P('', T(d.closing), `padding-left:${f.closeIndent}cm`);
     const day = d.signDay ? T(d.signDay) : blank(1.2);
-    h += P('', `สั่ง ณ วันที่ ${day} ${T(TH_M[(d.signMonth || 1) - 1])} พ.ศ. ${T(d.year)}`, `padding-left:${f.dateLeft}cm;margin-top:${f.lh / 2}pt`);
+    h += P('', `สั่ง ณ วันที่ ${day} ${T(TH_M[(d.signMonth || 1) - 1])} พ.ศ. ${T(signYearOf(d))}`, `padding-left:${f.dateLeft}cm;margin-top:${f.lh / 2}pt`);
     h += `<div class="sig" style="margin-left:${f.sigLeft}cm;width:${f.sigW}cm;margin-top:${f.sigGap * f.lh}pt">`;
     h += `<p>(${T(d.signer)})</p>` + lines(d.signerTitles).map((t) => `<p>${T(t)}</p>`).join('');
     h += '</div></div>';
@@ -784,19 +813,25 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
   function listTable(rows, cols, onChange, opts) {
     opts = opts || {};
     const wrap = document.createElement('div');
+    const OPS = '<button class="btn sm ghost" type="button" data-up title="เลื่อนขึ้น">↑</button><button class="btn sm ghost" type="button" data-dn title="เลื่อนลง">↓</button><button class="btn sm ghost danger" type="button" data-del title="ลบแถว">✕</button>';
+    const field = (c, j, r) => `<input data-j="${j}" value="${esc(r[j] || '')}" ${c.list ? `list="${c.list}"` : ''} placeholder="${esc(c.ph || c.label)}" title="${esc(c.label)}">`;
     const draw = () => {
-      wrap.innerHTML = `<table class="mtable"><tr><th></th>${cols.map((c) => `<th>${c.label}</th>`).join('')}<th></th></tr>
-        ${rows.map((r, i) => `<tr data-i="${i}"><td class="n">${i + 1}</td>${cols.map((c, j) => `<td style="${c.w ? 'width:' + c.w : ''}"><input data-j="${j}" value="${esc(r[j] || '')}" ${c.list ? `list="${c.list}"` : ''} placeholder="${esc(c.ph || '')}"></td>`).join('')}
-        <td class="ops"><button class="btn sm ghost" type="button" data-up title="เลื่อนขึ้น">↑</button><button class="btn sm ghost" type="button" data-dn title="เลื่อนลง">↓</button><button class="btn sm ghost danger" type="button" data-del title="ลบแถว">✕</button></td></tr>`).join('')}
-        </table><div class="row-btns" style="margin-top:6px"><button class="btn sm" type="button" data-add>+ ${opts.addLabel || 'เพิ่มแถว'}</button></div>`;
-      wrap.querySelectorAll('tr[data-i]').forEach((tr) => {
+      const rowsHtml = opts.grid
+        // 2 บรรทัดต่อคน: ชื่อ | นามสกุล  /  ตำแหน่ง | หน้าที่ — ช่องกว้างพอเห็นข้อความเต็ม
+        ? `<div class="mgrid-h"><span></span>${cols.map((c) => `<span>${c.label}</span>`).join('')}</div>` +
+          rows.map((r, i) => `<div class="mgrid" data-i="${i}"><span class="n">${i + 1}</span>${cols.map((c, j) => field(c, j, r)).join('')}<span class="ops">${OPS}</span></div>`).join('')
+        : `<table class="mtable"><tr><th></th>${cols.map((c) => `<th>${c.label}</th>`).join('')}<th></th></tr>
+        ${rows.map((r, i) => `<tr data-i="${i}"><td class="n">${i + 1}</td>${cols.map((c, j) => `<td style="${c.w ? 'width:' + c.w : ''}">${field(c, j, r)}</td>`).join('')}
+        <td class="ops">${OPS}</td></tr>`).join('')}</table>`;
+      wrap.innerHTML = rowsHtml + `<div class="row-btns" style="margin-top:6px"><button class="btn sm" type="button" data-add>+ ${opts.addLabel || 'เพิ่มแถว'}</button></div>`;
+      wrap.querySelectorAll('[data-i]').forEach((tr) => {
         const i = +tr.dataset.i;
         tr.querySelectorAll('input').forEach((el) => el.addEventListener('input', () => { rows[i][+el.dataset.j] = el.value; onChange(); }));
         tr.querySelector('[data-up]').addEventListener('click', () => { if (i > 0) { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; draw(); onChange(); } });
         tr.querySelector('[data-dn]').addEventListener('click', () => { if (i < rows.length - 1) { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; draw(); onChange(); } });
         tr.querySelector('[data-del]').addEventListener('click', () => { rows.splice(i, 1); draw(); onChange(); });
       });
-      wrap.querySelector('[data-add]').addEventListener('click', () => { rows.push(cols.map(() => '')); draw(); onChange(); const ins = wrap.querySelectorAll('tr[data-i]:last-child input'); if (ins[0]) ins[0].focus(); });
+      wrap.querySelector('[data-add]').addEventListener('click', () => { rows.push(cols.map(() => '')); draw(); onChange(); const all = wrap.querySelectorAll('[data-i]'), ins = all.length ? all[all.length - 1].querySelectorAll('input') : []; if (ins[0]) ins[0].focus(); });
     };
     draw();
     return wrap;
@@ -830,15 +865,19 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
   function orderEditor(id) {
     let t = 0;
     const ed = {
-      preview() { const sec = $('v-' + id); paint(sec, renderOrder(S[id]), PAGE.order(S[id])); },
+      preview() {
+        const sec = $('v-' + id); paint(sec, renderOrder(S[id]), PAGE.order(S[id]));
+        const sy = sec.querySelector('[data-sy]'); if (sy) sy.placeholder = 'อัตโนมัติ: ' + signYearOf(S[id]);
+      },
       build() {
         const d = S[id];
         const sec = shell(id, '', doneBtnHtml(id) + `<button class="btn" type="button" data-next>↻ เริ่มฉบับปีถัดไป</button><button class="btn danger" type="button" data-reset>คืนค่าต้นฉบับ</button>`);
         const body = sec.querySelector('.ed-body');
         const changed = () => { save(); clearTimeout(t); t = setTimeout(ed.preview, 120); };
         body.innerHTML = ROLE_LIST(id) + `
-          <div class="f3">${inp('ปี พ.ศ.', 'year', 'number')}${inp('เลขที่คำสั่ง (เว้นว่าง = เขียนมือ)', 'no')}${inp('สั่ง ณ วันที่ (ว่าง = เขียนมือ)', 'signDay')}</div>
-          <div class="f2">${msel('เดือนที่สั่ง', 'signMonth')}<label class="fg"><span>&nbsp;</span><span class="hint">พ.ศ. ท้ายคำสั่งใช้ปีเดียวกับช่องปี</span></label></div>
+          <div class="f2">${inp('ปีงบประมาณ (พ.ศ.) — ใช้ในชื่อเรื่อง', 'year', 'number')}${inp('เลขที่คำสั่ง (เว้นว่าง = เขียนมือ)', 'no')}</div>
+          <div class="f3">${inp('สั่ง ณ วันที่ (ว่าง = เขียนมือ)', 'signDay', 'number', 'min="1" max="31"')}${msel('เดือนที่สั่ง', 'signMonth')}${inp('พ.ศ. ที่สั่ง', 'signYear', 'number', 'data-sy')}</div>
+          <p class="hint" style="margin:0">พ.ศ. ที่สั่ง เว้นว่าง = คำนวณให้จากปีงบ (สั่ง ต.ค.–ธ.ค. = ปีงบ − 1 เช่น ปีงบ 2570 สั่ง พ.ย. → พ.ศ. 2569) · ใช้ทั้งท้ายคำสั่งและเลข "ที่ …/ปี"</p>
           ${inp('หัวคำสั่ง', 'head')}
           ${inp('เรื่อง ( {ปี} = ใส่ปี พ.ศ. ให้อัตโนมัติ )', 'subject')}
           ${ta('ข้อความนำ (เว้น 1 บรรทัดว่าง = ขึ้นย่อหน้าใหม่)', 'preamble', 6)}
@@ -874,7 +913,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
             box.querySelector('[data-title]').addEventListener('input', (e) => { tm.title = e.target.value; changed(); });
             box.appendChild(listTable(tm.members, [
               { label: 'คำนำหน้า+ชื่อ', ph: 'นางสาว...' }, { label: 'นามสกุล' }, { label: 'ตำแหน่งทางราชการ', w: '34%' }, { label: 'หน้าที่ในคณะ', list: 'roles-' + id, w: '22%' },
-            ], changed, { addLabel: 'เพิ่มรายชื่อ' }));
+            ], changed, { addLabel: 'เพิ่มรายชื่อ', grid: true }));
             if (d.teams.length > 1) {
               const del = document.createElement('button'); del.className = 'btn sm danger'; del.type = 'button'; del.textContent = 'ลบทีมนี้';
               armed(del, () => { d.teams.splice(ti, 1); drawTeams(); changed(); });
@@ -887,7 +926,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
         body.querySelector('[data-addteam]').addEventListener('click', () => { d.teams.push({ title: '', members: [['', '', '', '']] }); drawTeams(); changed(); });
         sec.querySelector('[data-print]').addEventListener('click', () => printDoc(renderOrder(S[id]), PAGE.order(S[id])));
         sec.querySelector('[data-next]').addEventListener('click', () => {
-          d.year = Number(d.year) + 1; d.no = ''; d.signDay = ''; save(); ed.built = false; ed.build(); ed.built = true; ed.preview();
+          d.year = Number(d.year) + 1; d.no = ''; d.signDay = ''; d.signYear = ''; save(); ed.built = false; ed.build(); ed.built = true; ed.preview();
         });
         armed(sec.querySelector('[data-reset]'), () => { const sch = S.schedule; S[id] = clone(DEFAULTS[id]); S.schedule = sch; save(); ed.build(); ed.preview(); });
         wireDone(sec, id);
@@ -989,6 +1028,7 @@ details.fmt .f3, details.fmt .f2 { margin-top: 8px; }
     }
     lastRemote = js;
     S = merge(DEFAULTS, v);
+    if (migrate(S)) setTimeout(save, 0);
     try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {}
     // สร้างฟอร์มใหม่เฉพาะหน้าที่ผู้ใช้ไม่ได้พิมพ์อยู่
     const active = document.activeElement;
