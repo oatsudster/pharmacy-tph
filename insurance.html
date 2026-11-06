@@ -214,6 +214,8 @@ td small { display: block; color: var(--text-light); }
   <button type="button" data-v="op"><span class="ic">🩺</span><span>ผู้ป่วยนอก &amp; บริการเคลมแยก</span></button>
   <button type="button" data-v="herb"><span class="ic">🌿</span><span>แพทย์แผนไทย &amp; สมุนไพร</span></button>
   <button type="button" data-v="ncd"><span class="ic">🩸</span><span>เบาหวาน / ความดัน (NCD)</span></button>
+  <button type="button" data-v="pp"><span class="ic">🧪</span><span>คัดกรอง &amp; วัคซีน (PP Fee Schedule)</span></button>
+  <button type="button" data-v="pal"><span class="ic">🕊️</span><span>Palliative care</span></button>
   <div class="side-grp">เทียบเคียง</div>
   <button type="button" data-v="prov"><span class="ic">🗺️</span><span>เทียบผลงานทั้งจังหวัด</span></button>
   <div class="side-grp">อื่นๆ</div>
@@ -361,7 +363,40 @@ td small { display: block; color: var(--text-light); }
       </div>
       <div class="card" style="margin-top:14px"><h2>7. DM Remission · 4,000 + 2,000 บาท/ราย</h2><p class="note">E11 อายุ ≥ 18 ปี · HbA1c &lt; 6.5% ติดกัน 2 ครั้ง ห่างกัน ≥ 3 เดือน โดยไม่ได้รับยาลดน้ำตาล (ตั้งแต่ 3 เดือนก่อนครั้งแรก) · +2,000 เมื่อยังสงบอีก 1 ครั้งหลังจากนั้น 3–6 เดือน · ทีมต้องผ่านอบรม และลงทะเบียนผู้ป่วยใน e-Claim</p>
         <div class="tbl"><table id="ncd-rem" style="min-width:560px"></table></div></div>
+      <div class="card" style="margin-top:14px"><h2>เทียบกับยอดที่เบิกได้จริง (ไฟล์ผลงานเคลมจังหวัด)</h2><p class="note">ซ้าย = ประมาณจากงานที่ทำใน HOSxP · ขวา = ยอดของ รพ. ในไฟล์ผลงานเคลมฉบับล่าสุดของปีงบที่เลือก (อัปโหลดที่หัวข้อ "รายได้เบิกคืนจากเคลม") · ส่วนต่างมาก = ทำแล้วแต่ยังไม่ได้ส่ง/ส่งไม่ผ่าน</p>
+        <div class="tbl"><table id="ncd-claimed" style="min-width:560px"></table></div></div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card"><h2>GDM 2,620 บาท/ครรภ์ · PDM 1,940–8,660 บาท/ครรภ์</h2><p class="note">ประกาศ DM/HT 2568 เหมือนกัน · หญิงตั้งครรภ์สิทธิ UC/WEL · GDM = O24.4/O24.9 ต้องตรวจ OGTT 75 g หลังคลอด 1–3 เดือน · PDM = เบาหวานก่อนตั้งครรภ์ O24.0/O24.1/O24.3 ต้องตรวจ HbA1c 4 ครั้ง · หน่วยบริการต้องผ่านการประเมินตนเอง</p>
+          <div class="tbl"><table id="ncd-preg" style="min-width:420px"></table></div></div>
+        <div class="card"><h2>ตัวชี้วัดผลลัพธ์ที่ร่างประกาศปีงบ 70 จะใช้จ่ายเงิน</h2><p class="note">ร่างใหม่เลิกจ่าย HbA1c/Cr/K รายครั้ง → จ่ายตามผลลัพธ์ในวงเงินปิด (ยังไม่มีอัตรา) · ระหว่างนี้ใช้กติกาเดิมตามข้อ 88 · ต้องบันทึก HbA1c ครั้งล่าสุดใน e-Claim</p>
+          <div class="kpis" id="ncd-out-kpis" style="margin-bottom:10px"></div><div class="chartbox"><canvas id="c-ncd-acsc"></canvas></div></div>
+      </div>
+      <div id="ncd-refs"></div>
       <p class="note" style="margin-top:10px" id="ncd-foot"></p>
+    </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="pp">
+    <div class="view-head"><h2>คัดกรอง &amp; วัคซีน (PP Fee Schedule)</h2><p class="note">งบ PP คิดจากประชากรไทย<b>ทุกสิทธิ</b> — ข้าราชการ/ประกันสังคมที่เป็นคนไทยเบิกได้ด้วย · เทียบงานที่ทำใน HOSxP (เฉพาะคนไทย ตามเงื่อนไขอายุ/ความถี่ของแต่ละรายการ) กับยอดที่เบิกได้จริงในไฟล์ผลงานเคลม · ยอดสรุป ไม่มีรายชื่อผู้ป่วย</p></div>
+    <section id="pp-box" hidden>
+      <div class="kpis" id="pp-kpis"></div>
+      <div class="card" style="margin-top:14px"><h2>รายการที่ รพ. ทำอยู่แล้ว</h2><p class="note">"เข้าเกณฑ์" = ตรวจแล้วและตรงเงื่อนไขในคู่มือ · "ลงรหัส Z ครบ" = visit นั้นมีรหัส ICD-10 ที่ต้องใช้คู่กับรหัสเบิก (ถ้าไม่มี ระบบส่งเบิกจะไม่รับ)</p>
+        <div class="tbl"><table id="pp-table" style="min-width:860px"></table></div><div id="pp-act"></div></div>
+      <div id="pp-refs"></div>
+      <p class="note" style="margin-top:10px" id="pp-foot"></p>
+    </section>
+    <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
+  </div>
+  <div class="view" data-view="pal">
+    <div class="view-head"><h2>Palliative care (ผู้ป่วยระยะท้าย)</h2><p class="note">เบิก e-Claim: 1,000 บาท/เดือน (สูงสุด 6 เดือนนับจากเยี่ยมบ้านครั้งแรก) + 3,000 บาท เมื่อเสียชีวิต + ค่ายาอนุพันธ์ฝิ่นในมะเร็ง 750 บาท/เดือน · ต้องมีรหัส Z51.5 + Z71.8 (Advance care plan) และบันทึกการดูแลที่บ้านทุกครั้ง</p></div>
+    <section id="pal-box" hidden>
+      <div class="kpis" id="pal-kpis"></div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card"><h2>ผู้ป่วยที่มีรหัส Z51.5 รายเดือน</h2><p class="note">นับเฉพาะเดือนที่อยู่ใน 6 เดือนแรกนับจาก Z51.5 ครั้งแรก (เดือนที่เบิกได้)</p><div class="chartbox"><canvas id="c-pal"></canvas></div></div>
+        <div class="card"><h2>ยา opioid ครบ 3 กลุ่มหรือยัง (ห้องยา)</h2><p class="note">เบิกค่ายา 750 บาท/เดือนได้ต่อเมื่อ รพ. มียาครบทั้ง 3 กลุ่ม และมีใบอนุญาตครอบครองยาเสพติดประเภท 2 · ดูจากรายการยาที่เปิดใช้ใน HOSxP</p><div class="tbl"><table id="pal-op" style="min-width:420px"></table></div></div>
+      </div>
+      <div id="pal-refs"></div>
+      <p class="note" style="margin-top:10px" id="pal-foot"></p>
     </section>
     <p class="note view-empty" hidden>ยังไม่มีข้อมูลในหัวข้อนี้สำหรับปีงบ/ช่วงที่เลือก (หรือกำลังโหลด…)</p>
   </div>
@@ -627,7 +662,7 @@ td small { display: block; color: var(--text-light); }
     const part = ms.some((m) => monthly.months[m].partial) ? ' · * = เดือนปัจจุบัน ยังไม่ครบเดือน' : '';
     sumArgs = { ms, R };
     drawRevenue();
-    drawNcd();
+    drawNcd(); drawPp(); drawPal();
     document.getElementById('foot').textContent = `ข้อมูล HOSxP ${ms.length ? mLabel(ms[0]) + ' – ' + mLabel(ms[ms.length - 1]) : '-'}${part} · อัปเดตล่าสุด ${upd} · OPD นับตามวันรับบริการ ผู้ป่วยในนับตามวันจำหน่าย · เก็บเฉพาะยอดสรุป ไม่มีข้อมูลรายผู้ป่วย`;
   }
 
@@ -689,6 +724,164 @@ td small { display: block; color: var(--text-light); }
       ${rr('อยู่ในคลินิก NCDs remission (032)', M.clinic032_patients, `ในจำนวนที่ครบเกณฑ์ปีนี้ อยู่ในคลินิก 032 แล้ว ${fmt(P.in_clinic032 || 0)} ราย`)}
       </tbody>`;
     document.getElementById('ncd-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · ยอดเป็นการประมาณจากงานที่ทำจริงใน HOSxP ยังไม่ได้เทียบกับยอดที่ส่งเบิก/ได้รับจริง · "หยุดยา" ดูจากการจ่ายยาที่ รพ. เท่านั้น · "ไม่อยู่ในทะเบียน สปสช." ใช้ประวัติใน HOSxP แทน · ที่มา: Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/ncd_claim.py`;
+    drawNcdExtra(R);
+  }
+
+  // ---------- อ้างอิง + ช่องทางเบิก (ใช้ร่วม NCD / PP / Palliative) ----------
+  const REF = {
+    a: ['สไลด์ สปสช. บริการ IP/CR และโรคเฉพาะ ปีงบ 69 (11 พ.ย. 68)', 'https://www.uckkpho.com/wp-content/uploads/2025/11/03.%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%81%E0%B8%B2%E0%B8%A3-IP-CR-%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B9%82%E0%B8%A3%E0%B8%84%E0%B9%80%E0%B8%89%E0%B8%9E%E0%B8%B2%E0%B8%B0_%E0%B8%A1%E0%B8%93%E0%B8%B5%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93-11112568.pdf'],
+    dmht: ['UC@KKPHO: สรุปบริการ DM/HT ปีงบ 69', 'https://www.uckkpho.com/dmht69/'],
+    ppfs: ['UC@KKPHO: ตาราง PP Fee Schedule ปีงบ 69', 'https://www.uckkpho.com/ppfs69/'],
+    pp7: ['สไลด์ สปสช.เขต 7: แนวทาง PP ปีงบ 69 (10 พ.ย. 68)', 'https://www.uckkpho.com/wp-content/uploads/2025/11/03_%E0%B8%99%E0%B8%B3%E0%B9%80%E0%B8%AA%E0%B8%99%E0%B8%ADPP-69_10%E0%B8%9E%E0%B8%A268_%E0%B8%AA%E0%B8%B8%E0%B8%91%E0%B8%B2%E0%B8%A3%E0%B8%B1%E0%B8%95%E0%B8%99%E0%B9%8C.pdf'],
+    ppman: ['คู่มือการเบิกจ่ายกิจกรรม PP + API 13Plus v1.3 (สปสช. 18 ส.ค. 69) — ไฟล์ Desktop\\งานประกันฯ\\คู่มือการเบิกจ่ายกิจกรรม PP 2570.pdf', ''],
+    tc: ['The Coverage 4 พ.ย. 69: ร่างประกาศ DM/HT ปีงบ 70 (outcome-based)', 'https://www.thecoverage.info/news/content/12501'],
+    fy70: ['ประกาศกองทุน UC ปีงบ 70 (ราชกิจจาฯ) — ข้อ 88 บทเฉพาะกาล', 'https://dga-backoffice-upload.law.go.th/dga-backoffice-api/dga-storage/uploads/20261012174125434_24be495277fb.pdf'],
+    law: ['คลังประกาศ สปสช. (ตรวจฉบับลงนามล่าสุด)', 'https://law.nhso.go.th/Site/Notice.aspx'],
+    report: ['รายงาน "ช่องทางเบิกเพิ่ม สปสช 2570" — Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/reports/', ''],
+  };
+  const CH = {
+    moph: 'MOPH Claim / หมอพร้อม (ส่งจาก HOSxP แบบเชื่อมระบบ)',
+    eclaim: '<a href="https://eclaim.nhso.go.th" target="_blank" rel="noopener">e-Claim สปสช.</a> (ลงทะเบียนผู้ป่วยก่อน แล้วส่งเบิก)',
+    ktb: 'Krungthai Digital Health Platform (KTB) — ใช้ user ของ รพ. ที่ทีมประกันฯ ถืออยู่ · ตั้งแต่ปีงบ 70 ส่งผ่าน NHSO Digital Platform API (13Plus) ได้ด้วย',
+    smt: '<a href="https://smt.nhso.go.th" target="_blank" rel="noopener">SMT สปสช.</a>',
+  };
+  const refLink = (k, page) => { const [t, u] = REF[k]; return u ? `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>${page ? ' ' + esc(page) : ''}` : esc(t) + (page ? ' ' + esc(page) : ''); };
+  function refsBox(id, rows, extra) {
+    document.getElementById(id).innerHTML = `<details class="hc-detail" style="margin-top:14px"><summary>📚 อ้างอิง เงื่อนไข และช่องทางส่งเบิก</summary>
+      <div class="tbl"><table style="min-width:760px"><thead><tr><th>รายการ</th><th>เงื่อนไข / รหัสที่ต้องมี</th><th>ช่องทางส่งเบิก</th><th>แหล่งอ้างอิง</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td><b>${esc(r[0])}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table></div>
+      ${extra ? `<p class="note" style="margin:6px 0 0">${extra}</p>` : ''}</details>`;
+  }
+  // ยอดที่ รพ. เบิกได้จริงจากไฟล์ผลงานเคลมจังหวัดฉบับล่าสุดของปีงบ F — src: [[ช่องทาง, ชื่อคอลัมน์], ...]
+  function claimedOf(F, src) {
+    const H = (province && province.history) || {};
+    let baht = 0, any = false;
+    const asof = [];
+    src.forEach(([ch, it]) => {
+      const snaps = Object.entries(H[ch] || {}).filter(([, s]) => s.fy === F).sort();
+      if (!snaps.length) return;
+      const [d, s] = snaps[snaps.length - 1];
+      any = true; baht += (s.items || {})[it] || 0; asof.push(ch + ' ถึง ' + thDate(d));
+    });
+    return any ? { baht, asof: [...new Set(asof)].join(' · ') } : null;
+  }
+  const claimCell = (c) => c ? `<b>${fmt(c.baht)}</b> บาท<br><span class="note">${esc(c.asof)}</span>` : '<span class="note">ยังไม่มีไฟล์ผลงานเคลมปีงบนี้</span>';
+  const gapCell = (est, c) => !c ? '–' : est - c.baht > 0 ? `<b style="color:var(--danger)">${fmt(est - c.baht)}</b> บาท` : '<span style="color:var(--ok)">✓ เบิกครบ/เกิน</span>';
+  const kpiH = (l, n, s, warn) => `<div class="kpi${warn ? ' warn' : ''}"><span class="l">${esc(l)}</span><span class="n">${esc(n)}</span><span class="s">${esc(s)}</span></div>`;
+
+  function drawNcdExtra(R) {
+    const A = R.a1c, H = R.ht_new, P = R.preg, O = R.outcome;
+    const c1 = claimedOf(R.fy, [['MOPH Claim', 'HbA1C']]), c2 = claimedOf(R.fy, [['MOPH Claim', 'Cr.+K.']]);
+    const c3 = claimedOf(R.fy, [['e-Claim', 'GDM']]), c4 = claimedOf(R.fy, [['e-Claim', 'PDM']]);
+    const tr = (t, est, c, ch) => `<tr><td>${t}</td><td class="num"><b>${fmt(est)}</b> บาท</td><td>${claimCell(c)}</td><td>${gapCell(est, c)}</td><td class="note">${ch}</td></tr>`;
+    document.getElementById('ncd-claimed').innerHTML = `<thead><tr><th>รายการ</th><th class="num">ประมาณจาก HOSxP</th><th>เบิกได้จริง</th><th>ส่วนต่าง</th><th>ช่องทาง</th></tr></thead><tbody>
+      ${tr('HbA1c (32401)', A.claimable_baht, c1, 'MOPH Claim')}
+      ${tr('Cr + K ความดันรายใหม่', H.claimable_baht, c2, 'MOPH Claim')}
+      ${P ? tr('GDM', P.gdm_baht, c3, 'e-Claim') : ''}
+      ${P && P.pdm ? tr('PDM (ต่ำสุด)', P.pdm_baht_min, c4, 'e-Claim') : ''}
+      <tr><td>DM remission</td><td class="num"><b>${fmt(R.remission.pair_in_fy_baht || 0)}</b> บาท</td><td colspan="2" class="note">ไฟล์ e-Claim จังหวัดยังไม่มีคอลัมน์ remission — ถามทีมประกันฯ</td><td class="note">e-Claim</td></tr></tbody>`;
+    if (P) {
+      const pr = (t, n, d, warn) => `<tr><td>${t}</td><td class="num"><b${warn ? ' style="color:var(--danger)"' : ''}>${fmt(n || 0)}</b></td><td>${d}</td></tr>`;
+      document.getElementById('ncd-preg').innerHTML = `<thead><tr><th>กลุ่ม</th><th class="num">ราย</th><th>ทำอะไรต่อ</th></tr></thead><tbody>
+        ${pr('หญิงตั้งครรภ์ UC/WEL ที่มารับบริการ', P.pregnant_uc, 'มีรหัส Z34–Z36 หรือ O (ยกเว้น O0x)')}
+        ${pr('GDM (O24.4/O24.9)', P.gdm, `≈ ${fmt(P.gdm_baht)} บาท · ลงทะเบียน e-Claim + สอนเจาะน้ำตาลปลายนิ้ว`)}
+        ${pr('GDM ที่มี OGTT แล้ว', P.gdm_with_ogtt, 'ยังไม่มี = นัด OGTT 75 g หลังคลอด 1–3 เดือน (เงื่อนไขเบิก)', P.gdm && P.gdm_with_ogtt < P.gdm)}
+        ${pr('PDM (O24.0/O24.1/O24.3)', P.pdm, P.pdm ? `${fmt(P.pdm_baht_min)}–${fmt(P.pdm_baht_max)} บาท ตามอายุครรภ์ที่มาครั้งแรก` : 'อัตราสูงสุดเมื่อมาฝากครรภ์เร็ว (0–4 สัปดาห์ 8,660)')}
+        ${pr('เคยเป็นเบาหวานมาก่อน แต่ครรภ์นี้ไม่มีรหัส O24', P.dm_history_no_o24, 'ทบทวนเวชระเบียน — ถ้าเป็น PDM ให้ลง O24.0/1/3', P.dm_history_no_o24 > 0)}
+        </tbody>`;
+    }
+    if (O) {
+      document.getElementById('ncd-out-kpis').innerHTML = [
+        kpiH('DM คุมน้ำตาลได้ (HbA1c ล่าสุด < 7%)', pct(O.dm_with_a1c ? O.dm_a1c_lt7 / O.dm_with_a1c : 0), `${fmt(O.dm_a1c_lt7)} จาก ${fmt(O.dm_with_a1c)} รายที่มีผลในปีงบ · ไม่มีผลเลย ${fmt(O.dm_no_a1c)} ราย`),
+        kpiH('HT คุมความดันได้ (ครั้งล่าสุด < 140/90)', pct(O.ht_with_bp ? O.ht_bp_ctrl / O.ht_with_bp : 0), `${fmt(O.ht_bp_ctrl)} จาก ${fmt(O.ht_with_bp)} ราย`),
+        kpiH('Admit เบาหวาน (ACSC)', fmt(O.dm_admit) + ' ครั้ง', 'ผู้ป่วยใน UC/WEL pdx E10–E14, E16.0–E16.2', O.dm_admit > 0),
+      ].join('');
+      const am = Object.keys(O.dm_admit_by_month || {}).sort();
+      chart('c-ncd-acsc', { type: 'bar', data: { labels: am.map(mLabel), datasets: [{ label: 'Admit เบาหวาน (ครั้ง)', data: am.map((m) => O.dm_admit_by_month[m]), backgroundColor: C.danger, borderRadius: 4 }] }, options: baseOpts({ scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }) });
+    }
+    refsBox('ncd-refs', [
+      ['HbA1c T2DM', 'E11 สิทธิ UC · 150 บาท/ครั้ง ≤ 2 ครั้ง/ปี ห่าง ≥ 3 เดือน · ADP 32401 · ต้องมี Authen Code', CH.moph, refLink('a', 'หน้า 30') + '<br>' + refLink('dmht')],
+      ['Cr + K ความดันรายใหม่', 'I10–I15 รายใหม่ · Cr 45 (32202) + K 40 (32103) อย่างละ 1 ครั้ง/ปี · K ต้องเป็น 32103 ไม่ใช่ ELECTROLYTE 32001', CH.moph, refLink('a', 'หน้า 30') + '<br>' + refLink('dmht')],
+      ['DM remission', 'T2DM ≥ 18 ปี ลงทะเบียน · HbA1c < 6.5% 2 ครั้งติด ห่าง ≥ 3 เดือน หลังหยุดยา 4,000 + ยังสงบอีก 3–6 เดือน 2,000 · <b>หน่วยต้องผ่านอบรม</b> (สมาคมเบาหวาน/เวชปฏิบัติ/กรมคร./สภาการพยาบาล)', CH.eclaim, refLink('a', 'หน้า 31')],
+      ['GDM', 'O24.4/O24.9 · ลงทะเบียน สอนดูแลตนเอง เจาะน้ำตาลปลายนิ้ว + OGTT 75 g หลังคลอด 1–3 เดือน · 2,620 บาท/ราย · หน่วยผ่านการประเมินตนเอง', CH.eclaim, refLink('a', 'หน้า 27') + '<br>' + refLink('dmht')],
+      ['PDM', 'O24.0/O24.1/O24.3 · HbA1c 4 ครั้ง · 8,660 (0–4 สัปดาห์) ลดถึง 1,940 (> 36 สัปดาห์) ตามอายุครรภ์ที่มาครั้งแรก', CH.eclaim, refLink('a', 'หน้า 28–29')],
+      ['ปีงบ 70 (ร่าง)', 'เลิกจ่าย HbA1c/Cr/K รายครั้ง → จ่ายตาม ACSC เบาหวาน, % DM คุมได้, % HT คุมได้ ในวงเงินปิด · ระหว่างรอประกาศ ใช้กติกาปีก่อน (ข้อ 88)', 'e-Claim (บันทึก HbA1c ล่าสุด)', refLink('tc') + '<br>' + refLink('fy70') + '<br>' + refLink('law')],
+    ], 'ดูยอดเงินโอนจริงได้ที่ ' + CH.smt + ' (หัวข้อ "เงินโอนจริงจาก สปสช.") · สรุปทั้งหมด: ' + refLink('report'));
+  }
+
+  // ---------- PP Fee Schedule + Palliative: insurance_monthly.pp_json = { "2570": {...} } จาก pp_claim.py ----------
+  function ppData() { try { const N = JSON.parse(monthly && monthly.pp_json || 'null'); return N && N[String(fy)]; } catch (e) { return null; } }
+  const thdIso = (iso) => { const [y, m, d] = String(iso).split('-').map(Number); return d + ' ' + TH_M[m] + ' ' + String(y + 543).slice(2); };
+  function drawPp() {
+    const box = document.getElementById('pp-box'), R = ppData();
+    if (!R) { box.hidden = true; return; }
+    box.hidden = false;
+    const P = R.ppfs, F = R.fy;
+    const items = [
+      ['FPG คัดกรองเบาหวาน', 'อายุ 35–59 ปี ยังไม่เป็นเบาหวาน (ไม่มีรหัส E10–E14/ยาเบาหวานก่อนวันตรวจ) · ปีละ 1 ครั้ง · 40 บาท', P.fpg, `ตรวจ FBS อายุ 35–59 ปี ${fmt(P.fpg.tested_35_59)} ราย · ตัดเพราะเป็นเบาหวานแล้ว ${fmt(P.fpg.excluded_dm)}`, [['KTB', 'FPG']], 'Z13.1/Z01.8'],
+      ['Cholesterol + HDL', 'อายุ 45–70 ปี ไม่ได้รับยาลดไขมัน · ทุก 5 ปี · 160 บาท', P.lipid, `ตรวจคู่ Chol+HDL อายุ 45–70 ปี ${fmt(P.lipid.tested_45_70)} ราย · ตัด: ได้ยาลดไขมัน ${fmt(P.lipid.excluded_drug)}, ตรวจไปแล้วใน 5 ปี ${fmt(P.lipid.excluded_5y)}`, [['KTB', 'Choles+HDL']], 'Z10.8/Z13.6'],
+      ['FIT คัดกรองมะเร็งลำไส้', 'อายุ 50–70 ปี · ทุก 2 ปี · 60 บาท · ต้องเป็นวิธี immunoassay (FIT)', P.fit, `Occult blood ทุกอายุ ${fmt(P.fit.all_ages)} ราย · อายุ 50–70 ปี ${fmt(P.fit.tested_50_70)}`, [['KTB', 'Fit_test'], ['e-Claim', 'Fit_Test']], 'Z12.1'],
+      ['HBsAg', 'คนที่เกิดก่อน พ.ศ. 2535 · ครั้งเดียวในชีวิต · 50 บาท', P.hbsag, `นับจากการสั่งตรวจ (HOSxP ไม่ลงผล) · เกิดหลัง 2535 ${fmt(P.hbsag.born_after_2535)} ราย`, [['KTB', 'HEP_B']], 'Z11.5'],
+      ['Anti-HCV', 'คนที่เกิดก่อน พ.ศ. 2535 ครั้งเดียวในชีวิต (กลุ่มเสี่ยง 5 กลุ่มตรวจได้ทุกปี) · 50 บาท', P.hcv, `เกิดหลัง 2535 ${fmt(P.hcv.born_after_2535)} ราย · เคยตรวจแล้ว ${fmt(P.hcv.repeat_lifetime)} ราย`, [['KTB', 'HEP_C']], 'Z11.5'],
+    ];
+    const V = P.vaccine, g = V.by_group || {};
+    const vc = claimedOf(F, [['KTB', 'FLU_VC'], ['MOPH Claim', 'EPI'], ['MOPH Claim', 'dT']]);
+    const est = items.reduce((s, x) => s + x[2].baht, 0) + V.baht;
+    const claimedAll = items.map((x) => claimedOf(F, x[4]));
+    const gapSum = items.reduce((s, x, i) => s + (claimedAll[i] ? Math.max(0, x[2].baht - claimedAll[i].baht) : 0), 0);
+    document.getElementById('pp-kpis').innerHTML = [
+      kpiH('งานที่ทำแล้วเข้าเกณฑ์เบิก (ประมาณ)', fmt(est) + ' บาท', `ปีงบ ${F} · ` + (R.partial ? `ข้อมูลถึง ${thdIso(R.asof)}` : 'ทั้งปีงบ')),
+      kpiH('ทำแล้วแต่ยังไม่เห็นในยอดเบิก (แล็บ)', claimedAll.some(Boolean) ? fmt(gapSum) + ' บาท' : '–', claimedAll.some(Boolean) ? 'รวมเฉพาะรายการที่ HOSxP มากกว่าไฟล์เคลม' : 'ยังไม่มีไฟล์ผลงานเคลมปีงบนี้', gapSum > 0),
+      kpiH('FPG เข้าเกณฑ์', fmt(P.fpg.eligible) + ' ราย', `ลงรหัส Z13.1/Z01.8 แล้ว ${fmt(P.fpg.coded)} ราย`, P.fpg.coded < P.fpg.eligible),
+      kpiH('วัคซีน (คนไทย)', fmt(V.doses) + ' เข็ม', `ไข้หวัดใหญ่ ${fmt(g.flu || 0)} · EPI ${fmt(g.epi || 0)} · dT/TT ${fmt(g.dt || 0)}`),
+    ].join('');
+    const row = (x, c) => `<tr><td><b>${esc(x[0])}</b><br><span class="note">${esc(x[1])}</span></td><td class="note">${esc(x[3])}</td>
+      <td class="num"><b>${fmt(x[2].eligible)}</b></td><td class="num">${fmt(x[2].baht)}</td>
+      <td class="num">${x[2].eligible ? `${fmt(x[2].coded)} <span class="note">(${esc(x[5])})</span>` : '–'}</td><td>${claimCell(c)}</td><td>${gapCell(x[2].baht, c)}</td></tr>`;
+    document.getElementById('pp-table').innerHTML = `<thead><tr><th>รายการ · เงื่อนไข</th><th>ใน HOSxP</th><th class="num">เข้าเกณฑ์ (ราย)</th><th class="num">มูลค่า (บาท)</th><th class="num">ลงรหัส Z ครบ</th><th>เบิกได้จริง</th><th>ส่วนต่าง</th></tr></thead><tbody>
+      ${items.map((x, i) => row(x, claimedAll[i])).join('')}
+      <tr><td><b>ค่าบริการฉีดวัคซีน</b><br><span class="note">ทุกวัยตามแผนสร้างเสริมภูมิคุ้มกัน · 20 บาท/เข็ม (ตัววัคซีนได้จากส่วนกลาง) · ไม่รวมพิษสุนัขบ้า</span></td>
+        <td class="note">ไข้หวัดใหญ่ ${fmt(g.flu || 0)} · EPI ${fmt(g.epi || 0)} · dT/TT ${fmt(g.dt || 0)} เข็ม</td><td class="num"><b>${fmt(V.doses)}</b> เข็ม</td><td class="num">${fmt(V.baht)}</td><td class="num">–</td>
+        <td>${claimCell(vc)}<br><span class="note">FLU_VC + EPI + dT (ยอดในไฟล์อาจรวมรายการอื่น)</span></td><td class="note">เทียบโดยประมาณ</td></tr></tbody>`;
+    document.getElementById('pp-act').innerHTML = `<h3 style="font-size:15px;margin:12px 0 4px;color:var(--primary-dark)">ทำอะไรต่อ</h3><ul class="note" style="margin:0;padding-left:18px">
+      <li><b>FPG / lipid</b>: ตกลงกับคลินิกและห้อง lab ให้ visit ที่ตรวจคัดกรองลงรหัส Z13.1 (เบาหวาน) หรือ Z10.8 (ไขมัน) และส่ง KTB ภายในเดือน · ผู้ป่วยความดันที่ยังไม่เป็นเบาหวานนับเป็น "กลุ่มเสี่ยง" ได้</li>
+      <li><b>HBsAg / anti-HCV</b>: ยอด KTB อาจมากกว่า HOSxP เพราะรวมงานรณรงค์ที่บันทึกนอกระบบ lab — ส่วนต่างติดลบไม่ใช่ปัญหา</li>
+      <li><b>FIT</b>: ตรวจว่าชุดตรวจที่ใช้เป็น FIT (immunoassay) ไม่ใช่ guaiac — ถ้าใช่ ลง Z12.1 + รหัส TMLT 300222</li>
+      <li><b>สิทธิอื่น</b>: ข้าราชการ/ประกันสังคมที่เป็นคนไทยก็เบิก PPFS ได้ — ตรวจว่าโปรแกรมส่งเบิกไม่ได้กรองเฉพาะ UC</li></ul>`;
+    refsBox('pp-refs', [
+      ['FPG (ข้อ 64)', 'Z01.8 (หรือ Z13.1) + TMLT 320281 / CSMBS 32203 / NHSO 12003', CH.ktb, refLink('ppman', 'หน้า 106') + '<br>' + refLink('ppfs')],
+      ['Cholesterol + HDL (ข้อ 66)', 'Z10.8 + TMLT 320259 / CSMBS 32004 · (ข้อ 65 อายุ 35 ปีขึ้นไป ใช้เฉพาะ กทม.)', CH.ktb, refLink('ppman', 'หน้า 110') + '<br>' + refLink('ppfs')],
+      ['FIT (ข้อ 71)', 'Z12.1 + TMLT 300222 / 300013 / 300127 · CSMBS 31209', CH.ktb + ' หรือ e-Claim (ไฟล์ปีงบ 69 พบทั้ง 2 ช่อง)', refLink('ppman', 'หน้า 116–117')],
+      ['HBsAg (ข้อ 72)', 'Z11.5 + TMLT 350162 / 350163 · CSMBS 36318 / 36319', CH.ktb, refLink('ppman', 'หน้า 118') + '<br>' + refLink('ppfs')],
+      ['Anti-HCV (ข้อ 73)', 'Z11.5 + TMLT 351425', CH.ktb, refLink('ppman', 'หน้า 119') + '<br>' + refLink('pp7', 'หน้า 13')],
+      ['ค่าฉีดวัคซีน (ข้อ 78–92)', 'dT: Z23.5/Z23.6 + TMT · ไข้หวัดใหญ่: Z25.1 + TMT (GPU) · ปีงบ 70 เพิ่ม PCV เด็ก 2, 4, 12 เดือน', CH.ktb + ' / หมอพร้อม', refLink('ppman', 'หน้า 126–144') + '<br>' + refLink('pp7', 'หน้า 5')],
+    ], 'งบ PP คิดจากประชากรไทยทุกสิทธิ (' + refLink('pp7', 'หน้า 5') + ') · อัตราปีงบ 70 ยังไม่ประกาศ ใช้อัตราปีงบ 69 · ตรวจฉบับลงนามที่ ' + refLink('law') + ' · สรุปทั้งหมด: ' + refLink('report'));
+    document.getElementById('pp-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · นับเฉพาะงานที่ทำใน รพ. (lab_order / ovst_vaccine ใน HOSxP) คนสัญชาติไทย · เข้าเกณฑ์ = คนละ 1 ครั้งในปีงบ · ไม่ได้ตรวจ Authen Code · ที่มา: Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/pp_claim.py`;
+  }
+
+  function drawPal() {
+    const box = document.getElementById('pal-box'), R = ppData(), L = R && R.palliative;
+    if (!L) { box.hidden = true; return; }
+    box.hidden = false;
+    const est = L.baht_months + L.baht_death, c = claimedOf(R.fy, [['e-Claim', 'Palliative_care']]);
+    document.getElementById('pal-kpis').innerHTML = [
+      kpiH('ผู้ป่วยที่มีรหัส Z51.5', fmt(L.patients) + ' ราย', `มี Z71.8 (ACP) ${fmt(L.with_acp_z718)} · ยังไม่มี ${fmt(L.no_acp)}`, L.no_acp > 0),
+      kpiH('เข้าเกณฑ์เบิก (ประมาณ)', fmt(est) + ' บาท', `${fmt(L.patient_months)} คน-เดือน × 1,000 + เสียชีวิต ${fmt(L.deaths)} × 3,000`),
+      kpiH('เบิกได้จริง (e-Claim)', c ? fmt(c.baht) + ' บาท' : '–', c ? c.asof : 'ยังไม่มีไฟล์ผลงานเคลมปีงบนี้', !!c && c.baht < est),
+      kpiH('ยา opioid ครบ 3 กลุ่ม', L.opioid_3_groups ? 'ครบ' : 'ยังไม่ครบ', L.opioid_3_groups ? 'เบิกค่ายา 750 บาท/เดือนได้ (มะเร็ง)' : 'เบิกค่ายา 750 บาท/เดือนไม่ได้', !L.opioid_3_groups),
+    ].join('');
+    const ms = Object.keys(L.by_month || {}).sort();
+    chart('c-pal', { type: 'bar', data: { labels: ms.map(mLabel), datasets: [{ label: 'ผู้ป่วย Z51.5 (เดือนที่เบิกได้)', data: ms.map((m) => L.by_month[m]), backgroundColor: C.primary, borderRadius: 4 }] }, options: baseOpts({ scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }) });
+    const G = L.opioid_groups || {}, NM = { 'ก_morphine_syrup_IR': 'ก. Morphine syrup + Morphine IR tab', 'ข_morphine_SR': 'ข. Morphine SR (MST)', 'ค_fentanyl_patch': 'ค. Fentanyl patch' };
+    document.getElementById('pal-op').innerHTML = `<thead><tr><th>กลุ่ม</th><th>รายการใน HOSxP (เปิดใช้)</th></tr></thead><tbody>
+      ${Object.keys(NM).map((k) => `<tr><td>${esc(NM[k])}</td><td>${(G[k] || []).length ? '✅ ' + esc(G[k].join(', ')) : '<b style="color:var(--danger)">❌ ไม่มี</b>'}</td></tr>`).join('')}
+      <tr><td colspan="2" class="note">ผู้ป่วย Z51.5 ที่ได้ opioid ในปีงบนี้ ${fmt(L.opioid_patients)} ราย · กลุ่ม ก. ต้องมี morphine IR tab ด้วย (ระบบตรวจจากชื่อยา ให้ห้องยายืนยัน)</td></tr></tbody>`;
+    refsBox('pal-refs', [
+      ['ค่าดูแลที่บ้าน', 'ICD-10 ตามที่ สธ. กำหนด + Z51.5 + Z71.8 (ACP) · มีรายงานการดูแลที่บ้าน · 1,000 บาท/เดือน สูงสุด 6 เดือนนับจากเยี่ยมบ้านครั้งแรก', CH.eclaim, refLink('a', 'หน้า 81')],
+      ['เสียชีวิต', '+3,000 บาท (ตรวจกับทะเบียนราษฎร์)', CH.eclaim, refLink('a', 'หน้า 81')],
+      ['ค่ายาอนุพันธ์ฝิ่น (มะเร็ง)', '750 บาท/คน/เดือนจนเสียชีวิต · ใบอนุญาตยาเสพติดประเภท 2 + ยาครบ 3 กลุ่ม (ก) morphine syrup + IR tab (ข) morphine SR (ค) fentanyl patch · สั่งครอบคลุม ≥ 1 เดือน', CH.eclaim, refLink('a', 'หน้า 81')],
+    ], 'ปีงบ 70 ยังไม่พบการเปลี่ยนกติกา palliative · สรุปทั้งหมด: ' + refLink('report'));
+    document.getElementById('pal-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · ทุกสิทธิ (ไม่กรอง UC) · "เสียชีวิต" จาก patient.death/deathday ใน HOSxP · ไม่ได้ตรวจรายงานเยี่ยมบ้าน · ที่มา: pp_claim.py`;
   }
 
   // ---------- อัตราครองเตียง (beds จาก insurance-sync) ----------
@@ -1261,6 +1454,7 @@ td small { display: block; color: var(--text-light); }
       const keep = pSrc.value;
       pSrc.innerHTML = Object.keys(province.sources).sort().map((x) => `<option${x === (keep || 'e-Claim') ? ' selected' : ''}>${esc(x)}</option>`).join('');
       fillItems(); drawProvince(); drawGap(); drawSrcCards(); drawRevenue();
+      if (monthly && fy) { drawNcd(); drawPp(); drawPal(); }
     });
 
     // ส่งไฟล์ผลงานเคลม: เลือกไฟล์ → ตรวจ/แก้ช่องทางและวันที่ข้อมูล → บันทึก
