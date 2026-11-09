@@ -113,6 +113,11 @@ td.use .mm-miss { color: #b45309; font-size: 12px; }
 .pstk .pwarn .pic { width: 7mm; height: 7mm; font-size: 15pt; }
 td.use .pic-ok { color: #1A5E38; font-size: 12.5px; }
 td.use .pic-warn { color: #b45309; font-size: 12px; }
+td.use .use-tools { margin-top: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+td.use .use-edited { background: #FEF3C7; color: #92400E; border-radius: 6px; padding: 1px 6px; font-size: 11.5px; font-weight: 600; }
+td.use .use-was { color: #94a3b8; font-size: 11.5px; text-decoration: line-through; }
+td.use .use-ed { display: flex; flex-direction: column; gap: 4px; min-width: 240px; }
+td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; border: 1px solid var(--primary); border-radius: 6px; }
 
 @media print {
   body { background: #fff; }
@@ -370,6 +375,13 @@ const NOBRIDGE = '⚠️ ต่อ HOSxP ไม่ได้ — ใช้ได�
 
 let QUEUE = [], CUR = null, SEL_HN = '';
 const CHECK = {}, COPIES = {};   // guid → เลือกพิมพ์ / จำนวนดวง
+// แก้วิธีใช้ก่อนพิมพ์ (ผู้ใช้ขอ 2026-11-09): guid → 3 บรรทัดที่แก้ — ใช้กับสติกเกอร์ ฉลากแปล และฉลากภาพ
+// ไม่แก้ใน HOSxP · จำไว้ในเครื่องนี้ 2 วัน (เผื่อรีโหลดหน้า/ดึงใหม่) · USE_EDITING = guid ที่กำลังเปิดช่องแก้
+const USE_EDIT_KEY = 'rx_use_edit';
+let USE_EDIT = (() => { try { return JSON.parse(localStorage.getItem(USE_EDIT_KEY) || '{}'); } catch (e) { return {}; } })();
+const USE_EDITING = new Set();
+(() => { const cut = Date.now() - 2 * 864e5; Object.keys(USE_EDIT).forEach(g => { if (!(USE_EDIT[g].at > cut)) delete USE_EDIT[g]; }); })();
+function useEditSave() { try { localStorage.setItem(USE_EDIT_KEY, JSON.stringify(USE_EDIT)); } catch (e) {} }
 
 // ภาษาฉลาก (ผู้ป่วยอ่านไทยไม่ได้): th / mm (พม่า) / en — จำตาม HN ในเครื่องนี้ มาครั้งหน้าเลือกให้เอง
 const LANGS = { th: 'ไทย', mm: '<span class="mm">မြန်မာ</span> พม่า', en: 'English' };
@@ -401,7 +413,7 @@ function setPic(hn, on) {
   try { localStorage.setItem('rx_pic_hns', JSON.stringify(s.slice(-500))); } catch (e) {}
   render();
 }
-function picParse(it) { return window.TphPicto ? TphPicto.parse(it.line1, it.line2, it.line3, { hint: [it.hint, it.advice].filter(Boolean).join(' '), antibiotic: it.antibiotic }) : { error: 'โหลดตัวแปลงภาพไม่ได้' }; }
+function picParse(it) { const L = useOrig(it); return window.TphPicto ? TphPicto.parse(L[0], L[1], L[2], { hint: [it.hint, it.advice].filter(Boolean).join(' '), antibiotic: it.antibiotic }) : { error: 'โหลดตัวแปลงภาพไม่ได้' }; }
 // สรุปสั้นๆ ในตารางให้เภสัชตรวจก่อนพิมพ์
 function picSummary(r) {
   const T = TphPicto.TH, amt = r.amount ? (r.amount.text ? r.amount.text + ' ' : '') + r.amount.unit : '';
@@ -511,8 +523,11 @@ function drugNameAlts(it) {
 }
 // บรรทัดวิธีใช้ 3 บรรทัด + (pq) ตาม StickerDetailReport.rtm: ยาที่ตั้ง print_sticker_pq = Y และจำนวน > 1
 // ต่อท้ายบรรทัด 3 ด้วยข้อความในวงเล็บก่อน "/" ของบรรทัด 3
+// วิธีใช้ 3 บรรทัดที่ใช้จริง: ที่ผู้ใช้แก้ (ถ้ามี) ไม่งั้นตาม HOSxP
+function useOrig(it) { const e = USE_EDIT[it.guid]; return e ? e.l.slice() : [it.line1, it.line2, it.line3].map(x => String(x || '').trim()); }
 function usageLines(it) {
-  const l = [it.line1, it.line2, it.line3].map(x => String(x || '').trim());
+  if (USE_EDIT[it.guid]) return useOrig(it);   // ที่แก้เอง พิมพ์ตามที่พิมพ์ไว้ ไม่ต่อ (pq)
+  const l = useOrig(it);
   if (it.pq === 'Y' && +it.qty > 1) {
     const a = l[2].indexOf('('), b = l[2].indexOf('/');
     if (a >= 0 && b > a) l[2] += ' (' + l[2].slice(a + 1, b) + ') ';
@@ -526,6 +541,18 @@ function render() {
   if (!vs.length) { det.innerHTML = `<div class="empty">ไม่พบ visit วันนี้/เมื่อวานของ HN ${escHtml(CUR ? CUR.hn : '')}</div>`; return; }
   const at = CUR.now.slice(11, 16), lang = labelLang(CUR.hn);
   const useCell = it => {
+    const g = escHtml(it.guid);
+    if (USE_EDITING.has(it.guid)) {
+      const L = USE_EDIT[it.guid] ? USE_EDIT[it.guid].l : usageLines(it);
+      return `<div class="use-ed">${[0, 1, 2].map(i => `<input type="text" id="ue-${g}-${i}" value="${escHtml(L[i] || '')}" placeholder="บรรทัด ${i + 1}" onkeydown="if(event.key==='Enter')useEditDone('${g}');if(event.key==='Escape')useEditCancel('${g}')">`).join('')}
+        <div><button class="btn btn-sm btn-gold" onclick="useEditDone('${g}')">✓ ใช้วิธีใช้นี้</button> <button class="btn btn-sm" onclick="useEditCancel('${g}')">ยกเลิก</button></div></div>`;
+    }
+    const ed = USE_EDIT[it.guid];
+    const tools = `<div class="use-tools"><button class="btn btn-sm" onclick="useEditOpen('${g}')" title="แก้วิธีใช้บนสติกเกอร์ (ไม่แก้ใน HOSxP)">✏️ แก้วิธีใช้</button>${ed ? ` <span class="use-edited">แก้แล้ว</span> <button class="btn btn-sm" onclick="useEditReset('${g}')" title="กลับไปใช้วิธีใช้ตาม HOSxP">↺ ตาม HOSxP</button>` : ''}</div>`
+      + (ed ? `<div class="use-was">HOSxP: ${escHtml([it.line1, it.line2, it.line3].map(x => String(x || '').trim()).filter(Boolean).join(' / ') || '-')}</div>` : '');
+    return useCell0(it) + tools;
+  };
+  const useCell0 = it => {
     const th = usageLines(it), tr = lang !== 'th' ? usageTr(it, lang) : [];
     const txt = th.map((l, i) => !l ? '' : escHtml(l) + (lang === 'th' || tr[i] === '' ? '' : tr[i] === null
       ? '<div class="mm-miss">⚠️ แปลไม่ได้ — พิมพ์เป็นภาษาไทย</div>' : `<div class="${lang}">${escHtml(tr[i])}</div>`)).filter(Boolean).join('<br>');
@@ -562,6 +589,20 @@ function render() {
     </div>`;
   }).join('');
 }
+
+function useItem(g) { for (const v of (CUR && CUR.visits) || []) for (const it of v.items) if (it.guid === g) return it; return null; }
+function useEditOpen(g) { USE_EDITING.add(g); render(); const el = document.getElementById(`ue-${g}-0`); if (el) { el.focus(); el.select(); } }
+function useEditCancel(g) { USE_EDITING.delete(g); render(); }
+function useEditDone(g) {
+  const it = useItem(g); if (!it) return;
+  const l = [0, 1, 2].map(i => { const el = document.getElementById(`ue-${g}-${i}`); return el ? el.value.replace(/\s+/g, ' ').trim() : ''; });
+  USE_EDITING.delete(g);
+  const orig = [it.line1, it.line2, it.line3].map(x => String(x || '').trim());
+  if (l.join('|') === usageLines(Object.assign({}, it, { guid: '' })).join('|') || l.join('|') === orig.join('|')) delete USE_EDIT[g];
+  else USE_EDIT[g] = { l, at: Date.now() };
+  useEditSave(); render();
+}
+function useEditReset(g) { delete USE_EDIT[g]; USE_EDITING.delete(g); useEditSave(); render(); }
 
 // ── พิมพ์ ──
 function stickerHtml(v, it, idx, total, now) {
