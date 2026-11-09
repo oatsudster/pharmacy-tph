@@ -1,9 +1,10 @@
 # One-command HOSxP Bridge install/reinstall straight from GitHub Pages (no zip, no Unblock, no Extract)
 #   Win+R -> paste -> Enter:
-#   powershell -ep bypass -c "[Net.ServicePointManager]::SecurityProtocol=3072;iex(New-Object Net.WebClient).DownloadString('https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/web-install.ps1')"
+#   powershell -ep bypass -c "$f=$env:TEMP+'\hxb.ps1';[Net.ServicePointManager]::SecurityProtocol=3072;(New-Object Net.WebClient).DownloadFile('https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/web-install.ps1',$f);& $f"
+#   (saved to a file first, not iex(DownloadString): Bitdefender blocks that form)
 # Downloads the Windows files listed in update.json + installer/install.ps1 into %TEMP%, then runs install.ps1
 # (keeps the db.json already in %LOCALAPPDATA%\HOSxPBridge; db.json is never on the web).
-# Keep this file ASCII-only: it is run via iex from a downloaded string, so the code page must not matter.
+# Keep this file ASCII-only: it is saved without BOM and run (older copies of the page run it via iex), so the code page must not matter.
 $ErrorActionPreference = 'Stop'
 $base = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
