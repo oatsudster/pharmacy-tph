@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com; img-src 'self' data: blob:; frame-ancestors 'none';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>งานเบิกวัคซีน (EPI / VMI อภ.) — รพ.ถ้ำพรรณรา</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
+<link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
+<link href="lib/noto-sans-thai.css" rel="stylesheet">
+<script src="lib/session-timeout.js"></script>
+<script src="lib/firebase-app-compat-10.js"></script>
+<script src="lib/firebase-firestore-compat-10.js"></script>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--ink:#1d2733;--mute:#5f6b7a;--line:#dde3ea;--pri:#1A5E38;--pri2:#e6f2ea;--ok:#1d7a46;--okbg:#e4f5ea;--warn:#a35b00;--warnbg:#fff3df;--bad:#b3261e;--badbg:#fde8e6}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#11161c;--card:#1a212a;--ink:#e6edf3;--mute:#9aa7b4;--line:#2c3743;--pri:#6fcf97;--pri2:#163323;--ok:#5fd394;--okbg:#14301f;--warn:#f0b35a;--warnbg:#3a2a10;--bad:#ff8a80;--badbg:#3d1714}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'Noto Sans Thai',Sarabun,system-ui,sans-serif}
+.hero{background:linear-gradient(120deg,#124228 0%,#1A5E38 60%,#2d6e45 100%);color:#fff;padding:14px 16px 18px}
+.hero-in{max-width:1600px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hero .back{color:#fff;text-decoration:none;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:999px;font-size:13px}
+.hero h1{margin:0;font-size:20px}.hero .sub{font-size:12.5px;opacity:.85;margin-top:2px}.hero .sub a{color:#fff}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;font:inherit;color:var(--mute);cursor:pointer}
+nav button.on{background:var(--pri2);color:var(--pri);font-weight:700}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 8px;font-size:1.15rem}.card h3{margin:12px 0 6px;font-size:1rem}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;position:relative;padding:8px 8px 8px 44px;border-bottom:1px dashed var(--line)}
+.steps li:before{content:counter(s);position:absolute;left:6px;top:8px;width:28px;height:28px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.9rem}
+.steps li label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.steps li input{margin-top:6px}
+.tip{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 12px;margin:8px 0}
+.okbox{background:var(--okbg);color:var(--ok);border-radius:8px;padding:8px 12px;margin:8px 0}
+.badbox{background:var(--badbg);color:var(--bad);border-radius:8px;padding:8px 12px;margin:8px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.flow span{background:var(--pri2);color:var(--pri);padding:6px 10px;border-radius:8px;font-weight:600}
+.flow i{color:var(--mute);font-style:normal}
+dl.terms{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}
+dl.terms dt{font-weight:700;color:var(--pri)}dl.terms dd{margin:0}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:600;background:var(--bg)}
+td.n,th.n{text-align:right}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+input[type=number]{width:80px}
+.wrap{overflow-x:auto}
+.btn{border:1px solid var(--pri);background:var(--pri);color:#fff;border-radius:8px;padding:7px 14px;font:inherit;cursor:pointer}
+.btn.ghost{background:none;color:var(--pri)}
+.btn.sm{padding:2px 8px;font-size:.85rem}
+.btn.del{border-color:var(--bad);background:none;color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;white-space:nowrap;padding:1px 8px;border-radius:99px;font-size:.85rem;font-weight:600}
+.pill.ok{background:var(--okbg);color:var(--ok)}.pill.warn{background:var(--warnbg);color:var(--warn)}.pill.bad{background:var(--badbg);color:var(--bad)}
+.vac{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+.vac.off{opacity:.55}
+.vhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.vhead b{font-size:1.02rem}
+.muted{color:var(--mute);font-size:.9rem}
+pre.copy{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font:14px/1.5 'Noto Sans Thai',Sarabun,monospace;max-height:340px;overflow:auto}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.grid2 label{display:flex;flex-direction:column;gap:2px;font-size:.92rem;color:var(--mute)}
+@media print{header,nav,.noprint{display:none!important}section{display:none!important}section.printme{display:block!important}body{background:#fff;color:#000}.card{border:0}}
+</style>
+<link rel="stylesheet" href="lib/theme.css">
+</head>
+<body>
+<header class="hero">
+  <div class="hero-in">
+    <a class="back" href="index.html">← หน้าหลัก</a>
+    <div>
+      <h1>💉 งานเบิกวัคซีน (EPI Routine · VMI อภ.)</h1>
+      <div class="sub" id="updated">นับสต็อก → รู้ว่า อภ. จะส่งกี่ขวด → พาทำทีละขั้นบนเว็บ <a href="https://scm.gpo.or.th/vmi_next" target="_blank" rel="noopener">scm.gpo.or.th</a></div>
+    </div>
+  </div>
+</header>
+<nav id="tabs" aria-label="หัวข้อ">
+  <button data-t="start" class="on">① เริ่มที่นี่</button>
+  <button data-t="count">② นับสต็อก + บันทึก Inventory</button>
+  <button data-t="recv">③ รับวัคซีน</button>
+  <button data-t="extra">④ เบิกเพิ่ม / ปรับ ROP</button>
+  <button data-t="hist">⑤ ประวัติ + ตั้งค่า</button>
+</nav>
+<main>
+
+<!-- ① START -->
+<section id="start" class="on">
+  <div class="card">
+    <h2>ระบบนี้ทำงานยังไง (อ่าน 2 นาที)</h2>
+    <p>วัคซีน EPI Routine เป็นระบบ <b>VMI</b> คือ <b>เราไม่ได้ "สั่ง" วัคซีนเอง</b> เราแค่ <b>บอกยอดคงเหลือ</b> ให้ อภ. รู้ตามรอบ แล้ว อภ. คำนวณและส่งมาให้เอง</p>
+    <div class="flow"><span>นับวัคซีนในตู้ (ขวด)</span><i>→</i><span>กรอกยอดบนเว็บ + SAVE</span><i>→</i><span>กด Post Inventory</span><i>→</i><span>อภ. ส่งวัคซีนมา</span><i>→</i><span>กด "รับยา" + PIN บนเว็บ</span><i>↺</i></div>
+    <p><b>กติกาที่ อภ. ใช้คำนวณ</b> (จากคู่มือ อภ. ก.พ. 2564):</p>
+    <ul>
+      <li>ถ้า <b>ยอดคงเหลือ (Onh รพ.) น้อยกว่า ROP</b> → อภ. จะส่งให้</li>
+      <li>จำนวนที่ส่ง = <b>MaxLimit − Onh</b> แล้ว <b>ปัดขึ้นให้เต็ม "ขนาดบรรจุ"</b> (เช่น BCG ขนาดบรรจุ 100 dose = 10 ขวด) → ยอดหลังรับจึง <b>เกิน MaxLimit ได้</b> แต่ไม่เกิน 1 ขนาดบรรจุ</li>
+      <li>ROP / MaxLimit / ขนาดบรรจุ เป็นค่าที่ อภ. กำหนด เรากรอกแค่ <b>Onh (ขวด)</b> ของแต่ละ Lot = ยอดคงเหลือจริง (ช่อง Onh (Dose) สีเทา เว็บคูณให้เอง)</li>
+      <li>ถ้ายอดคงเหลือ ≥ ROP → รอบนั้น <b>ไม่ส่ง</b> (ซึ่งเป็นเรื่องปกติ)</li>
+    </ul>
+    <div class="badbox">⚠️ <b>ยังไม่ได้กด "รับยา" ใบนำส่งเก่า = บันทึก Inventory รอบใหม่ไม่ได้</b> ทุกครั้งที่ของมาถึง ต้องเข้าเว็บกดรับให้เสร็จ</div>
+    <div class="tip">⚠️ กดแค่ SAVE ยังไม่พอ ต้องกด <b>Post Inventory</b> ข้อมูลถึงจะส่งไปที่ อภ.</div>
+  </div>
+
+  <div class="card">
+    <h2>คำศัพท์บนหน้าเว็บ</h2>
+    <dl class="terms">
+      <dt>ROP</dt><dd>ประมาณการใช้วัคซีนต่อเดือน (หน่วย dose) ที่ สปสช. อนุมัติให้ รพ. เป็นเกณฑ์ว่าจะส่งเมื่อไร</dd>
+      <dt>Onhand / Onh รพ.</dt><dd>ยอดคงเหลือในคลัง รพ. หน้าบันทึก Inventory กรอกช่อง <b>Onh (ขวด)</b> แยกตาม Lot แล้วเว็บคูณเป็น Onh (Dose) ให้ อภ. ใช้ค่า dose นี้คำนวณ</dd>
+      <dt>MaxLimit</dt><dd>เพดานที่ อภ. เติมให้ (≈ 1.5 × ROP)</dd>
+      <dt>ขนาดบรรจุ</dt><dd>หน่วยที่ อภ. ส่งต่อครั้ง (dose) ShipQty จะเป็นทวีคูณของค่านี้เสมอ</dd>
+      <dt>ShipQty</dt><dd>จำนวน dose ที่ อภ. จะส่งรอบนี้</dd>
+      <dt>บันทึก Inventory</dt><dd>เมนูกรอกยอดคงเหลือแยกตาม Lot</dd>
+      <dt>เพิ่ม Lot / Zero Onhand</dt><dd>ใช้เมื่อ Lot ในตู้ไม่ขึ้นในรายการ หรือวัคซีนตัวนั้นหมดเกลี้ยง (เลือก Zero Onhand)</dd>
+      <dt>Post Inventory</dt><dd>ปุ่มส่งข้อมูลจริง (ต้องกดหลัง SAVE)</dd>
+      <dt>ประวัติการบันทึกข้อมูล</dt><dd>ดูว่ารอบนี้ อภ. จะส่งอะไร (คอลัมน์ Ship Qty หน่วย dose) และช่วงวันที่จะส่ง</dd>
+      <dt>รับยา + PIN</dt><dd>ยืนยันว่าได้รับของตามใบนำส่งแล้ว (PIN ตั้ง/เปลี่ยนได้ที่ Setting)</dd>
+      <dt>เบิกวัคซีนเพิ่ม</dt><dd>ขอเพิ่มระหว่างรอบเมื่อของไม่พอ สปสช. อนุมัติวันถัดไป</dd>
+      <dt>FM3 EPI Routine</dt><dd>ขอปรับค่า ROP ถาวรเมื่อยอดใช้จริงเปลี่ยน</dd>
+      <dt>Download COA</dt><dd>ใบวิเคราะห์คุณภาพวัคซีนตาม Lot</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h2>ข้อมูลของ รพ.ถ้ำพรรณรา ที่หาเจอจากเว็บ อภ.</h2>
+    <ul>
+      <li>HCODE <b>11339</b> · VMI CODE <b>15800025</b> (จากไฟล์ "แผนกระจาย PCV (initial)" ของ อภ.)</li>
+      <li><b>PCV10</b> (ตัวใหม่ เริ่ม ต.ค. 69) อภ. ส่ง Initial Stock ให้อัตโนมัติ <b>15 ขวด (5 dose/ขวด)</b> กำหนดถึง รพ. <b>20/10/69</b> ถ้าได้รับแล้วอย่าลืมกด "รับยา" และนับรวมในรอบถัดไป</li>
+      <li><b>JE เชื้อตาย</b> เบิกพร้อมรอบปกติได้ แต่ให้เขียนในช่องหมายเหตุว่า <code>เบิก JE เชื้อตาย จำนวน x ขวด</code> (กันส่งสลับกับ JE เชื้อเป็น)</li>
+      <li>เข้าเว็บ: <a href="https://scm.gpo.or.th/vmi_next" target="_blank" rel="noopener">scm.gpo.or.th/vmi_next</a> → Login ด้วย Username/Password ของ รพ. → โครงการ <b>EPI1-วัคซีน EPI Routine</b> (หมวด สปสช.)</li>
+      <li>ลืมรหัส / ผู้รับผิดชอบเปลี่ยน: เว็บ อภ. มี "ฟอร์มเปลี่ยนแปลงรายชื่อผู้รับผิดชอบโครงการ" ในหน้าข่าว EPI Routine</li>
+      <li>ติดต่อ อภ.: ระบบงาน/IT <b>02-203-8253</b> · กลุ่มงานบริหารผลิตภัณฑ์ <b>02-203-8908-9</b></li>
+      <li>คู่มือเต็มของ อภ.: <a href="https://scm.gpo.or.th/vmi-static/projects/epi1/2021/01022021/guide_EPI1_64.pdf" target="_blank" rel="noopener">คู่มือการเบิกวัคซีน Routine (ก.พ. 2564)</a></li>
+    </ul>
+    <p class="muted">หน้านี้ไม่เก็บ Username/Password ของ รพ. · ยอดสต็อก/ประวัติ ซิงค์ผ่านฐานข้อมูลกลางของเว็บห้องยา (เปิดเครื่องไหนก็เห็นข้อมูลเดียวกัน) และสำรองเป็นไฟล์ได้ที่แท็บ ⑤</p>
+  </div>
+</section>
+
+<!-- ② COUNT -->
+<section id="count">
+  <div class="card">
+    <h2>⚡ คำนวณด่วน: กรอกขวดที่เหลือ → รู้ว่า อภ. จะส่งกี่ขวด</h2>
+    <p class="muted">สูตร อภ.: ถ้า Onh &lt; ROP → ส่ง = ปัดขึ้น(MaxLimit − Onh) ให้เต็มขนาดบรรจุ · ถ้า Onh ≥ ROP → ไม่ส่ง · ตัวที่มีแยก Lot ด้านล่าง จะใช้ผลรวมจาก Lot</p>
+    <div class="tip">บนเว็บ (หน้า บันทึก Inventory) กรอกช่อง <b>Onh (ขวด)</b> ของแต่ละ Lot · ช่อง Onh (Dose) สีเทาเว็บคิดเอง ต้องได้เท่ากับคอลัมน์ "Onh (Dose)" ในตารางนี้ · ถ้าวัคซีนตัวไหนมีหลาย Lot ให้นับแยก Lot ในส่วน "นับสต็อกละเอียด" ด้านล่าง</div>
+    <div class="wrap"><table><thead><tr><th>วัคซีน</th><th class="n" style="background:var(--pri2);color:var(--pri)">กรอกช่อง Onh (ขวด)</th><th class="n">Onh (Dose)<div class="muted">เว็บคิดให้</div></th><th class="n">ROP</th><th class="n">MaxLimit</th><th class="n">ขนาดบรรจุ</th><th class="n">อภ. จะส่ง</th><th class="n">หลังรับ</th></tr></thead><tbody id="quick"></tbody></table></div>
+    <details style="margin-top:10px"><summary><b>📥 อัปเดต ROP / MaxLimit / ขนาดบรรจุ จากไฟล์ Excel ของ อภ.</b></summary>
+      <p class="muted">เปิดไฟล์ "รายละเอียดการบันทึกข้อมูล - EPI1" → เลือกตารางตั้งแต่แถว No ถึงแถวสุดท้าย → Ctrl+C → วางในช่องนี้ → กด อัปเดต (ถ้ามี ShipQty ด้วย จะเทียบกับที่โปรแกรมคำนวณให้ดู)</p>
+      <textarea id="pasteGpo" rows="5" style="width:100%" placeholder="วางตารางจาก Excel ที่นี่"></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" onclick="importGpo()">อัปเดต</button><span id="gpoMsg" class="muted"></span></div>
+    </details>
+  </div>
+  <div class="card">
+    <h2>นับสต็อกละเอียด (แยกตาม Lot / วันหมดอายุ) — ไม่บังคับ</h2>
+    <p class="muted">ครั้งแรก: เปิดหน้า "บันทึก Inventory" บนเว็บ แล้วค่า ROP / MaxLimit / ขนาดบรรจุ ใส่ไว้แล้วจากไฟล์ อภ. 10/11/69 (ถ้า อภ. เปลี่ยน ให้วางไฟล์ใหม่ที่ "คำนวณด่วน") ตัวไหน รพ. ไม่ได้ใช้ให้เอาติ๊ก "ใช้" ออก</p>
+    <div class="row noprint">
+      <button class="btn ghost" onclick="printSheet()">🖨️ พิมพ์ใบนับสต็อก (ไปนับที่ตู้)</button>
+      <label class="row"><input type="checkbox" id="showOff" onchange="renderCount()"> แสดงตัวที่ไม่ได้ใช้</label>
+    </div>
+    <div id="vacList"></div>
+  </div>
+  <div class="card">
+    <h2>สรุปไว้กรอกบนเว็บ</h2>
+    <div id="summary"></div>
+    <pre class="copy" id="sumText"></pre>
+    <div class="row"><button class="btn ghost" onclick="copyText('sumText')">📋 คัดลอก</button></div>
+  </div>
+  <div class="card">
+    <h2>ทำบนเว็บทีละขั้น (ติ๊กไปทีละข้อ)</h2>
+    <ol class="steps" id="invSteps"></ol>
+    <div class="row" style="margin-top:10px"><button class="btn" onclick="saveRound()">✅ บันทึกว่ารอบนี้ทำเสร็จแล้ว</button><span class="muted">เก็บยอดที่นับไว้ในประวัติ</span></div>
+  </div>
+</section>
+
+<!-- ③ RECEIVE -->
+<section id="recv">
+  <div class="card">
+    <h2>เมื่อวัคซีนมาถึง</h2>
+    <ol class="steps" id="recvSteps"></ol>
+  </div>
+  <div class="card">
+    <h2>บันทึกใบนำส่ง (เก็บไว้ในเครื่อง + เพิ่มเข้าสต็อกอัตโนมัติ)</h2>
+    <div class="grid2">
+      <label>เลขใบนำส่ง<input id="rNo"></label>
+      <label>วันที่รับ<input type="date" id="rDate"></label>
+      <label>อุณหภูมิตอนเปิดกล่อง (°C)<input id="rTemp" placeholder="เช่น 4.5"></label>
+      <label>ผู้รับ<input id="rBy"></label>
+    </div>
+    <h3>รายการ</h3>
+    <div class="wrap"><table><thead><tr><th>วัคซีน</th><th>Lot</th><th>หมดอายุ</th><th class="n">ส่งมา (dose)</th><th class="n">รับจริง (dose)</th><th class="n">= ขวด</th><th></th></tr></thead><tbody id="rLines"></tbody></table></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="addRLine()">+ เพิ่มรายการ</button></div>
+    <div id="rWarn"></div>
+    <label class="muted" style="display:block;margin-top:8px">หมายเหตุ<textarea id="rNote" rows="2" style="width:100%"></textarea></label>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="saveReceipt()">💾 บันทึกรับ + เพิ่มเข้าสต็อก</button></div>
+  </div>
+</section>
+
+<!-- ④ EXTRA / FM3 -->
+<section id="extra">
+  <div class="card">
+    <h2>ของไม่พอระหว่างรอบ → "เบิกวัคซีนเพิ่ม"</h2>
+    <ul>
+      <li>เมนู <b>เบิกวัคซีนเพิ่ม</b> → ปุ่ม <b>เบิกวัคซีนเพิ่มเติม</b> → กรอกจำนวน (ขวด) เฉพาะตัวที่ต้องการ</li>
+      <li>กรอกชื่อ เบอร์มือถือ และ <b>สาเหตุ</b> → SAVE → CONFIRM</li>
+      <li>วันที่บันทึกรอบปกติไปแล้ว <b>จะเบิกเพิ่มวันเดียวกันไม่ได้</b></li>
+      <li>แก้ไขได้ในวันเดียวกัน <b>ก่อน 24.00 น.</b> สปสช. อนุมัติวันถัดไป · ขอใบใหม่ได้หลังใบล่าสุดอนุมัติแล้ว</li>
+    </ul>
+    <h3>ช่วยเขียนสาเหตุ</h3>
+    <div class="grid2">
+      <label>วัคซีน<select id="xVac"></select></label>
+      <label>จำนวน (ขวด)<input type="number" id="xQty" min="1"></label>
+      <label>สาเหตุ<select id="xWhy"><option>เด็กมารับบริการมากกว่าปกติ</option><option>วัคซีนเสื่อมสภาพจากตู้เย็นขัดข้อง</option><option>รอการอนุมัติปรับ ROP (FM3)</option><option>ออกหน่วยรณรงค์/เก็บตกในพื้นที่</option><option>วัคซีนหมดอายุ/ใกล้หมดอายุ</option></select></label>
+    </div>
+    <pre class="copy" id="xText"></pre>
+    <button class="btn ghost" onclick="copyText('xText')">📋 คัดลอกไปวางช่องหมายเหตุ</button>
+  </div>
+  <div class="card">
+    <h2>อภ. ส่งน้อย/มากเกินประจำ → ขอปรับ ROP ด้วย "FM3 EPI Routine"</h2>
+    <ul>
+      <li>เมนู <b>FM3 EPI Routine</b> → <b>สร้างใบ FM3</b> → กรอกยอดใช้ย้อนหลัง <b>3 เดือนล่าสุด (ขวด)</b> เฉพาะตัวที่จะปรับ</li>
+      <li>ระบบคำนวณ ROP ใหม่ให้ แก้เองได้แต่ <b>ไม่เกิน 1.5 เท่า</b>ของค่าที่ระบบคำนวณ</li>
+      <li>กรอกชื่อ + เบอร์มือถือรับ SMS ผลอนุมัติ → SAVE → CONFIRM</li>
+      <li>ROP ใหม่ใช้ได้ <b>หลัง สปสช. อนุมัติ</b> (ถ้า Post Inventory ก่อนอนุมัติ รอบนั้นยังใช้ ROP เดิม) · ทำใบใหม่ได้อีกหลังอนุมัติใบล่าสุด 30 วัน</li>
+    </ul>
+    <h3>ลองคำนวณก่อนทำจริง</h3>
+    <div class="wrap"><table><thead><tr><th>วัคซีน</th><th class="n">dose/ขวด</th><th class="n">ใช้ เดือน 1 (ขวด)</th><th class="n">เดือน 2</th><th class="n">เดือน 3</th><th class="n">เฉลี่ย/เดือน (dose)</th><th class="n">ROP ปัจจุบัน</th><th>ผล</th></tr></thead><tbody id="fm3"></tbody></table></div>
+    <p class="muted">ตัวเลขนี้เป็นการประมาณ (เฉลี่ยยอดใช้ 3 เดือน × dose/ขวด) ค่าที่ใช้จริงคือค่าที่เว็บคำนวณ</p>
+  </div>
+</section>
+
+<!-- ⑤ HISTORY -->
+<section id="hist">
+  <div class="card">
+    <h2>รอบที่บันทึก Inventory</h2>
+    <div id="rounds"></div>
+  </div>
+  <div class="card">
+    <h2>ใบนำส่งที่รับแล้ว</h2>
+    <div id="receipts"></div>
+  </div>
+  <div class="card">
+    <h2>สำรอง / ย้ายเครื่อง</h2>
+    <p class="muted">ข้อมูลซิงค์กับฐานข้อมูลกลางอัตโนมัติ (สถานะใต้หัวเรื่อง) · ส่งออกไฟล์ไว้เป็นสำรองได้</p>
+    <div class="row">
+      <button class="btn ghost" onclick="exportJSON()">⬇️ ส่งออกไฟล์สำรอง</button>
+      <label class="btn ghost">⬆️ นำเข้าไฟล์สำรอง<input type="file" accept=".json" hidden onchange="importJSON(this)"></label>
+      <button class="btn del" onclick="resetAll()">ล้างข้อมูลทั้งหมด</button>
+      <span class="muted" id="syncState"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>รายการวัคซีน (แก้ชื่อ / เพิ่มตัวใหม่)</h2>
+    <div class="wrap"><table><thead><tr><th>ใช้</th><th>ชื่อ</th><th class="n">dose/ขวด</th><th class="n">ROP (dose)</th><th class="n">MaxLimit</th><th class="n">ขนาดบรรจุ</th><th>รหัส อภ.</th><th></th></tr></thead><tbody id="vacEdit"></tbody></table></div>
+    <button class="btn ghost" style="margin-top:8px" onclick="addVac()">+ เพิ่มวัคซีน</button>
+  </div>
+</section>
+
+<section id="sheet"></section>
+</main>
+
+<script>
+const KEY='epiVmi.v1';
+// ROP/MaxLimit/ขนาดบรรจุ (dose) จากไฟล์ อภ. "รายละเอียดการบันทึกข้อมูล - EPI1" 10/11/69
+const DEFAULT_VAC=[
+ ['hb','HEPATITIS B VACCINE 2 doses/vial',2,1,52,78,20,'121611890001'],
+ ['bcg','BCG VACCINE 10 doses/vial',10,1,270,400,100,'121616450001'],
+ ['bopv','OPV (Polio oral) 20 doses/vial',20,1,540,820,200,'121611880001'],
+ ['dtp','DTP VACCINE 10 doses/vial',10,1,200,300,10,'121603920001'],
+ ['dt','dT VACCINE 10 doses/vial',10,1,240,360,10,'121603660001'],
+ ['mmr','MMR VACCINE single dose',1,1,75,110,10,'121611981001'],
+ ['jelive','J.E. เชื้อเป็น (live) 1 dose/vial',1,1,260,390,10,'121611551201'],
+ ['ipv','IPV 1 dose/vial',1,1,47,70,10,'121611881102'],
+ ['flu','INFLUENZA 0.5 ml/dose (หญิงตั้งครรภ์)',1,1,20,30,1,'121117530511'],
+ ['dtphbhib','DTP-HB-Hib 10 doses/vial',10,1,184,276,10,'121621890011'],
+ ['rota','ROTAVIRUS VACCINE (EPI) – ตรวจ dose/ขวด',1,1,27,40,10,'121622040011'],
+ ['ap','aP VACCINE 0.5 ml pre-filled syringe',1,1,10,15,1,'121624510011'],
+ ['pcv','PCV10 (Pneumococcal conj.) 5 doses/vial',5,1,45,70,1,'121121180012'],
+ ['jeinact','J.E. เชื้อตาย (JEVAC) 1 dose/vial',1,0,0,0,1,''],
+ ['hpv','HPV (GARDASIL 9) – EPI2 นักเรียน',1,0,0,0,1,''],
+];
+const INV_STEPS=[
+ 'ตรวจก่อน: ใบนำส่งเก่ากด "รับยา" ครบแล้ว (ถ้าค้าง จะบันทึก Inventory ไม่ได้)',
+ 'ไปนับวัคซีนในตู้เย็นตามใบนับสต็อก กรอกยอดในหน้านี้ (ขวด แยก Lot)',
+ 'เข้า scm.gpo.or.th/vmi_next → Login → โครงการ EPI1-วัคซีน EPI Routine',
+ 'คลิกเมนู "บันทึก Inventory"',
+ 'กรอกช่อง Onh (ขวด) ของแต่ละ Lot ตามที่นับได้ (Lot ที่หมดแล้วใส่ 0) แล้วดูว่าช่อง Onh (Dose) สีเทาตรงกับตารางคำนวณด่วน',
+ 'Lot ที่ไม่ขึ้นในรายการ หรือวัคซีนที่หมด → กด "เพิ่ม Lot" → ติ๊ก Lot หรือ Zero Onhand → Add → OK',
+ 'ตรวจอีกรอบ แล้วกด SAVE (ถ้ามีข้อความเตือน กด OK แล้วเติมช่องที่ยังว่าง จากนั้น SAVE ใหม่)',
+ 'คลิกเมนู "Post Inventory" จนขึ้นว่า ส่งข้อมูลเข้าระบบเรียบร้อยแล้ว ← สำคัญที่สุด',
+ 'เมนู "ประวัติการบันทึกข้อมูล" → ปุ่มสีฟ้า → ดู Ship Qty และช่วงวันที่ อภ. จะส่ง (เทียบกับคอลัมน์ "คาดว่า อภ. จะส่ง" ในหน้านี้)',
+];
+const RECV_STEPS=[
+ 'ตรวจกล่องตอนรับ: อุณหภูมิ/ตัวชี้วัดความเย็นในกล่อง จดอุณหภูมิไว้ ถ้าผิดปกติให้ถ่ายรูปและแจ้ง อภ. ก่อนกดรับ',
+ 'ย้ายวัคซีนเข้าตู้เย็นทันที แล้วค่อยนับ',
+ 'เทียบของจริงกับใบนำส่ง: ชื่อวัคซีน · Lot · วันหมดอายุ · จำนวน (ใบนำส่งเป็นหน่วย dose)',
+ 'กรอกใบนำส่งในหน้านี้ (ด้านล่าง) เพื่อเก็บประวัติและเพิ่ม Lot เข้าสต็อก',
+ 'บนเว็บ: คลิกเมนู "รับยา" → ใส่ PIN Code → Submit',
+ 'ติ๊กช่องสี่เหลี่ยมรายการที่ถูกต้อง ถ้าจำนวนไม่ตรงให้แก้ช่อง Qty (รับ) เป็นยอดจริงก่อน → SAVE',
+ 'ตรวจในแถบ "รายการที่ยืนยันการรับยาแล้ว" ว่าใบนี้ขึ้นแล้ว',
+ '(ถ้าต้องการ) เมนู Download COA → พิมพ์ Lot → ดาวน์โหลดใบวิเคราะห์เก็บไว้',
+];
+
+const mkVac=([id,name,dpv,on,rop,max,pack,code])=>({id,name,dpv,rop,max,pack,code,on:!!on,qv:''});
+let S=load();
+function load(){let s=null;try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+ if(!(s&&s.vaccines))return {vaccines:DEFAULT_VAC.map(mkVac),lots:[],rounds:[],receipts:[],invChecks:{},recvChecks:{},fm3:{},cfgVer:2};
+ if((s.cfgVer||1)<2){// v1 had no MaxLimit/pack: fill from the GPO file, keep user's names/dpv/on
+  DEFAULT_VAC.forEach(d=>{const n=mkVac(d);const v=s.vaccines.find(x=>x.id===n.id);if(!v){s.vaccines.push(n);return}
+   if(!v.rop)v.rop=n.rop;v.max=v.max||n.max;v.pack=v.pack||n.pack;v.code=v.code||n.code;if(n.id==='flu'){v.on=true;v.name=n.name}if(v.qv===undefined)v.qv=''});s.cfgVer=2}
+ return s}
+let db=null,lastSent='',saveT=0;
+function save(){const j=JSON.stringify(S);try{localStorage.setItem(KEY,j)}catch(e){}
+ if(!db)return;clearTimeout(saveT);saveT=setTimeout(()=>{lastSent=j;syncMsg('กำลังบันทึก…');
+  db.collection('pharmacy_tph').doc('vaccine_epi').set({json:j,updated:new Date().toISOString()})
+   .then(()=>syncMsg('บันทึกขึ้นฐานข้อมูลกลางแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})))
+   .catch(e=>syncMsg('บันทึกขึ้นฐานข้อมูลกลางไม่สำเร็จ: '+e.message+' (ข้อมูลยังอยู่ในเครื่องนี้)'))},700)}
+function syncMsg(m){const e=document.getElementById('syncState');if(e)e.textContent=m}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const vac=id=>S.vaccines.find(v=>v.id===id);
+const thDate=d=>{if(!d)return'-';const x=new Date(d+(d.length===10?'T00:00':''));return isNaN(x)?d:x.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'})};
+const today=()=>new Date().toISOString().slice(0,10);
+function daysTo(d){if(!d)return null;return Math.round((new Date(d+'T00:00')-new Date(today()+'T00:00'))/864e5)}
+function expPill(d){const n=daysTo(d);if(n===null)return'';if(n<0)return'<span class="pill bad">หมดอายุแล้ว</span>';if(n<=90)return`<span class="pill warn">อีก ${n} วัน</span>`;return''}
+
+// tabs
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));try{localStorage.setItem(KEY+'.tab',b.dataset.t)}catch(e){};renderAll()});
+
+// GPO rule: Onh < ROP -> ShipQty = ceil((MaxLimit - Onh) / pack) * pack, else 0
+function gpoShip(onh,rop,max,pack){if(!(rop>0)||onh>=rop)return 0;pack=pack>0?pack:1;return Math.ceil(Math.max(0,max-onh)/pack)*pack}
+function calc(v){const lots=S.lots.filter(l=>l.vid===v.id);const fromLots=lots.length>0;
+ const vials=fromLots?lots.reduce((a,l)=>a+(+l.vials||0),0):(+v.qv||0);const doses=Math.round(vials*v.dpv*100)/100;const rop=+v.rop||0,max=+v.max||Math.round(rop*1.5),pack=+v.pack||1;
+ const ship=gpoShip(doses,rop,max,pack);const shipVials=ship/v.dpv;
+ return{lots,fromLots,vials,doses,rop,max,pack,ship,shipVials,after:doses+ship}}
+const VNOTE={ap:'10/11/69: Onh 0 → สูตรได้ 15 แต่ อภ. ส่ง 30 (อาจมีขั้นต่ำ/กล่อง 30) ดู ShipQty บนเว็บยืนยัน'};
+const vl=(d,v)=>{const x=d/v.dpv;return (Number.isInteger(x)?x:x.toFixed(1))+' ขวด'};
+function renderQuick(){const el=$('quick');if(!el)return;
+ el.innerHTML=S.vaccines.filter(v=>v.on).map(v=>{const c=calc(v);
+  const inp=c.fromLots?`<span title="รวมจาก Lot ด้านล่าง">${c.vials} <span class="muted">(จาก Lot)</span></span>`:`<input type="number" min="0" step="any" value="${v.qv}" placeholder="0" oninput="vac('${v.id}').qv=this.value;save();quickRow('${v.id}');renderSummary()">`;
+  return`<tr><td>${esc(v.name)}<div class="muted">${v.dpv} dose/ขวด</div>${VNOTE[v.id]?`<div class="muted" style="color:var(--warn)">⚠️ ${VNOTE[v.id]}</div>`:''}</td><td class="n">${inp}</td><td class="n" id="q_onh_${v.id}"></td><td class="n">${c.rop||'-'}</td><td class="n">${c.max||'-'}</td><td class="n">${c.pack}<div class="muted">${vl(c.pack,v)}</div></td><td class="n" id="q_ship_${v.id}"></td><td class="n" id="q_aft_${v.id}"></td></tr>`}).join('');
+ S.vaccines.filter(v=>v.on).forEach(v=>quickRow(v.id))}
+function quickRow(id){const v=vac(id),c=calc(v),q=(p,h)=>{const e=$(p+id);if(e)e.innerHTML=h};
+ q('q_onh_',`<b style="font-size:1.1rem">${c.doses}</b>${c.doses===0?'<div class="muted">Zero Onhand</div>':''}`);
+ const g=v.gpo&&v.gpo.onh===c.doses?`<div class="muted">ไฟล์ อภ. ${thDate(v.gpo.date)}: ${v.gpo.ship}${v.gpo.ship!==c.ship?' ⚠️ ไม่ตรงสูตร':' ✓'}</div>`:'';
+ q('q_ship_',!c.rop?'<span class="pill warn">ไม่มี ROP</span>':c.ship?`<span class="pill ok">${vl(c.ship,v)}</span><div class="muted">${c.ship} dose</div>${g}`:`<span class="pill">ไม่ส่ง</span><div class="muted">ยัง ≥ ROP</div>${g}`);
+ const over=c.after-c.max;q('q_aft_',c.ship?`${c.after} dose<div class="muted">${vl(c.after,v)}${over>0?` · เกิน Max ${over}`:''}</div>`:'-')}
+function importGpo(){const t=$('pasteGpo').value;let n=0,add=0;const d=today();
+ t.split(/\r?\n/).forEach(line=>{const m=line.match(/(\d{12})--/);if(!m)return;const cells=line.split('\t');const di=cells.findIndex(x=>x.includes(m[1]+'--'));const num=cells.slice(di+1).map(x=>+String(x).replace(/,/g,''));
+  const [onh,rop,max,pack,ship]=num;if(!(rop>=0&&max>=0))return;let v=S.vaccines.find(x=>x.code===m[1]);
+  if(!v){const nm=cells[di].split('--')[1].replace(/\s*Dose\s*$/i,'').trim();const dm=nm.match(/(\d+)\s*doses?\s*\/\s*vi/i);v=mkVac([uid(),nm,dm?+dm[1]:1,1,0,0,1,m[1]]);S.vaccines.push(v);add++}
+  v.rop=rop;v.max=max;v.pack=pack||1;v.on=true;if(ship>=0&&!isNaN(ship))v.gpo={date:d,onh,ship};n++});
+ save();renderCount();$('gpoMsg').textContent=n?`อัปเดต ${n} รายการ${add?` (เพิ่มใหม่ ${add} — ตรวจ dose/ขวด ที่แท็บ ⑤)`:''}`:'ไม่พบรหัสวัคซีนในข้อความที่วาง'}
+
+function renderCount(){const showOff=$('showOff').checked;let h='';
+ S.vaccines.forEach(v=>{if(!v.on&&!showOff)return;const c=calc(v);
+  const st=stTxt(c);
+  h+=`<div class="vac${v.on?'':' off'}"><div class="vhead"><b>${esc(v.name)}</b><span class="row"><label class="row muted"><input type="checkbox" ${v.on?'checked':''} onchange="setV('${v.id}','on',this.checked)"> ใช้</label>
+  <label class="muted">dose/ขวด <input type="number" min="1" value="${v.dpv}" onchange="setV('${v.id}','dpv',+this.value||1)"></label>
+  <label class="muted">ROP <input type="number" min="0" value="${v.rop||''}" onchange="setV('${v.id}','rop',+this.value||0)"></label>
+  <label class="muted">Max <input type="number" min="0" value="${v.max||''}" onchange="setV('${v.id}','max',+this.value||0)"></label>
+  <label class="muted">ขนาดบรรจุ <input type="number" min="1" value="${v.pack||1}" onchange="setV('${v.id}','pack',+this.value||1)"></label></span></div>
+  <div class="wrap"><table><thead><tr><th>Lot</th><th>หมดอายุ</th><th class="n">คงเหลือ (ขวด)</th><th class="n">= dose</th><th></th></tr></thead><tbody>
+  ${c.lots.map(l=>`<tr><td><input value="${esc(l.lot)}" onchange="setL('${l.id}','lot',this.value)" placeholder="เลข Lot"></td><td><input type="date" value="${l.exp||''}" onchange="setL('${l.id}','exp',this.value)"> ${expPill(l.exp)}</td><td class="n"><input type="number" min="0" value="${l.vials}" onchange="setL('${l.id}','vials',+this.value||0)"></td><td class="n" id="ld_${l.id}">${(+l.vials||0)*v.dpv}</td><td><button class="btn sm del" onclick="delL('${l.id}')">ลบ</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">ไม่มี Lot = คงเหลือ 0 (บนเว็บให้เลือก Zero Onhand)</td></tr>'}
+  </tbody><tfoot><tr><td colspan="2"><button class="btn sm ghost" onclick="addL('${v.id}')">+ เพิ่ม Lot</button></td><th class="n" id="tv_${v.id}">${c.vials} ขวด</th><th class="n" id="td_${v.id}">${c.doses} dose</th><td></td></tr></tfoot></table></div>
+  <div class="row" style="justify-content:space-between"><span class="muted" id="rm_${v.id}">${ropTxt(c)}</span><span id="st_${v.id}">${st}</span></div></div>`});
+ $('vacList').innerHTML=h;renderQuick();renderSummary()}
+
+function renderSummary(){let rows='',txt=`ยอดคงเหลือวัคซีน EPI ณ ${thDate(today())}\n`;let warn=[];
+ S.vaccines.filter(v=>v.on).forEach(v=>{const c=calc(v);
+  rows+=`<tr><td>${esc(v.name)}</td><td>${c.lots.length?c.lots.map(l=>`${esc(l.lot||'(ไม่มีเลข)')} : <b>${l.vials}</b> ขวด`).join('<br>'):(c.vials?`${c.vials} ขวด (ไม่แยก Lot)`:'<b>Zero Onhand</b>')}</td><td class="n">${c.doses}</td><td class="n">${c.rop||'-'}</td><td>${c.rop?(c.ship?`${vl(c.ship,v)} (${c.ship} dose)`:'ไม่ส่ง'):'?'}</td></tr>`;
+  txt+=`\n• ${v.name} → Onh ${c.doses} dose · อภ. จะส่ง ${c.ship?vl(c.ship,v)+' ('+c.ship+' dose)':'-'}\n`+(c.lots.length?c.lots.map(l=>`   Lot ${l.lot||'-'} (หมด ${thDate(l.exp)}) = ${l.vials} ขวด`).join('\n'):(c.vials?`   คงเหลือ ${c.vials} ขวด (ไม่ได้แยก Lot)`:'   Zero Onhand'))+'\n';
+  c.lots.forEach(l=>{const n=daysTo(l.exp);if(n!==null&&n<0)warn.push(`${v.name} Lot ${l.lot} หมดอายุแล้ว – แยกออก ไม่นับรวม และจัดการตามระเบียบ`);else if(n!==null&&n<=90)warn.push(`${v.name} Lot ${l.lot} จะหมดอายุใน ${n} วัน – ใช้ก่อน`)});
+  if(!v.rop)warn.push(`${v.name}: ยังไม่ได้ใส่ ROP (ลอกจากหน้า บันทึก Inventory บนเว็บ)`)});
+ $('summary').innerHTML=`<div class="wrap"><table><thead><tr><th>วัคซีน</th><th>Lot / ขวด</th><th class="n">Onh (dose)</th><th class="n">ROP</th><th>คาดว่า อภ. จะส่ง</th></tr></thead><tbody>${rows}</tbody></table></div>`+(warn.length?`<div class="tip">${warn.map(esc).join('<br>')}</div>`:'');
+ $('sumText').textContent=txt}
+
+function renderSteps(id,list,store){const done=S[store];$(id).innerHTML=list.map((s,i)=>`<li><label><input type="checkbox" ${done[i]?'checked':''} onchange="S.${store}[${i}]=this.checked;save()"> <span>${esc(s)}</span></label></li>`).join('')}
+
+function stTxt(c){if(!c.rop)return'<span class="pill warn">ยังไม่ได้ใส่ ROP</span>';if(c.ship)return`<span class="pill ok">คาดว่า อภ. จะส่ง ${c.ship} dose = ${fmtV(c.shipVials)} ขวด</span>`;return'<span class="pill">ยังพอ รอบนี้ไม่น่าส่ง</span>'}
+function ropTxt(c){return`Onh ${c.doses} dose · ROP ${c.rop||'-'} · MaxLimit ${c.max||'-'} · ขนาดบรรจุ ${c.pack} dose`}
+// value edits update numbers in place (no full redraw, so the next click is not lost)
+function refresh(){S.vaccines.forEach(v=>{const c=calc(v),q=(p,h)=>{const e=$(p+v.id);if(e)e.innerHTML=h};q('st_',stTxt(c));q('rm_',ropTxt(c));q('tv_',c.vials+' ขวด');q('td_',c.doses+' dose');c.lots.forEach(l=>{const e=$('ld_'+l.id);if(e)e.textContent=(+l.vials||0)*v.dpv})});renderQuick();renderSummary()}
+function setV(id,k,val){vac(id)[k]=val;save();k==='on'?renderCount():refresh()}
+function setL(id,k,val){S.lots.find(l=>l.id===id)[k]=val;save();k==='exp'?renderCount():refresh()}
+function addL(vid){S.lots.push({id:uid(),vid,lot:'',exp:'',vials:0});save();renderCount()}
+function delL(id){S.lots=S.lots.filter(l=>l.id!==id);save();renderCount()}
+
+function saveRound(){const snap=S.vaccines.filter(v=>v.on).map(v=>{const c=calc(v);return{name:v.name,vials:c.vials,doses:c.doses,rop:c.rop,max:c.max,ship:c.ship,expect:c.shipVials,lots:c.lots.map(l=>({lot:l.lot,exp:l.exp,vials:l.vials}))}});
+ const n=S.invChecks;const posted=n[7];if(!posted&&!confirm('ยังไม่ได้ติ๊กข้อ "Post Inventory" — ยืนยันว่าทำบนเว็บครบแล้วใช่ไหม?'))return;
+ S.rounds.unshift({date:today(),snap});S.invChecks={};save();renderAll();alertBox('บันทึกรอบแล้ว ✓ ดูได้ที่แท็บ ⑤')}
+
+// receive
+let rLines=[];
+function rlRow(l,i){const opts=S.vaccines.map(v=>`<option value="${v.id}" ${v.id===l.vid?'selected':''}>${esc(v.name)}</option>`).join('');const v=vac(l.vid);const vials=v&&l.recv?(l.recv/v.dpv):'';
+ return`<tr><td><select onchange="rLines[${i}].vid=this.value;renderRecv()">${opts}</select></td><td><input value="${esc(l.lot)}" onchange="rLines[${i}].lot=this.value;recvWarn()"></td><td><input type="date" value="${l.exp}" onchange="rLines[${i}].exp=this.value;recvWarn()"></td><td class="n"><input type="number" value="${l.sent||''}" onchange="rLines[${i}].sent=+this.value;if(!rLines[${i}].recv){rLines[${i}].recv=+this.value;this.closest('tr').querySelectorAll('input')[3].value=this.value};rlUpd(${i})"></td><td class="n"><input type="number" value="${l.recv||''}" onchange="rLines[${i}].recv=+this.value;rlUpd(${i})"></td><td class="n" id="rv_${i}">${fmtV(vials)}</td><td><button class="btn sm del" onclick="rLines.splice(${i},1);renderRecv()">ลบ</button></td></tr>`}
+function addRLine(){rLines.push({vid:S.vaccines.find(v=>v.on)?.id||S.vaccines[0].id,lot:'',exp:'',sent:0,recv:0});renderRecv()}
+const fmtV=x=>x===''?'':(Number.isInteger(x)?x:x.toFixed(1));
+function rlUpd(i){const l=rLines[i],v=vac(l.vid);$('rv_'+i).textContent=fmtV(v&&l.recv?l.recv/v.dpv:'');recvWarn()}
+function renderRecv(){if(!$('rDate').value)$('rDate').value=today();$('rLines').innerHTML=rLines.map(rlRow).join('')||'<tr><td colspan="7" class="muted">กด + เพิ่มรายการ ตามใบนำส่ง</td></tr>';recvWarn()}
+function recvWarn(){
+ const w=[];rLines.forEach(l=>{const v=vac(l.vid);if(l.sent&&l.recv&&l.sent!==l.recv)w.push(`${v.name} Lot ${l.lot}: ส่ง ${l.sent} รับจริง ${l.recv} dose → บนเว็บแก้ช่อง Qty (รับ) เป็น ${l.recv}`);if(v&&l.recv&&l.recv%v.dpv)w.push(`${v.name}: ${l.recv} dose หาร ${v.dpv} dose/ขวด ไม่ลงตัว ตรวจ dose/ขวด อีกครั้ง`);const n=daysTo(l.exp);if(n!==null&&n<=90)w.push(`${v.name} Lot ${l.lot}: อายุเหลือ ${n} วัน`)});
+ const t=parseFloat($('rTemp').value);if(!isNaN(t)&&(t<2||t>8))w.push(`อุณหภูมิ ${t}°C อยู่นอกช่วง 2–8°C ที่ใช้เก็บวัคซีนทั่วไป: ถ่ายรูป แยกเก็บ และโทรถาม อภ. ก่อนกดรับ`);
+ $('rWarn').innerHTML=w.length?`<div class="tip">${w.map(esc).join('<br>')}</div>`:''}
+function saveReceipt(){if(!rLines.length)return alertBox('ยังไม่มีรายการ');
+ rLines.forEach(l=>{const v=vac(l.vid);const vials=(l.recv||0)/v.dpv;const ex=S.lots.find(x=>x.vid===l.vid&&x.lot&&x.lot===l.lot);if(ex){ex.vials=+(+ex.vials+vials).toFixed(2);if(!ex.exp)ex.exp=l.exp}else S.lots.push({id:uid(),vid:l.vid,lot:l.lot,exp:l.exp,vials:+vials.toFixed(2)})});
+ S.receipts.unshift({no:$('rNo').value,date:$('rDate').value,temp:$('rTemp').value,by:$('rBy').value,note:$('rNote').value,lines:rLines.map(l=>({...l,name:vac(l.vid).name}))});
+ rLines=[];['rNo','rTemp','rNote'].forEach(i=>$(i).value='');S.recvChecks={};save();renderAll();alertBox('บันทึกแล้ว และเพิ่มเข้าสต็อกแท็บ ② แล้ว — อย่าลืมกด "รับยา" + PIN บนเว็บ')}
+
+// extra
+function renderExtra(){const sel=$('xVac');const cur=sel.value;sel.innerHTML=S.vaccines.filter(v=>v.on).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');if(cur)sel.value=cur;
+ const v=vac(sel.value);const q=$('xQty').value;let t=`ขอเบิกวัคซีนเพิ่มเติม ${v?v.name:''} จำนวน ${q||'x'} ขวด เนื่องจาก${$('xWhy').value}`;if(v&&v.id==='jeinact')t=`เบิก JE เชื้อตาย จำนวน ${q||'x'} ขวด`;$('xText').textContent=t;
+ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#fm3'))return;
+ $('fm3').innerHTML=S.vaccines.filter(v=>v.on).map(v=>{const f=S.fm3[v.id]||['','',''];const [a,res]=fm3Calc(v);
+  return`<tr><td>${esc(v.name)}</td><td class="n">${v.dpv}</td>${[0,1,2].map(i=>`<td class="n"><input type="number" min="0" value="${f[i]}" onchange="fm3Set('${v.id}',${i},this.value)"></td>`).join('')}<td class="n" id="fa_${v.id}">${a}</td><td class="n">${v.rop||'-'}</td><td id="fr_${v.id}">${res}</td></tr>`}).join('')}
+function fm3Calc(v){const f=S.fm3[v.id]||['','',''];const nums=f.map(Number).filter(x=>x>0);const avg=nums.length===3?(nums.reduce((a,b)=>a+b,0)/3)*v.dpv:null;let res='<span class="muted">กรอกครบ 3 เดือน</span>';
+  if(avg!==null){if(!v.rop)res=`≈ ${Math.round(avg)} dose/เดือน`;else{const r=avg/v.rop;res=r>1.2?`<span class="pill ok">ใช้จริงมากกว่า ROP ${Math.round((r-1)*100)}% ควรทำ FM3</span>`:r<0.8?`<span class="pill warn">ใช้จริงน้อยกว่า ROP ${Math.round((1-r)*100)}% (ของจะค้าง/หมดอายุ) พิจารณา FM3</span>`:'<span class="pill">ใกล้เคียง ROP ไม่ต้องปรับ</span>'}}
+  return[avg!==null?Math.round(avg):'',res]}
+function fm3Set(id,i,val){(S.fm3[id]=S.fm3[id]||['','',''])[i]=val;save();const v=vac(id),[a,res]=fm3Calc(v);$('fa_'+id).textContent=a;$('fr_'+id).innerHTML=res}
+['xVac','xQty','xWhy'].forEach(i=>$(i).addEventListener('input',renderExtra));
+
+// history
+function renderHist(){$('rounds').innerHTML=S.rounds.length?S.rounds.map((r,i)=>`<details><summary><b>${thDate(r.date)}</b> · คาดว่าได้ ${r.snap.filter(x=>x.expect).length} รายการ</summary><div class="wrap"><table><tr><th>วัคซีน</th><th class="n">คงเหลือ ขวด</th><th class="n">dose</th><th class="n">ROP</th><th class="n">คาดว่าส่ง (ขวด)</th></tr>${r.snap.map(x=>`<tr><td>${esc(x.name)}</td><td class="n">${x.vials}</td><td class="n">${x.doses}</td><td class="n">${x.rop||'-'}</td><td class="n">${x.expect||'-'}</td></tr>`).join('')}</table></div><button class="btn sm del" onclick="S.rounds.splice(${i},1);save();renderHist()">ลบรอบนี้</button></details>`).join(''):'<p class="muted">ยังไม่มี</p>';
+ $('receipts').innerHTML=S.receipts.length?S.receipts.map((r,i)=>`<details><summary><b>${thDate(r.date)}</b> · ใบนำส่ง ${esc(r.no||'-')} · ${r.lines.length} รายการ${r.temp?` · ${esc(r.temp)}°C`:''}</summary><div class="wrap"><table><tr><th>วัคซีน</th><th>Lot</th><th>หมดอายุ</th><th class="n">ส่ง</th><th class="n">รับ</th></tr>${r.lines.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.lot)}</td><td>${thDate(l.exp)}</td><td class="n">${l.sent||''}</td><td class="n">${l.recv||''}</td></tr>`).join('')}</table></div><p class="muted">ผู้รับ ${esc(r.by||'-')} ${esc(r.note||'')}</p><button class="btn sm del" onclick="S.receipts.splice(${i},1);save();renderHist()">ลบ (ไม่หักสต็อกคืน)</button></details>`).join(''):'<p class="muted">ยังไม่มี</p>';
+ $('vacEdit').innerHTML=S.vaccines.map((v,i)=>`<tr><td><input type="checkbox" ${v.on?'checked':''} onchange="S.vaccines[${i}].on=this.checked;save()"></td><td><input style="width:100%" value="${esc(v.name)}" onchange="S.vaccines[${i}].name=this.value;save()"></td><td class="n"><input type="number" min="1" value="${v.dpv}" onchange="S.vaccines[${i}].dpv=+this.value||1;save()"></td><td class="n"><input type="number" value="${v.rop||''}" onchange="S.vaccines[${i}].rop=+this.value||0;save()"></td><td class="n"><input type="number" value="${v.max||''}" onchange="S.vaccines[${i}].max=+this.value||0;save()"></td><td class="n"><input type="number" min="1" value="${v.pack||1}" onchange="S.vaccines[${i}].pack=+this.value||1;save()"></td><td class="muted">${esc(v.code||'')}</td><td>${S.lots.some(l=>l.vid===v.id)?'':`<button class="btn sm del" onclick="S.vaccines.splice(${i},1);save();renderHist()">ลบ</button>`}</td></tr>`).join('')}
+function addVac(){S.vaccines.push(mkVac([uid(),'วัคซีนใหม่',1,1,0,0,1,'']));save();renderHist()}
+
+function exportJSON(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`epi-vaccine-backup-${today()}.json`;a.click()}
+function importJSON(inp){const f=inp.files[0];if(!f)return;f.text().then(t=>{const d=JSON.parse(t);if(!d.vaccines)throw 0;S=d;save();renderAll();alertBox('นำเข้าแล้ว')}).catch(()=>alertBox('ไฟล์ไม่ถูกต้อง'))}
+function resetAll(){if(confirm('ล้างข้อมูลทั้งหมดในเครื่องนี้? (ส่งออกสำรองก่อนดีไหม)')){try{localStorage.removeItem(KEY)}catch(e){}S=load();renderAll()}}
+
+function printSheet(){const rows=S.vaccines.filter(v=>v.on).map(v=>{const lots=S.lots.filter(l=>l.vid===v.id);const lines=(lots.length?lots:[{lot:''}]).concat([{lot:''}]);return lines.map((l,j)=>`<tr>${j===0?`<td rowspan="${lines.length}">${esc(v.name)}</td>`:''}<td>${esc(l.lot)}</td><td>${l.exp?thDate(l.exp):''}</td><td style="width:90px"></td></tr>`).join('')}).join('');
+ const s=$('sheet');s.innerHTML=`<h2>ใบนับสต็อกวัคซีน EPI · วันที่ ............ ผู้นับ ..................</h2><p>นับเป็นขวด แยกตาม Lot · Lot ใหม่ที่ไม่มีในใบ เขียนเพิ่มในบรรทัดว่าง</p><table border="1" style="border-collapse:collapse;width:100%"><tr><th>วัคซีน</th><th>Lot</th><th>หมดอายุ</th><th>จำนวน (ขวด)</th></tr>${rows}</table>`;
+ s.classList.add('printme');window.print();setTimeout(()=>s.classList.remove('printme'),500)}
+function copyText(id){navigator.clipboard.writeText($(id).textContent).then(()=>alertBox('คัดลอกแล้ว'),()=>alertBox('คัดลอกไม่ได้ ให้ลากเลือกข้อความแทน'))}
+function alertBox(m){const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2733;color:#fff;padding:10px 18px;border-radius:10px;z-index:99;max-width:90vw';document.body.appendChild(d);setTimeout(()=>d.remove(),3500)}
+$('rTemp').addEventListener('input',recvWarn);
+
+function renderAll(){renderCount();renderSteps('invSteps',INV_STEPS,'invChecks');renderSteps('recvSteps',RECV_STEPS,'recvChecks');renderRecv();renderExtra();renderHist()}
+// shared state: remote wins on load; skip echoes of our own writes; don't redraw under the cursor
+function applyRemote(j){if(j===lastSent||j===JSON.stringify(S))return;let d;try{d=JSON.parse(j)}catch(e){return}if(!d||!d.vaccines)return;
+ const a=document.activeElement;if(a&&a.matches&&a.matches('input,select,textarea')&&a.closest('main')){a.addEventListener('blur',()=>applyRemote(j),{once:true});return}
+ S=d;try{localStorage.setItem(KEY,j)}catch(e){}renderAll()}
+try{if(window.firebase){if(!firebase.apps.length)firebase.initializeApp({apiKey:'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE',authDomain:'pharmacy-tph.firebaseapp.com',projectId:'pharmacy-tph',storageBucket:'pharmacy-tph.firebasestorage.app'});
+ db=firebase.firestore();
+ db.collection('pharmacy_tph').doc('vaccine_epi').onSnapshot(snap=>{const d=snap.exists?snap.data():null;
+  if(d&&d.json){applyRemote(d.json);syncMsg('ซิงค์กับฐานข้อมูลกลางแล้ว'+(d.updated?' · แก้ล่าสุด '+new Date(d.updated).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''))}
+  else if(!d)save()},e=>syncMsg('ต่อฐานข้อมูลกลางไม่ได้: '+e.message+' (ใช้ข้อมูลในเครื่องนี้)'))}}catch(e){syncMsg('ต่อฐานข้อมูลกลางไม่ได้ (ใช้ข้อมูลในเครื่องนี้)')}
+try{const t=localStorage.getItem(KEY+'.tab');if(t)document.querySelector(`#tabs button[data-t="${t}"]`)?.click()}catch(e){}
+renderAll();
+</script>
+<script src="lib/tph-header.js"></script>
+<script>TphHeader.mount({ from: 'header.hero', home: 'a.back', title: 'h1', sub: '#updated' });</script>
+<script src="lib/side-tabs.js"></script>
+<script>TphSideTabs.mount({ tabs: '#tabs', start: '#tabs' });</script>
+<script src="lib/tph-icons.js"></script>
+<script src="lib/tph-ui.js"></script>
+</body>
+</html>

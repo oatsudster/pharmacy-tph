@@ -16,6 +16,7 @@ const PAGES = [
   ['insurance-audit.html', 1, () => document.querySelector('.tabs [data-tab="docs"]').classList.contains('active')],
   ['dm-remission.html', 1, () => getComputedStyle(document.getElementById('page-patients')).display !== 'none'],
   ['clinic.html', 1, () => document.getElementById('view-report').style.display === 'block'],
+  ['vaccine-epi.html', 1, () => document.getElementById('count').classList.contains('on')],
   ['night-meds.html', 1, () => document.getElementById('view-sum').style.display === ''],
 ];
 

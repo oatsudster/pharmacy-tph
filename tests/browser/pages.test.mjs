@@ -21,6 +21,7 @@ const PAGES = [
   ['pharmacy-ha.html', null],
   ['insurance.html', null],
   ['night-meds.html', null],
+  ['vaccine-epi.html', null],
 ];
 
 let browser;

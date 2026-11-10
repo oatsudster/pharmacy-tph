@@ -49,10 +49,10 @@ test('ข้อ 4: ตัวเลขการ์ดใช้ฟิลด์จ�
 test('ข้อ 3: ค้นด้วยคำเรียกงาน', async () => {
   const { ctx, page } = await open({ width: 1366, height: 900 });
   const count = async q => { await page.fill('#suite-search', q); return page.textContent('#suite-search-status'); };
-  assert.match(await count('รายงาน'), /พบ 8 จาก 11/);
-  assert.match(await count('แพ้ยา'), /พบ 2 จาก 11/);
-  assert.match(await count('เคลม'), /พบ 1 จาก 11/);
-  assert.match(await count('ไม่มีระบบนี้'), /พบ 0 จาก 11/);
+  assert.match(await count('รายงาน'), /พบ 8 จาก 12/);
+  assert.match(await count('แพ้ยา'), /พบ 2 จาก 12/);
+  assert.match(await count('เคลม'), /พบ 1 จาก 12/);
+  assert.match(await count('ไม่มีระบบนี้'), /พบ 0 จาก 12/);
   assert.equal(await page.isVisible('#suite-no-results'), true);
   await ctx.close();
 });
@@ -60,11 +60,11 @@ test('ข้อ 3: ค้นด้วยคำเรียกงาน', async (
 test('ข้อ 7: หมวดงาน + ปักรายการโปรด (จำหลังรีเฟรช) + ใช้ล่าสุด', async () => {
   const { ctx, page } = await open({ width: 1366, height: 900 });
   const groups = () => page.evaluate(() => [...document.querySelectorAll('.home-group')].filter(s => !s.hidden).map(s => s.dataset.group + ':' + s.querySelectorAll('.app-card').length).join(' '));
-  assert.equal(await groups(), 'record:4 hosxp:2 track:5');
+  assert.equal(await groups(), 'record:4 hosxp:2 track:6');
   await page.click('.app-card[data-href="night-meds.html"] .fav-btn');
-  assert.equal(await groups(), 'fav:1 record:4 hosxp:1 track:5');
+  assert.equal(await groups(), 'fav:1 record:4 hosxp:1 track:6');
   await page.reload(); await page.waitForTimeout(500);
-  assert.equal(await groups(), 'fav:1 record:4 hosxp:1 track:5');
+  assert.equal(await groups(), 'fav:1 record:4 hosxp:1 track:6');
   assert.equal(await page.getAttribute('.app-card[data-href="night-meds.html"] .fav-btn', 'aria-pressed'), 'true');
   // คลิกการ์ด → ขึ้นใน "ใช้ล่าสุด" (หยุดการเปลี่ยนหน้าไว้ก่อน)
   await page.route('**/adr.html', r => r.abort());

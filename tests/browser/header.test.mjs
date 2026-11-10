@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import { ROOT } from '../helpers.mjs';
 
 const PAGES = ['clinic.html', 'adr.html', 'dm-remission.html', 'expiry-tracker.html', 'insurance.html', 'insurance-audit.html',
-  'night-meds.html', 'rx-sticker.html', 'pharmacy-ha.html', 'waiting-time.html', 'admin-error-ipd.html'];
+  'night-meds.html', 'rx-sticker.html', 'pharmacy-ha.html', 'waiting-time.html', 'admin-error-ipd.html', 'vaccine-epi.html'];
 let browser;
 test.before(async () => { browser = await chromium.launch(); });
 test.after(async () => { await browser.close(); });
