@@ -992,14 +992,22 @@ function mdNorm(s) {
     .replace(/^(.*?)\s+((?:เวลา|เมื่อ)\S.*?)\s+(ทุก\s*\S+\s*(?:ชั่วโมง|นาที))$/, '$1 $3 $2');
   return s.replace(/\s+/g, ' ').trim();
 }
-function mdAbbr(t) {
+function mdAbbrRaw(t) {
   const o = String(t || '').replace(/\s+/g, ' ').trim();
   // ป้ายที่เภสัชเขียนนำหน้าวิธีใช้ "[รับยา SRH] รับประทาน…" (เตือนแพทย์ว่ารับยาที่ รพ.อื่น — ผู้ใช้ขอ 2026-11-05)
   //   = คงป้ายไว้ แปลงเฉพาะวิธีใช้ด้านหลัง → "[รับยา SRH] 1 x 1 hs"
   const tg = o.match(/^((?:\[[^\]]*\]\s*)+)(\S.*)$/);
-  if (tg) { const r = mdAbbr(tg[2]); return r === tg[2] ? o : `${tg[1].trim()} ${r}`; }
+  if (tg) { const r = mdAbbrRaw(tg[2]); return r === tg[2] ? o : `${tg[1].trim()} ${r}`; }
   const s = mdNorm(o), r = mdAbbr0(s);
   return r === s ? o : r;
+}
+// ยาน้ำรับประทานใส่ po หลัง ml (ผู้ใช้ขอ 2026-11-10: "1 ml prn q4h" → "1 ml po prn q4h", "15 ml x 3 pc" → "15 ml po x 3 pc")
+//   เติมตอนท้ายครั้งเดียว — ตัวแปลงภายในเรียก mdAbbrRaw ซ้ำและอ่านรูป "N ml x ..." ต่อ จึงห้ามเติมระหว่างทาง
+//   แปลงไม่ได้ (คืนข้อความเดิม) / ฉีด / พ่น = ไม่แตะ
+function mdAbbr(t) {
+  const o = String(t || '').replace(/\s+/g, ' ').trim(), r = mdAbbrRaw(t);
+  if (r === o || /\b(?:iv|im|sc)\b|พ่น|nss/i.test(r)) return r;
+  return r.replace(/(\d) ml\b(?! po\b)/g, '$1 ml po');
 }
 // วันในสัปดาห์ → อักษรย่อ (ผู้ใช้ขอ 2026-10-26): "จันทร์ พุธ ศุกร์" → "(จ พ ศ)", "จันทร์ - ศุกร์" → "(จ-ศ)"
 const MD_DOW = [['จันทร์', 'จ'], ['อังคาร', 'อ'], ['พุธ', 'พ'], ['พฤหัสบดี', 'พฤ'], ['พฤหัส', 'พฤ'], ['ศุกร์', 'ศ'], ['เสาร์', 'ส'], ['อาทิตย์', 'อา']];
@@ -1020,11 +1028,11 @@ function mdAbbr0(s) {
     let b = s.replace(/\(\s*\d*\s*ซอง\s*ละลายน้ำ[^()]*\)/g, ' ').replace(/ละลายน้ำ(?:\s*\d+\s*แก้ว)?/g, ' ')
       .replace(/^ยา\s*/, '').replace(/^(?!รับประทาน)(.*?)\s*รับประทาน\s*/, 'รับประทาน $1 ').replace(/ซอง/g, 'เม็ด').replace(/\s+/g, ' ').trim();
     if (!/^รับประทาน/.test(b)) b = 'รับประทาน ' + b;
-    const a = mdAbbr(b);
+    const a = mdAbbrRaw(b);
     return a !== b && /^[\d.]+ x \d/.test(a) ? `${a} sack` : s;
   }
   // ส่วนท้ายที่แปลงแยกแล้วต่อท้ายตัวย่อ — ส่วนหน้าต้องแปลงได้ ไม่งั้นใช้ข้อความเดิมทั้งบรรทัด
-  const tail = (m, f) => { if (!m) return null; const base = mdAbbr(m[1]); return base !== m[1] ? f(base) : s; };
+  const tail = (m, f) => { if (!m) return null; const base = mdAbbrRaw(m[1]); return base !== m[1] ? f(base) : s; };
   // "Hold if BP < 120/80" → "1 x 1 pc Hold if BP < 120/80" (ห้ามหายจากสติกเกอร์)
   const hm = s.match(/^(.*?\S)\s*\(?\s*(hold\b[^()]*?)\s*\)?\s*$/i);
   if (hm) return tail(hm, b => `${b} ${hm[2]}`);
@@ -1042,13 +1050,13 @@ function mdAbbr0(s) {
   const DWP = `\\((?:\\s*(?:เฉพาะ|ทุก))?(?:\\s*วัน)?\\s*(?:${MD_DOW_RE})[^()]*\\)`;
   const two = s.match(new RegExp(`^(.*?${DWP})\\s*((?:ครั้งละ\\s*)?(?:ครึ่ง|½|\\d)[^()]*?${DWP})$`));
   if (two) {
-    const a = mdAbbr(two[1]), b2 = 'รับประทาน ' + two[2], b = mdAbbr(b2);
+    const a = mdAbbrRaw(two[1]), b2 = 'รับประทาน ' + two[2], b = mdAbbrRaw(b2);
     return a !== two[1] && b !== b2 ? `${a}, ${b}` : s;
   }
   // วันในสัปดาห์: "หลังอาหารเช้า จันทร์ พุธ ศุกร์" / "เฉพาะวันอาทิตย์" / "(ทุกวันพุธ)" → "1 x 1 pc (จ พ ศ)"
   const dw = s.match(MD_DOW_TAIL);
   if (dw) {
-    const base = /วันละ/.test(dw[1]) ? dw[1] : dw[1] + ' วันละ 1 ครั้ง', b = mdAbbr(base);
+    const base = /วันละ/.test(dw[1]) ? dw[1] : dw[1] + ' วันละ 1 ครั้ง', b = mdAbbrRaw(base);
     const days = dw[2].replace(new RegExp(MD_DOW_RE, 'g'), w => MD_DOW.find(d => d[0] === w)[1])
       .replace(/\s*(?:ถึง|-)\s*(?:วัน)?\s*/g, '-').replace(/\s*(?:,|และ)\s*(?:วัน)?\s*|\s*วัน\s*|\s+/g, ' ').trim();
     return b !== base && / x 1\b/.test(b) ? `${b} (${days})` : s;
@@ -1056,13 +1064,13 @@ function mdAbbr0(s) {
   // สัปดาห์ละครั้ง → weekly (ไม่บอกวันละกี่ครั้ง = 1 ครั้ง)
   const wm = s.match(/^(.*?\S)\s*\(?\s*สัปดาห์ละ\s*1?\s*ครั้ง\s*\)?\s*\.?$/);
   if (wm) {
-    const base = /วันละ/.test(wm[1]) ? wm[1] : wm[1] + ' วันละ 1 ครั้ง', b = mdAbbr(base);
+    const base = /วันละ/.test(wm[1]) ? wm[1] : wm[1] + ' วันละ 1 ครั้ง', b = mdAbbrRaw(base);
     return b !== base && / x 1\b/.test(b) ? `${b} weekly` : s;
   }
   // เวลาเดียว (ยา TB, ผู้ใช้ขอ 2026-10-26): "3 เม็ด วันละ 1 ครั้ง เวลา ...14.00...น." → "3 x 1 @14.00" ("เช้า" ที่ติดมากับเวลาไม่นับ)
   const tm1 = s.match(/^(.*?\S)\s*(?:เช้า)?\s*(?:เวลา)?[\s.]*(\d{1,2})[.:](\d{2})[\s.]*(?:น\.?)?[\s.]*$/);
   if (tm1 && !/\d[.:]\d{2}/.test(tm1[1])) {
-    const base = tm1[1].replace(/\s*(?:เช้า|เวลา)\s*$/, ''), b = mdAbbr(/วันละ/.test(base) ? base : base + ' วันละ 1 ครั้ง');
+    const base = tm1[1].replace(/\s*(?:เช้า|เวลา)\s*$/, ''), b = mdAbbrRaw(/วันละ/.test(base) ? base : base + ' วันละ 1 ครั้ง');
     return /^[\d.]+(?: ml)? x 1$/.test(b) ? `${b} @${+tm1[2]}.${tm1[3]}` : s;
   }
   // ท้ายประโยค "เวลาบวม\ / "เมื่อมีอาการปวด" → "0.5 x 1 pc prn บวม" (ผู้ใช้ขอ 2026-10-22, Lasix HN 4802454)
