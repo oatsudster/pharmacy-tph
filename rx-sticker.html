@@ -1740,7 +1740,7 @@ function hmeStickerHtml(o, rows, pi, pn, w, h, fs) {
     <div class="hd2"><span>AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}</span>
       <span>${escHtml(thIso(o.dchdate || o.date))} · ${o.items.length} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
     <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
-      <td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td><td>${escHtml(d.use)}</td></tr>`).join('')}</table></div></div>`;
+      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td></tr>`).join('')}</table></div></div>`;   // จำนวนอยู่หลังวิธีใช้ (ผู้ใช้ขอ 2026-11-10)
 }
 // สติกเกอร์ยากลับบ้าน 9 × 6 ซม. ดวงละไม่เกิน 6 รายการ (ตามที่ห้องยากำหนด — ติดใบ discharge summary)
 const HME_W = 90, HME_H = 60, HME_PER = 6;
