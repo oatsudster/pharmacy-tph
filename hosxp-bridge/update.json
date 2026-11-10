@@ -7,6 +7,7 @@
     { "src": "hme-printer.ps1", "os": "win" },
     { "src": "start-bridge.bat", "os": "win" },
     { "src": "stop-bridge.bat", "os": "win" },
+    { "src": "bridge-watchdog.vbs", "os": "win" },
     { "src": "HME-AutoPrint.bat", "os": "win" },
     { "src": "HME-AutoPrint-setup.bat", "os": "win" },
     { "src": "installer/uninstall.ps1", "dst": "uninstall.ps1", "os": "win" },

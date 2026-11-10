@@ -1,6 +1,6 @@
 ﻿# ติดตั้ง HOSxP Bridge ให้ผู้ใช้ Windows คนปัจจุบัน (ไม่ต้องใช้สิทธิ์ admin)
 #   1. คัดลอกไฟล์ไปที่ %LOCALAPPDATA%\HOSxPBridge
-#   2. ตั้งให้เปิดเองตอน login (ทางลัดในโฟลเดอร์ Startup) — ถามว่าทุกวัน หรือเฉพาะวันพุธ-พฤหัส (วันคลินิก)
+#   2. ตั้งให้เปิดเองตอน login ทุกวัน (ทางลัดในโฟลเดอร์ Startup) + ตัวเฝ้าใน Task Scheduler ที่ bridge ลงทะเบียนเอง (เปิดใหม่ถ้าปิดไป)
 #   3. ปิดตัวเก่า (ถ้ามี) แล้วเปิดตัวใหม่ และตรวจว่าตอบได้
 #   4. ตรวจ OCR ของ Windows (ใช้อ่านวันนัด) และเปิดหน้าตั้งค่า Chrome/Edge ให้กดอนุญาต
 #   db.json (รหัสฐานข้อมูล HOSxP แบบอ่านอย่างเดียว) ถ้ามีในชุดติดตั้งจะคัดลอกไปด้วย — ไม่มีก็ยังใช้ OCR ได้เหมือนเดิม
@@ -26,7 +26,7 @@ try {
   Start-Sleep -Milliseconds 500
 
   New-Item -ItemType Directory -Force $Target | Out-Null
-  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'update.json', 'start-bridge.bat', 'stop-bridge.bat', 'uninstall.cmd', 'uninstall.ps1') {
+  foreach ($f in 'hosxp-bridge.ps1', 'hxdb.cs', 'update.json', 'start-bridge.bat', 'stop-bridge.bat', 'bridge-watchdog.vbs', 'uninstall.cmd', 'uninstall.ps1') {
     Copy-Item (Join-Path $src $f) $Target -Force
   }
   # หน้าต่างพิมพ์สรุปยากลับบ้านอัตโนมัติ (ใช้เฉพาะเครื่องห้องยาที่ต่อเครื่องพิมพ์สติกเกอร์)
@@ -35,19 +35,8 @@ try {
   }
   if (Test-Path (Join-Path $src 'db.json')) { Copy-Item (Join-Path $src 'db.json') $Target -Force }
 
-  # วันที่ให้เปิดเองตอน login — เครื่องลงคลินิกใช้แค่พุธ-พฤหัส เครื่องห้องจ่ายยาใช้หน้าต่างยาคงเหลือทุกวัน
-  if (-not $Days) {
-    if ($Quiet) { $Days = 'all' }
-    else {
-      $ans = [System.Windows.Forms.MessageBox]::Show(
-        "ให้ HOSxP Bridge เปิดเองตอนเปิดเครื่องวันไหน?`n`n" +
-        "• Yes = เฉพาะวันพุธและพฤหัสบดี (เครื่องที่ใช้ลงคลินิก HT/DM)`n" +
-        "• No = ทุกวัน (เครื่องห้องจ่ายยาที่ใช้หน้าต่างยาคงเหลือทุกวัน)`n`n" +
-        "วันอื่นยังเปิดเองได้ โดยดับเบิลคลิก start-bridge.bat ในโฟลเดอร์ที่ติดตั้ง",
-        'HOSxP Bridge', 'YesNo', 'Question')
-      $Days = if ($ans -eq 'Yes') { '3,4' } else { 'all' }
-    }
-  }
+  # เปิดเองตอน login ทุกวัน (เลิกถามพุธ-พฤหัส 2026-11-10 — กด Enter แล้วได้แค่ 2 วันโดยไม่ตั้งใจ) · -Days ใช้ทดสอบเท่านั้น
+  if (-not $Days) { $Days = 'all' }
   $daysFile = Join-Path $Target 'autostart-days.txt'
   if ($Days -eq 'all') { Remove-Item $daysFile -Force -ErrorAction SilentlyContinue }
   else { [IO.File]::WriteAllText($daysFile, $Days) }

@@ -1410,6 +1410,26 @@ $state.ver = VersionOf (LocalItems (LocalList))
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $PORT)
 try { $listener.Start() } catch { Write-Host "เปิดพอร์ต $PORT ไม่ได้ — อาจมี HOSxP Bridge เปิดอยู่แล้ว"; exit 1 }
 Write-Host "HOSxP Bridge $($state.ver) ($OS) ทำงานแล้ว ที่ http://127.0.0.1:$PORT/current  (หยุด: stop-bridge.bat)"
+# ตัวเฝ้า (2026-11-10): Task Scheduler รัน bridge-watchdog.vbs ทุก 5 นาที — bridge ไม่ได้เปิดอยู่ก็เปิดให้เอง
+# ลงทะเบียนจากตัว bridge เอง เครื่องที่อัปเดตอัตโนมัติจึงได้ด้วยโดยไม่ต้องลงใหม่ · เปิดทุกวัน (เลิกใช้ autostart-days.txt พุธ-พฤหัส)
+# stopped.flag = ผู้ใช้กด stop-bridge.bat — ตัวเฝ้าไม่เปิดซ้ำจนกว่าจะเปิด bridge เอง (ตัวนี้เปิดขึ้นแล้วจึงลบทิ้ง)
+function EnsureWatchdog {
+  $wd = Join-Path $PSScriptRoot 'bridge-watchdog.vbs'
+  if ($OS -ne 'win' -or $DEV -or $env:HXB_PORT -or -not (Test-Path $wd)) { return }
+  foreach ($f in 'stopped.flag', 'autostart-days.txt') { Remove-Item (Join-Path $PSScriptRoot $f) -Force -ErrorAction SilentlyContinue }
+  try {
+    $svc = New-Object -ComObject Schedule.Service; $svc.Connect()
+    $td = $svc.NewTask(0)
+    $td.RegistrationInfo.Description = 'HOSxP Bridge (ห้องยา รพ.ถ้ำพรรณรา): ถ้า bridge ไม่ได้เปิดอยู่ ให้เปิดใหม่ — ลงทะเบียนโดย hosxp-bridge.ps1'
+    $td.Settings.DisallowStartIfOnBatteries = $false; $td.Settings.StopIfGoingOnBatteries = $false
+    $td.Settings.StartWhenAvailable = $true; $td.Settings.ExecutionTimeLimit = 'PT1M'; $td.Settings.MultipleInstances = 2
+    $tr = $td.Triggers.Create(1)   # TimeTrigger เริ่มตอนนี้ ซ้ำทุก 5 นาทีไม่มีกำหนดหยุด (ทำงานเฉพาะตอน login อยู่)
+    $tr.StartBoundary = (Get-Date).AddMinutes(1).ToString('yyyy-MM-ddTHH:mm:ss'); $tr.Repetition.Interval = 'PT5M'
+    $a = $td.Actions.Create(0); $a.Path = 'wscript.exe'; $a.Arguments = "//B //Nologo `"$wd`""
+    [void]$svc.GetFolder('\').RegisterTaskDefinition('HOSxP Bridge Watchdog', $td, 6, $null, $null, 3)
+  } catch { Write-Host "ตั้งตัวเฝ้า bridge ไม่ได้: $($_.Exception.Message)" }
+}
+EnsureWatchdog
 if ($db) { try { [void](DbQuery 'SELECT 1'); Write-Host "เชื่อมฐานข้อมูล HOSxP แล้ว" } catch { Write-Host "ยังเชื่อมฐานข้อมูลไม่ได้: $_ (ใช้ OCR แทน)" } }
 else { Write-Host "ไม่ได้ตั้งฐานข้อมูล ($($state.dbErr)) — ใช้ OCR" }
 # อ่านหน้าจอ / ปุ่มลัด / หน้าต่างพิมพ์สรุปยากลับบ้าน ใช้ได้เฉพาะ Windows

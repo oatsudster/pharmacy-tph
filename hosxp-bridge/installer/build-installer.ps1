@@ -64,6 +64,7 @@ foreach ($f in @((Join-Path $bridgeDir 'hosxp-bridge.ps1'), (Join-Path $bridgeDi
 }
 Copy-Item (Join-Path $bridgeDir 'start-bridge.bat') $stage
 Copy-Item (Join-Path $bridgeDir 'stop-bridge.bat') $stage
+Copy-Item (Join-Path $bridgeDir 'bridge-watchdog.vbs') $stage
 Copy-Item (Join-Path $bridgeDir 'hxdb.cs') $stage
 Copy-Item (Join-Path $bridgeDir 'update.json') $stage
 Copy-Item (Join-Path $bridgeDir 'HME-AutoPrint.bat') $stage
