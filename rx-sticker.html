@@ -1007,7 +1007,11 @@ function mdAbbrRaw(t) {
 function mdAbbr(t) {
   const o = String(t || '').replace(/\s+/g, ' ').trim(), r = mdAbbrRaw(t);
   if (r === o || /\b(?:iv|im|sc)\b|พ่น|nss/i.test(r)) return r;
-  return r.replace(/(\d) ml\b(?! po\b)/g, '$1 ml po');
+  // ความถี่ยาน้ำเป็นตัวย่อ (ผู้ใช้ขอ 2026-11-10): "x 3 pc" → "tid pc", "x 1 hs" → "hs", "x q6h" → "q6h" — ยาเม็ดยังเป็น "1 x 3 pc"
+  const F = { 1: 'od', 2: 'bid', 3: 'tid', 4: 'qid' };
+  return r.replace(/(\d) ml\b(?! po\b)/g, '$1 ml po')
+    .replace(/( ml po) x (?:1 (hs)\b|([1-4])\b|(q[\d-]+(?:h|min))\b)/g, (_, a, hs, n, q) => `${a} ${hs || F[n] || q}`)
+    .replace(/ ml po od (.*\bweekly\b)/, ' ml po $1');   // สัปดาห์ละครั้ง: "5 ml po pc weekly" ไม่ใช่ "od pc weekly"
 }
 // วันในสัปดาห์ → อักษรย่อ (ผู้ใช้ขอ 2026-10-26): "จันทร์ พุธ ศุกร์" → "(จ พ ศ)", "จันทร์ - ศุกร์" → "(จ-ศ)"
 const MD_DOW = [['จันทร์', 'จ'], ['อังคาร', 'อ'], ['พุธ', 'พ'], ['พฤหัสบดี', 'พฤ'], ['พฤหัส', 'พฤ'], ['ศุกร์', 'ศ'], ['เสาร์', 'ส'], ['อาทิตย์', 'อา']];
