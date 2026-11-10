@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 const FIREBASE_API_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE';
 const PROJECT_ID = 'pharmacy-tph';
 const DOC_PATH = 'pharmacy_tph/expiry_tracker';
-const TRACKER_URL = 'https://oatsudster.github.io/pharmacy-tph/expiry-tracker.html';
+const TRACKER_URL = 'https://tph-pharmacy.pages.dev/expiry-tracker';
 const NEAR_EXPIRY_DAYS = 90;
 const TELEGRAM_MAX_LEN = 4000; // เผื่อ margin จาก limit จริง 4096
 

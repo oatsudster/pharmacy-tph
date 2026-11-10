@@ -15,7 +15,7 @@
 const FIREBASE_API_KEY = 'AIzaSyDHiTSM7fz1FihDLyb_QxLGheo_6CuNXIE';
 const PROJECT_ID = 'pharmacy-tph';
 const DOC_PATH = 'pharmacy_tph/expiry_tracker';
-const TRACKER_URL = 'https://oatsudster.github.io/pharmacy-tph/expiry-tracker.html';
+const TRACKER_URL = 'https://tph-pharmacy.pages.dev/expiry-tracker';
 const TELEGRAM_MAX_LEN = 4000;
 const CHECK_COOLDOWN_MS = 60 * 1000; // กันสแปม /check — ห่างกันอย่างน้อย 1 นาที
 
