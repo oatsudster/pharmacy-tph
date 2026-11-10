@@ -4,9 +4,10 @@
 // คำสั่งที่รองรับ:
 //   /check          สั่งรัน workflow expiry-telegram-notify.yml ทันที (สรุปยาใกล้หมดอายุ ≤90 วันทั้งหมด)
 //   /search <ชื่อยา>  ค้นหายาตามชื่อ ตอบทันทีจากข้อมูลสด (ไม่ผ่าน workflow)
-//   /monthly        รายการส่ง HRMS / SKYNET ประจำเดือน (cron ส่งเองทุกวันที่ 1)
+//   /monthly        (เฉพาะแชทงานโรงพยาบาล TASKS_CHAT_ID) รายการส่ง HRMS / SKYNET ประจำเดือน (cron ส่งเองทุกวันที่ 1)
 //   /help           แสดงคำสั่งทั้งหมด
 //
+// Cron */5 นาที: แจ้งเอกสารใหม่ในหน้า insurance-audit เข้าแชทส่วนตัว TASKS_CHAT_ID (auditUploadsNotify) — ไม่เข้ากลุ่มห้องยา
 // Cron trigger (wrangler.toml) สั่งรัน workflow เดียวกันทุกวัน 08:30 น. ไทย —
 // ใช้แทน schedule ของ GitHub Actions ที่ดีเลย์ไม่แน่นอน (บางวันช้าไปถึงเที่ยง-บ่ายโมง)
 // วันที่ 1 ของเดือน cron เดียวกันส่งข้อความเตือนลงข้อมูลเดือนที่แล้วใน HRMS และ SKYNET ด้วย (monthlyReminder)
@@ -34,7 +35,14 @@ export default {
 
     const chatId = String(msg.chat.id);
     if (chatId !== env.ALLOWED_CHAT_ID) {
-      // ไม่ใช่กลุ่มที่อนุญาต — เงียบไว้ ไม่ตอบอะไร
+      // แชทอื่น (เช่นแชทส่วนตัวของผู้ดูแล) ตอบแค่ /chatid หรือ /start — บอกเลข chat id ไว้ตั้งเป็น TASKS_CHAT_ID
+      const c = msg.text.trim().split(/[\s@]/)[0];
+      if (c === '/chatid' || c === '/start') {
+        await replyTelegram(env, chatId, `chat id ของแชทนี้: <code>${escTg(chatId)}</code>` +
+          (chatId === env.TASKS_CHAT_ID ? '\n✅ แชทนี้คือแชทงานโรงพยาบาล (เอกสาร insurance-audit, HRMS/SKYNET) — /monthly ใช้ได้' : ''));
+      } else if (c === '/monthly' && chatId === env.TASKS_CHAT_ID) {
+        await replyTelegram(env, chatId, monthlyReminder(new Date(), true));
+      }
       return new Response('OK');
     }
 
@@ -49,8 +57,6 @@ export default {
       await handleSearch(env, chatId, arg);
     } else if (cmd === '/annual') {
       await replyTelegram(env, chatId, (await annualDocsReminder(new Date(), true)) || '✅ งานเอกสารประจำปี (คบส./วัคซีน) ยังไม่ถึงช่วงเตือน หรือทำครบแล้ว');
-    } else if (cmd === '/monthly') {
-      await replyTelegram(env, chatId, monthlyReminder(new Date(), true));
     } else if (cmd === '/help') {
       await handleHelp(env, chatId);
     }
@@ -59,6 +65,11 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
+    // ทุก 5 นาที: เอกสารใหม่ในหน้า insurance-audit → แชทส่วนตัว (TASKS_CHAT_ID) ไม่ใช่กลุ่มห้องยา
+    if (event.cron === AUDIT_CRON) {
+      ctx.waitUntil(auditUploadsNotify(env).catch((e) => console.error('audit uploads', e)));
+      return;
+    }
     ctx.waitUntil(
       dispatchWorkflow(env).then(async (res) => {
         if (!res.ok) {
@@ -67,12 +78,53 @@ export default {
       })
     );
     // วันที่ 1 ของเดือน (เวลาไทย) — เตือนส่งข้อมูลเดือนที่แล้วเข้า HRMS และ SKYNET
+    // ส่งเข้าแชทงานโรงพยาบาล (TASKS_CHAT_ID) ตั้งแต่ 2026-11-10 — ยังไม่ตั้งค่าก็ส่งกลุ่มห้องยาเหมือนเดิม
     const reminder = monthlyReminder(new Date(event.scheduledTime));
-    if (reminder) ctx.waitUntil(replyTelegram(env, env.ALLOWED_CHAT_ID, reminder));
+    if (reminder) ctx.waitUntil(replyTelegram(env, env.TASKS_CHAT_ID || env.ALLOWED_CHAT_ID, reminder));
     // งานเอกสารประจำปี (annual-docs.html): เหลือ 14/7/3/1/0 วัน และทุกวันจันทร์ถ้าเลยกำหนด
     ctx.waitUntil(annualDocsReminder(new Date(event.scheduledTime)).then((t) => t && replyTelegram(env, env.ALLOWED_CHAT_ID, t)).catch((e) => console.error('annual docs', e)));
   },
 };
+
+// ── เอกสารใหม่ในหน้า insurance-audit (งานโรงพยาบาล ไม่ใช่งานห้องยา) ──
+// รายการไฟล์ = pharmacy_tph/insurance_audit_docs.files (ทั้งอัปโหลดผ่าน Apps Script และวางลิงก์เอง)
+// จำ id ที่เคยเห็นไว้ใน KV 'audit_seen' — รอบแรก (ยังไม่มี key) จำไว้เฉย ๆ ไม่แจ้ง
+const AUDIT_CRON = '*/5 * * * *';
+const AUDIT_URL = 'https://tph-pharmacy.pages.dev/insurance-audit';
+async function fsDoc(name) {
+  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/pharmacy_tph/${name}?key=${FIREBASE_API_KEY}`);
+  if (res.status === 404) return {};
+  if (!res.ok) throw new Error(`firestore ${name}: ${res.status}`);
+  return fsFieldsToJs((await res.json()).fields || {});
+}
+async function auditUploadsNotify(env) {
+  if (!env.TASKS_CHAT_ID) return;
+  const files = (await fsDoc('insurance_audit_docs')).files || {};
+  const ids = Object.keys(files);
+  const raw = await env.RATE_LIMIT.get('audit_seen');
+  const seen = new Set(raw ? JSON.parse(raw) : []);
+  const fresh = ids.filter((id) => !seen.has(id));
+  if (raw && !fresh.length && ids.length === seen.size) return;
+  // เขียนก่อนส่ง — Telegram ล่มก็ไม่แจ้งซ้ำทุก 5 นาที
+  await env.RATE_LIMIT.put('audit_seen', JSON.stringify(ids));
+  if (!raw || !fresh.length) return;
+  let topics = {}, metricName = {};
+  try {
+    const a = JSON.parse((await fsDoc('insurance_audit')).json || 'null') || {};
+    for (const t of a.docs || []) topics[t.id] = t.name;
+    for (const m of a.metrics || []) metricName[m.id] = m.name;
+  } catch (e) { console.error('audit topics', e); }
+  const list = fresh.map((id) => files[id]).sort((x, y) => String(x.at || '').localeCompare(String(y.at || '')));
+  const lines = list.map((f) => {
+    const t = new Date(f.at || Date.now()).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const ms = (f.metrics || []).map((m) => metricName[m] ? `${m} ${metricName[m]}` : m).join(', ');
+    return `📄 <a href="${escTg(f.url).replace(/"/g, '&quot;')}">${escTg(f.name)}</a>\n` +
+      `   📁 ${escTg(topics[f.folder] || 'ไม่ระบุเรื่อง')} · 👤 ${escTg(f.by || '-')} · ${escTg(t)}` +
+      (f.size ? ` · ${(f.size / 1048576).toFixed(1)} MB` : '') + (ms ? `\n   ตัวชี้วัด ${escTg(ms)}` : '');
+  });
+  await replyTelegram(env, env.TASKS_CHAT_ID,
+    `📥 <b>เอกสารใหม่ใน insurance-audit (${list.length} ไฟล์)</b>\n\n${lines.join('\n\n')}\n\n${AUDIT_URL}`);
+}
 
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -157,7 +209,6 @@ async function handleHelp(env, chatId) {
     '/check — ตรวจสอบยาใกล้หมดอายุทั้งหมดทันที (≤90 วัน)\n' +
     '/search ชื่อยา — ค้นหายาตามชื่อ ดูวันหมดอายุและตำแหน่งเก็บ\n' +
     '/annual — ดูงานเอกสารประจำปี (คำสั่ง คบส./วัคซีน, แผน Cold Chain) ที่ใกล้/เลยกำหนด\n' +
-    '/monthly — ดูรายการที่ต้องส่ง HRMS / SKYNET ประจำเดือน (เตือนเองทุกวันที่ 1)\n' +
     '/help — แสดงคำสั่งทั้งหมดนี้';
   await replyTelegram(env, chatId, text);
 }
