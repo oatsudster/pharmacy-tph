@@ -2374,6 +2374,9 @@ const FC_CSS = FLOAT_CSS + `
   table.sm-tb td.n.diff{color:#b91c1c;background:#FFF5F5}
   table.sm-tb td.n small{font-size:10.5px;font-weight:400;color:#92400e;display:block}
   table.sm-tb tr.ml{cursor:pointer}
+  .sm-sec[data-sm-tog]{cursor:pointer;user-select:none}
+  .sm-sec .tog{float:right;font-size:10.5px;font-weight:600;color:#587363;border:1px solid #D6E4DA;border-radius:6px;padding:0 6px;background:#F9FBFA}
+  .sm-sec.off{color:#8aa093;margin:4px 0}
   table.sm-tb tr.mld td{font-size:11.5px;color:#374151;background:#F9FBFA;line-height:1.5}
 `;
 
@@ -2440,6 +2443,8 @@ async function openFloatClinic() {
   });
   d.getElementById('fc-name').addEventListener('input', e => { main('f-name').value = e.target.value; });
   d.getElementById('fc-smart').addEventListener('click', e => {
+    const tg = e.target.closest('[data-sm-tog]');
+    if (tg) { fcToggleSec(tg.dataset.smTog); return; }
     const ml = e.target.closest('tr[data-sm-meal]'); if (!ml) return;
     const k = ml.dataset.smMeal;
     smartMealOpen.has(k) ? smartMealOpen.delete(k) : smartMealOpen.add(k);
@@ -3682,23 +3687,40 @@ function fcRegimenVisit(visits, today, res) {
   const n = visits.map(v => v.drugs.filter(tphSmartRx.isChronic).length), max = Math.max(0, ...n);
   return max ? visits[n.findIndex(x => x >= Math.ceil(max * 0.6))] : null;
 }
+// ซ่อน/แสดงแต่ละส่วนได้ (เภสัชบางคนไม่ใช้) — จำไว้ต่อเครื่องใน localStorage (ผู้ใช้ขอ 2026-11-11)
+const FC_HIDE_KEY = 'fc_smart_hide';
+let fcHide = {};
+try { fcHide = JSON.parse(localStorage.getItem(FC_HIDE_KEY) || '{}') || {}; } catch (e) { fcHide = {}; }
+function fcToggleSec(k) {
+  fcHide[k] = !fcHide[k];
+  try { localStorage.setItem(FC_HIDE_KEY, JSON.stringify(fcHide)); } catch (e) {}
+  fcRenderSmart();
+}
+const FC_SEC = { trend: '📈 BP และ Lab หลัก เทียบครั้งก่อน', meal: '🍽️ จำนวนยาเม็ดแต่ละมื้อ' };
+function fcSecHead(k, sub) {
+  if (fcHide[k]) return `<div class="sm-sec off" data-sm-tog="${k}" title="คลิกเพื่อแสดง">▸ ${FC_SEC[k]} <span class="tog">แสดง</span></div>`;
+  return `<div class="sm-sec" data-sm-tog="${k}" title="คลิกหัวข้อเพื่อซ่อน">▾ ${FC_SEC[k]} ${sub ? `<span class="muted" style="font-weight:400">${sub}</span>` : ''}<span class="tog">ซ่อน</span></div>`;
+}
 function fcRenderSmart() {
   if (!clinicWin || clinicWin.closed) return;
   const el = clinicWin.document.getElementById('fc-smart'), hn = document.getElementById('f-hn').value.trim();
   if (!el) return;
   if (!/^\d{5,10}$/.test(hn) || !window.tphHosxp || typeof tphHosxp.smartRx !== 'function' || !window.tphSmartRx) { el.style.display = 'none'; return; }
   el.style.display = '';
+  // ซ่อนทั้งสองส่วน → แสดงแค่หัวข้อไว้กดเปิด ไม่ต้องอ่าน HOSxP
+  if (fcHide.trend && fcHide.meal) { el.innerHTML = fcSecHead('trend') + fcSecHead('meal'); return; }
   const c = fcInfoCache.get(hn);
   fcLoadInfo(hn);
   if (!c) { el.innerHTML = '<div class="muted">⏳ กำลังอ่าน BP/lab และยาจาก HOSxP…</div>'; return; }
   if (c.failed) { el.innerHTML = '<div class="muted">ต่อฐานข้อมูล HOSxP ไม่ได้ — ส่วน BP/lab และยาต่อมื้อต้องใช้ HOSxP Bridge ที่มี db.json</div>'; return; }
   const today = (c.order && c.order.drugs) || [], info = c.info || {};
   const res = tphSmartRx.analyze({ today, visits: c.visits, info });
-  el.innerHTML = smartTrendHtml(tphSmartRx.trends(info)) + smartMealHtml(fcRegimenVisit(c.visits, today, res), today);
+  el.innerHTML = (fcHide.trend ? fcSecHead('trend') : smartTrendHtml(tphSmartRx.trends(info)))
+    + (fcHide.meal ? fcSecHead('meal') : smartMealHtml(fcRegimenVisit(c.visits, today, res), today));
 }
 // แนวโน้ม BP + lab หลักเทียบครั้งก่อน — ค่าเรียงเก่า → ล่าสุด, ป้ายบอกดีขึ้น/แย่ลงเทียบช่วงปกติ
 function smartTrendHtml(rows) {
-  const h = '<div class="sm-sec">📈 BP และ Lab หลัก เทียบครั้งก่อน <span class="muted" style="font-weight:400">(เก่า → ล่าสุด)</span></div>';
+  const h = fcSecHead('trend', '(เก่า → ล่าสุด)');
   if (!rows.length) return h + '<div class="muted">ไม่มี BP/lab ใน 1 ปี</div>';
   const ST = { high: 'สูง', low: 'ต่ำ' };
   const TR = { better: '✅ ดีขึ้น', worse: '🔻 แย่ลง', bad: '🟠 ยังผิดปกติ', ok: 'ปกติ' };
@@ -3725,10 +3747,10 @@ function pillFmt(v) {
 }
 function smartMealHtml(prev, today) {
   const A = prev ? tphSmartRx.mealSchedule(prev.drugs) : null, B = today.length ? tphSmartRx.mealSchedule(today) : null;
-  if (!A && !B) return '';
+  if (!A && !B) return fcSecHead('meal', '') + '<div class="muted">ยังไม่มีรายการยา</div>';
   const cols = [A && { s: A, h: `ที่กินอยู่<br><small>${escHtml(tphHosxp.thDate(prev.date).replace(/ \d{4}$/, ''))}</small>` }, B && { s: B, h: 'ใบสั่ง<br><small>วันนี้</small>' }].filter(Boolean);
   const used = tphSmartRx.SLOTS.filter(k => cols.some(c => c.s.slots[k].tabs || c.s.slots[k].insulin.length));
-  const h = '<div class="sm-sec">🍽️ จำนวนยาเม็ดแต่ละมื้อ <span class="muted" style="font-weight:400">— ถามทวนผู้ป่วย เช่น "หลังอาหารเช้ากินยากี่เม็ด" · คลิกมื้อเพื่อดูรายการยา</span></div>';
+  const h = fcSecHead('meal', '— ถามทวนผู้ป่วย เช่น "หลังอาหารเช้ากินยากี่เม็ด" · คลิกมื้อเพื่อดูรายการยา');
   if (!used.length) return h + '<div class="muted">อ่านมื้อยาจากวิธีใช้ไม่ได้</div>';
   const ins = x => x.insulin.length ? `<small>+ อินซูลิน ${x.insulin.map(i => `${pillFmt(i.amt)} u`).join(', ')}</small>` : '';
   const list = (x, label) => x.items.length || x.insulin.length ? `<div>${label ? `<b>${label}:</b> ` : ''}${x.items.map(i => `${escHtml(i.name)} <b>${pillFmt(i.amt)}</b>`).concat(x.insulin.map(i => `${escHtml(i.name)} <b>${pillFmt(i.amt)} ยูนิต</b>`)).join(' · ')}</div>` : '';
