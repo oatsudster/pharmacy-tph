@@ -158,6 +158,13 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .badge-ok { font-size: 12px; background: #dcfce7; color: #166534; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
 .badge-wait { font-size: 12px; background: var(--gold-light); color: #92400e; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
 
+/* ── สรุปรายการยา OPD: กรอบเต็มความสูง ชิดซ้ายบนของดวง — ตัดด้านขวาครั้งเดียวก็แปะสมุดประจำตัวได้ (ผู้ใช้ขอ 2026-11-12)
+   ขอบซ้ายในกรอบ 4 มม. กันตัวหนังสือตกขอบเหมือนหัวสติกเกอร์ผู้ป่วยใน ── */
+.hmestk.opdsum { padding: 0; }
+.hmestk.opdsum .hd span:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hmestk.opdsum .hd span:last-child { flex-shrink: 0; }
+.hmestk.opdsum .box { width: 80mm; height: 100%; border: .35mm solid #000; padding: 1.2mm 2mm 1mm 4mm; display: flex; flex-direction: column; overflow: hidden; }
+
 /* ── หัวสติกเกอร์ผู้ป่วยใน 9 × 6 ซม. (แบบ CUSTOM- stickerผู้ป่วยใน ของ HOSxP: เตียง / ชื่อ / HN) ── */
 .ipdstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
   font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; display: flex; align-items: flex-start; justify-content: flex-start; }
@@ -1790,11 +1797,11 @@ function printHme(keys) {
 // ── สรุปรายการยา OPD/ER (ผู้ใช้ขอ 2026-11-12) — แบบเดียวกับสรุปยากลับบ้าน IPD แต่พิมพ์ลงม้วนสติกเกอร์ยา OPD 101.6 × 59.9 มม.
 //    เฉพาะรายการที่ติ๊กไว้ · วิธีใช้ตามที่แก้ ✏️ (ถ้ามี) ย่อภาษาอังกฤษแบบ HMe · ดวงละไม่เกิน 6 รายการ
 function opdSumHtml(v, rows, pi, pn, fs) {
-  return `<div class="hmestk" style="width:101.6mm;height:59.9mm;padding:1.5mm 12.7mm 1.5mm 10.58mm"><div class="hd"><span>สรุปรายการยา · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
+  return `<div class="hmestk opdsum" style="width:101.6mm;height:59.9mm"><div class="box"><div class="hd"><span>สรุปรายการยา · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
     <div class="hd2"><span>VN ${escHtml(v.vn)}${v.queue ? ' · คิว ' + escHtml(v.queue) : ''}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span>
       <span>${escHtml(thIso(v.date))} · ${rows.total} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
     <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
-      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td></tr>`).join('')}</table></div></div>`;
+      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td></tr>`).join('')}</table></div></div></div>`;
 }
 function printOpdSum(vn) {
   const v = ((CUR && CUR.visits) || []).find(x => String(x.vn) === String(vn));
