@@ -245,6 +245,25 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .mdv-row { display: grid; grid-template-columns: 112px 1fr; gap: 8px; align-items: start; padding: 6px 0; border-top: 1px solid #f3e6c4; font-size: 13px; }
 .mdv-row .muted { font-size: 12px; }
 .mdv-row.in { color: var(--text-mid); }
+
+/* ── ฉลากยาเปล่าไว้เขียนมือตอนไฟดับ/HOSxP ล่ม (101.6 × 59.9 มม. พื้นที่พิมพ์เดียวกับฉลากปกติ ซ้าย 10.58 มม. กว้าง 78.3 มม.) ── */
+.bstk { position: relative; width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; font-family: Tahoma, 'Noto Sans Thai', sans-serif; background: #fff; }
+.bstk:last-child { page-break-after: auto; break-after: auto; }
+.bstk .in { position: absolute; left: 10.58mm; top: 1.3mm; width: 78.3mm; height: 56.8mm; display: flex; flex-direction: column; font-size: 9.5pt; line-height: 1.1; }
+.bstk .hd { text-align: center; font-size: 8.5pt; font-weight: 700; white-space: nowrap; border-bottom: .3mm solid #000; padding-bottom: .5mm; }
+.bstk .r { flex: 1; display: flex; align-items: flex-end; gap: 1.2mm; white-space: nowrap; min-height: 0; padding-bottom: .3mm; }
+.bstk .r.sep { border-bottom: .3mm solid #000; padding-bottom: .8mm; }
+.bstk .r b { font-weight: 700; }
+.bstk .ln { flex: 1; border-bottom: .25mm dotted #000; height: 3.6mm; min-width: 6mm; }
+.bstk .ln.s { flex: 0 0 7.5mm; } .bstk .ln.m { flex: 0 0 18mm; }
+.bstk .bx { display: inline-block; width: 3mm; height: 3mm; border: .25mm solid #000; margin-right: .7mm; vertical-align: -.5mm; }
+.bstk .ck { display: inline-flex; align-items: center; margin-right: 2.2mm; }
+.bstk .ft { font-size: 8.5pt; display: flex; gap: 1.2mm; align-items: flex-end; white-space: nowrap; padding-top: .6mm; }
+.blank-prev { display: flex; gap: 14px; flex-wrap: wrap; }
+.blank-prev .pv { border: 1px dashed #9db3a5; border-radius: 6px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.blank-prev .cap { font-size: 12.5px; color: var(--text-mid); margin-top: 4px; text-align: center; }
+.blank-prev label { cursor: pointer; }
+.blank-prev label.on .pv { border: 2px solid var(--gold); }
 </style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
@@ -263,6 +282,21 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน</button>
   <button class="tab" data-v="md" onclick="setView('md')">📋💊 MR + ยาเดิมผู้ป่วยใน</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
+  <button class="tab" data-v="blank" onclick="setView('blank')">⚡ ฉลากเปล่า (ไฟดับ)</button>
+</div>
+
+<div class="wrap1" id="view-blank" style="display:none">
+  <div class="card">
+    <h2>⚡ ฉลากยาเปล่า ไว้เขียนด้วยมือตอนไฟดับ / HOSxP ล่ม</h2>
+    <div class="hint" style="margin:0 0 10px">พิมพ์เก็บไว้ล่วงหน้าตอนไฟยังมา (ไฟดับแล้วเครื่องพิมพ์ใช้ไม่ได้) — สติกเกอร์ม้วนเดียวกับฉลากยา 101.6 × 59.9 มม. ·
+      ช่องว่างไว้เขียน ชื่อ-HN-วันที่-ชื่อยา-จำนวน-วิธีใช้ · แบบยารับประทานมีช่องติ๊ก ก่อน/หลังอาหาร เช้า กลางวัน เย็น ก่อนนอน</div>
+    <div class="blank-prev" id="blank-prev"></div>
+    <div class="actions" style="margin-top:12px">
+      <label class="hint" style="margin:0;font-weight:600">จำนวน <input class="cp" style="width:64px" type="number" id="blank-n" min="1" max="300" value="20"> ดวง</label>
+      <button class="btn btn-gold" onclick="printBlank()">🖨 พิมพ์ฉลากเปล่า</button>
+      <span class="hint" style="margin:0">เลือกแบบโดยกดที่ภาพตัวอย่าง · เครื่องพิมพ์สติกเกอร์ยา (Zebra) · ขอบกระดาษ: ไม่มี</span>
+    </div>
+  </div>
 </div>
 
 <div class="wrap1" id="view-hme" style="display:none">
@@ -1822,15 +1856,50 @@ function printOpdSum(vn) {
   setTimeout(() => window.print(), 50);
 }
 
+// ── ฉลากยาเปล่า (ไฟดับ / HOSxP ล่ม) — ผู้ใช้ขอ 2026-11-12: พิมพ์เก็บไว้ล่วงหน้า เขียนมือเมื่อระบบใช้ไม่ได้ ──
+const BLANK_TYPES = { oral: '💊 ยารับประทาน (มีช่องติ๊ก)', free: '🧴 ยาอื่น / ยาใช้ภายนอก (เขียนเอง)' };
+let BLANK_T = 'oral';
+try { if (BLANK_TYPES[localStorage.getItem('rx_blank_type')]) BLANK_T = localStorage.getItem('rx_blank_type'); } catch (e) {}
+function blankHtml(t) {
+  const ln = c => `<span class="ln${c ? ' ' + c : ''}"></span>`;
+  const ck = x => `<span class="ck"><span class="bx"></span>${x}</span>`;
+  const top = `<div class="hd">ห้องยา รพ.ถ้ำพรรณรา  โทร. 075-306239 ต่อ 112</div>` +
+    `<div class="r"><b>ชื่อ</b>${ln()}<b>HN</b>${ln('m')}</div>` +
+    `<div class="r sep">วันที่${ln('m')}<b>ชื่อยา</b>${ln()}</div>`;
+  const body = t === 'free'
+    ? `<div class="r">ความแรง${ln('m')}จำนวน${ln()}</div>` +
+      `<div class="r"><b>วิธีใช้</b>${ln()}</div><div class="r">${ln()}</div><div class="r">${ln()}</div>` +
+      `<div class="r">คำเตือน${ln()}</div>`
+    : `<div class="r">รับประทานครั้งละ${ln('s')}เม็ด/ช้อนชา  วันละ${ln('s')}ครั้ง</div>` +
+      `<div class="r">${ck('ก่อนอาหาร')}${ck('หลังอาหาร')}${ck('ทุก')}${ln('s')}ชม.</div>` +
+      `<div class="r">${ck('เช้า')}${ck('กลางวัน')}${ck('เย็น')}${ck('ก่อนนอน')}</div>` +
+      `<div class="r">${ck('เมื่อมีอาการ')}${ln()}</div>` +
+      `<div class="r">คำเตือน${ln()}</div>`;
+  return `<div class="bstk"><div class="in">${top}${body}<div class="ft">จำนวน${ln('m')}ผู้จ่ายยา${ln()}</div></div></div>`;
+}
+function renderBlank() {
+  const el = document.getElementById('blank-prev'); if (!el) return;
+  el.innerHTML = Object.entries(BLANK_TYPES).map(([k, n]) => `<label class="${k === BLANK_T ? 'on' : ''}" onclick="BLANK_T='${k}';try{localStorage.setItem('rx_blank_type','${k}')}catch(e){};renderBlank()">
+    <div class="pv">${blankHtml(k)}</div><div class="cap">${k === BLANK_T ? '✔ ' : ''}${n}</div></label>`).join('');
+}
+function printBlank() {
+  const n = Math.max(1, Math.min(300, Math.round(+document.getElementById('blank-n').value || 1)));
+  document.getElementById('blank-n').value = n;
+  document.getElementById('print-area').innerHTML = blankHtml(BLANK_T).repeat(n);
+  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
+  setTimeout(() => window.print(), 50);
+}
+
 function setView(v, noLoad) {
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
   document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
   document.getElementById('view-ipd').style.display = v === 'ipd' ? '' : 'none';
   document.getElementById('view-hme').style.display = v === 'hme' ? '' : 'none';
   document.getElementById('view-md').style.display = v === 'md' ? '' : 'none';
+  document.getElementById('view-blank').style.display = v === 'blank' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
   if (v === 'md') { if (!noLoad) loadIpd(); }
-  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else document.getElementById('f-hn').focus();
+  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1846,7 +1915,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
-  setView(['ipd', 'md', 'hme'].includes(v) ? v : 'rx');
+  setView(['ipd', 'md', 'hme', 'blank'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);
