@@ -584,6 +584,7 @@ function render() {
         <button class="btn btn-gold" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))})" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'}>🖨 พิมพ์ที่เลือก (${v.items.filter(it => CHECK[it.guid]).reduce((s, it) => s + COPIES[it.guid], 0)} ดวง)</button>
         ${(() => { const sel = v.items.filter(it => CHECK[it.guid] && !picParse(it).error);   /* นับเฉพาะที่ทำภาพได้ — ส่งทุกตัวที่เลือก ให้แจ้งชื่อยาที่ถูกข้าม */ const n = sel.reduce((s, it) => s + COPIES[it.guid], 0);
           return `<button class="btn" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))}, true)" ${n ? '' : 'disabled'} title="ไม่พิมพ์ฉลากปกติ — ใช้กับยาที่มีฉลากปกติแล้ว (เช่น พิมพ์ฉลากภาพเพิ่มให้คนไข้)">🖼️ พิมพ์เฉพาะฉลากรูปภาพ (${n} ดวง)</button>`; })()}
+        <button class="btn" onclick="printOpdSum('${escHtml(v.vn)}')" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'} title="ใบสรุปรายการยาที่เลือกทั้งหมดในดวงเดียว (แบบสรุปยากลับบ้าน IPD) — ดวงละไม่เกิน 6 รายการ">🧾 พิมพ์สรุปรายการยา</button>
         <button class="btn" onclick="loadHn('${escHtml(CUR.hn)}')">🔄 ดึงใหม่</button>
         <span class="hint" style="margin:0">เลือกเครื่องพิมพ์ ZDesigner ZD230 · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
       </div>
@@ -1783,6 +1784,34 @@ function printHme(keys) {
   pa.style.cssText = '';
   document.getElementById('page-size').textContent = `@page { size: ${w}mm ${h}mm; margin: 0; }`;
   renderHme();
+  setTimeout(() => window.print(), 50);
+}
+
+// ── สรุปรายการยา OPD/ER (ผู้ใช้ขอ 2026-11-12) — แบบเดียวกับสรุปยากลับบ้าน IPD แต่พิมพ์ลงม้วนสติกเกอร์ยา OPD 101.6 × 59.9 มม.
+//    เฉพาะรายการที่ติ๊กไว้ · วิธีใช้ตามที่แก้ ✏️ (ถ้ามี) ย่อภาษาอังกฤษแบบ HMe · ดวงละไม่เกิน 6 รายการ
+function opdSumHtml(v, rows, pi, pn, fs) {
+  return `<div class="hmestk" style="width:101.6mm;height:59.9mm;padding:1.5mm 12.7mm 1.5mm 10.58mm"><div class="hd"><span>สรุปรายการยา · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
+    <div class="hd2"><span>VN ${escHtml(v.vn)}${v.queue ? ' · คิว ' + escHtml(v.queue) : ''}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span>
+      <span>${escHtml(thIso(v.date))} · ${rows.total} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
+    <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
+      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units))}</td></tr>`).join('')}</table></div></div>`;
+}
+function printOpdSum(vn) {
+  const v = ((CUR && CUR.visits) || []).find(x => String(x.vn) === String(vn));
+  if (!v) return;
+  const items = v.items.filter(it => CHECK[it.guid] && !HME_SKIP.test(it.name || ''));
+  if (!items.length) return;
+  const rows = items.map((it, k) => { const L = usageLines(it); return [hmeDrug(Object.assign({}, it, { line1: L[0], line2: L[1], line3: L[2] })), it, k + 1]; });
+  const pages = [];
+  for (let k = 0; k < rows.length; k += HME_PER) { const p = rows.slice(k, k + HME_PER); p.total = rows.length; pages.push(p); }
+  const pa = document.getElementById('print-area');
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  const fits = (rs, fs) => { pa.innerHTML = opdSumHtml(v, rs, 1, 1, fs); const bd = pa.querySelector('.bd'); return bd.scrollHeight <= bd.clientHeight + 1; };
+  let fs = 9;
+  while (fs > 5.5 && !pages.every(rs => fits(rs, fs))) fs -= 0.25;
+  pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs)).join('');
+  pa.style.cssText = '';
+  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
 
