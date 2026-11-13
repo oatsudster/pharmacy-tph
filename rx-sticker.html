@@ -611,7 +611,8 @@ async function loadHn(hn) {
   det.innerHTML = '<div class="empty">⏳ กำลังดึงจาก HOSxP…</div>';
   showStatus('');
   const r = window.tphHosxp && tphHosxp.rxSticker ? await tphHosxp.rxSticker(hn) : null;
-  if (!r) { det.innerHTML = '<div class="empty">ดึงข้อมูลไม่ได้</div>'; showStatus(NOBRIDGE); return; }
+  if (SEL_HN !== hn) return;   // สแกนคนใหม่ระหว่างรอ — ทิ้งผลของคนเก่า (Gemini review 2026-11-13)
+  if (!r) { CUR = null; det.innerHTML = '<div class="empty">ดึงข้อมูลไม่ได้</div>'; showStatus(NOBRIDGE); return; }
   CUR = r;
   (r.visits || []).forEach(v => v.items.forEach(it => {
     if (!(it.guid in CHECK)) CHECK[it.guid] = it.lockprint !== 'Y';
@@ -633,9 +634,12 @@ function drugNameAlts(it) {
 // บรรทัดวิธีใช้ 3 บรรทัด + (pq) ตาม StickerDetailReport.rtm: ยาที่ตั้ง print_sticker_pq = Y และจำนวน > 1
 // ต่อท้ายบรรทัด 3 ด้วยข้อความในวงเล็บก่อน "/" ของบรรทัด 3
 // วิธีใช้ 3 บรรทัดที่ใช้จริง: ที่ผู้ใช้แก้ (ถ้ามี) ไม่งั้นตาม HOSxP
-function useOrig(it) { const e = USE_EDIT[it.guid]; return e ? e.l.slice() : [it.line1, it.line2, it.line3].map(x => String(x || '').trim()); }
+// ที่แก้ไว้ใช้ได้เฉพาะตอนวิธีใช้ใน HOSxP ยังเหมือนตอนแก้ — แพทย์แก้ใบสั่งหลังจากนั้น = ทิ้งที่แก้ ใช้ของ HOSxP (Gemini review 2026-11-13)
+const useHos = it => [it.line1, it.line2, it.line3].map(x => String(x || '').trim());
+function useEditOk(it) { const e = USE_EDIT[it.guid]; return !!e && e.o === useHos(it).join('|'); }   // รุ่นก่อนไม่ได้จำต้นฉบับ = ถือว่าใช้ไม่ได้
+function useOrig(it) { return useEditOk(it) ? USE_EDIT[it.guid].l.slice() : useHos(it); }
 function usageLines(it) {
-  if (USE_EDIT[it.guid]) return useOrig(it);   // ที่แก้เอง พิมพ์ตามที่พิมพ์ไว้ ไม่ต่อ (pq)
+  if (useEditOk(it)) return useOrig(it);   // ที่แก้เอง พิมพ์ตามที่พิมพ์ไว้ ไม่ต่อ (pq)
   const l = useOrig(it);
   if (it.pq === 'Y' && +it.qty > 1) {
     const a = l[2].indexOf('('), b = l[2].indexOf('/');
@@ -652,13 +656,14 @@ function render() {
   const useCell = it => {
     const g = escHtml(it.guid);
     if (USE_EDITING.has(it.guid)) {
-      const L = USE_EDIT[it.guid] ? USE_EDIT[it.guid].l : usageLines(it);
+      const L = useEditOk(it) ? USE_EDIT[it.guid].l : usageLines(it);
       return `<div class="use-ed">${[0, 1, 2].map(i => `<input type="text" id="ue-${g}-${i}" value="${escHtml(L[i] || '')}" placeholder="บรรทัด ${i + 1}" onkeydown="if(event.key==='Enter')useEditDone('${g}');if(event.key==='Escape')useEditCancel('${g}')">`).join('')}
         <div><button class="btn btn-sm btn-gold" onclick="useEditDone('${g}')">✓ ใช้วิธีใช้นี้</button> <button class="btn btn-sm" onclick="useEditCancel('${g}')">ยกเลิก</button></div></div>`;
     }
-    const ed = USE_EDIT[it.guid];
+    const ed = useEditOk(it) ? USE_EDIT[it.guid] : null, stale = !ed && USE_EDIT[it.guid];
     const tools = `<div class="use-tools"><button class="btn btn-sm" onclick="useEditOpen('${g}')" title="แก้วิธีใช้บนสติกเกอร์ (ไม่แก้ใน HOSxP)">✏️ แก้วิธีใช้</button>${ed ? ` <span class="use-edited">แก้แล้ว</span> <button class="btn btn-sm" onclick="useEditReset('${g}')" title="กลับไปใช้วิธีใช้ตาม HOSxP">↺ ตาม HOSxP</button>` : ''}</div>`
       + (ed ? `<div class="use-was">HOSxP: ${escHtml([it.line1, it.line2, it.line3].map(x => String(x || '').trim()).filter(Boolean).join(' / ') || '-')}</div>` : '');
+      + (stale ? `<div class="pic-warn">⚠️ วิธีใช้ใน HOSxP เปลี่ยนหลังจากแก้ไว้ — ยกเลิกที่แก้แล้ว พิมพ์ตาม HOSxP (แก้ใหม่ได้)</div>` : '');
     return useCell0(it) + tools;
   };
   const useCell0 = it => {
@@ -709,12 +714,14 @@ function useEditDone(g) {
   USE_EDITING.delete(g);
   const orig = [it.line1, it.line2, it.line3].map(x => String(x || '').trim());
   if (l.join('|') === usageLines(Object.assign({}, it, { guid: '' })).join('|') || l.join('|') === orig.join('|')) delete USE_EDIT[g];
-  else USE_EDIT[g] = { l, at: Date.now() };
+  else USE_EDIT[g] = { l, o: orig.join('|'), at: Date.now() };
   useEditSave(); render();
 }
 function useEditReset(g) { delete USE_EDIT[g]; USE_EDITING.delete(g); useEditSave(); render(); }
 
 // ── พิมพ์ ──
+// ป้าย [ยาปฏิชีวนะ] [เก็บพ้นแสง]: เดิมวางตำแหน่งแบบ HOSxP ทับท้ายบรรทัดวิธีใช้ 2 (ช่องวิธีใช้ขยายเต็มดวงแล้ว) → ย้ายมานำหน้าบรรทัดคำเตือน
+const stkTags = it => (it.antibiotic === 'Y' ? '[ยาปฏิชีวนะ] ' : '') + (it.light === 'Y' ? '[เก็บพ้นแสง] ' : '');
 function stickerHtml(v, it, idx, total, now) {
   const L = usageLines(it);
   const s = (st, cls, txt) => `<div class="${cls}" style="${st}">${escHtml(txt)}</div>`;
@@ -736,12 +743,10 @@ function stickerHtml(v, it, idx, total, now) {
     s(pos(10.58, 23.2, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[0]) +
     s(pos(10.58, 28.9, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[1]) +
     s(pos(10.58, 34.6, 78.3, 5.7, 19) + 'line-height:5.7mm;overflow:visible;', 'bw c b fit', L[2]) +
-    s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
+    s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', stkTags(it) + (it.hint || '')) +
     s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '')) +
     `<div class="th fit" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
     s(pos(55.3, 53.45, 9.8, 3.5, 8), 'th b r', it.pregnancy || '');
-  if (it.light === 'Y') h += s(pos(67.47, 27.7, 21.43, 3.8, 9), 'th r', '[ เก็บพ้นแสง ]');
-  if (it.antibiotic === 'Y') h += s(pos(67.47, 31.44, 21.43, 3.8, 9), 'th r', '[ ยาปฏิชีวนะ ]');
   h += '</div>';
   // ดวงคำแนะนำ (special/precaution advice เช่น วิธีใช้ยาพ่น) — HOSxP พิมพ์เป็นดวงถัดไป
   if (it.advice) h += `<div class="stk"><div class="th wrap2" style="${pos(10.85, 3, 78, 54, 8)}line-height:1.3">${escHtml(it.advice).replace(/\n/g, '<br>')}</div></div>`;
@@ -757,7 +762,7 @@ function usageTrBlock(it, L, s, pos, lang) {
     : s(pos(10.58, top, 78.3, 5.6, 12.5) + 'line-height:5.6mm;overflow:visible;', 'th c b fit', M[i]);
   return line(0, 23.0) + line(1, 28.6) + line(2, 34.2) +
     s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th fit', L.filter(x => x && !dotLine(x)).join(' ')) +
-    s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th b fit', it.hint || '');
+    s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th b fit', stkTags(it) + (it.hint || ''));
 }
 // picOnly: พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ) — ใช้กับยาที่มีฉลากปกติอยู่แล้ว ต้องกดปุ่มเองทุกครั้ง ไม่จำเป็นโหมด
 function printItems(guids, picOnly) {
@@ -944,7 +949,7 @@ const mdName0 = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean)
 //   ช่องวิธีใช้ว่าง และชื่อยาวถูกย่อจนตกขอบตอนพิมพ์ · ภาษาไทยในวงเล็บ "(100 ml/ขวด)" ถูกตัดกลางวงเล็บ)
 const MD_USE_AT = new RegExp([
   '[฀-๿]',
-  '\\d+(?:\\.\\d+)?\\s*(?:[x*×]\\s*\\d|(?:tab|cap|puff|buff|cc|drop|gtt)s?\\b|(?:เม็ด|แคปซูล|สูด|ที|หยด|ซีซี|ช้อน|ซอง|ยูนิต))',
+  '(?<![/\\d.])\\d+(?:\\.\\d+)?\\s*(?:[x*×]\\s*\\d|(?:tab|cap|puff|buff|cc|drop|gtt)s?\\b|(?:เม็ด|แคปซูล|สูด|ที|หยด|ซีซี|ช้อน|ซอง|ยูนิต))',
   '\\b(?:iv|im|sc|sq|po|od|bid|tid|qid|hs|prn|stat|weekly|off|q\\s*\\d+\\s*(?:hr?s?|ชม)\\b|q\\s*(?:hr?s?|d|am|pm)\\b)\\b',
 ].join('|'), 'i');
 function mdOldSplit(u) {
@@ -988,10 +993,17 @@ function mdAbbrInh(s) {
     .replace(/ทุก\s*20\s*นาที\s*ใน\s*1\s*ชั่วโมงแรก\s*(หาก\s*ยัง\s*หอบ)?\s*หลังจากนั้น\s*(พ่นยาทางปาก)?/, () => { stat = 'q 20 min x3, then '; return ' '; })
     .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)/, (_, n) => { freq = +n; return ' '; })
     .replace(/(ซ้ำได้)?\s*ทุก\s*(\d+(?:\s*-\s*\d+)?)\s*(ชั่วโมง|ชม\.?)/, (_, x, n) => { qh = n.replace(/\s/g, ''); return ' '; })
-    .replace(/(เวลา|เมื่อ)\s*(มี)?\s*(อาการ)?\s*(หอบ|เหนื่อย)?(\s*,?\s*(หอบ|เหนื่อย))?/g, w => { prn = true; return ' '; })
-    .replace(/ก่อนนอน/, () => { hs = true; return ' '; })
-    .replace(/เช้า|เย็น/g, ' ');
+    .replace(/เวลา(?=\s*(?:เช้า|เย็น|ก่อนนอน))/g, ' ')   // "วันละ 2 ครั้ง เวลา เช้า-เย็น" = มื้อประจำ ไม่ใช่ prn (Gemini review 2026-11-13)
+    .replace(/(เวลา|เมื่อ)\s*(มี)?\s*(?:อาการ\s*(หอบ|เหนื่อย)?|หอบ|เหนื่อย)(\s*,?\s*(หอบ|เหนื่อย))?/g, w => { prn = true; return ' '; })
+    .replace(/ก่อนนอน/, () => { hs = true; return ' '; });
+  const am = /เช้า/.test(r), pm = /เย็น/.test(r);
+  r = r.replace(/เช้า|เย็น/g, ' ');
   if (/[฀-๿]/.test(r) || (stat && !(prn && qh))) return s;
+  // จำนวนมื้อที่เขียนต้องเท่าวันละกี่ครั้ง — ไม่งั้นใช้ข้อความเดิม ("วันละ 3 ครั้ง เช้า เย็น ก่อนนอน" ไม่ใช่ "tid, hs")
+  const slots = (am ? 1 : 0) + (pm ? 1 : 0) + (hs ? 1 : 0);
+  if (!prn && freq && slots && slots !== freq) return s;
+  if (!prn && freq === 1 && pm && !am) return `${puff} เย็น`;
+  if (!prn && hs && freq > 1 && !(freq === 2 && am && !pm)) return s;
   if (prn) return `${puff} ${stat}prn${qh ? ' q ' + qh + ' hr' : ''}`;
   if (qh && !freq) return `${puff} q ${qh} hr`;
   if (freq === 1 && hs) return `${puff} hs`;
@@ -1010,7 +1022,7 @@ function mdAbbrIns(s) {
   const r = (' ' + s + ' ')
     .replace(/\(\s*ควรฉีดยาให้ตรงเวลาทุกวัน\s*\)/g, ' ')
     .replace(/\.{2,}\s*(\d+)\s*\.{2,}|(?:^|\s)\.(\d+)\.{2,}|(\d+)\.+(?=\s*ยูนิต)/g, (_, a, b, c) => ` ${a || b || c} `)
-    .replace(/\.{3,}\s*ยูนิต\s*(?:เช้า|เที่ยง|เย็น)?/g, ' ')
+    .replace(/\.{3,}\s*(?=ยูนิต)/g, ' X ')   // ช่องจุดที่ไม่ได้เติม = X (จับคู่กับมื้อแล้วข้าม) — เดิมลบมื้อหลังช่องทิ้ง ทำให้ "เช้า ...... ยูนิต เย็น ..10.." กลายเป็นเช้า 10 (Gemini review 2026-11-13)
     .replace(/ฉีดเข้าใต้ผิวหนัง|ฉีด|\bsc\b/gi, ' ')
     .replace(/วันละ\s*(\d+)\s*ครั้ง/g, (_, n) => { freq = +n; return ' '; })
     .replace(/ก่อน\s*(?:อา)?หาร|\bac\b/gi, () => { ac = true; return ' '; })
@@ -1018,15 +1030,18 @@ function mdAbbrIns(s) {
     .replace(/ยูนิต|และ|-/g, ' ').replace(/\bhs\b/gi, 'ก่อนนอน').replace(/เข้า/g, 'เช้า').replace(/กลางวัน/g, 'เที่ยง')
     .replace(/(?:^|\s)\.(?=\s|$)/g, ' ');
   const tok = r.match(/\d+|เช้า|เที่ยง|เย็น|ก่อนนอน|\S+/g) || [];
-  if (tok.some(w => !/^(\d+|เช้า|เที่ยง|เย็น|ก่อนนอน)$/.test(w)) || !tok.length || tok.length % 2) return s;
-  const numFirst = /^\d/.test(tok[0]), dose = {};
+  if (tok.some(w => !/^(\d+|X|เช้า|เที่ยง|เย็น|ก่อนนอน)$/.test(w)) || !tok.length || tok.length % 2) return s;
+  const numFirst = /^(\d|X$)/.test(tok[0]), dose = {}, seen = new Set();
   for (let i = 0; i < tok.length; i += 2) {
     const [n, m] = numFirst ? [tok[i], tok[i + 1]] : [tok[i + 1], tok[i]];
-    if (!/^\d+$/.test(n) || /^\d/.test(m) || m in dose || +n <= 0) return s;
+    if (!/^(\d+|X)$/.test(n) || /^(\d|X$)/.test(m) || seen.has(m)) return s;
+    seen.add(m);
+    if (n === 'X') continue;
+    if (+n <= 0) return s;
     dose[m] = +n;
   }
   const k = Object.keys(dose), route = sc ? ' SC' : '';
-  if (freq && freq !== k.length) return s;
+  if (!k.length || (freq && freq !== k.length)) return s;
   if (k.length === 1 && k[0] === 'ก่อนนอน') return `${dose['ก่อนนอน']} u${route} hs`;
   if ('ก่อนนอน' in dose) return s;
   return `${['เช้า', 'เที่ยง', 'เย็น'].map(m => dose[m] || 0).join('-')} u${route}${ac ? ' ac' : ''}`;
@@ -1220,11 +1235,12 @@ function mdAbbr0(s) {
     .replace(/วันละ\s*(\d)\s*-\s*(\d)\s*(ครั้ง|เวลา)?/, (_, p, q) => { fr = MD_FREQ[p] && MD_FREQ[q] ? `${MD_FREQ[p]}/${MD_FREQ[q]}` : 'x'; return ' '; })
     .replace(/วันละ\s*(\d+)\s*(ครั้ง|เวลา)?/, (_, n) => { freq = +n; return ' '; })
     .replace(/ทุก\s*(\d+(?:\s*-\s*\d+)?)\s*(ชั่วโมง|ชม\.?|นาที)/, (_, n, u) => { qh = n.replace(/\s/g, '') + (u === 'นาที' ? 'min' : 'h'); return ' '; })
-    .replace(/(หลัง|ก่อน)\s*อาหาร(\s*\d+\s*นาที)?/g, (_, w) => { tm = tm || (w === 'หลัง' ? 'pc' : 'ac'); return ' '; })
+    .replace(/(หลัง|ก่อน)\s*อาหาร(\s*\d+\s*นาที)?/g, (_, w) => { const v = w === 'หลัง' ? 'pc' : 'ac'; if (tm && tm !== v) tm = 'x'; else tm = v; return ' '; })
     .replace(/ก่อนนอน/g, () => { hs = true; return ' '; })
     .replace(/เช้า|กลางวัน|เที่ยง|เย็น/g, w => { const m = w === 'กลางวัน' ? 'เที่ยง' : w; if (!meals.includes(m)) meals.push(m); return ' '; });
   // มีคำอื่นที่แปลงไม่ได้ (ห้ามเคี้ยว, เวลา 14.00 ฯลฯ) — ใช้ของเดิม ไม่ให้คำสั่งหายจากสติกเกอร์
   if (/[฀-๿a-z\d]/i.test(r.replace(/และ/g, ''))) return s;
+  if (tm === 'x') return s;   // ก่อนอาหารเช้า + หลังอาหารเย็น ปนกัน — ใช้ข้อความเดิม (Gemini review 2026-11-13)
   if (hs && tm && !meals.length) return s;   // "หลังอาหาร ก่อนนอน" ไม่บอกมื้อ
   const n = mdAmt(amt) + (ml ? ' ml' : '');
   if (fr) return fr === 'x' || freq || qh || meals.length || hs || tm ? s : `${n} x ${fr}`;   // ใช้ได้เฉพาะ prn (ผู้เรียกแปลงต่อ)
@@ -1796,6 +1812,8 @@ function hmeDrug(i) {
   const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
   // "ยาเดิม......" = ยาที่ผู้ป่วยนำมาเอง: ชื่อยาจริงอยู่บรรทัดแรกของวิธีใช้
   //   คีย์ชื่อ+วิธีใช้รวมบรรทัดเดียว ("Ertapenem 1 g IV 1 g OD") = แยกแบบเดียวกับสติกเกอร์ยาเดิม ไม่ให้ช่องวิธีใช้ว่าง
+  const pm = String(i.name || '').replace(/\s+/g, ' ').trim().match(/^ยาเดิม\s*\((.+)\)$/);   // "ยาเดิม(Atorvastatin 20 mg)" แบบ mdOld
+  if (pm && !i.namePrint) return { name: 'ยาเดิม: ' + pm[1].trim(), use: mdAbbr(lines.join(' ')) };
   if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) {
     const [n, u] = lines.length === 1 && /^[A-Za-z]/.test(lines[0]) ? mdOldSplit(lines[0]) : [lines[0], lines.slice(1).join(' ')];
     return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? mdAbbr(u) : '' };
@@ -1981,7 +1999,7 @@ function insParse(lines) {
   return m ? [0, 0, 0, +m[1]] : null;
 }
 function insWhenFor(drug) {
-  return /glargine|lantus|basalog|levemir|detemir|degludec/i.test(drug) ? 'free' : /aspart|novorapid|lispro|humalog|glulisine|apidra/i.test(drug) ? 'ac0' : 'ac30';
+  return /glargine|lantus|basalog|levemir|detemir|degludec/i.test(drug) ? 'free' : /aspart|novorapid|novomix|lispro|humalog|glulisine|apidra/i.test(drug) ? 'ac0' : 'ac30';
 }
 function insFill({ hn = '', name = '', drug = '', doses = null } = {}) {
   insInit();
@@ -1994,7 +2012,9 @@ function insFill({ hn = '', name = '', drug = '', doses = null } = {}) {
   insRender();
 }
 let INS_NOTE = '';
-const insDrugName = it => String(it.namePrint || it.name || '').replace(/\s+/g, ' ').trim();   // ไม่ต่อความแรง (100 IU/ml) — ชื่อยาว ตัดท้าย
+// ชื่อ + ความแรง แต่ตัด "100 IU/ml" ทิ้ง — บางยาชนิดอินซูลินอยู่ในช่องความแรง (Gensulin + "N 100 IU/ml")
+const insDrugName = it => String(it.namePrint || [it.name, it.strength].filter(Boolean).join(' '))
+  .replace(/\b\d+\s*(?:iu|u|units?)\s*\/\s*ml\.?/gi, ' ').replace(/\s+/g, ' ').trim();   // ไม่ต่อความแรง (100 IU/ml) — ชื่อยาว ตัดท้าย
 function insPick(i) {
   const x = INS_ITEMS[i]; if (!x) return;
   insFill({ hn: x.hn, name: x.name, drug: insDrugName(x.it), doses: insParse(useOrig(x.it)) });
@@ -2002,7 +2022,8 @@ function insPick(i) {
 }
 function insShowItems(hn, list, name) {
   INS_ITEMS = list;
-  document.getElementById('ins-src').innerHTML = list.length > 1 ? list.map((x, i) => `<button class="chip" onclick="insPick(${i})">${escHtml(insDrugName(x.it))} · ${escHtml(thIso(x.date))}</button>`).join('') : '';
+  // แสดงวันที่ visit เสมอ (ยาเมื่อวานที่วันนี้อาจงดแล้ว) — 1 รายการก็แสดง
+  document.getElementById('ins-src').innerHTML = list.map((x, i) => `<button class="chip" onclick="insPick(${i})">${escHtml(insDrugName(x.it))} · ใบสั่ง ${escHtml(thIso(x.date))}</button>`).join('');
   if (list.length) return insPick(0);
   insFill({ hn, name, doses: [0, 0, 0, 0] });
   INS_NOTE = name ? '⚠️ ไม่พบอินซูลินในใบสั่งยาวันนี้/เมื่อวาน — กรอกชื่อยาและขนาดเอง' : `⚠️ ไม่พบ visit วันนี้/เมื่อวานของ HN ${hn} — กรอกเอง`;
@@ -2019,6 +2040,7 @@ async function insLoadHn() {
   document.getElementById('ins-err').textContent = '⏳ กำลังดึงจาก HOSxP…';
   const r = window.tphHosxp && tphHosxp.rxSticker ? await tphHosxp.rxSticker(hn) : null;
   if (!r) { document.getElementById('ins-err').textContent = NOBRIDGE; return; }
+  if (String(document.getElementById('ins-hn').value || '').replace(/\D/g, '') !== hn) return;   // เปลี่ยน HN ระหว่างรอ
   insShowItems(hn, insVisitItems(hn, r.visits), ((r.visits || [])[0] || {}).name || '');
 }
 // ปุ่ม 💉 ในแท็บสติกเกอร์ยา OPD/ER — ใช้ใบสั่งที่ดึงไว้แล้ว ไม่ต้องดึงใหม่
@@ -2045,6 +2067,11 @@ function insCheck(st) {
 }
 // กระบอกฉีดยาแนวนอน หน่วย mm (viewBox = ขนาดจริงบนสติกเกอร์) · 0 อยู่ฝั่งเข็ม · ขอบหน้ายางลูกสูบอยู่ที่ขีดขนาดยา
 // ขีด scale อยู่ครึ่งบนของกระบอก ไม่มีอะไรทับ · ยา (ลายทแยงบาง) + ยางลูกสูบอยู่ครึ่งล่าง · ขีดขนาดยา = เส้นหนาพาดเต็มกระบอก (ผู้ใช้ขอ 2026-11-13: ลายยา/ลูกสูบเดิมบังขีด)
+let INS_CTX = null;
+function insTextW(t, size) {   // ความกว้างข้อความ (มม.) ตัวหนา Noto Sans Thai — กันเหนียว +8%
+  try { INS_CTX = INS_CTX || document.createElement('canvas').getContext('2d'); INS_CTX.font = `700 100px 'Noto Sans Thai', Tahoma, sans-serif`;
+    return INS_CTX.measureText(t).width / 100 * size * 1.08; } catch (e) { return t.length * size * 0.62; }
+}
 function insSyrSvg(dose, cap) {
   const id = 'insh' + (++INS_SEQ), X0 = 10.5, L = 55.5, xd = X0 + dose / cap * L, step = cap > 50 ? 2 : 1, lab = cap > 50 ? 10 : 5;
   const n = v => Math.round(v * 100) / 100;
@@ -2054,7 +2081,11 @@ function insSyrSvg(dose, cap) {
     tk += `<line x1="${x}" y1="3.6" x2="${x}" y2="${n(3.6 + len)}" stroke="#000" stroke-width="${u % lab === 0 ? .3 : .2}"/>`;
     if (u % lab === 0) nums += `<text x="${x}" y="3" font-size="2.5" font-weight="700" text-anchor="middle">${u}</text>`;
   }
-  const right = xd > 52, X = n(xd);
+  const X = n(xd);
+  const lbl = step > 1 && dose % 2 ? `ขอบยางดำอยู่กลางขีด ${dose - 1} กับ ${dose + 1} (${dose} ยูนิต)` : `ดึงยาให้ขอบยางดำตรงขีดนี้ (${dose} ยูนิต)`;
+  // วัดความกว้างจริงแล้วเลือกฝั่ง (เดิมเดาจากตำแหน่ง ข้อความเลขคี่ ~45–73 ยูนิตล้นขอบขวา — Gemini review 2026-11-13)
+  const w = insTextW(lbl, 2.3), anchor = xd + 1.8 + w <= 80.5 ? 'start' : xd - 1.8 - w >= 0.5 ? 'end' : 'middle';
+  const tx = anchor === 'start' ? xd + 1.8 : anchor === 'end' ? xd - 1.8 : Math.min(80.5 - w / 2, Math.max(0.5 + w / 2, xd));
   return `<svg class="syr" viewBox="0 0 81 14" xmlns="http://www.w3.org/2000/svg">
     <defs><pattern id="${id}" width="1.5" height="1.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.5" stroke="#000" stroke-width=".22"/></pattern></defs>
     <line x1=".5" y1="7" x2="6" y2="7" stroke="#000" stroke-width=".35"/>
@@ -2067,7 +2098,7 @@ function insSyrSvg(dose, cap) {
     ${tk}${nums}
     <line x1="${X}" y1="3.6" x2="${X}" y2="10.4" stroke="#000" stroke-width=".5"/>
     <path d="M${X} 10.7l-1.3 2.4h2.6z" fill="#000"/>
-    <text x="${n(right ? xd - 1.8 : xd + 1.8)}" y="13.4" font-size="2.3" font-weight="700" text-anchor="${right ? 'end' : 'start'}">${step > 1 && dose % 2 ? `ดึงยาให้ขอบยางดำอยู่กลางขีด ${dose - 1} กับ ${dose + 1} (${dose} ยูนิต)` : `ดึงยาให้ขอบยางดำตรงขีดนี้ (${dose} ยูนิต)`}</text>
+    <text x="${n(tx)}" y="13.4" font-size="2.3" font-weight="700" text-anchor="${anchor}">${lbl}</text>
   </svg>`;
 }
 // มื้ออยู่ในคำตัวหนาแล้ว ข้างหลังบอกแค่เวลาเทียบกับอาหาร (ชื่อมื้อซ้ำทำให้ล้นดวง)
@@ -2078,7 +2109,8 @@ function insRowLabel(i, when) {
 function insHtml(st) {
   const rows = st.doses.map((d, i) => ({ d, i })).filter(x => x.d > 0), pages = [];
   for (let k = 0; k < rows.length; k += 2) pages.push(rows.slice(k, k + 2));
-  const tag = { ac30: 'ฉีดก่อนอาหาร 30 นาที', ac15: 'ฉีดก่อนอาหาร 15 นาที', ac0: 'ฉีดแล้วกินข้าวทันที', free: 'ฉีดเวลาเดิมทุกวัน' }[st.when];
+  const hsOnly = st.doses.slice(0, 3).every(d => !d);   // ฉีดก่อนนอนอย่างเดียว — หัวฉลากไม่บอก "ก่อนอาหาร"
+  const tag = hsOnly ? 'ฉีดก่อนนอน' : { ac30: 'ฉีดก่อนอาหาร 30 นาที', ac15: 'ฉีดก่อนอาหาร 15 นาที', ac0: 'ฉีดแล้วกินข้าวทันที', free: 'ฉีดเวลาเดิมทุกวัน' }[st.when];
   const head = pi => `<div class="hd"><b>${escHtml(st.name || '..............................')}</b><span>${st.hn ? 'HN ' + escHtml(st.hn) + ' · ' : ''}${escHtml(thShort(new Date()))}${pages.length > 1 ? ` · ${pi + 1}/${pages.length}` : ''}</span></div>
     <div class="dr"><b>${escHtml(st.drug)}</b><span>${tag}</span></div>`;
   let h = pages.map((p, pi) => `<div class="insstk${p.length === 1 ? ' one' : ''}"><div class="in">${head(pi)}` + p.map(({ d, i }) => `<div class="dose">
@@ -2091,7 +2123,7 @@ function insHtml(st) {
       ${cloudy ? '<li>ยาขุ่น: คลึงขวดในฝ่ามือ 10–20 ครั้งให้ยาเข้ากัน <b>ห้ามเขย่าแรง</b></li>' : ''}
       <li>ฉีดหน้าท้องรอบสะดือ ห่างสะดือ 2 นิ้ว <b>เปลี่ยนจุดทุกครั้ง</b> ไม่ฉีดซ้ำที่เดิม</li>
       <li>ฉีดแล้วนับ 1–10 ก่อนดึงเข็มออก ไม่ต้องคลึงจุดฉีด</li>
-      ${st.when === 'free' ? '' : '<li>ฉีดแล้วต้องกินข้าวตามเวลา — ถ้างดมื้อนั้น ให้ถามแพทย์/เภสัชกรก่อน</li>'}
+      ${st.when === 'free' || hsOnly ? '' : '<li>ฉีดแล้วต้องกินข้าวตามเวลา — ถ้างดมื้อนั้น ให้ถามแพทย์/เภสัชกรก่อน</li>'}
       <li>ใจสั่น เหงื่อออก หน้ามืด = น้ำตาลต่ำ: ดื่มน้ำหวาน/อมลูกอมทันที</li>
       <li>เก็บยาในตู้เย็นช่องธรรมดา <b>ห้ามแช่แข็ง</b></li>
     </ul></div></div>`;
@@ -2117,6 +2149,12 @@ function insInit() {
   wh.innerHTML = Object.entries(INS_WHEN).map(([k, t]) => `<option value="${k}">${t}</option>`).join('');
   try { const v = localStorage.getItem('rx_ins_syr'); if (INS_SYR[v]) syr.value = v; } catch (e) {}
   document.getElementById('ins-hn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); insLoadHn(); } });
+  // แก้ HN = ล้างข้อมูลคนเดิมทันที (กันฉลาก HN ใหม่ + ชื่อ/ขนาดยาคนเก่า — Gemini review 2026-11-13)
+  document.getElementById('ins-hn').addEventListener('input', () => {
+    INS_ITEMS = []; INS_NOTE = ''; document.getElementById('ins-src').innerHTML = '';
+    ['ins-name', 'ins-drug', 'ins-d0', 'ins-d1', 'ins-d2', 'ins-d3'].forEach(id => { document.getElementById(id).value = ''; });
+    insRender();
+  });
 }
 
 function setView(v, noLoad) {
