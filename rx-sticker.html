@@ -264,6 +264,42 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .blank-prev .cap { font-size: 12.5px; color: var(--text-mid); margin-top: 4px; text-align: center; }
 .blank-prev label { cursor: pointer; }
 .blank-prev label.on .pv { border: 2px solid var(--gold); }
+
+/* ── ฉลากภาพอินซูลิน 9 × 6 ซม. (ผู้ใช้ขอ 2026-11-13): รูปกระบอกฉีดยาจริงตามขนาดที่ใช้ + ลูกศรชี้ขีดที่ต้องดึง แยกมื้อ
+   เครื่องพิมพ์ความร้อน = ขาวดำล้วน: ยาในกระบอกเป็นลายเส้นทแยง ลูกสูบดำทึบ ไม่ใช้สี/เทา ── */
+.insstk { position: relative; width: 90mm; height: 60mm; overflow: hidden; color: #000; background: #fff; page-break-after: always; break-after: page;
+  font-family: 'Noto Sans Thai', Tahoma, sans-serif; }
+.insstk:last-child { page-break-after: auto; break-after: auto; }
+.insstk .in { position: absolute; left: 5mm; top: 1.4mm; width: 81mm; height: 57mm; display: flex; flex-direction: column; line-height: 1.15; }
+.insstk .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; white-space: nowrap; font-size: 9pt; }
+.insstk .hd b { font-size: 11pt; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.insstk .dr { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; border-bottom: .35mm solid #000; padding-bottom: .5mm; white-space: nowrap; }
+.insstk .dr b { font-size: 11.5pt; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.insstk .dr span { font-size: 9.5pt; font-weight: 700; border: .3mm solid #000; border-radius: 1mm; padding: 0 1.2mm; flex-shrink: 0; }
+.insstk .dose { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; border-bottom: .2mm dashed #000; }
+.insstk .dose:last-of-type { border-bottom: 0; }
+.insstk .dl { display: flex; align-items: center; gap: 1.5mm; white-space: nowrap; font-size: 10.5pt; }
+.insstk .dl svg { width: 6mm; height: 6mm; flex-shrink: 0; }
+.insstk .dl b { font-size: 13pt; }
+.insstk .dl > span:not(.u):not(.odd) { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.insstk .dl .u { margin-left: auto; background: #000; color: #fff; font-weight: 700; font-size: 15pt; padding: 0 2mm; border-radius: 1mm; line-height: 1.25; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.insstk .dl .odd { font-size: 8pt; }
+.insstk .syr { display: block; width: 81mm; height: 14mm; }
+.insstk.one .syr { height: 17mm; }
+.insstk .ft { font-size: 7.5pt; text-align: center; border-top: .3mm solid #000; padding-top: .4mm; white-space: nowrap; }
+.insstk.tips .tt { font-size: 11.5pt; font-weight: 700; text-align: center; border-bottom: .35mm solid #000; padding-bottom: .5mm; margin-bottom: .8mm; }
+.insstk.tips ul { margin: 0; padding-left: 4mm; font-size: 9pt; line-height: 1.3; }
+.insstk.tips li { margin-bottom: .5mm; }
+.ins-form { display: grid; grid-template-columns: 120px 1fr; gap: 8px 10px; align-items: center; max-width: 640px; font-size: 14px; }
+.ins-form input[type=text], .ins-form input[type=number], .ins-form select { font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; min-width: 0; }
+.ins-doses { display: flex; gap: 10px; flex-wrap: wrap; }
+.ins-doses label { display: flex; flex-direction: column; font-size: 12.5px; color: var(--text-mid); }
+.ins-doses input { width: 74px; text-align: center; font-size: 16px !important; font-weight: 700; }
+.ins-wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.ins-prev { display: flex; flex-direction: column; gap: 10px; }
+.ins-prev .insstk { border: 1px dashed #9db3a5; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.08); zoom: 1.35; }
+.ins-err { color: #b91c1c; font-weight: 600; font-size: 13.5px; }
+.ins-src { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 </style>
 <link rel="stylesheet" href="lib/theme.css">
 </head>
@@ -282,7 +318,38 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน</button>
   <button class="tab" data-v="md" onclick="setView('md')">📋💊 MR + ยาเดิมผู้ป่วยใน</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
+  <button class="tab" data-v="ins" onclick="setView('ins')">💉 ฉลากภาพอินซูลิน</button>
   <button class="tab" data-v="blank" onclick="setView('blank')">⚡ ฉลากเปล่า (ไฟดับ)</button>
+</div>
+
+<div class="wrap1" id="view-ins" style="display:none">
+  <div class="card">
+    <h2>💉 ฉลากภาพอินซูลิน — รูปกระบอกฉีดยา ชี้ขีดที่ต้องดึงยาแต่ละมื้อ</h2>
+    <div class="hint" style="margin:0 0 10px">สำหรับผู้ป่วยสูงอายุ/สายตาไม่ดี/ผู้ดูแลที่สับสนขีดบนกระบอกฉีดยา — แปะข้างตู้เย็นหรือกล่องเก็บยา ·
+      สติกเกอร์ 9 × 6 ซม. ดวงละ 2 มื้อ (ฉีด 3–4 มื้อ = 2 ดวง) · <b>เลือกขนาดกระบอกฉีดยาให้ตรงกับที่จ่ายจริง</b> ไม่งั้นภาพจะไม่ตรงขีด</div>
+    <div class="ins-wrap">
+      <div class="ins-form">
+        <span>HN</span><span style="display:flex;gap:6px"><input type="text" id="ins-hn" inputmode="numeric" placeholder="HN แล้วกด Enter = ดึงยาจาก HOSxP" style="flex:1"><button class="btn btn-sm" onclick="insLoadHn()">ดึง</button></span>
+        <span></span><div id="ins-src" class="ins-src"></div>
+        <span>ชื่อผู้ป่วย</span><input type="text" id="ins-name" oninput="insRender()">
+        <span>ยา</span><input type="text" id="ins-drug" list="ins-drugs" oninput="insRender()" placeholder="เช่น Mixtard 30 HM (NPH 70 / RI 30)">
+        <span>เวลาฉีด</span><select id="ins-when" onchange="insRender()"></select>
+        <span>ขนาด (ยูนิต)</span><div class="ins-doses">
+          <label>☀️ เช้า<input type="number" id="ins-d0" min="0" max="100" oninput="insRender()"></label>
+          <label>🌤 กลางวัน<input type="number" id="ins-d1" min="0" max="100" oninput="insRender()"></label>
+          <label>🌇 เย็น<input type="number" id="ins-d2" min="0" max="100" oninput="insRender()"></label>
+          <label>🌙 ก่อนนอน<input type="number" id="ins-d3" min="0" max="100" oninput="insRender()"></label></div>
+        <span>กระบอกฉีดยา</span><select id="ins-syr" onchange="insSaveSyr();insRender()"></select>
+        <span>ดวงคำแนะนำ</span><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ins-tips" onchange="insRender()"> พิมพ์ดวงข้อควรปฏิบัติต่อท้าย</label>
+        <span>จำนวนชุด</span><span><input type="number" id="ins-n" min="1" max="9" value="1" style="width:64px"> ชุด</span>
+        <span></span><div class="actions" style="margin:0"><button class="btn btn-gold" id="ins-print" onclick="insPrint()">🖨 พิมพ์ฉลากภาพอินซูลิน</button>
+          <span class="hint" style="margin:0">เครื่องพิมพ์สติกเกอร์ 9×6 ซม. · ขอบกระดาษ: ไม่มี · สเกล 100%</span></div>
+        <span></span><div id="ins-err" class="ins-err"></div>
+      </div>
+      <div class="ins-prev" id="ins-prev"></div>
+    </div>
+    <datalist id="ins-drugs"><option value="Mixtard 30 HM (NPH 70 / RI 30)"><option value="NPH (Insulatard HM)"><option value="RI (Actrapid HM)"><option value="Insulin glargine"></datalist>
+  </div>
 </div>
 
 <div class="wrap1" id="view-blank" style="display:none">
@@ -619,7 +686,7 @@ function render() {
           <td class="num">${escHtml(fmtQty(it.qty))} ${escHtml(String(it.units || '').replace(/\s*\(.*\)\s*$/, ''))}</td>
           <td class="use">${useCell(it)}</td>
           <td class="num"><input class="cp" type="number" min="1" max="9" value="${COPIES[it.guid]}" onchange="COPIES['${it.guid}']=Math.max(1,Math.min(9,+this.value||1))"></td>
-          <td style="white-space:nowrap"><button class="btn btn-sm" onclick="printItems(['${it.guid}'])" title="ฉลากปกติ${picOn(CUR.hn) ? ' + ฉลากรูปภาพ' : ''}">🖨</button>${picParse(it).error ? '' : ` <button class="btn btn-sm" onclick="printItems(['${it.guid}'], true)" title="พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ)">🖼️</button>`}</td>
+          <td style="white-space:nowrap"><button class="btn btn-sm" onclick="printItems(['${it.guid}'])" title="ฉลากปกติ${picOn(CUR.hn) ? ' + ฉลากรูปภาพ' : ''}">🖨</button>${picParse(it).error ? '' : ` <button class="btn btn-sm" onclick="printItems(['${it.guid}'], true)" title="พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ)">🖼️</button>`}${isInsulin(it) ? ` <button class="btn btn-sm" onclick="insFromOpd('${it.guid}')" title="ฉลากภาพอินซูลิน: รูปกระบอกฉีดยาชี้ขีดที่ต้องดึงแต่ละมื้อ (9×6 ซม.)">💉</button>` : ''}</td>
         </tr>`).join('') + '</tbody></table>' : '<div class="empty">ไม่มียาใน visit นี้</div>'}
       <div class="actions">
         <button class="btn btn-gold" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))})" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'}>🖨 พิมพ์ที่เลือก (${v.items.filter(it => CHECK[it.guid]).reduce((s, it) => s + COPIES[it.guid], 0)} ดวง)</button>
@@ -1890,6 +1957,166 @@ function printBlank() {
   setTimeout(() => window.print(), 50);
 }
 
+// ── ฉลากภาพอินซูลิน 9 × 6 ซม. (ผู้ใช้ขอ 2026-11-13) — รูปกระบอกฉีดยาตามขนาดที่จ่ายจริง ลูกศรชี้ขีดที่ต้องดึงแต่ละมื้อ ──
+// ดวงละ 2 มื้อ · ขาวดำล้วน (เครื่องพิมพ์ความร้อน) · ไม่บันทึกข้อมูลผู้ป่วย จำแค่ขนาดกระบอกฉีดยาของเครื่องนี้
+const INS_SYR = { 100: '1 มล. (100 ยูนิต) ขีดละ 2 ยูนิต', 50: '0.5 มล. (50 ยูนิต) ขีดละ 1 ยูนิต', 30: '0.3 มล. (30 ยูนิต) ขีดละ 1 ยูนิต' };
+const INS_WHEN = { ac30: 'ก่อนอาหาร 30 นาที (RI / NPH / Mixtard)', ac15: 'ก่อนอาหาร 15 นาที', ac0: 'ก่อนอาหารทันที (อินซูลินออกฤทธิ์เร็ว)', free: 'เวลาเดิมทุกวัน (ไม่ขึ้นกับอาหาร)' };
+const INS_SLOT = ['เช้า', 'กลางวัน', 'เย็น', 'ก่อนนอน'];
+const INS_RAYS = '<g stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></g>';
+const INS_ICON = [
+  '<circle cx="12" cy="12" r="4.5" fill="none" stroke="#000" stroke-width="2"/>' + INS_RAYS,
+  '<circle cx="12" cy="12" r="5" fill="#000"/>' + INS_RAYS,
+  '<path d="M5 17a7 7 0 0 1 14 0z" fill="none" stroke="#000" stroke-width="2"/><g stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M1.5 20.5h21M12 4v3M3.5 9.5l2 2M20.5 9.5l-2 2"/></g>',
+  '<path d="M15.5 3.5a9 9 0 1 0 5 13.5A7.5 7.5 0 0 1 15.5 3.5z" fill="#000"/>'
+];
+let INS_SEQ = 0, INS_ITEMS = [];
+const isInsulin = it => /insulin|mixtard|actrapid|insulatard|humulin|gensulin|glargine|lantus|basalog|levemir|detemir|novorapid|aspart|humalog|lispro|\bnph\b|\bri\b/i.test([it.name, it.namePrint].join(' '))
+  || /ฉีด.*ยูนิต|ยูนิต.*ฉีด/.test([it.line1, it.line2, it.line3].join(' '));
+// วิธีใช้ HOSxP → ขนาด [เช้า, กลางวัน, เย็น, ก่อนนอน] (ใช้ตัวย่อ mdAbbrIns ตัวเดียวกับ MR) — อ่านไม่ได้ = null ให้กรอกเอง
+function insParse(lines) {
+  const a = mdAbbrIns(lines.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim());
+  let m = /^(\d+)-(\d+)-(\d+) u\b/.exec(a);
+  if (m) return [+m[1], +m[2], +m[3], 0];
+  m = /^(\d+) u\b.*\bhs$/.exec(a);
+  return m ? [0, 0, 0, +m[1]] : null;
+}
+function insWhenFor(drug) {
+  return /glargine|lantus|basalog|levemir|detemir|degludec/i.test(drug) ? 'free' : /aspart|novorapid|lispro|humalog|glulisine|apidra/i.test(drug) ? 'ac0' : 'ac30';
+}
+function insFill({ hn = '', name = '', drug = '', doses = null } = {}) {
+  insInit();
+  document.getElementById('ins-hn').value = hn;
+  document.getElementById('ins-name').value = name;
+  document.getElementById('ins-drug').value = drug;
+  document.getElementById('ins-when').value = insWhenFor(drug);
+  [0, 1, 2, 3].forEach(i => { document.getElementById('ins-d' + i).value = doses && doses[i] ? doses[i] : ''; });
+  INS_NOTE = doses ? '' : '⚠️ อ่านขนาดยาจากวิธีใช้ไม่ได้ — กรอกขนาดแต่ละมื้อเอง';
+  insRender();
+}
+let INS_NOTE = '';
+const insDrugName = it => String(it.namePrint || it.name || '').replace(/\s+/g, ' ').trim();   // ไม่ต่อความแรง (100 IU/ml) — ชื่อยาว ตัดท้าย
+function insPick(i) {
+  const x = INS_ITEMS[i]; if (!x) return;
+  insFill({ hn: x.hn, name: x.name, drug: insDrugName(x.it), doses: insParse(useOrig(x.it)) });
+  document.querySelectorAll('#ins-src .chip').forEach((c, j) => c.classList.toggle('on', j === i));
+}
+function insShowItems(hn, list, name) {
+  INS_ITEMS = list;
+  document.getElementById('ins-src').innerHTML = list.length > 1 ? list.map((x, i) => `<button class="chip" onclick="insPick(${i})">${escHtml(insDrugName(x.it))} · ${escHtml(thIso(x.date))}</button>`).join('') : '';
+  if (list.length) return insPick(0);
+  insFill({ hn, name, doses: [0, 0, 0, 0] });
+  INS_NOTE = name ? '⚠️ ไม่พบอินซูลินในใบสั่งยาวันนี้/เมื่อวาน — กรอกชื่อยาและขนาดเอง' : `⚠️ ไม่พบ visit วันนี้/เมื่อวานของ HN ${hn} — กรอกเอง`;
+  insRender();
+}
+function insVisitItems(hn, visits) {
+  const out = [];
+  (visits || []).forEach(v => v.items.forEach(it => { if (isInsulin(it)) out.push({ hn, name: v.name || '', date: v.date, it }); }));
+  return out;
+}
+async function insLoadHn() {
+  const hn = String(document.getElementById('ins-hn').value || '').replace(/\D/g, '');
+  if (!hn) return;
+  document.getElementById('ins-err').textContent = '⏳ กำลังดึงจาก HOSxP…';
+  const r = window.tphHosxp && tphHosxp.rxSticker ? await tphHosxp.rxSticker(hn) : null;
+  if (!r) { document.getElementById('ins-err').textContent = NOBRIDGE; return; }
+  insShowItems(hn, insVisitItems(hn, r.visits), ((r.visits || [])[0] || {}).name || '');
+}
+// ปุ่ม 💉 ในแท็บสติกเกอร์ยา OPD/ER — ใช้ใบสั่งที่ดึงไว้แล้ว ไม่ต้องดึงใหม่
+function insFromOpd(g) {
+  const list = insVisitItems(CUR.hn, CUR.visits), i = list.findIndex(x => x.it.guid === g);
+  setView('ins');
+  insShowItems(CUR.hn, list, '');
+  if (i > 0) insPick(i);
+}
+function insSaveSyr() { try { localStorage.setItem('rx_ins_syr', document.getElementById('ins-syr').value); } catch (e) {} }
+function insState() {
+  const g = id => document.getElementById(id).value;
+  const raw = [0, 1, 2, 3].map(i => String(g('ins-d' + i)).trim());
+  return { hn: g('ins-hn').replace(/\D/g, ''), name: g('ins-name').trim(), drug: g('ins-drug').trim(), when: g('ins-when') || 'ac30', cap: +g('ins-syr') || 100,
+    tips: document.getElementById('ins-tips').checked, raw, doses: raw.map(x => x === '' ? 0 : +x) };
+}
+function insCheck(st) {
+  if (st.raw.some(x => x !== '' && !(Number.isInteger(+x) && +x >= 0))) return 'ขนาดยาต้องเป็นจำนวนเต็มยูนิต';
+  if (!st.doses.some(d => d > 0)) return 'ใส่ขนาดยาอย่างน้อย 1 มื้อ';
+  const big = st.doses.find(d => d > st.cap);
+  if (big) return `ขนาด ${big} ยูนิต เกินกระบอกฉีดยา ${st.cap} ยูนิต — เลือกกระบอกที่ใหญ่ขึ้น`;
+  if (!st.drug) return 'ใส่ชื่อยา';
+  return '';
+}
+// กระบอกฉีดยาแนวนอน หน่วย mm (viewBox = ขนาดจริงบนสติกเกอร์) · 0 อยู่ฝั่งเข็ม · ขอบหน้ายางลูกสูบอยู่ที่ขีดขนาดยา
+function insSyrSvg(dose, cap) {
+  const id = 'insh' + (++INS_SEQ), X0 = 10.5, L = 55.5, xd = X0 + dose / cap * L, step = cap > 50 ? 2 : 1, lab = cap > 50 ? 10 : 5;
+  const n = v => Math.round(v * 100) / 100;
+  let tk = '', nums = '';
+  for (let u = 0; u <= cap; u += step) {
+    const x = n(X0 + u / cap * L), len = u % 10 === 0 ? 2.6 : u % 5 === 0 ? 1.8 : 1.1;
+    tk += `<line x1="${x}" y1="3.6" x2="${x}" y2="${n(3.6 + len)}" stroke="#000" stroke-width="${u % lab === 0 ? .3 : .2}"/>`;
+    if (u % lab === 0) nums += `<text x="${x}" y="3" font-size="2.5" font-weight="700" text-anchor="middle">${u}</text>`;
+  }
+  const right = xd > 52, X = n(xd);
+  return `<svg class="syr" viewBox="0 0 81 14" xmlns="http://www.w3.org/2000/svg">
+    <defs><pattern id="${id}" width="1.1" height="1.1" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.1" stroke="#000" stroke-width=".35"/></pattern></defs>
+    <line x1=".5" y1="7" x2="6" y2="7" stroke="#000" stroke-width=".35"/>
+    <path d="M6 5.8h2.2l1 -1.2v4.8l-1 -1.2H6z" fill="#fff" stroke="#000" stroke-width=".3"/>
+    <rect x="${X0}" y="3.95" width="${n(xd - X0)}" height="6.1" fill="url(#${id})"/>
+    <rect x="9.2" y="3.6" width="61" height="6.8" fill="none" stroke="#000" stroke-width=".4"/>
+    <rect x="${n(xd + 1.6)}" y="6.1" width="${n(76 - xd - 1.6)}" height="1.8" fill="#fff" stroke="#000" stroke-width=".3"/>
+    <rect x="${X}" y="3.95" width="1.6" height="6.1" fill="#000"/>
+    <rect x="70.2" y="1.8" width="1" height="10.4" fill="#000"/><rect x="76" y="3" width="1.4" height="8" fill="#000"/>
+    ${tk}${nums}
+    <path d="M${X} 10.7l-1.3 2.4h2.6z" fill="#000"/>
+    <text x="${n(right ? xd - 1.8 : xd + 1.8)}" y="13.4" font-size="2.3" font-weight="700" text-anchor="${right ? 'end' : 'start'}">ดึงยาให้ขอบยางดำตรงขีดนี้ (${dose} ยูนิต)</text>
+  </svg>`;
+}
+// มื้ออยู่ในคำตัวหนาแล้ว ข้างหลังบอกแค่เวลาเทียบกับอาหาร (ชื่อมื้อซ้ำทำให้ล้นดวง)
+function insRowLabel(i, when) {
+  if (i === 3 || when === 'free') return '';
+  return when === 'ac0' ? 'ก่อนอาหารทันที' : `ก่อนอาหาร ${when === 'ac15' ? 15 : 30} นาที`;
+}
+function insHtml(st) {
+  const rows = st.doses.map((d, i) => ({ d, i })).filter(x => x.d > 0), pages = [];
+  for (let k = 0; k < rows.length; k += 2) pages.push(rows.slice(k, k + 2));
+  const tag = { ac30: 'ฉีดก่อนอาหาร 30 นาที', ac15: 'ฉีดก่อนอาหาร 15 นาที', ac0: 'ฉีดแล้วกินข้าวทันที', free: 'ฉีดเวลาเดิมทุกวัน' }[st.when];
+  const head = pi => `<div class="hd"><b>${escHtml(st.name || '..............................')}</b><span>${st.hn ? 'HN ' + escHtml(st.hn) + ' · ' : ''}${escHtml(thShort(new Date()))}${pages.length > 1 ? ` · ${pi + 1}/${pages.length}` : ''}</span></div>
+    <div class="dr"><b>${escHtml(st.drug)}</b><span>${tag}</span></div>`;
+  let h = pages.map((p, pi) => `<div class="insstk${p.length === 1 ? ' one' : ''}"><div class="in">${head(pi)}` + p.map(({ d, i }) => `<div class="dose">
+      <div class="dl"><svg viewBox="0 0 24 24">${INS_ICON[i]}</svg><b>${INS_SLOT[i]}</b><span>${escHtml(insRowLabel(i, st.when))}</span>${st.cap > 50 && d % 2 ? '<span class="odd">(เลขคี่ = กลางระหว่าง 2 ขีด)</span>' : ''}<span class="u">${d} ยูนิต</span></div>
+      ${insSyrSvg(d, st.cap)}</div>`).join('') +
+    `<div class="ft">ใช้กับกระบอกฉีดยา ${escHtml(INS_SYR[st.cap].replace(/ ขีดละ.*/, ''))} เท่านั้น · ห้องยา รพ.ถ้ำพรรณรา</div></div></div>`).join('');
+  if (st.tips) {
+    const cloudy = /mixtard|nph|insulatard|humulin\s*[n7]|gensulin\s*[nm]|70\s*\/\s*30|30\s*\/\s*70/i.test(st.drug);
+    h += `<div class="insstk tips"><div class="in"><div class="tt">ข้อควรปฏิบัติเมื่อฉีดอินซูลิน</div><ul>
+      ${cloudy ? '<li>ยาขุ่น: คลึงขวดในฝ่ามือ 10–20 ครั้งให้ยาเข้ากัน <b>ห้ามเขย่าแรง</b></li>' : ''}
+      <li>ฉีดหน้าท้องรอบสะดือ ห่างสะดือ 2 นิ้ว <b>เปลี่ยนจุดทุกครั้ง</b> ไม่ฉีดซ้ำที่เดิม</li>
+      <li>ฉีดแล้วนับ 1–10 ก่อนดึงเข็มออก ไม่ต้องคลึงจุดฉีด</li>
+      ${st.when === 'free' ? '' : '<li>ฉีดแล้วต้องกินข้าวตามเวลา — ถ้างดมื้อนั้น ให้ถามแพทย์/เภสัชกรก่อน</li>'}
+      <li>ใจสั่น เหงื่อออก หน้ามืด = น้ำตาลต่ำ: ดื่มน้ำหวาน/อมลูกอมทันที</li>
+      <li>ขวดที่ยังไม่เปิด เก็บตู้เย็นช่องธรรมดา <b>ห้ามแช่แข็ง</b> · ขวดที่ใช้อยู่เก็บให้พ้นแดดและความร้อน</li>
+    </ul></div></div>`;
+  }
+  return h;
+}
+function insRender() {
+  const el = document.getElementById('ins-prev'); if (!el) return;
+  const st = insState(), err = insCheck(st);
+  document.getElementById('ins-err').textContent = !err ? '' : INS_NOTE && /ขนาดยา/.test(err) ? INS_NOTE : '⚠️ ' + err;
+  document.getElementById('ins-print').disabled = !!err;
+  el.innerHTML = err ? '' : insHtml(st);
+}
+function insPrint() {
+  const st = insState(); if (insCheck(st)) return insRender();
+  const n = Math.max(1, Math.min(9, Math.round(+document.getElementById('ins-n').value || 1)));
+  stkPrint(Array.from({ length: n }, () => insHtml(st)).join(''), []);
+}
+function insInit() {
+  const syr = document.getElementById('ins-syr'), wh = document.getElementById('ins-when');
+  if (syr.options.length) return;
+  syr.innerHTML = Object.entries(INS_SYR).sort((a, b) => b[0] - a[0]).map(([k, t]) => `<option value="${k}">${t}</option>`).join('');
+  wh.innerHTML = Object.entries(INS_WHEN).map(([k, t]) => `<option value="${k}">${t}</option>`).join('');
+  try { const v = localStorage.getItem('rx_ins_syr'); if (INS_SYR[v]) syr.value = v; } catch (e) {}
+  document.getElementById('ins-hn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); insLoadHn(); } });
+}
+
 function setView(v, noLoad) {
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
   document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
@@ -1897,9 +2124,10 @@ function setView(v, noLoad) {
   document.getElementById('view-hme').style.display = v === 'hme' ? '' : 'none';
   document.getElementById('view-md').style.display = v === 'md' ? '' : 'none';
   document.getElementById('view-blank').style.display = v === 'blank' ? '' : 'none';
+  document.getElementById('view-ins').style.display = v === 'ins' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
   if (v === 'md') { if (!noLoad) loadIpd(); }
-  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else document.getElementById('f-hn').focus();
+  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else if (v === 'ins') { insInit(); insRender(); } else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1915,7 +2143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
-  setView(['ipd', 'md', 'hme', 'blank'].includes(v) ? v : 'rx');
+  setView(['ipd', 'md', 'hme', 'blank', 'ins'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);
