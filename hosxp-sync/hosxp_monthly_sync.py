@@ -183,7 +183,7 @@ def month_range(m):
 
 # ── ME OPD/IPD → hosxp_records (ตรงกับ syncMeFromHosxp ใน ME_Dashboard.html) ───────
 def extract_severity(x):
-    m = re.search(r'Category\s+([A-I]):', x or '', re.I)
+    m = re.search(r'Category\s*([A-I])\b', x or '', re.I)
     return m.group(1).upper() if m else ''
 
 
@@ -194,7 +194,9 @@ def extract_stage_short(x):
     m = re.search(r'\(\s*(Pre-dispensing|Prescribing|Transcribing|Dispensing|Administration|Monitoring)[^)]*\)', x, re.I)
     if m:
         return m.group(1)
-    for key, val in (('สั่งยา', 'Prescribing'), ('คัดลอก', 'Transcribing'), ('จ่ายยา', 'Pre-dispensing'),
+    if re.search(r'ก่อน(การ)?จ่ายยา', x):
+        return 'Pre-dispensing'
+    for key, val in (('สั่งยา', 'Prescribing'), ('คัดลอก', 'Transcribing'), ('จ่ายยา', 'Dispensing'),
                      ('Pre-dispensing', 'Pre-dispensing'), ('ให้ยา', 'Administration'), ('ติดตาม', 'Monitoring')):
         if key in x:
             return val
@@ -214,14 +216,17 @@ def fetch_me(db, a, b):
       WHERE m.update_datetime>=%s AND m.update_datetime<%s ORDER BY m.update_datetime, m.med_error_id""", (a, b))
 
 
-def merge_me(records, rows):
+def merge_me(records, rows, deleted=()):
     added, filled, cnt = 0, 0, {'OPD': 0, 'IPD': 0}
+    deleted = set(str(x) for x in deleted)
     base_id = time.time() * 1000
     for it in rows:
         dept = s(it['dep_type']).upper().strip()
         if dept not in ('OPD', 'IPD'):
             continue
         hx = s(it['med_error_id'])
+        if 'hx:' + hx in deleted:   # ผู้ใช้ลบรายการนี้ในหน้า ME แล้ว — ไม่เพิ่มกลับ
+            continue
         rec = {'date': s(it['d']), 'time': s(it['t']), 'hn': s(it['hn']), 'patient': s(it['pt']), 'doctor': s(it['doctor']),
                'dept': dept, 'drug': s(it['drug']), 'stage': extract_stage_short(s(it['stage'])), 'stageRaw': s(it['stage']),
                'meType': s(it['metype']), 'severity': extract_severity(s(it['severity'])), 'severityRaw': s(it['severity']),
@@ -230,8 +235,10 @@ def merge_me(records, rows):
         if ex is None and rec['hn']:
             c = [x for x in records if not x.get('hxMeId') and x.get('dept') == dept and x.get('date') == rec['date']
                  and s(x.get('hn')) == rec['hn']]
-            ex = next((x for x in c if x.get('drug') == rec['drug']), None) or next((x for x in c if x.get('time') == rec['time']), None) \
-                or (c[0] if c else None)
+            def ok(x):   # HN เดียวกันวันเดียวกันแต่คนละยา = คนละเหตุการณ์
+                return not x.get('drug') or not rec['drug'] or x.get('drug') == rec['drug']
+            ex = next((x for x in c if x.get('drug') == rec['drug']), None) or next((x for x in c if ok(x) and x.get('time') == rec['time']), None) \
+                or next((x for x in c if ok(x)), None)
         if ex is not None:
             ch = not ex.get('hxMeId')
             ex['hxMeId'] = hx
@@ -530,7 +537,7 @@ def sync_month(db, m, dry):
 
     def mut_me(f):
         recs = f.setdefault('records', [])
-        added, filled, cnt = merge_me(recs, me_rows)
+        added, filled, cnt = merge_me(recs, me_rows, f.get('deleted') or [])
         return {'changed': bool(added or filled), 'added': added, 'filled': filled, 'cnt': cnt}
 
     def mut_adr(f):

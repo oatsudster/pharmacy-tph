@@ -860,7 +860,7 @@ const DashUX = {
   <div class="main-topbar">
     <button class="hamburger-btn" title="เมนู" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('show')">☰</button>
     <div class="main-topbar-title" id="main-topbar-title">ระบบบันทึกความคลาดเคลื่อนทางยา โรงพยาบาลถ้ำพรรณรา</div>
-    <button onclick="expModalOpen(f=>expFilter(records,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
+    <button onclick="expModalOpen(f=>expFilter(erStatsRecords().filter(r=>r.hasME!==false),f).length+expFilter(hosxpRecords,f).length)" style="padding:6px 14px;background:#fff;border:1.5px solid #1A5E38;border-radius:20px;font-size:12px;font-weight:700;color:#1A5E38;cursor:pointer;font-family:inherit;flex-shrink:0">📊 Export รายงาน</button>
     <div class="main-topbar-badge" id="topbar-fy">ปีงบประมาณ 2569</div>
   </div>
   
@@ -1100,7 +1100,7 @@ const DashUX = {
         <div class="card-title" style="margin-bottom:0">📋 รายการ ME — ผู้ป่วยนอก</div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" onclick="exportHosXPCSV('OPD')">⬇ Export CSV</button>
-          <button class="btn btn-danger" onclick="clearHosXPDept('OPD')">🗑 ล้างข้อมูล OPD</button>
+          <button class="btn btn-danger" onclick="requireAdmin(() => clearHosXPDept('OPD'))">🗑 ล้างข้อมูล OPD</button>
         </div>
       </div>
       <div class="filter-bar" style="margin-bottom:14px">
@@ -1151,7 +1151,7 @@ const DashUX = {
           <div style="font-size:14px;color:var(--text-light);margin-bottom:2px">ข้อมูลในระบบปัจจุบัน</div>
           <div id="opd-import-status" style="font-weight:700;color:var(--primary);font-size:17px">0 รายการ</div>
         </div>
-        <button class="btn btn-danger" onclick="clearHosXPDept('OPD')" style="font-size:15px;padding:8px 16px">🗑 ล้างทั้งหมด</button>
+        <button class="btn btn-danger" onclick="requireAdmin(() => clearHosXPDept('OPD'))" style="font-size:15px;padding:8px 16px">🗑 ล้างทั้งหมด</button>
       </div>
       <div style="margin-top:12px;padding:12px 16px;background:#fef2f2;border-radius:10px;border:1px solid #fecaca">
         <div style="font-size:14px;font-weight:600;color:#991b1b;margin-bottom:8px">🗑 ลบข้อมูลเฉพาะเดือน</div>
@@ -1185,7 +1185,7 @@ const DashUX = {
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="mf-opd-date" placeholder="วว/ดด/ปป" maxlength="8"
+            <input type="text" id="mf-opd-date" placeholder="วว/ดด/ปป" maxlength="10"
               oninput="autoDateME(this)" style="flex:1;letter-spacing:.05em">
             <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;white-space:nowrap"
               onclick="document.getElementById('mf-opd-date').value=todayME()">📅 วันนี้</button>
@@ -1421,7 +1421,7 @@ const DashUX = {
         <div class="card-title" style="margin-bottom:0">📋 รายการ ME — ผู้ป่วยใน</div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" onclick="exportHosXPCSV('IPD')">⬇ Export CSV</button>
-          <button class="btn btn-danger" onclick="clearHosXPDept('IPD')">🗑 ล้างข้อมูล IPD</button>
+          <button class="btn btn-danger" onclick="requireAdmin(() => clearHosXPDept('IPD'))">🗑 ล้างข้อมูล IPD</button>
         </div>
       </div>
       <div class="filter-bar" style="margin-bottom:14px">
@@ -1472,7 +1472,7 @@ const DashUX = {
           <div style="font-size:14px;color:var(--text-light);margin-bottom:2px">ข้อมูลในระบบปัจจุบัน</div>
           <div id="ipd-import-status" style="font-weight:700;color:var(--primary);font-size:17px">0 รายการ</div>
         </div>
-        <button class="btn btn-danger" onclick="clearHosXPDept('IPD')" style="font-size:15px;padding:8px 16px">🗑 ล้างทั้งหมด</button>
+        <button class="btn btn-danger" onclick="requireAdmin(() => clearHosXPDept('IPD'))" style="font-size:15px;padding:8px 16px">🗑 ล้างทั้งหมด</button>
       </div>
       <div style="margin-top:12px;padding:12px 16px;background:#fef2f2;border-radius:10px;border:1px solid #fecaca">
         <div style="font-size:14px;font-weight:600;color:#991b1b;margin-bottom:8px">🗑 ลบข้อมูลเฉพาะเดือน</div>
@@ -1507,7 +1507,7 @@ const DashUX = {
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="mf-ipd-date" placeholder="วว/ดด/ปป" maxlength="8"
+            <input type="text" id="mf-ipd-date" placeholder="วว/ดด/ปป" maxlength="10"
               oninput="autoDateME(this)" style="flex:1;letter-spacing:.05em">
             <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-size:13px;white-space:nowrap"
               onclick="document.getElementById('mf-ipd-date').value=todayME()">📅 วันนี้</button>
@@ -1840,7 +1840,7 @@ const DashUX = {
         <div class="section-label">📅 วันที่ และเวลา</div>
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
-          <input type="text" id="f-date-text" placeholder="01/06/69" maxlength="8"
+          <input type="text" id="f-date-text" placeholder="01/06/69" maxlength="10"
                  oninput="formatDateInput(this); updateDatePreview(); suggestOrderDate()"
                  style="letter-spacing:.05em">
           <span class="hint" id="date-preview"></span>
@@ -1902,7 +1902,7 @@ const DashUX = {
             </div>
             <div class="form-group">
               <label>วันที่สั่งยา <span style="font-size:13px;color:var(--text-light);font-weight:400">(ในใบสั่งยาที่เกิด ME)</span></label>
-              <input type="text" id="f-order-date-text" placeholder="01/06/69" maxlength="8"
+              <input type="text" id="f-order-date-text" placeholder="01/06/69" maxlength="10"
                      oninput="formatDateInput(this); updateOrderDatePreview(); this.dataset.userEdited='1'"
                      style="letter-spacing:.05em">
               <span class="hint" id="order-date-preview">ระบบจะเดาวันที่ให้จากเวลาที่สั่งยา (แก้ไขเองได้)</span>
@@ -2319,7 +2319,7 @@ function renderDrugChips() {
   const wrap = document.getElementById('drug-chips');
   if (!selectedDrugs.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = selectedDrugs.map((d, i) => {
-    const badge = d.form ? `<span class="drug-form-badge ${drugFormClass(d.form)}">${d.form}</span>` : '';
+    const badge = d.form ? `<span class="drug-form-badge ${escHtml(drugFormClass(d.form))}">${escHtml(d.form)}</span>` : '';
     return `<span class="drug-chip">
       ${badge}<span class="drug-chip-name">${escHtml(d.name)}</span>
       <button type="button" class="drug-chip-remove" onclick="drugRemoveChip(${i})" title="ลบ">✕</button>
@@ -2605,7 +2605,9 @@ function suggestOrderDate() {
   if (!mainDateIso || !orderTimeIso) return;
   const hour = parseInt(orderTimeIso.split(':')[0]);
   const base = new Date(mainDateIso + 'T00:00:00');
-  if (hour >= 16) base.setDate(base.getDate() - 1);
+  const recT = getTimeValue();
+  const sameEvening = recT && recT >= '16:00' && orderTimeIso <= recT;
+  if (hour >= 16 && !sameEvening) base.setDate(base.getDate() - 1);
   const y  = base.getFullYear(), mo = base.getMonth()+1, d = base.getDate();
   dateEl.value = `${String(d).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${String(y+543).slice(-2)}`;
   updateOrderDatePreview();
@@ -2984,11 +2986,6 @@ function doReset() {
 
 // ======= DASHBOARD =======
 function renderDashboard() {
-  // Always sync records from localStorage (guards against init-order issues)
-  const _lsER = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
-  if (_lsER.length > records.length) records = _lsER;
-  const _lsHX = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
-  if (_lsHX.length > hosxpRecords.length) hosxpRecords = _lsHX;
   const now = new Date();
   const monthStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
 
@@ -3100,7 +3097,7 @@ function renderDashboard() {
     })));
 
   // Time 7 ER slots
-  const TS_LABELS = ['16.00-20.00','20.00-22.00','22.00-24.00','00.00-02.00','02.00-04.00','04.00-06.00','06.00-08.00'];
+  const TS_LABELS = ['08.00-16.00','16.00-20.00','20.00-22.00','22.00-24.00','00.00-02.00','02.00-04.00','04.00-06.00','06.00-08.00'];
   const timeSlots = {};
   TS_LABELS.forEach(l => { timeSlots[l] = 0; });
   meRecs.forEach(r => {
@@ -3108,7 +3105,8 @@ function renderDashboard() {
     if (parts.length < 2) return;
     const h = parseInt(parts[0]), mn = parseInt(parts[1]);
     const mins = h * 60 + mn;
-    if      (mins >= 960  && mins < 1200) timeSlots['16.00-20.00']++;
+    if      (mins >= 480  && mins < 960)  timeSlots['08.00-16.00']++;
+    else if (mins >= 960  && mins < 1200) timeSlots['16.00-20.00']++;
     else if (mins >= 1200 && mins < 1320) timeSlots['20.00-22.00']++;
     else if (mins >= 1320 && mins < 1440) timeSlots['22.00-24.00']++;
     else if (mins >= 0    && mins < 120)  timeSlots['00.00-02.00']++;
@@ -3117,11 +3115,11 @@ function renderDashboard() {
     else if (mins >= 360  && mins < 480)  timeSlots['06.00-08.00']++;
   });
   const TIME_RANGES = {
-    '16.00-20.00':[960,1200],'20.00-22.00':[1200,1320],'22.00-24.00':[1320,1440],
+    '08.00-16.00':[480,960],'16.00-20.00':[960,1200],'20.00-22.00':[1200,1320],'22.00-24.00':[1320,1440],
     '00.00-02.00':[0,120],'02.00-04.00':[120,240],'04.00-06.00':[240,360],'06.00-08.00':[360,480]
   };
   renderChart('chart-time', 'bar', TS_LABELS, TS_LABELS.map(l => timeSlots[l]),
-    ['#f87171','#fb923c','#fbbf24','#a78bfa','#818cf8','#60a5fa','#34d399'], false,
+    ['#9ca3af','#f87171','#fb923c','#fbbf24','#a78bfa','#818cf8','#60a5fa','#34d399'], false,
     (lbl) => showDetailModal('ช่วงเวลา ' + lbl + ' น.', meRecs.filter(r => {
       const p = (r.time||'').split(':');
       if (p.length < 2) return false;
@@ -3210,7 +3208,7 @@ function renderDashboard() {
     const prevD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevStr = prevD.getFullYear() + '-' + String(prevD.getMonth()+1).padStart(2,'0');
     setKpiTrend('kpi-month-trend', thisMonth, allMEFull.filter(r => r.date && r.date.startsWith(prevStr)).length);
-    setKpiTrend('kpi-severe-trend', severe, allMEFull.filter(r => r.date && r.date.startsWith(prevStr) && ['E','F','G','H','I'].includes(r.severity)).length);
+    setKpiTrend('kpi-severe-trend', meRecs.filter(r => r.date.startsWith(monthStr) && ['E','F','G','H','I'].includes(r.severity)).length, allMEFull.filter(r => r.date && r.date.startsWith(prevStr) && ['E','F','G','H','I'].includes(r.severity)).length);
   } else {
     ['kpi-month-trend','kpi-severe-trend'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
   }
@@ -3322,7 +3320,7 @@ function closeDetailModal() {
 // ======= EXPORT CSV =======
 function exportCSV() {
   const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','Rx/วัน','รายละเอียด','Intervention','ผู้บันทึก'];
-  const rows = erStatsRecords().map((r,i) => {
+  const rows = erStatsRecords().filter(r => r.hasME !== false).map((r,i) => {
     const list = (r.drugs && r.drugs.length) ? r.drugs : (r.drug ? [{name:r.drug,form:r.drugForm||''}] : []);
     const drugStr = list.map(d => (d.form ? '['+d.form+'] ' : '') + d.name).join(' / ');
     return [i+1, r.date, formatTimeThai(r.time), r.hn, r.patient, r.age, r.stage, r.meType,
@@ -3332,7 +3330,6 @@ function exportCSV() {
   const csv = '﻿' + [headers.join(','), ...rows].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-  a.download = 'ME_Report_ER.csv'
   a.download = 'ME_Report_ER.csv';
   a.click();
 }
@@ -3397,21 +3394,31 @@ function rxClearAll() {
 
 function saveRxMonthly() {
   const inputs = document.querySelectorAll('.rxm-inp');
-  let created = 0, updated = 0;
+  let created = 0, updated = 0, cleared = 0;
+  const plan = [];
   inputs.forEach(inp => {
     const date = inp.dataset.date;
-    const rx   = parseInt(inp.value);
-    if (!date || isNaN(rx) || rx < 0) return;
-    const existing = records.find(r => r.date === date && r.hasME === false);
-    if (existing) {
-      // ไม่เปลี่ยนตัวเลขจากที่เติมอัตโนมัติ → ยังเป็นค่าอัตโนมัติ; แก้แล้ว → เป็นค่าที่กรอกเอง
-      if (existing.rxAuto && existing.rxDaily === rx) return;
-      existing.rxDaily = rx; delete existing.rxAuto; delete existing.rxAutoNote; updated++;
+    const raw  = inp.value.trim();
+    const rx   = raw === '' ? null : parseInt(raw);
+    if (!date || (rx !== null && (isNaN(rx) || rx < 0))) return;
+    const rows = records.filter(r => r.date === date);
+    const had = rows.some(r => (r.rxDaily || 0) > 0);
+    if (rx === null) { if (had) plan.push([date, null, rows]); return; }
+    // ไม่เปลี่ยนตัวเลข (รวมค่าที่เติมอัตโนมัติ) → ไม่แตะ; แก้แล้ว → เป็นค่าที่กรอกเองทุกแถวของวันนั้น
+    if (had && rows.every(r => !(r.rxDaily > 0) || r.rxDaily === rx)) return;
+    plan.push([date, rx, rows]);
+  });
+  const nClear = plan.filter(x => x[1] === null).length;
+  if (nClear && !confirm('ล้างจำนวนใบสั่งยา ' + nClear + ' วันที่เว้นว่างไว้?')) return;
+  plan.forEach(([date, rx, rows]) => {
+    if (rx === null) {
+      rows.forEach(r => { r.rxDaily = 0; delete r.rxAuto; delete r.rxAutoNote; });
+      records = records.filter(r => !(r.date === date && r.hasME === false));
+      cleared++; return;
     }
+    if (rows.length) { rows.forEach(r => { r.rxDaily = rx; delete r.rxAuto; delete r.rxAutoNote; }); updated++; }
     else {
-      const meRec = records.find(r => r.date === date && r.hasME !== false);
-      if (meRec) { meRec.rxDaily = rx; updated++; }
-      else {
+      {
         records.push({ id: Date.now()+Math.random(), seq: records.length+1,
           date, time:'', hasME:false, rxType:'ER', rxDaily:rx,
           stage:'',meType:'',severity:'',drugs:[],drug:'',drugForm:'',
@@ -3422,7 +3429,7 @@ function saveRxMonthly() {
   });
   save();
   buildRxGrid();
-  showSuccessModal('บันทึกแล้ว!', `บันทึก ${created+updated} วัน (ใหม่ ${created}, อัปเดต ${updated})`, '💊');
+  showSuccessModal('บันทึกแล้ว!', `บันทึก ${created+updated} วัน (ใหม่ ${created}, อัปเดต ${updated}${cleared ? ', ล้าง ' + cleared : ''})`, '💊');
 }
 
 
@@ -3457,13 +3464,7 @@ function autoDateME(el) {
 }
 
 function thToISOme(s) {
-  const p = String(s||'').split('/');
-  if (p.length !== 3) return '';
-  let [dd, mm, yy] = p;
-  let year = parseInt(yy);
-  if (year < 100) year += (year > 50 ? 2400 : 2500);
-  year -= 543;
-  return `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  return parseDateThai(String(s || ''));   // 13/11/69 หรือ 13/11/2569 → 2026-11-13
 }
 
 function switchMECategory(dept, cat) {
@@ -3691,7 +3692,7 @@ function excelSerialToDatetime(serial) {
 
 function extractSeverity(str) {
   if (!str) return '';
-  const m = String(str).match(/Category\s+([A-I]):/i);
+  const m = String(str).match(/Category\s*([A-I])\b/i);
   return m ? m[1].toUpperCase() : '';
 }
 
@@ -3701,7 +3702,8 @@ function extractStageShort(str) {
   if (m) return m[1];
   if (str.includes('สั่งยา')) return 'Prescribing';
   if (str.includes('คัดลอก')) return 'Transcribing';
-  if (str.includes('จ่ายยา') || str.includes('Pre-dispensing')) return 'Pre-dispensing';
+  if (/ก่อน(การ)?จ่ายยา/.test(str) || str.includes('Pre-dispensing')) return 'Pre-dispensing';
+  if (str.includes('จ่ายยา')) return 'Dispensing';
   if (str.includes('ให้ยา')) return 'Administration';
   if (str.includes('ติดตาม')) return 'Monitoring';
   return str.split('(')[0].trim().substring(0, 25);
@@ -3727,10 +3729,12 @@ async function syncMeFromHosxp(manual) {
       drug: it.drug || '', stage: extractStageShort(it.stage || ''), stageRaw: it.stage || '', meType: it.meType || '',
       severity: extractSeverity(it.severity || ''), severityRaw: it.severity || '', detail: it.note || '', reporter: it.officer || '',
     };
+    if (window.fbDeletedHas && window.fbDeletedHas('hx:' + hxId)) return;   // เคยลบทิ้งแล้ว ไม่เอากลับมา
     let ex = hosxpRecords.find(x => String(x.hxMeId || '') === hxId);
     if (!ex) {
       const c = hosxpRecords.filter(x => !x.hxMeId && x.dept === dept && x.date === rec.date && String(x.hn || '') === rec.hn && rec.hn);
-      ex = c.find(x => x.drug === rec.drug) || c.find(x => x.time === rec.time) || c[0];
+      const ok = x => !x.drug || !rec.drug || x.drug === rec.drug;   // HN เดียวกันวันเดียวกันแต่คนละยา = คนละเหตุการณ์
+      ex = c.find(x => x.drug === rec.drug) || c.find(x => ok(x) && x.time === rec.time) || c.find(ok);
     }
     if (ex) {
       let ch = !ex.hxMeId;
@@ -3765,7 +3769,7 @@ function updateHosXPStatus() {
 
 function updateLandingCounts() {
   const now = new Date();
-  const mPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const mPrefix = TphDate.ym();
   const thaiMonth = now.toLocaleString('th-TH', {month:'short', timeZone:'Asia/Bangkok'});
 
   const opdAll   = hosxpRecords.filter(r => r.dept === 'OPD');
@@ -3909,17 +3913,20 @@ function computeAdminErrorReportData(fy) {
     return { cat, counts, total: counts.reduce((a,b)=>a+b,0) };
   });
 
-  const monthTotals = months.map((m,i) => catRows.reduce((s,r)=>s+r.counts[i], 0));
+  // ยังไม่ได้จัดหมวด (รอ AI) ก็ต้องนับในยอดรวม/อัตรา — ไม่งั้นยอดไม่ตรงกับหน้า IPD
+  const pendingCounts = months.map(m => adminRecs.filter(r => r.date.substring(0,7)===m && !getEffectiveAdminCategory(r)).length);
+  const pendingTotal = pendingCounts.reduce((a,b)=>a+b, 0);
+  const monthTotals = months.map((m,i) => catRows.reduce((s,r)=>s+r.counts[i], 0) + pendingCounts[i]);
   const grandTotal = monthTotals.reduce((a,b)=>a+b, 0);
 
   const sevRows = NCC_SEVERITY.map(sev => {
-    const counts = months.map(m => recs.filter(r => r.date.substring(0,7)===m && r.severity===sev).length);
+    const counts = months.map(m => adminRecs.filter(r => r.date.substring(0,7)===m && r.severity===sev).length);
     return { sev, counts, total: counts.reduce((a,b)=>a+b,0) };
   });
   const sevMonthTotals = months.map((m,i) => sevRows.reduce((s,r)=>s+r.counts[i], 0));
   const sevGrandTotal = sevMonthTotals.reduce((a,b)=>a+b, 0);
 
-  return { months, denomByMonth, totalDenom, rateOf, catRows, monthTotals, grandTotal, sevRows, sevMonthTotals, sevGrandTotal };
+  return { months, denomByMonth, totalDenom, rateOf, catRows, pendingCounts, pendingTotal, monthTotals, grandTotal, sevRows, sevMonthTotals, sevGrandTotal };
 }
 
 function getAllPendingAdminRecs() {
@@ -3929,6 +3936,14 @@ function getAllPendingAdminRecs() {
     r.source !== 'manual' && !getEffectiveAdminCategory(r));
 }
 
+// ตัดข้อมูลระบุตัวตนออกก่อนส่งข้อความไป AI ภายนอก: เลข HN/AN/เตียง, ชื่อที่มีคำนำหน้า, ชื่อผู้ป่วย/แพทย์ของรายการ
+function redactMeText(t, r) {
+  let x = String(t || '');
+  if (r) [r.patient, r.doctor, r.reporter].filter(v => v && String(v).trim().length > 2).forEach(v => { x = x.split(String(v).trim()).join('[ชื่อ]'); });
+  return x.replace(/\d{5,}/g, '[เลข]')
+    .replace(/(เตียง|bed)\s*\d+/gi, '$1 [เลข]')
+    .replace(/(นางสาว|นาย|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.|เด็กชาย|เด็กหญิง|คุณ|พญ\.|นพ\.|พว\.|ภก\.|ภญ\.)\s*[ก-๙]+(\s+[ก-๙]+)?/g, '$1[ชื่อ]');
+}
 async function classifyAdminErrorsWithAI() {
   if (!ADMIN_CLASSIFY_URL || !ADMIN_CLASSIFY_TOKEN) {
     alert('ยังไม่ได้ตั้งค่า AI classify worker — ดูขั้นตอนใน admin-error-classify/README.md');
@@ -3950,7 +3965,7 @@ async function classifyAdminErrorsWithAI() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-App-Token': ADMIN_CLASSIFY_TOKEN },
         body: JSON.stringify({
-          items: batch.map(r => ({ id: String(r.id), text: r.detail || '' })),
+          items: batch.map(r => ({ id: String(r.id), text: redactMeText(r.detail, r) })),
           categories: IPD_METYPE_ADMIN.filter(c => c !== OTHER_ADMIN_CAT),
           context: 'คุณเป็นเภสัชกรที่ช่วยจัดหมวดหมู่ "Administration Error" ' +
             '(ความคลาดเคลื่อนในขั้นตอนการให้ยาแก่ผู้ป่วย IPD) จากข้อความหมายเหตุ/รายละเอียดเหตุการณ์ที่บันทึกไว้ในระบบ',
@@ -3978,7 +3993,7 @@ function populateAdminRptFY() {
   if (!fyEl) return;
   const recs = hosxpRecords.filter(r => r.dept === 'IPD' && extractStageShort(r.stageRaw || r.stage || '') === 'Administration');
   const fys = new Set(recs.map(r => getFiscalYear(r.date)).filter(Boolean));
-  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  const curFY = getFiscalYear(TphDate.ymd());
   fys.add(curFY);
   const sorted = [...fys].sort((a,b)=>b-a);
   const prev = fyEl.value;
@@ -3990,7 +4005,7 @@ function populateAdminRptMonth() {
   const fyEl = document.getElementById('adminrpt-fy');
   const monthEl = document.getElementById('adminrpt-month');
   if (!fyEl || !monthEl) return;
-  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const fy = parseInt(fyEl.value) || getFiscalYear(TphDate.ymd());
   const months = fiscalYearMonths(fy);
   const curMonth = TphDate.ym();
   const prev = monthEl.value;
@@ -4018,7 +4033,7 @@ function renderAdminErrorReport() {
   if (!fyEl || !monthEl || !catTable || !sevChips) return;
   if (!fyEl.options.length) populateAdminRptFY();
   if (!monthEl.options.length) populateAdminRptMonth();
-  const fy = parseInt(fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const fy = parseInt(fyEl.value) || getFiscalYear(TphDate.ymd());
   const d = computeAdminErrorReportData(fy);
   const rateTxt = v => v === null ? '—' : v.toFixed(2);
   const sel = monthEl.value || 'ALL';
@@ -4058,6 +4073,8 @@ function renderAdminErrorReport() {
     catHtml += `<tr style="cursor:pointer" onclick="showAdminCatDetail(${escHtml(JSON.stringify(r.cat))})" title="คลิกดูรายละเอียดทั้งหมด"><td>${escHtml(r.cat)}</td><td>${c}</td><td>${rateTxt(d.rateOf(c, denom))}</td></tr>`;
   });
   const totalDenom = idx === -1 ? d.totalDenom : d.denomByMonth[idx];
+  const pendN = idx === -1 ? d.pendingTotal : d.pendingCounts[idx];
+  if (pendN) catHtml += `<tr style="color:var(--text-mid)" title="ยังไม่ได้จัดหมวด — กดปุ่ม 🤖 จัดหมวดด้วย AI ด้านบน"><td>⏳ รอจัดหมวด</td><td>${pendN}</td><td>${rateTxt(d.rateOf(pendN, totalDenom))}</td></tr>`;
   catHtml += `<tr style="font-weight:800;background:var(--primary-light)"><td>รวม</td><td>${catTotal}</td><td>${rateTxt(d.rateOf(catTotal, totalDenom))}</td></tr>`;
   catHtml += '</tbody>';
   catTable.innerHTML = catHtml;
@@ -4072,7 +4089,7 @@ function renderAdminErrorReport() {
 function showAdminCatDetail(cat) {
   const fyEl = document.getElementById('adminrpt-fy');
   const monthEl = document.getElementById('adminrpt-month');
-  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(TphDate.ymd());
   const months = fiscalYearMonths(fy);
   const sel = (monthEl && monthEl.value) || 'ALL';
   const scope = sel === 'ALL' ? months : [sel];
@@ -4106,7 +4123,7 @@ function showAdminCatDetail(cat) {
 
 function exportAdminErrorReport() {
   const fyEl = document.getElementById('adminrpt-fy');
-  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(new Date().toISOString().slice(0,10));
+  const fy = parseInt(fyEl && fyEl.value) || getFiscalYear(TphDate.ymd());
   const d = computeAdminErrorReportData(fy);
   const rateTxt = v => v === null ? '' : v.toFixed(2);
 
@@ -4145,7 +4162,7 @@ function populateERFilter() {
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
   const meRecs = erStatsRecords().filter(r => r.hasME !== false);
   const months = [...new Set(meRecs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
-  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  const curFY = getFiscalYear(TphDate.ymd());
   const curMonth = TphDate.ym();
 
   const fyEl = document.getElementById('er-dash-fy');
@@ -4180,7 +4197,7 @@ function populateHosXPMonthFilter(dept) {
   const months = [...new Set(recs.map(r => r.date ? r.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
   const thM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const fmt = m => { const [y,mo]=m.split('-'); return thM[parseInt(mo)-1]+' '+(parseInt(y)+543); };
-  const curFY = getFiscalYear(new Date().toISOString().slice(0,10));
+  const curFY = getFiscalYear(TphDate.ymd());
   const curMonth = TphDate.ym();
   const defaultsApplied = hosxpFilterDefaultsApplied[p] === true;
 
@@ -4206,7 +4223,7 @@ function populateHosXPMonthFilter(dept) {
     const prev = el.value;
     el.innerHTML = '<option value="">ทั้งหมด</option>' + filteredMonths.map(m=>`<option value="${escHtml(m)}">${escHtml(fmt(m))}</option>`).join('');
     if (prev && filteredMonths.includes(prev)) el.value = prev;
-    else if (!defaultsApplied && filteredMonths.includes(curMonth)) el.value = curMonth;
+    else if (!defaultsApplied && sel.endsWith('-dash-month') && filteredMonths.includes(curMonth)) el.value = curMonth;
     else el.value = '';
   });
   hosxpFilterDefaultsApplied[p] = true;
@@ -4242,9 +4259,6 @@ function updateGauge(p, rate, std) {
 
 // ======= HOSXP DASHBOARD =======
 function renderHosXPDashboard(dept) {
-  // Always sync from localStorage
-  const _lsHX2 = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
-  if (_lsHX2.length > hosxpRecords.length) hosxpRecords = _lsHX2;
   const p = dept.toLowerCase();
   const std = dept==='OPD' ? 20 : 10;
   populateHosXPMonthFilter(dept);
@@ -4281,13 +4295,14 @@ function renderHosXPDashboard(dept) {
   // Gauge
   let denomVal = null;
   if (selMonth) { const dk=selMonth+'_'+dept; if(hosxpDenom[dk]) denomVal=hosxpDenom[dk]; }
-  else {
-    const baseRecs = selFY ? allRecs.filter(r=>getFiscalYear(r.date)===selFY) : allRecs;
-    const months=[...new Set(baseRecs.map(r=>r.date?r.date.substring(0,7):'').filter(Boolean))];
-    const tot = months.reduce((s,m)=>{const v=hosxpDenom[m+'_'+dept];return v?s+v:s;},0);
-    if(tot>0) denomVal=tot;
+  let meN = recs.length;
+  if (!selMonth) {
+    // ทุกเดือนที่มีตัวหาร (เดือนที่ไม่มี ME ก็นับวันนอน/ใบสั่งยา) · เดือนที่ยังรอตัวหารไม่นับทั้งตัวตั้งและตัวหาร
+    const dms = Object.keys(hosxpDenom).filter(k => k.endsWith('_'+dept) && +hosxpDenom[k] > 0).map(k => k.slice(0, 7))
+      .filter(m => !selFY || getFiscalYear(m+'-01') === selFY);
+    const tot = dms.reduce((s, m) => s + (+hosxpDenom[m+'_'+dept]), 0);
+    if (tot > 0) { denomVal = tot; meN = recs.filter(r => r.date && dms.includes(r.date.slice(0, 7))).length; }
   }
-  const meN = recs.length;
   updateGauge(p, denomVal ? (meN/denomVal)*1000 : null, std);
 
   DashUX.note(p+'-scope',g('kpi-'+p+'-month').closest('.kpi-grid'),
@@ -4310,7 +4325,7 @@ function renderHosXPDashboard(dept) {
     lbl=>showDetailModal('ขั้นตอน: '+lbl+' ('+dept+')',recs.filter(r=>(r.stage||'').includes(lbl)||(r.stageRaw||'').includes(lbl))));
 
   const drugCount={};
-  recs.forEach(r=>{if(r.drug)drugCount[r.drug]=(drugCount[r.drug]||0)+1;});
+  recs.forEach(r=>{if(r.drug&&r.meCategory!=='system'&&!/^\[/.test(r.drug))drugCount[r.drug]=(drugCount[r.drug]||0)+1;});
   const topDrugs=Object.entries(drugCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
   if(topDrugs.length) renderChart('chart-'+p+'-drug','bar',topDrugs.map(d=>d[0]),topDrugs.map(d=>d[1]),palette(topDrugs.length),true,
     lbl=>showDetailModal('ยา: '+lbl+' ('+dept+')',recs.filter(r=>r.drug===lbl)));
@@ -4378,7 +4393,7 @@ function renderHosXPKPI(dept) {
             ? '<span class="kpi-na" title="ตัวดึงอัตโนมัติจะลงตัวเลขของเดือนนี้ให้วันที่ 1 ของเดือนถัดไป">⏳ ดึงอัตโนมัติสิ้นเดือน</span>'
             : denom ? '<span style="font-size:17px;font-weight:700">'+(+denom).toLocaleString('th-TH')+'</span> <span title="ดึงจาก HOSxP อัตโนมัติ" style="font-size:12px;color:var(--text-light)">🗄 HOSxP</span>'
             : '<span class="kpi-na">รอดึงจาก HOSxP</span>')+'</td>'
-        : '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+denom+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')">'+denomDbHint(dk, denom, std)+'</td>')+
+        : '<td><input type="number" min="0" class="denom-input" placeholder="'+escHtml(dLabel)+'..." value="'+escHtml(denom)+'" onchange="previewKPIRate(this,'+escHtml(JSON.stringify(dk))+','+std+')">'+denomDbHint(dk, denom, std)+'</td>')+
       '<td style="text-align:center;font-weight:700;font-size:17px" id="rate-'+escHtml(dk)+'">'+rStr+'</td>'+
       '<td style="text-align:center" id="status-'+escHtml(dk)+'">'+sStr+'</td></tr>';
   }).join('');
@@ -4430,7 +4445,9 @@ function renderHosXPTable(dept) {
   const search = (document.getElementById(p+'-filter-search')||{}).value||'';
   const sev    = (document.getElementById(p+'-filter-sev')||{}).value||'';
 
+  const mon    = (document.getElementById(p+'-filter-month')||{}).value||'';
   let recs = hosxpRecords.filter(r => r.dept === dept);
+  if (mon)    recs = recs.filter(r => (r.date||'').startsWith(mon));
   if (search) recs = recs.filter(r => JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
   if (sev)    recs = recs.filter(r => r.severity === sev);
   recs.sort((a,b) => (b.date||'').localeCompare(a.date||'') || (b.time||'').localeCompare(a.time||''));
@@ -4476,7 +4493,10 @@ function renderHosXPTable(dept) {
 
 // ======= HOSXP CSV EXPORT =======
 function exportHosXPCSV(dept) {
-  const recs = hosxpRecords.filter(r => r.dept === dept);
+  const p = dept.toLowerCase();
+  const fy = parseInt((document.getElementById(p+'-dash-fy')||{}).value||'') || 0;
+  const mon = (document.getElementById(p+'-dash-month')||{}).value||'';
+  const recs = hosxpRecords.filter(r => r.dept === dept && (!fy || getFiscalYear(r.date) === fy) && (!mon || (r.date||'').startsWith(mon)));
   if (!recs.length) { alert('ไม่มีข้อมูล ' + dept); return; }
   const headers = ['ลำดับ','วันที่','เวลา','HN','ชื่อผู้ป่วย','แผนก','ยา','ขั้นตอน','ชนิดความคลาดเคลื่อน','ระดับ','หมายเหตุ','ผู้สั่งยา','เจ้าหน้าที่'];
   const rows = recs.map((r,i) => [
@@ -4671,6 +4691,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- ========== FIREBASE SYNC ========== -->
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
+<script src="lib/fs-merge-save.js"></script>
 <script>
 
 // ======= DATA EXPORT / IMPORT =======
@@ -4686,7 +4707,7 @@ function exportData() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = 'ME_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.href = url; a.download = 'ME_backup_' + TphDate.ymd() + '.json';
   a.click(); URL.revokeObjectURL(url);
   showToast('✅ Export สำเร็จ');
 }
@@ -4717,10 +4738,6 @@ function populateOverviewFilter() {
 }
 
 function renderOverview() {
-  const _lsER = JSON.parse(localStorage.getItem('me_records_v2') || '[]');
-  if (_lsER.length > records.length) records = _lsER;
-  const _lsHX = JSON.parse(localStorage.getItem('hosxp_records') || '[]');
-  if (_lsHX.length > hosxpRecords.length) hosxpRecords = _lsHX;
 
   const selFY    = parseInt((document.getElementById('ov-fy')||{}).value||'') || 0;
   const selMonth = ((document.getElementById('ov-month')||{}).value||'');
@@ -4770,8 +4787,8 @@ function renderOverview() {
   // Top drugs (combined)
   const drugCount={};
   allRecs.forEach(r=>{
-    if(r.drug) drugCount[r.drug]=(drugCount[r.drug]||0)+1;
-    else if(r.drugs&&r.drugs.length) r.drugs.forEach(d=>{ if(d.name) drugCount[d.name]=(drugCount[d.name]||0)+1; });
+    const names=r.drugs&&r.drugs.length ? r.drugs.map(d=>d.name) : [r.drug];
+    [...new Set(names)].forEach(n=>{ if(n && r.meCategory!=='system' && !/^\[/.test(n)) drugCount[n]=(drugCount[n]||0)+1; });
   });
   const topDrugs=Object.entries(drugCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
   if(topDrugs.length) renderChart('chart-ov-drug','bar',topDrugs.map(d=>d[0]),topDrugs.map(d=>d[1]),palette(topDrugs.length),true,
@@ -4867,69 +4884,65 @@ function renderOverview() {
     if (color === 'ok') setTimeout(() => { el.style.opacity = '0.4'; }, 4000);
   }
 
-  // ── Merge arrays by id key (union, no duplicates) ─────────
-  function mergeById(local, remote, key) {
-    const map = {};
-    local.forEach(r => { if (r[key]) map[r[key]] = r; });
-    remote.forEach(r => { if (r[key] && !map[r[key]]) map[r[key]] = r; });
-    return Object.values(map);
-  }
+  // ── ซิงค์ er_records / hosxp_records (lib/fs-merge-save.js แบบเดียวกับ adr.html) ─────────
+  // เดิม: set ทั้งชุด + รวมแบบข้อมูลในเครื่องชนะ → เครื่องที่ค้างข้อมูลเก่าเขียนทับที่คนอื่นแก้ และรายการที่ลบแล้วฟื้น
+  // ตอนนี้: ข้อมูลบน server คือตัวจริง · บันทึกส่งเฉพาะรายการที่เพิ่ม/แก้/ลบ (arrayUnion/arrayRemove) ทำงานตอนออฟไลน์ได้
+  // hosxp_records.deleted = { 'hx:<med_error_id>': เวลา } — ME จาก HOSxP ที่ผู้ใช้ลบ ตัวดึงรายเดือน/ปุ่มดึงจะไม่เพิ่มกลับ
+  const dedupeHx = list => { const seen = new Set(); return list.filter(r => { if (!r || !r.hxMeId) return true; const h = String(r.hxMeId); if (seen.has(h)) return false; seen.add(h); return true; }); };
+  const trackER = TphMergeSave.tracker(db.collection(COL).doc('er_records'), { arrays: ['records'] });
+  const trackHX = TphMergeSave.tracker(db.collection(COL).doc('hosxp_records'), { arrays: ['records'], maps: ['deleted'] });
+  let hxDeleted = {}, hxLastIds = null;
+  window.fbDeletedHas = t => Object.prototype.hasOwnProperty.call(hxDeleted, String(t));
 
   // ── Real-time listeners ───────────────────────────────────
   function fbStartListeners() {
     setSyncStatus('🔄 กำลังเชื่อมต่อ...', 'loading');
 
-    db.collection(COL).doc('er_records').onSnapshot(snap => {
+    db.collection(COL).doc('er_records').onSnapshot({ includeMetadataChanges: true }, snap => {
+      trackER.seen(snap.exists ? snap.data() : null);
       if (snap.exists) {
-        const fbER = snap.data().records || [];
-        if (fbER.length) {
-          records = dropAutoRxDup(mergeById(records, fbER, 'id'));
-          localStorage.setItem('me_records_v2', JSON.stringify(records));
-          if (typeof renderTable === 'function') renderTable();
-          if (typeof renderDashboard === 'function') renderDashboard();
-          if (typeof updateLandingCounts === 'function') updateLandingCounts();
-          if (typeof renderOverview === 'function') renderOverview();
-        }
-      }
-      // snapshot จาก cache (ต่อ server ไม่ได้) ไม่ใช่การซิงค์ — ไม่บอกว่า "ซิงค์แล้ว"
-      if (snap.metadata && snap.metadata.fromCache) setSyncStatus('📦 ข้อมูลในเครื่อง — ยังไม่ยืนยันกับ server', 'warn');
-      else setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
+        records = dropAutoRxDup(TphMergeSave.dedupeBy(snap.data().records || [], 'id'));
+        localStorage.setItem('me_records_v2', JSON.stringify(records));
+        if (typeof renderTable === 'function') renderTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof updateLandingCounts === 'function') updateLandingCounts();
+        if (typeof renderOverview === 'function') renderOverview();
+      } else if (records.length && !snap.metadata.fromCache) window._fbSaveER();
+      const st = TphMergeSave.status(snap);
+      if (st === 'server') setSyncStatus('☁️ ซิงค์แล้ว', 'ok');
+      else setSyncStatus(st === 'pending' ? '⏳ บันทึกในเครื่องแล้ว รอส่งขึ้น server' : '📦 ข้อมูลในเครื่อง — ยังไม่ยืนยันกับ server', 'warn');
     }, e => {
       console.warn('[Firebase] er_records:', e.message);
       setSyncStatus('⚠️ ออฟไลน์ — ใช้ข้อมูลในเครื่อง', 'err');
     });
 
-    db.collection(COL).doc('hosxp_records').onSnapshot(snap => {
+    db.collection(COL).doc('hosxp_records').onSnapshot({ includeMetadataChanges: true }, snap => {
+      trackHX.seen(snap.exists ? snap.data() : null);
       if (snap.exists) {
-        const fbHX = snap.data().records || [];
-        if (fbHX.length) {
-          hosxpRecords = mergeById(hosxpRecords, fbHX, 'id');
-          localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
-          if (typeof renderHosXPDashboard === 'function') {
-            renderHosXPDashboard('OPD');
-            renderHosXPDashboard('IPD');
-          }
-          if (typeof renderOverview === 'function') renderOverview();
-        }
-      }
-    });
+        const d = snap.data();
+        hxDeleted = Object.assign({}, d.deleted || {});
+        hosxpRecords = dedupeHx(TphMergeSave.dedupeBy(d.records || [], 'id'));
+        hxLastIds = new Map(hosxpRecords.map(r => [String(r.id), r.hxMeId]));
+        localStorage.setItem('hosxp_records', JSON.stringify(hosxpRecords));
+        if (typeof renderHosXPDashboard === 'function') { renderHosXPDashboard('OPD'); renderHosXPDashboard('IPD'); }
+        if (typeof updateLandingCounts === 'function') updateLandingCounts();
+        if (typeof renderOverview === 'function') renderOverview();
+      } else if (hosxpRecords.length && !snap.metadata.fromCache) window._fbSaveHosXP();
+    }, e => console.warn('[Firebase] hosxp_records:', e.message));
 
     db.collection(COL).doc('hosxp_denom').onSnapshot(snap => {
       if (snap.exists) {
-        const fbDenom = snap.data().data || {};
-        hosxpDenom = Object.assign({}, fbDenom, hosxpDenom);
-        // ตั้งแต่ HX_AUTO_FROM ตัวเลขมาจากตัวดึงรายเดือน — ค่าใน Firebase ถูกเสมอ ไม่ใช้ค่าเก่าที่ค้างในเครื่อง
-        Object.keys(hosxpDenom).forEach(k => { if (k.slice(0, 7) >= HX_AUTO_FROM) { if (fbDenom[k]) hosxpDenom[k] = fbDenom[k]; else delete hosxpDenom[k]; } });
+        // ค่าใน Firebase คือค่าจริง (บันทึกขึ้นทันทีทุกครั้งที่กด) — ค่าเก่าในเครื่องไม่ทับ และที่ลบแล้วไม่ฟื้น
+        hosxpDenom = Object.assign({}, snap.data().data || {});
         localStorage.setItem('hosxp_denom', JSON.stringify(hosxpDenom));
       }
-      // ได้ตัวหารที่บันทึกไว้ใน Firebase แล้ว ค่อยเติมจาก HOSxP (ไม่งั้นจะเขียนทับค่าที่กรอกเองบนเครื่องอื่น)
+      // ได้ตัวหารจาก Firebase แล้วค่อยดึงตัวเลข HOSxP มาแสดงเทียบ
       if (!window._denomFbLoaded) { window._denomFbLoaded = true; syncDenomFromHosxp(); }
     });
 
     db.collection(COL).doc('hosxp_ai_cat').onSnapshot(snap => {
       if (snap.exists) {
-        const fbAiCat = snap.data().data || {};
-        hosxpAiCat = Object.assign({}, fbAiCat, hosxpAiCat);
+        hosxpAiCat = Object.assign({}, hosxpAiCat, snap.data().data || {});   // ของ server ชนะ
         localStorage.setItem('hosxp_ai_cat', JSON.stringify(hosxpAiCat));
         if (typeof renderAdminErrorReport === 'function') renderAdminErrorReport();
       }
@@ -4938,14 +4951,17 @@ function renderOverview() {
 
   // ── Save to Firebase (async, non-blocking) ────────────────
   window._fbSaveER = async function() {
-    try {
-      await db.collection(COL).doc('er_records').set({ records: records, updated: new Date().toISOString() });
-    } catch(e) { console.warn('[Firebase] ER save:', e.message); }
+    try { await trackER.save({ records: records }, { updated: new Date().toISOString() }); }
+    catch(e) { console.warn('[Firebase] ER save:', e.message); setSyncStatus('⚠️ บันทึกขึ้น server ไม่สำเร็จ (ข้อมูลยังอยู่ในเครื่องนี้)', 'err'); }
   };
   window._fbSaveHosXP = async function() {
-    try {
-      await db.collection(COL).doc('hosxp_records').set({ records: hosxpRecords, updated: new Date().toISOString() });
-    } catch(e) { console.warn('[Firebase] HosXP save:', e.message); }
+    // ME จาก HOSxP ที่หายไปจากรายการ (ผู้ใช้ลบ) → จดไว้ไม่ให้ตัวดึงเพิ่มกลับ
+    if (hxLastIds) {
+      const now = new Set(hosxpRecords.map(r => String(r.id))), live = new Set(hosxpRecords.map(r => String(r.hxMeId || '')));
+      hxLastIds.forEach((hx, id) => { if (hx && !now.has(id) && !live.has(String(hx))) hxDeleted['hx:' + hx] = new Date().toISOString(); });
+    }
+    try { await trackHX.save({ records: hosxpRecords, deleted: hxDeleted }, { updated: new Date().toISOString() }); }
+    catch(e) { console.warn('[Firebase] HosXP save:', e.message); setSyncStatus('⚠️ บันทึกขึ้น server ไม่สำเร็จ (ข้อมูลยังอยู่ในเครื่องนี้)', 'err'); }
   };
   window._fbSaveDenom = async function() {
     try {
@@ -4982,8 +4998,9 @@ function renderOverview() {
 // ── EXPORT (ME Dashboard) ────────────────────────────────
 function pageDoExport(fmt) {
   const f    = expGetFilter();
-  const recs = expFilter(erStatsRecords(), f);
-  if (!recs.length) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+  const recs = expFilter(erStatsRecords().filter(r => r.hasME !== false), f);
+  const hx = dept => expFilter(hosxpRecords.filter(r => r.dept === dept), f);
+  if (!recs.length && (fmt !== 'excel' || !hx('OPD').length && !hx('IPD').length)) { alert('ไม่พบข้อมูลในช่วงที่เลือก'); return; }
   const label = expFilterLabel(f);
 
   const drugStr = r => {
@@ -5009,10 +5026,16 @@ function pageDoExport(fmt) {
       'Intervention':    r.intervention||'',
       'ผู้บันทึก':       r.reporter||'',
     }));
-    expExcel([{ name:'ME Report (ER)', data }], `ME_Dashboard_${label}`);
+    const hxSheet = dept => hx(dept).sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((r, i) => ({
+      'ลำดับ': i+1, 'วันที่': expISOtoTH(r.date), 'เวลา': r.time||'', 'HN': r.hn||'', 'ชื่อผู้ป่วย': r.patient||'',
+      'ยา': r.drug||'', 'ขั้นตอน': r.stage||'', 'ชนิดความคลาดเคลื่อน': r.meType||'', 'ระดับความรุนแรง': r.severity||'',
+      'หมายเหตุ': r.detail||'', 'Intervention': r.intervention||'',
+    }));
+    expExcel([{ name:'ME Report (ER)', data }, { name:'ME OPD', data: hxSheet('OPD') }, { name:'ME IPD', data: hxSheet('IPD') }], `ME_Dashboard_${label}`);
   }
 
   if (fmt === 'pdf') {
+    if (!recs.length) { alert('ไม่พบ ME ของ ER ในช่วงที่เลือก (PDF เป็นรายงาน ER — OPD/IPD อยู่ในไฟล์ Excel)'); return; }
     const headers = ['ลำดับ','วันที่','HN','ชื่อผู้ป่วย','อายุ','ขั้นตอน','ประเภท ME','ระดับ','ยา','Ward','รายละเอียด'];
     const rows = recs.map((r,i) => [
       i+1, expISOtoTH(r.date), r.hn||'', r.patient||'', r.age||'', r.stage||'', r.meType||'', r.severity||'',
@@ -5081,14 +5104,14 @@ AiAssistant.init({
       description: '1 แถว = 1 บันทึก; hasME=false คือไม่พบความคลาดเคลื่อน (บันทึกเฉพาะ rxDaily)',
       rows: () => records.map(r => ({ date: r.date, time: r.time, hasME: r.hasME !== false, rxDaily: r.rxDaily, age: r.age, stage: r.stage, meType: r.meType, severity: r.severity,
         drug: (r.drugs && r.drugs.length ? r.drugs.map(d => d.name) : (r.drug ? [r.drug] : [])).join(', '), ward: r.ward, reporter: r.reporter, detail: r.detail, intervention: r.intervention, hn: r.hn, patient: r.patient })),
-      private: ['hn', 'patient', 'detail'],
+      private: ['hn', 'patient', 'detail', 'reporter', 'intervention'],
     },
     opd_ipd_me: {
       label: 'ME จาก HosXP (OPD/IPD)',
       description: 'dept = OPD หรือ IPD; stage = ขั้นตอนที่เกิด (Prescribing/Pre-dispensing/Dispensing/Administration ฯลฯ)',
       rows: () => hosxpRecords.map(r => ({ date: r.date, time: r.time, dept: r.dept, stage: r.stageRaw || r.stage, meType: r.meType, meCategory: r.meCategory, severity: r.severity,
         drug: r.drug, intervention: r.intervention, reporter: r.reporter, detail: r.detail, source: r.source, hn: r.hn, patient: r.patient, doctor: r.doctor })),
-      private: ['hn', 'patient', 'doctor', 'detail'],
+      private: ['hn', 'patient', 'doctor', 'detail', 'reporter', 'intervention'],
     },
     denominator: {
       label: 'ตัวหารรายเดือน (จำนวนใบสั่ง OPD/IPD)',
