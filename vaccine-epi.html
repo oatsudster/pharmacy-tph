@@ -142,10 +142,10 @@ pre.copy{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);
 <!-- ② COUNT -->
 <section id="count">
   <div class="card">
-    <h2>⚡ คำนวณด่วน: อยากให้ อภ. ส่งกี่ขวด → ต้องกรอก Onh เท่าไร</h2>
-    <p class="muted">กรอกจำนวนขวดที่ต้องการให้ อภ. ส่ง → โปรแกรมหาค่า Onh (ขวด) ที่ทำให้สูตร อภ. ส่งตามนั้น (ใช้ค่าที่สูงที่สุดที่ยังได้ยอดนี้ = ใกล้ยอดจริงที่สุด) · สูตร อภ.: ถ้า Onh &lt; ROP → ส่ง = ปัดขึ้น(MaxLimit − Onh) ให้เต็มขนาดบรรจุ · ถ้า Onh ≥ ROP → ไม่ส่ง · อภ. ส่งเป็นทวีคูณของขนาดบรรจุ และเติมจนถึง MaxLimit ทุกครั้งที่ส่ง → ขอน้อยกว่า "สูตรส่งได้" ขั้นต่ำไม่ได้ (จะได้ขั้นต่ำนั้นแทน)</p>
+    <h2>⚡ คำนวณด่วน: เลือกยอดที่อยากให้ อภ. ส่ง → ต้องกรอก Onh เท่าไร</h2>
+    <p class="muted">เลือกยอดที่ต้องการให้ อภ. ส่ง (มีให้เลือกเฉพาะยอดที่ อภ. ส่งได้จริง = ทวีคูณของขนาดบรรจุ) → โปรแกรมหาค่า Onh (ขวด) ที่ทำให้สูตร อภ. ส่งตามนั้น (ใช้ค่าที่สูงที่สุดที่ยังได้ยอดนี้ = ใกล้ยอดจริงที่สุด) · สูตร อภ.: ถ้า Onh &lt; ROP → ส่ง = ปัดขึ้น(MaxLimit − Onh) ให้เต็มขนาดบรรจุ · ถ้า Onh ≥ ROP → ไม่ส่ง · อภ. ส่งเป็นทวีคูณของขนาดบรรจุ และเติมจนถึง MaxLimit ทุกครั้งที่ส่ง → ขอน้อยกว่า "สูตรส่งได้" ขั้นต่ำไม่ได้ (จะได้ขั้นต่ำนั้นแทน)</p>
     <div class="tip">บนเว็บ (หน้า บันทึก Inventory) กรอกช่อง <b>Onh (ขวด)</b> ตามคอลัมน์สีเขียว (ถ้ามีหลาย Lot ให้ผลรวมทุก Lot เท่ากับตัวเลขนี้) · ช่อง Onh (Dose) สีเทาเว็บคิดเอง ต้องได้เท่ากับคอลัมน์ "Onh (Dose)" ในตารางนี้ · ถ้าตัวเลขต่างจากยอดที่นับได้จริงมาก (เช่นต้องการมากกว่าที่สูตรส่งได้) ใช้ ④ เบิกเพิ่ม / FM3 ปรับ ROP แทน</div>
-    <div class="wrap"><table><thead><tr><th>วัคซีน</th><th class="n">ต้องการให้ อภ. ส่ง (ขวด)</th><th class="n" style="background:var(--pri2);color:var(--pri)">กรอกช่อง Onh (ขวด)</th><th class="n">Onh (Dose)<div class="muted">เว็บคิดให้</div></th><th class="n">ROP</th><th class="n">MaxLimit</th><th class="n">ขนาดบรรจุ</th><th class="n">อภ. จะส่งจริง</th></tr></thead><tbody id="quick"></tbody></table></div>
+    <div class="wrap"><table><thead><tr><th>วัคซีน</th><th class="n">ต้องการให้ อภ. ส่ง<div class="muted">ตามขนาดบรรจุ</div></th><th class="n" style="background:var(--pri2);color:var(--pri)">กรอกช่อง Onh (ขวด)</th><th class="n">Onh (Dose)<div class="muted">เว็บคิดให้</div></th><th class="n">ROP</th><th class="n">MaxLimit</th><th class="n">ขนาดบรรจุ</th><th class="n">อภ. จะส่งจริง</th></tr></thead><tbody id="quick"></tbody></table></div>
     <details style="margin-top:10px"><summary><b>📥 อัปเดต ROP / MaxLimit / ขนาดบรรจุ จากไฟล์ Excel ของ อภ.</b></summary>
       <p class="muted">เปิดไฟล์ "รายละเอียดการบันทึกข้อมูล - EPI1" → เลือกตารางตั้งแต่แถว No ถึงแถวสุดท้าย → Ctrl+C → วางในช่องนี้ → กด อัปเดต (ถ้ามี ShipQty ด้วย จะเทียบกับที่โปรแกรมคำนวณให้ดู)</p>
       <textarea id="pasteGpo" rows="5" style="width:100%" placeholder="วางตารางจาก Excel ที่นี่"></textarea>
@@ -342,7 +342,7 @@ function onhForWant(v,want){const rop=+v.rop||0,max=+v.max||Math.round(rop*1.5),
  if(!rop)return null;
  if(!(want>0)){const o=Math.ceil(rop/dpv);return{onh:o,doses:o*dpv,ship:0,capped:false}}
  const kMax=Math.ceil(max/pack);
- for(let k=Math.max(1,Math.ceil(want*dpv/pack));k<=kMax;k++){
+ for(let k=Math.max(1,Math.ceil(Math.round(want*dpv*1000)/1000/pack));k<=kMax;k++){
   const lo=Math.max(0,max-k*pack),hi=Math.min(rop,max-(k-1)*pack);   // Onh(dose) ที่ได้ k ขนาดบรรจุ: lo ≤ Onh < hi
   const o=Math.ceil(hi/dpv)-1;
   if(o>=0&&o*dpv>=lo){const d=Math.round(o*dpv*100)/100;return{onh:o,doses:d,ship:gpoShip(d,rop,max,pack),capped:false}}}
@@ -350,12 +350,16 @@ function onhForWant(v,want){const rop=+v.rop||0,max=+v.max||Math.round(rop*1.5),
 // ช่วงที่สูตร อภ. ส่งได้: น้อยสุด = Onh ต่ำกว่า ROP นิดเดียว (เติมถึง MaxLimit) · มากสุด = Onh 0
 function shipRange(v){const rop=+v.rop||0,max=+v.max||Math.round(rop*1.5),pack=+v.pack>0?+v.pack:1,dpv=+v.dpv||1;
  const lo=gpoShip((Math.ceil(rop/dpv)-1)*dpv,rop,max,pack),hi=gpoShip(0,rop,max,pack);return`${vl(lo,v).replace(' ขวด','')}–${vl(hi,v)}`}
+// ยอดที่ อภ. ส่งได้จริง = ทวีคูณของขนาดบรรจุ ในช่วงที่สูตรให้ได้ (ตัวที่หา Onh ได้ตรงเท่านั้น)
+function shipOptions(v){const rop=+v.rop||0,max=+v.max||Math.round(rop*1.5),pack=+v.pack>0?+v.pack:1,dpv=+v.dpv||1;if(!rop)return null;
+ const out=[{vials:0,ship:0}];for(let k=1;k<=Math.ceil(max/pack);k++){const sh=k*pack,r=onhForWant(v,sh/dpv);if(r&&r.ship===sh&&!out.some(o=>o.ship===sh))out.push({vials:Math.round(sh/dpv*100)/100,ship:sh})}return out}
 function renderQuick(){const el=$('quick');if(!el)return;
  el.innerHTML=S.vaccines.filter(v=>v.on).map(v=>{const c=calc(v);
-  const inp=`<input type="number" min="0" step="1" value="${v.want??''}" placeholder="-" oninput="quickWant('${v.id}',this.value)">`;
+  const opts=shipOptions(v),cur=v.want===''||v.want==null?'':String(v.want);
+  const inp=opts?`<select onchange="quickWant('${v.id}',this.value)"><option value="">-</option>${opts.map(o=>`<option value="${o.vials}"${String(o.vials)===cur?' selected':''}>${o.vials?vl(o.ship,v)+' ('+o.ship+' dose)':'ไม่ส่ง'}</option>`).join('')}</select>`:'<span class="muted">-</span>';
   return`<tr><td>${esc(v.name)}<div class="muted">${v.dpv} dose/ขวด</div>${VNOTE[v.id]?`<div class="muted" style="color:var(--warn)">⚠️ ${VNOTE[v.id]}</div>`:''}</td><td class="n">${inp}</td><td class="n" id="q_in_${v.id}" style="background:var(--pri2)"></td><td class="n" id="q_onh_${v.id}"></td><td class="n">${c.rop||'-'}</td><td class="n">${c.max||'-'}</td><td class="n">${c.pack}<div class="muted">${vl(c.pack,v)}</div></td><td class="n" id="q_ship_${v.id}"></td></tr>`}).join('');
  S.vaccines.filter(v=>v.on).forEach(v=>quickRow(v.id))}
-function quickWant(id,val){const v=vac(id);v.want=val===''?'':Math.max(0,Math.floor(+val||0));
+function quickWant(id,val){const v=vac(id);v.want=val===''?'':Math.max(0,+val||0);
  const r=val===''?null:onhForWant(v,+v.want);if(r&&!S.lots.some(l=>l.vid===id))v.qv=String(r.onh);   // ไม่มี Lot → ใช้เป็นยอด Onh ในสรุปด้วย
  save();quickRow(id);renderSummary()}
 function quickRow(id){const v=vac(id),q=(p,h)=>{const e=$(p+id);if(e)e.innerHTML=h};
