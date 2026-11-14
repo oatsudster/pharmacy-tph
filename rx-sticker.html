@@ -18,6 +18,7 @@
 <script src="lib/hosxp-db.js?v=20261029"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
+<script src="lib/renal-dose.js?v=20261114"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
 <script src="lib/usage-picto.js"></script>
 <style id="page-size"></style>
@@ -409,7 +410,8 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   </div>
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
-      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('view-md').scrollIntoView({ behavior: 'smooth' })" title="กลับไปรายชื่อผู้ป่วย">⬆ รายชื่อ</button>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="MD && tphRenalDose.copyNote(MD.x.hn, MD.x.bed ? 'เตียง ' + MD.x.bed : MD.x.name)" title="คัดลอก Cr / eGFR / CrCl จาก lab ล่าสุด เป็น 3 บรรทัด ไปวางใน note ผู้ป่วยใน">💧 คัดลอกค่าไต</button>
+      <button class="btn btn-sm" onclick="document.getElementById('view-md').scrollIntoView({ behavior: 'smooth' })" title="กลับไปรายชื่อผู้ป่วย">⬆ รายชื่อ</button>
       <button class="btn btn-sm" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
     <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · กด ✏️ แก้ชื่อยา/ความแรง/วิธีใช้ได้ · กดพิมพ์ = บันทึกรายการที่ติ๊กไว้ตาม HN (ทุกเครื่องเห็น) · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
@@ -822,7 +824,7 @@ function renderIpd() {
       <div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))} ${escHtml(x.regtime || '')} น.</div></div>
-      <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="event.stopPropagation();tphRenalDose.copyNote('${escHtml(x.hn)}','${escHtml(x.bed ? 'เตียง ' + x.bed : x.name || '')}')" title="คัดลอก Cr / eGFR / CrCl จาก lab ล่าสุด เป็น 3 บรรทัด ไปวางใน note ผู้ป่วยใน">💧 ค่าไต</button><button class="btn btn-gold btn-sm" onclick="printIpd(['${escHtml(x.an)}'])">🖨 พิมพ์</button></div>
     </div>`).join('') || '<div class="empty">ไม่มีผู้ป่วยใน</div>';
   const n = ipdSelected().length, b = document.getElementById('ipd-print-sel');
   b.disabled = !n; b.textContent = `🖨 พิมพ์ที่เลือก${n ? ` (${n})` : ''}`;
@@ -840,7 +842,7 @@ function renderMdPts() {
       <div></div><div class="bed">${escHtml(x.bed || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
         <div class="mt">HN ${escHtml(x.hn)} · AN ${escHtml(x.an)} · ${escHtml(x.wardName || '')} · admit ${escHtml(thIso(x.regdate))}</div>${ipdRecBadge(x)}</div>
-      <div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="event.stopPropagation();printMr(['${escHtml(x.an)}'])" title="พิมพ์เฉพาะหัวสติกเกอร์ MR ทันที (ไม่ต้องเปิดยาเดิม) — 1 ดวง: ครึ่งบนตัวจริง · ครึ่งล่างสำเนา">📋 หัว MR</button>
+      <div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="event.stopPropagation();tphRenalDose.copyNote('${escHtml(x.hn)}','${escHtml(x.bed ? 'เตียง ' + x.bed : x.name || '')}')" title="คัดลอก Cr / eGFR / CrCl จาก lab ล่าสุด เป็น 3 บรรทัด ไปวางใน note ผู้ป่วยใน">💧 ค่าไต</button><button class="btn btn-sm" onclick="event.stopPropagation();printMr(['${escHtml(x.an)}'])" title="พิมพ์เฉพาะหัวสติกเกอร์ MR ทันที (ไม่ต้องเปิดยาเดิม) — 1 ดวง: ครึ่งบนตัวจริง · ครึ่งล่างสำเนา">📋 หัว MR</button>
         <button class="btn btn-sm${x.an === MD_AN ? ' btn-gold' : ''}">💊 ยาเดิม</button></div>
     </div>`).join('') || `<div class="empty">${IPD.length ? 'ไม่พบผู้ป่วยตามคำค้น' : 'ไม่มีผู้ป่วยใน'}</div>`;
 }
