@@ -25,7 +25,7 @@
 <script src="lib/clinic-store.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <script src="lib/rx-check.js"></script>
-<script src="lib/renal-dose.js?v=20261114b"></script>
+<script src="lib/renal-dose.js"></script>
 <script src="lib/smart-rx.js"></script>
 <style>
 :root {
@@ -3785,7 +3785,7 @@ function smartRenalHtml(r) {
   else kid.push('<small>ไม่มีน้ำหนักใน 1 ปี — ใช้ eGFR แทน CrCl</small>');
   if (f.old) kid.push('<b class="bad">ผล Cr เก่ากว่า 6 เดือน</b>');
   const IC = { high: '🔴', warn: '🟠', info: '🟢', ok: '✅' };
-  return h + `<div class="sm-kid"><button class="btn btn-sm" data-sm-kcopy style="float:right;margin-left:6px" title="คัดลอก Cr / eGFR / CrCl เป็น 3 บรรทัด ไปวางใน note">📋 คัดลอกค่าไต</button>${kid.join(' · ')}</div>`
+  return h + `<div class="sm-kid">${kid.join(' · ')}</div>`
     + (r.rows.length ? r.rows.map(x => `<div class="sm-it ${x.level}">${IC[x.level]} <b>${escHtml(x.drug)}</b> <small>(${escHtml(x.basis)} ${n(x.value)})</small> — ${escHtml(x.text)}${x.level !== 'ok' && x.limit ? `<div class="rec">เกณฑ์ ${escHtml(x.limit)}${x.usage ? ` · สั่ง: ${escHtml(x.usage)}` : ''}</div>` : ''}</div>`).join('')
       : '<div class="sm-it ok">✅ ไม่มียาในใบสั่งที่ต้องปรับขนาดตามไต</div>');
 }
@@ -3796,7 +3796,6 @@ function onSmartChange(e) {
 }
 async function onSmartClick(e) {
   if (e.target.closest('button[data-sm-reload]')) { smartRefresh(true); return; }
-  if (e.target.closest('button[data-sm-kcopy]')) { const c = smartCache.get(smartHnNow()); if (c && c.res && c.res.renal) tphRenalDose.copyFn(c.res.renal.fn); return; }
   if (!e.target.closest('button[data-sm-ai]')) return;
   const c = smartCache.get(smartHnNow());
   if (!c || !c.res || (c.ai && c.ai.busy)) return;
