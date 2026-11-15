@@ -127,6 +127,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 }
 .tabbar { max-width: 1100px; margin: 0 auto; padding: 14px 16px 0; display: flex; gap: 6px; flex-wrap: wrap; }
 .tabbar .tab { font: inherit; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+.tabbar .tab small { font-size: 11px; opacity: .75; margin-left: 6px; }
 .tabbar .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .wrap1 { max-width: 1600px; margin: 0 auto; padding: 16px; }
 .ipd-row { display: grid; grid-template-columns: 34px 90px 1fr auto; gap: 4px 12px; align-items: center; padding: 9px 4px; border-top: 1px solid #eef3ef; }
@@ -321,15 +322,20 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   </div>
 </div>
 
-<div class="tabbar">
-  <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
-  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน</button>
-  <button class="tab" data-v="md" onclick="setView('md')">📋💊 Med Reconcile</button>
-  <button class="tab" data-v="pre" onclick="setView('pre')">🚑 ยาเดิมเตรียม admit</button>
-  <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
-  <button class="tab" data-v="ins" onclick="setView('ins')">💉 ฉลากภาพอินซูลิน</button>
-  <button class="tab" data-v="blank" onclick="setView('blank')">⚡ ฉลากเปล่า (ไฟดับ)</button>
-  <button class="tab" data-v="night" onclick="setView('night')">🌙 ยาเวรบ่าย-ดึก (คืนรถยา)</button>
+<!-- แท็บแบ่ง 3 กลุ่มในแถบซ้าย ชื่ออังกฤษ + ไทยบรรทัดเล็ก (ผู้ใช้เลือก 2026-11-15) · ผู้ป่วยในเรียงตามเส้นทางผู้ป่วย: ก่อน admit → admit → บนหอ → D/C -->
+<div class="tabbar" id="tabs-opd">
+  <button class="tab active" data-v="rx" onclick="setView('rx')">💊 OPD/ER Labels<small>ฉลากยาผู้ป่วยนอก/ER</small></button>
+  <button class="tab" data-v="ins" onclick="setView('ins')">💉 Insulin Pictogram<small>ฉลากภาพอินซูลิน</small></button>
+</div>
+<div class="tabbar" id="tabs-ipd">
+  <button class="tab" data-v="pre" onclick="setView('pre')">🚑 Pre-admit Med Rec<small>ทำยาเดิมก่อน admit</small></button>
+  <button class="tab" data-v="md" onclick="setView('md')">📋 Med Reconcile<small>MR + ยาเดิมผู้ป่วยใน</small></button>
+  <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ Cart Labels<small>หัวสติกเกอร์รถยา</small></button>
+  <button class="tab" data-v="hme" onclick="setView('hme')">🏠 Discharge Meds<small>สรุปยากลับบ้าน</small></button>
+  <button class="tab" data-v="night" onclick="setView('night')">🌙 Night Restock<small>ยาเวรบ่าย-ดึก คืนรถยา</small></button>
+</div>
+<div class="tabbar" id="tabs-bk">
+  <button class="tab" data-v="blank" onclick="setView('blank')">⚡ Blank Labels<small>ฉลากเขียนมือ (ไฟดับ)</small></button>
 </div>
 
 <!-- ยาที่ใช้เวรบ่าย-ดึก (คืนรถยา) — เดิมเป็นหน้า night-meds.html แยก ย้ายมาเป็นแท็บนี้ 2026-11-15 ·
@@ -474,7 +480,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <div class="card">
     <h2>🚑 ผู้ป่วยนอกเตรียม admit — ทำยาเดิมไว้ก่อน <span class="hint" id="mdpre-meta" style="margin:0;font-weight:400"></span>
       <button class="btn btn-sm" style="margin-left:auto" onclick="loadIpd()">🔄</button></h2>
-    <div class="hint" style="margin:0 0 6px">รายชื่อ = visit ER 24 ชม.ที่ยังไม่มี AN · ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในแท็บ 📋💊 Med Reconcile = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN เต็มในช่องค้นหา</div>
+    <div class="hint" style="margin:0 0 6px">รายชื่อ = visit ER 24 ชม.ที่ยังไม่มี AN · ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในแท็บ 📋 Med Reconcile = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN เต็มในช่องค้นหา</div>
     <div class="actions" style="margin:0 0 6px">
       <input type="text" id="mdpre-q" placeholder="ค้นหา ชื่อ / HN (HN เต็ม = ค้นใน HOSxP)" autocomplete="off" style="max-width:300px" oninput="renderPre()"
         onkeydown="if (event.key === 'Enter' && /^\d{5,10}$/.test(this.value.trim())) mdPreSearch(this.value.trim())">
@@ -2411,7 +2417,9 @@ TphHeader.mount({ from: '.topbar', title: 'h1', sub: '.sub' });
 <!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
 <script src="lib/side-tabs.js"></script>
 <script>
-TphSideTabs.mount({ tabs: '.tabbar' });
+TphSideTabs.mount({ tabs: '#tabs-opd', group: 'ผู้ป่วยนอก · OPD' });
+TphSideTabs.mount({ tabs: '#tabs-ipd', group: 'ผู้ป่วยใน · IPD' });
+TphSideTabs.mount({ tabs: '#tabs-bk', group: 'สำรอง' });
 </script>
 <script src="lib/tph-icons.js"></script>
 <script src="lib/tph-ui.js"></script>

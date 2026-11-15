@@ -9,7 +9,7 @@ import { ROOT } from '../helpers.mjs';
 
 // [หน้า, ลำดับปุ่มที่จะกด, ตรวจว่าเปลี่ยนจริง]
 const PAGES = [
-  ['rx-sticker.html', 4, () => document.getElementById('view-hme').style.display === ''],
+  ['rx-sticker.html', 5, () => document.getElementById('view-hme').style.display === ''],
   ['adr.html', 1, () => document.querySelectorAll('.tab-bar .tab-btn')[1].classList.contains('active')],
   ['waiting-time.html', 0, () => document.getElementById('tab-cart').classList.contains('active')],
   ['pharmacy-ha.html', 1, () => document.querySelector('#tabs [data-v="rdu"]').getAttribute('aria-selected') === 'true'],
@@ -17,7 +17,7 @@ const PAGES = [
   ['dm-remission.html', 1, () => getComputedStyle(document.getElementById('page-patients')).display !== 'none'],
   ['clinic.html', 1, () => document.getElementById('view-report').style.display === 'block'],
   ['vaccine-epi.html', 1, () => document.getElementById('count').classList.contains('on')],
-  ['rx-sticker.html', 7, () => document.getElementById('view-night').style.display === '' && !!document.getElementById('night-frame').getAttribute('src')],
+  ['rx-sticker.html', 6, () => document.getElementById('view-night').style.display === '' && !!document.getElementById('night-frame').getAttribute('src')],
 ];
 
 let browser;
@@ -43,9 +43,9 @@ for (const [file, idx, changed] of PAGES) {
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('.tph-src-hidden')].every(e => getComputedStyle(e).display === 'none')), true);
     const side = await page.locator('.tph-side').boundingBox();
     assert.ok(side.x < 5 && side.width > 200, 'แถบอยู่ซ้ายสุด');
-    await page.locator('.tph-grp').first().locator('.tph-it').nth(idx).click();
+    await page.locator('.tph-side .tph-it').nth(idx).click();
     await page.waitForFunction(changed);
-    await page.waitForFunction(i => document.querySelector('.tph-grp').querySelectorAll('.tph-it')[i].classList.contains('on'), idx);
+    await page.waitForFunction(i => document.querySelectorAll('.tph-side .tph-it')[i].classList.contains('on'), idx);
     // ไม่มี id ซ้ำ (สำเนาในแถบซ้ายต้องไม่พา id มาด้วย)
     assert.deepEqual(await page.evaluate(() => { const c = {}; document.querySelectorAll('[id]').forEach(e => c[e.id] = (c[e.id] || 0) + 1); return Object.keys(c).filter(k => c[k] > 1); }), []);
     assert.deepEqual(errors, []);
