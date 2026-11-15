@@ -32,6 +32,8 @@
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/mrmeds?hn=&an= — ยาที่ได้รับจาก รพ. 1 ปีก่อน admit (OPD + ยากลับบ้าน) — สติกเกอร์ยาเดิมแปะใบ MR
+#                     (ยังไม่ admit ใช้ &vn= ของ visit ER/OPD แทน an — นับจากวันที่ visit นั้น)
+#   /db/mrpre[?hn=] — ผู้ป่วยที่ยังไม่มี AN สำหรับทำ MR ก่อน admit: ไม่ระบุ hn = visit ER 24 ชม.ล่าสุด · ระบุ hn = visit 3 วันล่าสุดของ HN นั้น
 #   /db/mrvisits?hn=&an= — ทุก visit OPD ที่มียา + ยากลับบ้านทุกครั้ง ใน 1 ปีก่อน admit พร้อมรายการยา — เภสัชเลือกดึงยาเดิมจาก visit อื่นเพิ่ม
 #   /db/mrdict      — รายการยาทั้งหมด (drugitems) + วิธีใช้ที่เปิดใช้ (drugusage.status='Y') พร้อมรหัสย่อ — คีย์ยาเดิมจาก รพ.อื่น ในใบ MR
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน) + อายุ น้ำหนัก แพ้ยา โรคประจำตัว สำหรับหัวสติกเกอร์ MR
@@ -574,7 +576,7 @@ function DbRxQueue {
 }
 function DbIpdList {
   # อายุ น้ำหนัก (ipt.bw เป็นกรัม ไม่มีใช้ opdscreen ของ visit แรกรับ) โรคประจำตัว (pmh ตอนแรกรับ) — ใช้กับหัวสติกเกอร์ MR
-  $rows = DbQuery ("SELECT i.an, i.hn, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, i.ward, w.name AS ward_name, " +
+  $rows = DbQuery ("SELECT i.an, i.vn, i.hn, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, i.ward, w.name AS ward_name, " +
     "a.bedno, a.roomno, CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, " +
     "s.age_y, s.age_m, i.bw, o.bw AS obw, o.pmh " +
     "FROM ipt i LEFT JOIN iptadm a ON a.an=i.an LEFT JOIN ward w ON w.ward=i.ward LEFT JOIN patient p ON p.hn=i.hn " +
@@ -591,9 +593,42 @@ function DbIpdList {
   [ordered]@{ ok = $true; items = @($rows | ForEach-Object {
     $bw = if ("$($_['bw'])" -match '^\d+(\.\d+)?$' -and [double]$_['bw'] -gt 0) { [math]::Round([double]$_['bw'] / 1000, 2) }
       elseif ("$($_['obw'])" -match '^\d+(\.\d+)?$' -and [double]$_['obw'] -gt 0) { [math]::Round([double]$_['obw'], 2) } else { $null }
-    [ordered]@{ an = $_['an']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
+    [ordered]@{ an = $_['an']; vn = $_['vn']; hn = $_['hn']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward']; wardName = $_['ward_name']
       bed = $_['bedno']; room = $_['roomno']; name = $_['ptname']; ageY = $_['age_y']; ageM = $_['age_m']; bw = $bw
       pmh = ("$($_['pmh'])" -replace '\s+', ' ').Trim(); allergy = @($al["$($_['hn'])"] | Where-Object { $_ }); clinics = @($cl["$($_['hn'])"] | Where-Object { $_ }) } }) }
+}
+# ทำ MR ก่อน admit (ผู้ใช้ขอ 2026-11-15): visit ที่ยังไม่มี AN — admit แล้ว ipt.vn = VN ของ visit นี้ หน้าเว็บผูกรายการที่ทำไว้ด้วย VN
+#   ไม่ระบุ hn = visit ER ใน 24 ชม. · ระบุ hn = ทุกแผนก 3 วันล่าสุด (admit จาก OPD ก็มี ~20%)
+function DbMrPre($path) {
+  $hn = if ($path -match '[?&]hn=(\d+)') { $matches[1] } else { '' }
+  $where = if ($hn) { "o.hn='$hn' AND o.vstdate>=CURDATE() - INTERVAL 3 DAY" }
+    else { "o.vstdate>=CURDATE() - INTERVAL 1 DAY AND TIMESTAMP(o.vstdate,o.vsttime)>=NOW() - INTERVAL 24 HOUR AND EXISTS (SELECT 1 FROM er_regist e WHERE e.vn=o.vn)" }
+  $rows = DbQuery ("SELECT o.vn, o.hn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, " +
+    "CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, " +
+    "k.department AS dep, k2.department AS cur_dep, v.age_y, v.age_m, s.bw, s.pmh " +
+    "FROM ovst o LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN kskdepartment k ON k.depcode=o.main_dep LEFT JOIN kskdepartment k2 ON k2.depcode=o.cur_dep " +
+    "LEFT JOIN vn_stat v ON v.vn=o.vn LEFT JOIN opdscreen s ON s.vn=o.vn " +
+    "WHERE $where AND (o.an IS NULL OR o.an='') ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 60")
+  [ordered]@{ ok = $true; hn = $hn; items = @($rows | ForEach-Object {
+    $bw = if ("$($_['bw'])" -match '^\d+(\.\d+)?$' -and [double]$_['bw'] -gt 0) { [math]::Round([double]$_['bw'], 2) } else { $null }
+    [ordered]@{ an = ''; vn = $_['vn']; hn = $_['hn']; regdate = $_['vstdate']; regtime = $_['vsttime']; dep = $_['dep']; curDep = $_['cur_dep']
+      name = $_['ptname']; ageY = $_['age_y']; ageM = $_['age_m']; bw = $bw; pmh = ("$($_['pmh'])" -replace '\s+', ' ').Trim() } }) }
+}
+# จุดตั้งต้นของยาเดิม: &an= (admit แล้ว) หรือ &vn= (ยังไม่ admit) → @{ an; vn; reg }
+function MrBase($hn, $path) {
+  $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
+  $vn = if ($path -match '[?&]vn=(\d+)') { $matches[1] } else { '' }
+  if ($an) {
+    $ipt = DbQuery "SELECT vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
+    if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
+    return @{ an = $an; vn = [HxDb]::Digits($ipt[0]['vn']); reg = $ipt[0]['regdate'] }
+  }
+  if ($vn) {
+    $o = DbQuery "SELECT DATE_FORMAT(vstdate,'%Y-%m-%d') AS d FROM ovst WHERE vn='$vn' AND hn='$hn' LIMIT 1"
+    if (-not $o.Count) { throw 'ไม่พบ VN นี้' }
+    return @{ an = ''; vn = $vn; reg = $o[0]['d'] }
+  }
+  throw 'ต้องระบุ an หรือ vn'
 }
 # เครื่องที่ให้พิมพ์สรุปยากลับบ้านอัตโนมัติ: ชื่อเครื่อง (COMPUTERNAME) อยู่ใน hme-station.txt ในโฟลเดอร์ bridge
 # ไฟล์นี้ไม่อยู่ในตัวติดตั้ง — เครื่องอื่นจึงไม่พิมพ์อัตโนมัติจนกว่าจะเพิ่มชื่อเครื่องเอง (หน้าเว็บปิดปุ่มพิมพ์อัตโนมัติให้ด้วย)
@@ -728,10 +763,7 @@ function DbErRx($hn, $path) {
 #   + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุดก่อน admit นี้ — หน้าเว็บใช้ D/C เป็นจุดตัด
 #   chronic = $true บอกหน้าเว็บว่าเป็นข้อมูลแบบนี้ (bridge รุ่นเก่าส่งทุก visit)
 function DbMrMeds($hn, $path) {
-  $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
-  $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
-  if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
-  $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
+  $b = MrBase $hn $path; $an = $b.an; $reg = $b.reg; $avn = $b.vn
   # o.hn='$hn' ใน WHERE: เงื่อนไข OR ใน JOIN ทำให้ MySQL ไล่ ovst ทั้งตาราง (1.2 ล้านแถว) ต่อนัดทุกรายการ — คนไข้นัดเยอะ
   #   ใช้ >20 วิ เกินเวลารอของ bridge แล้วหน้าเว็บขึ้นว่าไม่ได้ต่อ bridge (2026-11-02: AN 690001206 20.9 วิ → 0.01 วิ ผลเท่าเดิม)
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn FROM oapp a JOIN clinic c ON c.clinic=a.clinic " +
@@ -771,10 +803,7 @@ function DbMrMeds($hn, $path) {
 # ให้เภสัชเลือกดึงยาเดิมจาก visit อื่นเพิ่มเองในใบ MR (ผู้ใช้ขอ 2026-10-22) — /db/mrmeds เลือกให้แค่นัดล่าสุดของแต่ละคลินิก
 #   ทุก visit OPD ที่มียาใน 1 ปีก่อน admit (ไม่นับ visit ที่ admit) + ยากลับบ้าน (HMe) ทุกครั้งที่จำหน่าย — ล่าสุดก่อน
 function DbMrVisits($hn, $path) {
-  $an = if ($path -match '[?&]an=(\d+)') { $matches[1] } else { '' }
-  $ipt = DbQuery "SELECT an, vn, DATE_FORMAT(regdate,'%Y-%m-%d') AS regdate FROM ipt WHERE an='$an' AND hn='$hn' LIMIT 1"
-  if (-not $ipt.Count) { throw 'ไม่พบ AN นี้' }
-  $reg = $ipt[0]['regdate']; $avn = [HxDb]::Digits($ipt[0]['vn'])
+  $b = MrBase $hn $path; $an = $b.an; $reg = $b.reg; $avn = $b.vn
   $op = DbQuery ("SELECT r.vn, DATE_FORMAT(r.vstdate,'%Y-%m-%d') AS d, k.department AS dep, IFNULL(v.pdx,'') AS pdx, " +
     "$DRUG_COLS, TRIM(IFNULL(d.name_print,'')) AS name_print $DRUG_JOIN LEFT JOIN ovst o ON o.vn=r.vn " +
     "LEFT JOIN kskdepartment k ON k.depcode=o.main_dep LEFT JOIN vn_stat v ON v.vn=r.vn " +
@@ -923,11 +952,11 @@ function DbHaCases {
 function DbEndpoint($path) {
   if ($path -like '/db/hacases*') { return DbHaCases }
   # endpoint ที่ไม่ใช้ HN
-  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*' -or $path -like '/db/mrdict*') {
+  if ($path -like '/db/denom*' -or $path -like '/db/adr*' -or $path -match '^/db/me(\?|$)' -or $path -like '/db/nightmeds*' -or $path -like '/db/dmroster*' -or $path -like '/db/dmscreen*' -or $path -like '/db/rxqueue*' -or $path -like '/db/ipdlist*' -or $path -like '/db/hme*' -or $path -like '/db/mrdict*' -or $path -like '/db/mrpre*') {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } elseif ($path -like '/db/mrdict*') { DbMrDict } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } elseif ($path -like '/db/mrdict*') { DbMrDict } elseif ($path -like '/db/mrpre*') { DbMrPre $path } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }
