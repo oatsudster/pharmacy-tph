@@ -1894,17 +1894,12 @@ function hmeDrug(i) {
 }
 // แอลกอฮอล์ (เช็ดแผล/ล้างมือ) ไม่นับเป็นยากลับบ้าน — ไม่แสดง ไม่นับจำนวนรายการ ไม่พิมพ์ (ใบที่มีแต่แอลกอฮอล์ = ไม่มีรายการ)
 const HME_SKIP = /^\s*(ETHYL\s+)?ALCOHOL\b|แอลกอฮอล์/i;
-// หน่วยบนสติกเกอร์ยากลับบ้าน/สรุปรายการยา = ภาษาอังกฤษ (ผู้ใช้ขอ 2026-11-15): tab / cap / bot … · ยาพ่น MDI = "หลอด"
-// แคปซูลดูจาก dosageform (HOSxP ตั้งหน่วยแคปซูลหลายตัวเป็น "เม็ด") · หน่วยที่ไม่รู้จัก = ข้อความเดิม (ตัดวงเล็บ)
+// หน่วยบนสติกเกอร์ยากลับบ้าน/สรุปรายการยา = หน่วยไทยตาม HOSxP (ตัดวงเล็บ) — ลองภาษาอังกฤษแล้วผู้ใช้ขอกลับเป็นไทย 2026-11-15
+// ยกเว้นยาพ่น MDI = "หลอด" (HOSxP ตั้งเป็น ขวด MDI / กล่อง)
 function hmeUnit(u, it) {
-  const raw = String(u || ''), base = raw.replace(/\s*\(.*\)\s*$/, '').trim(), f = String((it && it.form) || '');
-  if (/\bMDI\b|inhaler|evohaler|accuhaler/i.test([raw, f, it && it.name].join(' '))) return 'หลอด';
-  if (/supposit|\(SP\.?\)/i.test(raw + ' ' + f)) return 'supp';
-  if (/^(เม็ด|แค็?[ปบ]ซูล|tab|tablet|cap|capsule)s?$/i.test(base)) return /CAPSULE/i.test(f) || /^แค็?[ปบ]ซูล|^cap/i.test(base) ? 'cap' : 'tab';
-  const M = [[/^(ขวด|bot|bottle)/i, 'bot'], [/^หลอด/, 'tube'], [/^ซอง/, 'sachet'], [/^(ไวอัล|vial)/i, 'vial'], [/^(amp|amphule|ampoule|แอมพูล)/i, 'amp'],
-    [/^ถุง/, 'bag'], [/^แท่ง/, 'rod'], [/^(ซีซี|cc|มล)/i, 'ml'], [/^กล่อง/, 'box'], [/^ครั้ง/, 'dose']];
-  const m = M.find(([re]) => re.test(base));
-  return m ? m[1] : base;
+  const raw = String(u || ''), base = raw.replace(/\s*\(.*\)\s*$/, '').trim();
+  if (/\bMDI\b|inhaler|evohaler|accuhaler/i.test([raw, it && it.form, it && it.name].join(' '))) return 'หลอด';
+  return base;
 }
 async function loadHme() {
   const r = window.tphHosxp && tphHosxp.hme ? await tphHosxp.hme() : null;
