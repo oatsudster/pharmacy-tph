@@ -1855,18 +1855,32 @@ const HME_GENERIC = {
   '1610005': "Theophylline SR 200 mg", '1480304': "Levothyroxine 100 mcg", '1650219': "Tenofovir/Lamivudine/Dolutegravir 300/300/50 mg", '1460014': "Tramadol 50 mg",
   '1460015': "Tramadol inj 50 mg/ml", '1670009': "Tranexamic acid 250 mg", '1430103': "Triamcinolone cream 0.1%", '1460006': "Triamcinolone cream 0.02%",
   '1480318': "Triamcinolone oral paste 0.1%", '1000315': "Pyridoxine 50 mg",
+  // ตามที่เภสัชยืนยัน 2026-11-15 (บางตัวคงชื่อการค้า/ชื่อตำรับ) · สมุนไพร + ยาเดิม…ที่ไม่มีในบัญชียา รพ. คงชื่อเดิม
+  '1510003': "BERODUAL (MDI) inhaler", '1560007': "BERODUAL 20 ml solution", '1500011': "BUDESONIDE (MDI) 200 mcg",
+  '1540011': "SeRoflo (MDI) 25/125", '1600013': "Augmentin 1 gm.", '1660311': "Augmentin Susp 400/57 mg/5 ml",
+  '1000084': "Co-trimoxazole 400/80 mg", '1460089': "Ergotamine/Caffeine 1/100 mg", '1480315': "Mixtard Insulin 70/30 100 IU/ml",
+  '1480316': "Mixtard Insulin 70/30 100 IU/ml", '1000200': "Insulin NPH 100 IU/ml", '1460050': "Alum milk susp.",
+  '1470005': "MILK OF MAGNESIA (MOM)", '1000192': "M. CARMINATIVE", '1000194': "M.tussis (brown mixt)",
+  '1460213': "AMMONIUM CARBONATE 60 ml", '1000309': "UNISON ENEMA 100 ml", '1471216': "Chlortetracycline eye oint. 1%",
+  '1480302': "PolyOPH", '1000148': "HISTA OPH (opsil A)", '1550007': "Triferdine 150 mg",
+  '1180001': "VITAMIN B 1/6/12", '1000197': "Multivitamin (MTV)", '1000303': "BETADINE (IODINE)",
+  '1000219': "ORS(รสส้ม) 75", '1000216': "NSS INJ. 0.9% 100 ml", '1000214': "Saline IRRIGATE",
+  '1510015': "DT vaccines", '1460182': "Hepatitis B vaccine", '1460074': "BCG",
+  '1660119': "IMPLANON implant 68 mg", '1660107': "Atorvastatin 40 mg",
 };
 function hmeDrug(i) {
   const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
   // "ยาเดิม......" = ยาที่ผู้ป่วยนำมาเอง: ชื่อยาจริงอยู่บรรทัดแรกของวิธีใช้
   //   คีย์ชื่อ+วิธีใช้รวมบรรทัดเดียว ("Ertapenem 1 g IV 1 g OD") = แยกแบบเดียวกับสติกเกอร์ยาเดิม ไม่ให้ช่องวิธีใช้ว่าง
+  const gen = HME_GENERIC[String(i.icode || '')];
+  if (gen) return { name: gen, use: mdAbbr(lines.join(' ')) };
   const pm = String(i.name || '').replace(/\s+/g, ' ').trim().match(/^ยาเดิม\s*\((.+)\)$/);   // "ยาเดิม(Atorvastatin 20 mg)" แบบ mdOld
   if (pm && !i.namePrint) return { name: 'ยาเดิม: ' + pm[1].trim(), use: mdAbbr(lines.join(' ')) };
   if (/^ยาเดิม/.test(String(i.name || '').trim()) && lines.length) {
     const [n, u] = lines.length === 1 && /^[A-Za-z]/.test(lines[0]) ? mdOldSplit(lines[0]) : [lines[0], lines.slice(1).join(' ')];
     return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? mdAbbr(u) : '' };
   }
-  const name = HME_GENERIC[String(i.icode || '')] || (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
+  const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
   // วิธีใช้ย่อภาษาอังกฤษแบบเดียวกับสติกเกอร์ยาเดิม MR (ผู้ใช้ขอ 2026-11-05): "1 x 3 pc" "0.5 x 1 hs" "2 puff bid" — แปลงไม่ได้ = ข้อความเดิม
   return { name, use: mdAbbr(lines.join(' ')) };
 }
