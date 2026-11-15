@@ -1817,6 +1817,45 @@ function loadHmeOpts() {
   document.getElementById('hme-auto').checked = !!o.auto;
 }
 const dotLine = t => !String(t || '').replace(/[.\s…_-]/g, '');
+// ชื่อบนสติกเกอร์ยากลับบ้าน = ชื่อสามัญ + ขนาดยาเท่านั้น (ผู้ใช้ขอ 2026-11-15) เช่น SimVastatin(zocor) (NL) -> Simvastatin 20 mg,
+// ยาพ่น = ชื่อสามัญ + MDI ไม่ใส่ขนาด · ตาม icode จากยาที่เคยอยู่ในใบ HMe 1 ปี — ตัวที่ไม่อยู่ในตาราง (รอเภสัชยืนยัน/ยาใหม่) ใช้ชื่อเดิมจาก HOSxP
+const HME_GENERIC = {
+  '1471230': "Haloperidol 0.5 mg", '1000145': "Haloperidol 2 mg", '1000146': "Haloperidol 5 mg", '1000242': "Phenytoin 100 mg",
+  '1660111': "Phenytoin 50 mg", '1053001': "Trihexyphenidyl 2 mg", '1480007': "Trihexyphenidyl 5 mg", '1000106': "Diazepam 2 mg",
+  '1000107': "Diazepam 5 mg", '1530002': "Oseltamivir 30 mg", '1530003': "Oseltamivir 45 mg", '1530004': "Oseltamivir 75 mg",
+  '1000226': "Paracetamol 325 mg", '1000227': "Paracetamol 500 mg", '1590002': "Paracetamol syrup 250 mg/5 ml", '1000230': "Paracetamol syrup 120 mg/5 ml",
+  '1460047': "Acyclovir 800 mg", '1000039': "Aspirin 81 mg", '1000038': "Aspirin 300 mg", '1000030': "Amoxicillin 500 mg",
+  '1000032': "Amoxicillin syrup 125 mg/5 ml", '1490011': "Amoxicillin syrup 250 mg/5 ml", '1510001': "Dicloxacillin 250 mg", '1500002': "Dicloxacillin 500 mg",
+  '1460151': "Enalapril 20 mg", '1000122': "Enalapril 5 mg", '1440106': "Acetylcysteine 200 mg", '1000011': "Albendazole 200 mg",
+  '1471202': "Allopurinol 100 mg", '1670063': "Amikacin 500 mg/2 ml", '1000023': "Amitriptyline 10 mg", '1490004': "Amlodipine 5 mg",
+  '1440102': "Hydroxyzine 10 mg", '1440601': "Atenolol 50 mg", '1670065': "Atorvastatin 40 mg", '1000046': "Betamethasone cream 0.1%",
+  '1580004': "Calcium carbonate 600 mg", '1000060': "Ceftriaxone 1 g inj", '1580001': "Cetirizine 10 mg", '1550008': "Chlorhexidine mouthwash 0.12%",
+  '1431001': "Chlorpromazine 100 mg", '1660117': "Ciprofloxacin 500 mg", '1500009': "Clindamycin 300 mg", '1500007': "Clindamycin 600 mg inj",
+  '1450003': "Clonazepam 2 mg", '1590009': "Clopidogrel 75 mg", '1460124': "Clotrimazole vaginal tablet 100 mg", '1000076': "Clotrimazole cream 1%",
+  '1419041': "Colchicine 0.6 mg", '1000004': "Chlorpheniramine syrup 2 mg/5 ml", '1000002': "Chlorpheniramine 4 mg", '1460131': "Cyproheptadine 4 mg",
+  '1480002': "Sodium valproate 200 mg", '1000092': "Dextromethorphan 15 mg", '1570006': "Diclofenac 25 mg", '1000113': "Digoxin 0.25 mg",
+  '1000115': "Dimenhydrinate 50 mg", '1000075': "Dipotassium clorazepate 5 mg", '1450020': "Domperidone 10 mg", '1471222': "Domperidone suspension 5 mg/5 ml",
+  '1660307': "Doxazosin 4 mg", '1000119': "Doxycycline 100 mg", '1000129': "Ethambutol 400 mg", '1000131': "Ferrous fumarate 200 mg",
+  '1590007': "Ferrous fumarate suspension 76 mg/5 ml", '1440208': "Fluconazole 200 mg", '1000132': "Flunarizine 5 mg", '1550002': "Fluoxetine 20 mg",
+  '1000135': "Folic acid 5 mg", '1000139': "Furosemide 40 mg", '1460168': "Gemfibrozil 300 mg", '1430704': "Glipizide 5 mg",
+  '1590001': "Guaifenesin 100 mg", '1510009': "Guaifenesin syrup 100 mg/5 ml", '1590008': "Hydrochlorothiazide 25 mg", '1540001': "Hydralazine 25 mg",
+  '1620018': "Hyoscine butylbromide 10 mg", '1460088': "Hyoscine butylbromide syrup 5 mg/5 ml", '1000154': "Ibuprofen 400 mg", '1471232': "Imipramine 25 mg",
+  '1430104': "Isoniazid 100 mg", '1000160': "Isosorbide dinitrate SL 5 mg", '1000158': "Isosorbide dinitrate 10 mg", '1670007': "Dolutegravir/Emtricitabine/Tenofovir alafenamide 50/200/25 mg",
+  '1480322': "Levodopa/Carbidopa 250/25 mg", '1650002': "Levofloxacin 500 mg", '1660121': "Lorazepam 1 mg", '1520006': "Losartan 50 mg",
+  '1460145': "Medroxyprogesterone acetate inj 150 mg", '1430101': "Metformin 500 mg", '1660115': "Methimazole 5 mg", '1460013': "Methyldopa 250 mg",
+  '1460016': "Metoclopramide 10 mg", '1650244': "Metoprolol tartrate 100 mg", '1471238': "Metronidazole 400 mg", '1670038': "Molnupiravir 200 mg",
+  '1670054': "Morphine sulfate SR 10 mg", '1670052': "Morphine oral solution 10 mg/5 ml", '1670032': "Sodium chloride 300 mg", '1550001': "Nifedipine SR 20 mg",
+  '1000208': "Norfloxacin 400 mg", '1480321': "Orphenadrine/Paracetamol 35/500 mg", '1000222': "Olive oil", '1590004': "Omeprazole 40 mg inj",
+  '1000223': "Omeprazole 20 mg", '1660305': "Pioglitazone 30 mg", '1550006': "Potassium chloride elixir 20 mEq/15 ml", '1470533': "Potassium chloride 500 mg",
+  '1000249': "Prednisolone 5 mg", '1460304': "Norethisterone 5 mg", '1000255': "Propranolol 10 mg", '1000257': "Propylthiouracil 50 mg",
+  '1000258': "Pyrazinamide 500 mg", '1000264': "Rifampicin 300 mg", '1000265': "Rifampicin 450 mg", '1660318': "Risperidone 2 mg",
+  '1000267': "Roxithromycin 150 mg", '1000270': "Salbutamol 2 mg", '1000271': "Salbutamol syrup 2 mg/5 ml", '1000268': "Salbutamol MDI",
+  '1670011': "Sertraline 50 mg", '1440602': "Silver sulfadiazine cream 1%", '1460048': "Simethicone 80 mg", '1500005': "Simethicone drops 40 mg/0.6 ml",
+  '1540006': "Simvastatin 20 mg", '1000278': "Sodium bicarbonate 300 mg", '1490010': "Spironolactone 25 mg", '1530005': "Tenofovir disoproxil fumarate 300 mg",
+  '1610005': "Theophylline SR 200 mg", '1480304': "Levothyroxine 100 mcg", '1650219': "Tenofovir/Lamivudine/Dolutegravir 300/300/50 mg", '1460014': "Tramadol 50 mg",
+  '1460015': "Tramadol inj 50 mg/ml", '1670009': "Tranexamic acid 250 mg", '1430103': "Triamcinolone cream 0.1%", '1460006': "Triamcinolone cream 0.02%",
+  '1480318': "Triamcinolone oral paste 0.1%", '1000315': "Pyridoxine 50 mg",
+};
 function hmeDrug(i) {
   const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
   // "ยาเดิม......" = ยาที่ผู้ป่วยนำมาเอง: ชื่อยาจริงอยู่บรรทัดแรกของวิธีใช้
@@ -1827,7 +1866,7 @@ function hmeDrug(i) {
     const [n, u] = lines.length === 1 && /^[A-Za-z]/.test(lines[0]) ? mdOldSplit(lines[0]) : [lines[0], lines.slice(1).join(' ')];
     return { name: 'ยาเดิม: ' + (n || lines[0]), use: n ? mdAbbr(u) : '' };
   }
-  const name = (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
+  const name = HME_GENERIC[String(i.icode || '')] || (i.namePrint || [i.name, i.strength].filter(x => x && !dotLine(x) && x !== 'mg.').join(' ')).replace(/\s+/g, ' ').trim();
   // วิธีใช้ย่อภาษาอังกฤษแบบเดียวกับสติกเกอร์ยาเดิม MR (ผู้ใช้ขอ 2026-11-05): "1 x 3 pc" "0.5 x 1 hs" "2 puff bid" — แปลงไม่ได้ = ข้อความเดิม
   return { name, use: mdAbbr(lines.join(' ')) };
 }
