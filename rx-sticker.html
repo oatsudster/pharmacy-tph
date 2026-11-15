@@ -1872,7 +1872,7 @@ function renderHme() {
   const printed = hmePrinted();
   document.getElementById('hme-list').innerHTML = HME.map(o => {
     const p = printed[hmeKey(o)];
-    const st = !o.orderNo && !o.items.length ? '<span class="badge-wait">ยังไม่มีใบยากลับบ้าน</span>'
+    const st = !o.orderNo && !o.items.length ? '<span class="badge-wait" style="background:#eef1ef;color:#587363;border-color:#d6e4da" title="D/C แล้วแต่ไม่มีใบ HMe / IRx หลัง D/C — D/C แบบไม่มียา หรือยังไม่ได้คีย์">ไม่มีรายการยากลับบ้าน</span>'
       : !p ? '<span class="badge-wait">ยังไม่พิมพ์</span>'
       : p.sig !== hmeSig(o) ? '<span class="badge-wait">แก้รายการหลังพิมพ์</span>'
       : p.skipped ? '<span class="badge-wait" title="มีอยู่ก่อนเปิดหน้านี้ จึงไม่พิมพ์อัตโนมัติ">ข้าม (ก่อนเปิดหน้า)</span>'
