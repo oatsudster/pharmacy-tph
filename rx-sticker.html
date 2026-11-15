@@ -1867,6 +1867,7 @@ const HME_GENERIC = {
   '1000219': "ORS(รสส้ม) 75", '1000216': "NSS INJ. 0.9% 100 ml", '1000214': "Saline IRRIGATE",
   '1510015': "DT vaccines", '1460182': "Hepatitis B vaccine", '1460074': "BCG",
   '1660119': "IMPLANON implant 68 mg", '1660107': "Atorvastatin 40 mg",
+  '1000263': "Insulin RI 100 IU/ml", '1000253': "Proctosedyl suppository",
 };
 function hmeDrug(i) {
   const lines = [i.line1, i.line2, i.line3].map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => !dotLine(x));
