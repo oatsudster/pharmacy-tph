@@ -2,8 +2,10 @@
 <html lang="th">
 <head>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8765; img-src 'self' data:; frame-ancestors 'none';">
+<script>if(!localStorage.getItem('tph_auth_v1'))location.replace('index.html');
+// ย้ายมาเป็นแท็บ 🌙 ในหน้าพิมพ์สติกเกอร์ยา (rx-sticker.html#night, 2026-11-15) — หน้านี้แสดงใน iframe ของแท็บนั้นเท่านั้น
+else if (window.top === window) location.replace('rx-sticker.html#night');</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8765; img-src 'self' data:; frame-ancestors 'self';">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ยาเวรบ่าย-ดึก — รพ.ถ้ำพรรณรา</title>
@@ -11,7 +13,6 @@
 <link rel="icon" type="image/png" sizes="192x192" href="img/ui/app-icon.png">
 <link rel="apple-touch-icon" href="img/ui/apple-touch-icon.png">
 <link href="lib/noto-sans-thai.css" rel="stylesheet">
-<script src="lib/session-timeout.js"></script>
 <script src="lib/esc-html.js"></script>
 <script src="lib/hosxp-db.js?v=20261029"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
@@ -25,12 +26,13 @@
   --danger: #b91c1c;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; }
+body { margin: 0; background: transparent; color: var(--text); font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; font-size: 15px; }
 .topbar { background: var(--primary-dark); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .topbar a { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
 .topbar h1 { font-size: 18px; margin: 0; }
 .topbar .sub { font-size: 12px; opacity: .8; }
-.wrap { max-width: 1600px; margin: 0 auto; padding: 16px; }
+.wrap { max-width: 1600px; margin: 0 auto; padding: 0; }
+.topbar { display: none; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
 .card h2 { font-size: 16px; margin: 0 0 10px; color: var(--primary-dark); }
 .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
@@ -523,15 +525,13 @@ document.addEventListener('DOMContentLoaded', () => {
   load();
 });
 </script>
-<!-- แถบหัวขาวแบบเดียวทุกหน้า (lib/tph-header.js) — ต้องมาก่อนแถบซ้าย -->
-<script src="lib/tph-header.js"></script>
 <script>
-TphHeader.mount({ from: '.topbar', title: 'h1', sub: '.sub' });
-</script>
-<!-- แถบหัวข้อด้านซ้าย (lib/side-tabs.js) — ใช้ปุ่ม tab เดิมของหน้านี้ -->
-<script src="lib/side-tabs.js"></script>
-<script>
-TphSideTabs.mount({ tabs: '#result .tabs', start: '.wrap', when: () => document.getElementById('result').style.display !== 'none' });
+// แสดงอยู่ใน iframe ของ rx-sticker.html (แท็บ 🌙) — บอกความสูงเนื้อหาให้หน้าแม่ปรับ iframe ไม่ให้มีแถบเลื่อนซ้อน
+if (window.parent !== window) {
+  const sendH = () => parent.postMessage({ tphFrameH: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
+  new ResizeObserver(sendH).observe(document.body);
+  window.addEventListener('load', sendH);
+}
 </script>
 <script src="lib/tph-icons.js"></script>
 <script src="lib/tph-ui.js"></script>

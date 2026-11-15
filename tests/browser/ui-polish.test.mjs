@@ -174,11 +174,14 @@ test('ยังไม่มีข้อมูล: HA และตรวจสอ
 });
 
 test('วันที่ พ.ศ.: ยาเวรบ่าย-ดึก ช่อง "เช้าวันที่" เป็น วว/ดด/ปปปป พ.ศ. · ยาใกล้หมดอายุ แสดง/รับ พ.ศ. (ปี ค.ศ. ก็ยังรับ)', async () => {
+  // หน้า night-meds.html ย้ายเป็นแท็บ 🌙 ใน rx-sticker.html (iframe) — เปิดหน้าเก่าต้องเด้งไปแท็บนั้น
   const n = await open('night-meds.html', undefined, '2026-11-03T09:00:00+07:00');
-  await n.page.waitForSelector('#f-date-be');
-  assert.equal(await n.page.inputValue('#f-date-be'), '03/11/2569');
-  await n.page.fill('#f-date-be', '1/11/69'); await n.page.dispatchEvent('#f-date-be', 'change');
-  assert.equal(await n.page.evaluate(() => document.getElementById('f-date').value), '2026-11-01');
+  await n.page.waitForURL(/rx-sticker\.html#night$/);
+  const f = n.page.frameLocator('#night-frame');
+  await f.locator('#f-date-be').waitFor();
+  assert.equal(await f.locator('#f-date-be').inputValue(), '03/11/2569');
+  await f.locator('#f-date-be').fill('1/11/69'); await f.locator('#f-date-be').dispatchEvent('change');
+  assert.equal(await f.locator('#f-date').inputValue(), '2026-11-01');
   assert.deepEqual(n.errors, []);
   await n.ctx.close();
   const e = await open('expiry-tracker.html');

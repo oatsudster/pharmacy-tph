@@ -321,6 +321,13 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
   <button class="tab" data-v="ins" onclick="setView('ins')">💉 ฉลากภาพอินซูลิน</button>
   <button class="tab" data-v="blank" onclick="setView('blank')">⚡ ฉลากเปล่า (ไฟดับ)</button>
+  <button class="tab" data-v="night" onclick="setView('night')">🌙 ยาเวรบ่าย-ดึก (คืนรถยา)</button>
+</div>
+
+<!-- ยาที่ใช้เวรบ่าย-ดึก (คืนรถยา) — เดิมเป็นหน้า night-meds.html แยก ย้ายมาเป็นแท็บนี้ 2026-11-15 ·
+     ใช้ iframe (โหลดตอนเปิดแท็บครั้งแรก) เพราะตัวแปร/id/CSS ของสองหน้าชนกันเยอะ · พิมพ์จาก iframe = พิมพ์เฉพาะเนื้อหาในนั้น -->
+<div class="wrap1" id="view-night" style="display:none">
+  <iframe id="night-frame" title="ยาที่ใช้เวรบ่าย-ดึก (คืนรถยา)" style="width:100%;height:600px;border:0;display:block"></iframe>
 </div>
 
 <div class="wrap1" id="view-ins" style="display:none">
@@ -2158,6 +2165,18 @@ function insInit() {
   });
 }
 
+function nightInit() {
+  const f = document.getElementById('night-frame');
+  if (f.getAttribute('src')) return;
+  // ใช้งานใน iframe ให้นับเป็นการใช้งานหน้านี้ด้วย (ไม่งั้นทำงานในแท็บนี้นานๆ จะถูก logout)
+  f.addEventListener('load', () => { try { window.tphSessionWatch && tphSessionWatch(f.contentDocument); } catch (e) {} });
+  f.src = 'night-meds.html';
+}
+window.addEventListener('message', e => {
+  const f = document.getElementById('night-frame');
+  if (f && e.source === f.contentWindow && e.data && +e.data.tphFrameH > 0) f.style.height = Math.max(420, +e.data.tphFrameH + 8) + 'px';
+});
+
 function setView(v, noLoad) {
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
   document.getElementById('view-rx').style.display = v === 'rx' ? '' : 'none';
@@ -2166,9 +2185,10 @@ function setView(v, noLoad) {
   document.getElementById('view-md').style.display = v === 'md' ? '' : 'none';
   document.getElementById('view-blank').style.display = v === 'blank' ? '' : 'none';
   document.getElementById('view-ins').style.display = v === 'ins' ? '' : 'none';
+  document.getElementById('view-night').style.display = v === 'night' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
   if (v === 'md') { if (!noLoad) loadIpd(); }
-  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else if (v === 'ins') { insInit(); insRender(); } else document.getElementById('f-hn').focus();
+  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else if (v === 'ins') { insInit(); insRender(); } else if (v === 'night') nightInit(); else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2178,13 +2198,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let v = 'rx';
   try { v = localStorage.getItem('rx_sticker_view') || 'rx'; } catch (e) {}
   if (location.hash === '#hme' || location.hash === '#hme-auto') v = 'hme';
+  if (location.hash === '#night') v = 'night';
   loadHmeOpts();
   // เปิดจาก HME-AutoPrint.bat (#hme-auto) = เครื่องนี้มีไว้พิมพ์ยากลับบ้าน → เปิดพิมพ์อัตโนมัติให้เลย ไม่ต้องติ๊กเอง
   if (location.hash === '#hme-auto' && !document.getElementById('hme-auto').checked) {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
-  setView(['ipd', 'md', 'hme', 'blank', 'ins'].includes(v) ? v : 'rx');
+  setView(['ipd', 'md', 'hme', 'blank', 'ins', 'night'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);

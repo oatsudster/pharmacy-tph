@@ -17,7 +17,7 @@ const PAGES = [
   ['dm-remission.html', 1, () => getComputedStyle(document.getElementById('page-patients')).display !== 'none'],
   ['clinic.html', 1, () => document.getElementById('view-report').style.display === 'block'],
   ['vaccine-epi.html', 1, () => document.getElementById('count').classList.contains('on')],
-  ['night-meds.html', 1, () => document.getElementById('view-sum').style.display === ''],
+  ['rx-sticker.html', 6, () => document.getElementById('view-night').style.display === '' && !!document.getElementById('night-frame').getAttribute('src')],
 ];
 
 let browser;
@@ -33,14 +33,13 @@ async function open(file, viewport) {
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(pathToFileURL(path.join(ROOT, file)).href);
   await page.waitForSelector('.tph-side', { state: 'attached' });
-  if (file === 'night-meds.html') await page.evaluate(() => { document.getElementById('result').style.display = ''; });
   return { ctx, page, errors };
 }
 
 for (const [file, idx, changed] of PAGES) {
   test(`${file}: tab ย่อยอยู่แถบซ้าย กดแล้วเปลี่ยนหน้าเหมือนปุ่มเดิม`, async () => {
     const { ctx, page, errors } = await open(file, { width: 1366, height: 800 });
-    await page.waitForSelector('.tph-grp:not([hidden]) .tph-it:not([hidden])');   // night-meds: กลุ่มขึ้นหลังมีผลลัพธ์
+    await page.waitForSelector('.tph-grp:not([hidden]) .tph-it:not([hidden])');
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('.tph-src-hidden')].every(e => getComputedStyle(e).display === 'none')), true);
     const side = await page.locator('.tph-side').boundingBox();
     assert.ok(side.x < 5 && side.width > 200, 'แถบอยู่ซ้ายสุด');

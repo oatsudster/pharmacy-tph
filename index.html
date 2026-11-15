@@ -716,7 +716,6 @@ body[data-suite-page='index'] [data-href="waiting-time.html"] .card-icon, body[d
 body[data-suite-page='index'] [data-href="clinic.html"] .card-icon { color: #6D28D9; }
 body[data-suite-page='index'] [data-href="adr.html"] .card-icon { color: #B91C1C; }
 body[data-suite-page='index'] [data-href="rx-sticker.html"] .card-icon { color: #92400E; }
-body[data-suite-page='index'] [data-href="night-meds.html"] .card-icon { color: #4338CA; }
 body[data-suite-page='index'] [data-href="expiry-tracker.html"] .card-icon { color: #C2410C; }
 body[data-suite-page='index'] .card-icon .tph-ic { color: inherit; }
 body[data-suite-page='index'] .header-pill { color: var(--tph-primary); }
@@ -1091,7 +1090,7 @@ async function checkPin() {
     </div>
 
     <!-- RX STICKER -->
-    <div class="app-card" data-href="rx-sticker.html" data-cat="hosxp" data-short="สติกเกอร์ยา" data-keywords="สติกเกอร์ ฉลากยา sticker พิมพ์ mr medication reconciliation ยาเดิม ผู้ป่วยใน ipd รถยา hme ยากลับบ้าน" onclick="window.location.href='rx-sticker.html'">
+    <div class="app-card" data-href="rx-sticker.html" data-cat="hosxp" data-short="สติกเกอร์ยา" data-keywords="สติกเกอร์ ฉลากยา sticker พิมพ์ mr medication reconciliation ยาเดิม ผู้ป่วยใน ipd รถยา hme ยากลับบ้าน เวรดึก เวรบ่าย กลางคืน คืนรถยา คืนยา er น้ำเกลือ" onclick="window.location.href='rx-sticker.html'">
       <div class="card-stripe" style="background:linear-gradient(90deg,#92400e,#C49A22)"></div>
       <div class="card-body">
         <div class="card-head">
@@ -1101,7 +1100,7 @@ async function checkPin() {
             <div class="en">Drug Label Sticker</div>
           </div>
         </div>
-        <div class="card-desc">พิมพ์สติกเกอร์ยารายตัวจากฐานข้อมูล HOSxP เมื่อใบสั่งยาถูกล็อกค้าง และหัวสติกเกอร์ผู้ป่วยใน (กรอบ 5.2×3.2 ซม. บนดวง 9×6) ใส่ช่องล็อกยา — เลือกชื่อแล้วพิมพ์ได้ในคลิกเดียว</div>
+        <div class="card-desc">พิมพ์สติกเกอร์ยารายตัวจากฐานข้อมูล HOSxP เมื่อใบสั่งยาถูกล็อกค้าง และหัวสติกเกอร์ผู้ป่วยใน (กรอบ 5.2×3.2 ซม. บนดวง 9×6) ใส่ช่องล็อกยา — เลือกชื่อแล้วพิมพ์ได้ในคลิกเดียว · แท็บ 🌙 ยาเวรบ่าย-ดึก (คืนรถยา)</div>
         <div class="card-tags">
           <span class="tag tag-gray">HOSxP</span>
           <span class="tag tag-purple">สติกเกอร์</span>
@@ -1156,29 +1155,6 @@ async function checkPin() {
       <div class="card-footer">
         <span class="last-update"></span>
         <button class="open-btn" style="background:#1A5E38" onclick="event.stopPropagation();window.location.href='pharmacy-ha.html'">เปิดระบบ →</button>
-      </div>
-    </div>
-
-    <!-- NIGHT MEDS -->
-    <div class="app-card" data-href="night-meds.html" data-cat="hosxp" data-short="ยาเวรดึก" data-keywords="เวรดึก เวรบ่าย กลางคืน รถยา คืนยา สติกเกอร์ er น้ำเกลือ" onclick="window.location.href='night-meds.html'">
-      <div class="card-stripe" style="background:linear-gradient(90deg,#1e3a8a,#4338ca)"></div>
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon" style="background:#eef2ff">🌙</div>
-          <div class="card-title-wrap">
-            <h2>ยาเวรบ่าย-ดึก (คืนรถยา)</h2>
-            <div class="en">Night Shift Drug Usage</div>
-          </div>
-        </div>
-        <div class="card-desc">ดึงใบสั่งยา OPD/ER และยาแรกรับผู้ป่วย admit ช่วง 19.30–08.00 น. จาก HOSxP สรุปจำนวนยาที่ใช้ และพิมพ์สติกเกอร์ 9×6 ซม. รายผู้ป่วย</div>
-        <div class="card-tags">
-          <span class="tag tag-gray">HOSxP</span>
-          <span class="tag tag-purple">สติกเกอร์</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="last-update"></span>
-        <button class="open-btn" style="background:#4338ca" onclick="event.stopPropagation();window.location.href='night-meds.html'">เปิดระบบ →</button>
       </div>
     </div>
 
