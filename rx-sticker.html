@@ -147,11 +147,18 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .hmestk .hd { display: flex; justify-content: space-between; gap: 2mm; font-size: 8.5pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
 .hmestk .hd2 { display: flex; justify-content: space-between; gap: 2mm; font-size: 6.5pt; line-height: 1.3; border-bottom: .3mm solid #000; padding-bottom: .5mm; margin-bottom: .4mm; white-space: nowrap; }
 .hmestk .bd { flex: 1; overflow: hidden; }
-.hmestk table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.hmestk td { overflow-wrap: anywhere; padding: .3mm .6mm; border: 0; border-bottom: .15mm solid #bbb; vertical-align: top; line-height: 1.25; font-size: inherit; }
-.hmestk td.n { width: 1.6em; padding-left: 0; }
-.hmestk td.dn { width: 38%; font-weight: 700; overflow-wrap: anywhere; }
-.hmestk td.q { width: 4.9em; text-align: right; font-weight: 700; }  /* em = ขยายตามตัวอักษร ไม่ล้นทับคอลัมน์ข้างๆ */
+.hmestk table { width: 100%; border-collapse: collapse; table-layout: auto; }
+/* ยาตัวละ 1 บรรทัดเสมอ (ผู้ใช้ขอ 2026-11-15): ไม่ตัดบรรทัด · คอลัมน์ชื่อกว้างเท่าชื่อยาวสุดในดวง · วิธีใช้ได้ที่เหลือ
+   ล้นความกว้าง = ย่อตัวอักษรทั้งดวง (ไม่ต่ำกว่า 7pt) แล้วย่อเฉพาะแถวที่ยาว (ไม่ต่ำกว่า 6pt) — ดู hmeFit */
+.hmestk td { white-space: nowrap; padding: .3mm .6mm; border: 0; border-bottom: .15mm solid #bbb; vertical-align: top; line-height: 1.25; font-size: inherit; }
+.hmestk td.n { padding-left: 0; }
+.hmestk td.dn { font-weight: 700; }
+.hmestk td.u { width: 100%; }
+.hmestk td.q { text-align: right; font-weight: 700; }
+/* 6pt แล้วยังล้น = ดวงนั้นกลับไปแบบเดิม (ตัดบรรทัดได้, คอลัมน์ชื่อ 38%) ดีกว่าข้อความหาย */
+.hmestk table.loose { table-layout: fixed; }
+.hmestk table.loose td { white-space: normal; overflow-wrap: anywhere; }
+.hmestk table.loose td.n { width: 1.6em; } .hmestk table.loose td.dn { width: 38%; } .hmestk table.loose td.u { width: auto; } .hmestk table.loose td.q { width: 4.9em; }
 .hme-row { border-top: 1px solid #eef3ef; padding: 9px 4px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
 .hme-row .nm { font-weight: 600; }
 .hme-row .mt { font-size: 12.5px; color: var(--text-mid); }
@@ -1823,36 +1830,36 @@ const HME_GENERIC = {
   '1471230': "Haloperidol 0.5 mg", '1000145': "Haloperidol 2 mg", '1000146': "Haloperidol 5 mg", '1000242': "Phenytoin 100 mg",
   '1660111': "Phenytoin 50 mg", '1053001': "Trihexyphenidyl 2 mg", '1480007': "Trihexyphenidyl 5 mg", '1000106': "Diazepam 2 mg",
   '1000107': "Diazepam 5 mg", '1530002': "Oseltamivir 30 mg", '1530003': "Oseltamivir 45 mg", '1530004': "Oseltamivir 75 mg",
-  '1000226': "Paracetamol 325 mg", '1000227': "Paracetamol 500 mg", '1590002': "Paracetamol syrup 250 mg/5 ml", '1000230': "Paracetamol syrup 120 mg/5 ml",
+  '1000226': "Paracetamol 325 mg", '1000227': "Paracetamol 500 mg", '1590002': "Paracetamol syr 250 mg/5 ml", '1000230': "Paracetamol syr 120 mg/5 ml",
   '1460047': "Acyclovir 800 mg", '1000039': "Aspirin 81 mg", '1000038': "Aspirin 300 mg", '1000030': "Amoxicillin 500 mg",
-  '1000032': "Amoxicillin syrup 125 mg/5 ml", '1490011': "Amoxicillin syrup 250 mg/5 ml", '1510001': "Dicloxacillin 250 mg", '1500002': "Dicloxacillin 500 mg",
+  '1000032': "Amoxicillin syr 125 mg/5 ml", '1490011': "Amoxicillin syr 250 mg/5 ml", '1510001': "Dicloxacillin 250 mg", '1500002': "Dicloxacillin 500 mg",
   '1460151': "Enalapril 20 mg", '1000122': "Enalapril 5 mg", '1440106': "Acetylcysteine 200 mg", '1000011': "Albendazole 200 mg",
   '1471202': "Allopurinol 100 mg", '1670063': "Amikacin 500 mg/2 ml", '1000023': "Amitriptyline 10 mg", '1490004': "Amlodipine 5 mg",
   '1440102': "Hydroxyzine 10 mg", '1440601': "Atenolol 50 mg", '1670065': "Atorvastatin 40 mg", '1000046': "Betamethasone cream 0.1%",
   '1580004': "Calcium carbonate 600 mg", '1000060': "Ceftriaxone 1 g inj", '1580001': "Cetirizine 10 mg", '1550008': "Chlorhexidine mouthwash 0.12%",
   '1431001': "Chlorpromazine 100 mg", '1660117': "Ciprofloxacin 500 mg", '1500009': "Clindamycin 300 mg", '1500007': "Clindamycin 600 mg inj",
-  '1450003': "Clonazepam 2 mg", '1590009': "Clopidogrel 75 mg", '1460124': "Clotrimazole vaginal tablet 100 mg", '1000076': "Clotrimazole cream 1%",
-  '1419041': "Colchicine 0.6 mg", '1000004': "Chlorpheniramine syrup 2 mg/5 ml", '1000002': "Chlorpheniramine 4 mg", '1460131': "Cyproheptadine 4 mg",
+  '1450003': "Clonazepam 2 mg", '1590009': "Clopidogrel 75 mg", '1460124': "Clotrimazole vag tab 100 mg", '1000076': "Clotrimazole cream 1%",
+  '1419041': "Colchicine 0.6 mg", '1000004': "Chlorpheniramine syr 2 mg/5 ml", '1000002': "Chlorpheniramine 4 mg", '1460131': "Cyproheptadine 4 mg",
   '1480002': "Sodium valproate 200 mg", '1000092': "Dextromethorphan 15 mg", '1570006': "Diclofenac 25 mg", '1000113': "Digoxin 0.25 mg",
-  '1000115': "Dimenhydrinate 50 mg", '1000075': "Dipotassium clorazepate 5 mg", '1450020': "Domperidone 10 mg", '1471222': "Domperidone suspension 5 mg/5 ml",
+  '1000115': "Dimenhydrinate 50 mg", '1000075': "Dipotassium clorazepate 5 mg", '1450020': "Domperidone 10 mg", '1471222': "Domperidone susp 5 mg/5 ml",
   '1660307': "Doxazosin 4 mg", '1000119': "Doxycycline 100 mg", '1000129': "Ethambutol 400 mg", '1000131': "Ferrous fumarate 200 mg",
-  '1590007': "Ferrous fumarate suspension 76 mg/5 ml", '1440208': "Fluconazole 200 mg", '1000132': "Flunarizine 5 mg", '1550002': "Fluoxetine 20 mg",
+  '1590007': "Ferrous fumarate susp 76 mg/5 ml", '1440208': "Fluconazole 200 mg", '1000132': "Flunarizine 5 mg", '1550002': "Fluoxetine 20 mg",
   '1000135': "Folic acid 5 mg", '1000139': "Furosemide 40 mg", '1460168': "Gemfibrozil 300 mg", '1430704': "Glipizide 5 mg",
-  '1590001': "Guaifenesin 100 mg", '1510009': "Guaifenesin syrup 100 mg/5 ml", '1590008': "Hydrochlorothiazide 25 mg", '1540001': "Hydralazine 25 mg",
-  '1620018': "Hyoscine butylbromide 10 mg", '1460088': "Hyoscine butylbromide syrup 5 mg/5 ml", '1000154': "Ibuprofen 400 mg", '1471232': "Imipramine 25 mg",
-  '1430104': "Isoniazid 100 mg", '1000160': "Isosorbide dinitrate SL 5 mg", '1000158': "Isosorbide dinitrate 10 mg", '1670007': "Dolutegravir/Emtricitabine/Tenofovir alafenamide 50/200/25 mg",
+  '1590001': "Guaifenesin 100 mg", '1510009': "Guaifenesin syr 100 mg/5 ml", '1590008': "Hydrochlorothiazide 25 mg", '1540001': "Hydralazine 25 mg",
+  '1620018': "Buscopan 10 mg", '1460088': "Buscopan syr 5 mg/5 ml", '1000154': "Ibuprofen 400 mg", '1471232': "Imipramine 25 mg",
+  '1430104': "Isoniazid 100 mg", '1000160': "Isosorbide dinitrate SL 5 mg", '1000158': "Isosorbide dinitrate 10 mg", '1670007': "DTG/FTC/TAF 50/200/25 mg",
   '1480322': "Levodopa/Carbidopa 250/25 mg", '1650002': "Levofloxacin 500 mg", '1660121': "Lorazepam 1 mg", '1520006': "Losartan 50 mg",
-  '1460145': "Medroxyprogesterone acetate inj 150 mg", '1430101': "Metformin 500 mg", '1660115': "Methimazole 5 mg", '1460013': "Methyldopa 250 mg",
+  '1460145': "DMPA 150 mg inj", '1430101': "Metformin 500 mg", '1660115': "Methimazole 5 mg", '1460013': "Methyldopa 250 mg",
   '1460016': "Metoclopramide 10 mg", '1650244': "Metoprolol tartrate 100 mg", '1471238': "Metronidazole 400 mg", '1670038': "Molnupiravir 200 mg",
-  '1670054': "Morphine sulfate SR 10 mg", '1670052': "Morphine oral solution 10 mg/5 ml", '1670032': "Sodium chloride 300 mg", '1550001': "Nifedipine SR 20 mg",
+  '1670054': "Morphine sulfate SR 10 mg", '1670052': "Morphine sol 10 mg/5 ml", '1670032': "Sodium chloride 300 mg", '1550001': "Nifedipine SR 20 mg",
   '1000208': "Norfloxacin 400 mg", '1480321': "Orphenadrine/Paracetamol 35/500 mg", '1000222': "Olive oil", '1590004': "Omeprazole 40 mg inj",
-  '1000223': "Omeprazole 20 mg", '1660305': "Pioglitazone 30 mg", '1550006': "Potassium chloride elixir 20 mEq/15 ml", '1470533': "Potassium chloride 500 mg",
+  '1000223': "Omeprazole 20 mg", '1660305': "Pioglitazone 30 mg", '1550006': "Potassium chloride elix 20 mEq/15 ml", '1470533': "Potassium chloride 500 mg",
   '1000249': "Prednisolone 5 mg", '1460304': "Norethisterone 5 mg", '1000255': "Propranolol 10 mg", '1000257': "Propylthiouracil 50 mg",
   '1000258': "Pyrazinamide 500 mg", '1000264': "Rifampicin 300 mg", '1000265': "Rifampicin 450 mg", '1660318': "Risperidone 2 mg",
-  '1000267': "Roxithromycin 150 mg", '1000270': "Salbutamol 2 mg", '1000271': "Salbutamol syrup 2 mg/5 ml", '1000268': "Salbutamol MDI",
+  '1000267': "Roxithromycin 150 mg", '1000270': "Salbutamol 2 mg", '1000271': "Salbutamol syr 2 mg/5 ml", '1000268': "Salbutamol MDI",
   '1670011': "Sertraline 50 mg", '1440602': "Silver sulfadiazine cream 1%", '1460048': "Simethicone 80 mg", '1500005': "Simethicone drops 40 mg/0.6 ml",
-  '1540006': "Simvastatin 20 mg", '1000278': "Sodium bicarbonate 300 mg", '1490010': "Spironolactone 25 mg", '1530005': "Tenofovir disoproxil fumarate 300 mg",
-  '1610005': "Theophylline SR 200 mg", '1480304': "Levothyroxine 100 mcg", '1650219': "Tenofovir/Lamivudine/Dolutegravir 300/300/50 mg", '1460014': "Tramadol 50 mg",
+  '1540006': "Simvastatin 20 mg", '1000278': "Sodium bicarbonate 300 mg", '1490010': "Spironolactone 25 mg", '1530005': "TDF 300 mg",
+  '1610005': "Theophylline SR 200 mg", '1480304': "Levothyroxine 100 mcg", '1650219': "TLD 300/300/50 mg", '1460014': "Tramadol 50 mg",
   '1460015': "Tramadol inj 50 mg/ml", '1670009': "Tranexamic acid 250 mg", '1430103': "Triamcinolone cream 0.1%", '1460006': "Triamcinolone cream 0.02%",
   '1480318': "Triamcinolone oral paste 0.1%", '1000315': "Pyridoxine 50 mg",
   // ตามที่เภสัชยืนยัน 2026-11-15 (บางตัวคงชื่อการค้า/ชื่อตำรับ) · สมุนไพร + ยาเดิม…ที่ไม่มีในบัญชียา รพ. คงชื่อเดิม
@@ -1933,6 +1940,10 @@ async function loadHme() {
     if (due.length) printHme(due.map(hmeKey));
   }
 }
+function hmeLongRows(o) {
+  const L = hmeLayout(o);
+  return 'แถวที่ตัวอักษรเล็ก: ' + L.pages.flat().filter(r => r[3] && r[3] < HME_FS_MIN || L.pages.some(p => p.loose && p.includes(r))).map(r => `${r[0].name} · ${r[0].use} (${r[3]}pt)`).join(' / ') + (L.over ? ' — บรรทัดเดียวไม่พอ ดวงนี้พิมพ์แบบตัดบรรทัด (แก้ชื่อ/วิธีใช้ให้สั้นลงได้)' : '');
+}
 function renderHme() {
   const printed = hmePrinted();
   document.getElementById('hme-list').innerHTML = HME.map(o => {
@@ -1943,7 +1954,7 @@ function renderHme() {
       : p.skipped ? '<span class="badge-wait" title="มีอยู่ก่อนเปิดหน้านี้ จึงไม่พิมพ์อัตโนมัติ">ข้าม (ก่อนเปิดหน้า)</span>'
       : `<span class="badge-ok">พิมพ์แล้ว ${new Date(p.at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>`;
     return `<div class="hme-row">
-      <div><div class="nm">${escHtml(o.name || '-')} ${st}${o.type === 'IRx' ? ' <span class="badge-wait" title="ไม่มีใบ HMe — ใช้ใบ IRx ที่คีย์หลังเวลา D/C">ใบ IRx หลัง D/C</span>' : ''}</div>
+      <div><div class="nm">${escHtml(o.name || '-')} ${st}${o.items.length && hmeLayout(o).small ? ` <span class="badge-wait" style="background:#fee2e2;color:#991b1b" title="${escHtml(hmeLongRows(o))}">⚠️ ชื่อยา/วิธีใช้ยาว ต้องย่อตัวอักษรต่ำกว่า 7pt</span>` : ''}${o.type === 'IRx' ? ' <span class="badge-wait" title="ไม่มีใบ HMe — ใช้ใบ IRx ที่คีย์หลังเวลา D/C">ใบ IRx หลัง D/C</span>' : ''}</div>
         <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}${o.regdate ? ` · admit ${escHtml(thIso(o.regdate))} ${escHtml(o.regtime || '')} น.` : ''} ${o.dchdate ? ` · <b>D/C ${escHtml(thIso(o.dchdate))} ${escHtml(o.dchtime || '')} น.</b>` : ' · ยังไม่ D/C'}${o.orderNo ? ` · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ` : ''}</div></div>
       <button class="btn btn-gold btn-sm" onclick="printHme(['${escHtml(hmeKey(o))}'])" ${o.items.length ? '' : 'disabled'}>🖨 พิมพ์</button>
       <div class="ds">${o.items.map(hmeDrug).map(d => escHtml(d.name)).join(' · ')}</div>
@@ -1954,8 +1965,66 @@ function hmeStickerHtml(o, rows, pi, pn, w, h, fs) {
   return `<div class="hmestk" style="width:${w}mm;height:${h}mm"><div class="hd"><span>ยากลับบ้าน · ${escHtml(o.name || '')}</span><span>HN ${escHtml(o.hn)}</span></div>
     <div class="hd2"><span>AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}</span>
       <span>${escHtml(thIso(o.dchdate || o.date))} · ${o.items.length} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
-    <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
-      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units, i))}</td></tr>`).join('')}</table></div></div>`;   // จำนวนอยู่หลังวิธีใช้ (ผู้ใช้ขอ 2026-11-10)
+    <div class="bd" style="font-size:${fs}pt"><table${rows.loose ? ' class="loose"' : ''}>${rows.map(([d, i, n, rfs]) => `<tr${rfs ? ` style="font-size:${rfs}pt"` : ''}><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
+      <td class="u">${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units, i))}</td></tr>`).join('')}</table></div></div>`;   // จำนวนอยู่หลังวิธีใช้ (ผู้ใช้ขอ 2026-11-10)
+}
+// จัดตัวอักษรให้ยาทุกแถวอยู่บรรทัดเดียว (ผู้ใช้ขอ 2026-11-15) — build(rows, fs) = HTML ของ 1 ดวง · pages = [[d, i, n], …]
+//   1) ขนาดเดียวทั้งคน: เริ่ม 9pt ลดทีละ 0.25 จนทุกดวงไม่ล้นทั้งกว้าง/สูง ต่ำสุด 7pt
+//   2) ยังล้น = ย่อเฉพาะแถวที่ชื่อยา/วิธีใช้ยาวที่สุดในคอลัมน์ (row[3]) ทีละ 0.25 ต่ำสุด 6pt — ไม่ตัดข้อความทิ้งเด็ดขาด
+//   small = มีแถวที่ต้องต่ำกว่า 7pt (ขึ้น ⚠️ ในรายการ) · over = ต่ำสุดแล้วยังล้น
+const HME_FS_MAX = 9, HME_FS_MIN = 7, HME_ROW_MIN = 6;
+let hmeMeasureEl = null;
+function hmeFit(build, pages) {
+  if (!hmeMeasureEl) {
+    hmeMeasureEl = document.createElement('div');
+    hmeMeasureEl.style.cssText = 'position:fixed;left:-300mm;top:0;visibility:hidden;pointer-events:none';
+    document.body.appendChild(hmeMeasureEl);
+  }
+  const el = hmeMeasureEl, rng = document.createRange();
+  const textW = c => { rng.selectNodeContents(c); return rng.getBoundingClientRect().width; };
+  const ok = (rs, fs) => {
+    el.innerHTML = build(rs, fs);
+    const bd = el.querySelector('.bd'), t = bd.querySelector('table');
+    return t.scrollWidth <= bd.clientWidth + 0.5 && bd.scrollHeight <= bd.clientHeight + 1;
+  };
+  pages.forEach(rs => { rs.loose = false; rs.forEach(r => { r[3] = 0; }); });
+  let fs = HME_FS_MAX;
+  while (fs > HME_FS_MIN && !pages.every(rs => ok(rs, fs))) fs -= 0.25;
+  let small = false, over = false;
+  pages.forEach(rs => {
+    for (let guard = 0; guard < 300 && !ok(rs, fs); guard++) {
+      const trs = [...el.querySelectorAll('.bd tr')];
+      let best = -1, bw = 0;
+      // แถวที่ยาวสุดเป็นตัวกำหนดความกว้าง — ถ้าแถวนั้นเล็กสุดแล้ว ย่อแถวอื่นต่อก็ไม่ช่วย (หยุด, ป้ายเตือนให้แก้เอง)
+      trs.forEach((tr, k) => {
+        [tr.querySelector('.dn'), tr.querySelector('.u')].forEach(c => { const w = c ? textW(c) : 0; if (w > bw) { bw = w; best = k; } });
+      });
+      if (best < 0 || (rs[best][3] || fs) <= HME_ROW_MIN) {
+        // ดวงนี้ทำบรรทัดเดียวไม่ได้ → แบบเดิม: ตัวอักษรเท่ากันทั้งดวง ลดจน "สูง" พอดี (ต่ำสุด 5.5pt)
+        over = small = true; rs.loose = true; rs.forEach(r => { r[3] = 0; });
+        let f = fs;
+        while (f > 5.5 && !ok(rs, f)) f -= 0.25;
+        if (f !== fs) rs.forEach(r => { r[3] = f; });
+        break;
+      }
+      rs[best][3] = (rs[best][3] || fs) - 0.25;
+      if (rs[best][3] < HME_FS_MIN) small = true;
+    }
+  });
+  el.innerHTML = '';
+  return { fs, small, over };
+}
+// แบ่งดวง + จัดตัวอักษรของใบยากลับบ้าน 1 ใบ (เก็บไว้ตาม key+sig — ใช้ทั้งป้าย ⚠️ ในรายการและตอนพิมพ์)
+const HME_LAYOUT = {};
+function hmeLayout(o) {
+  const k = hmeKey(o), sig = hmeSig(o) + '|' + o.items.map(i => i.icode + ':' + i.units).join(',');
+  const c = HME_LAYOUT[k];
+  if (c && c.sig === sig) return c;
+  const rows = o.items.map((i, n) => [hmeDrug(i), i, n + 1]);
+  const pages = [];
+  for (let n = 0; n < rows.length; n += HME_PER) pages.push(rows.slice(n, n + HME_PER));
+  const f = rows.length ? hmeFit((rs, fs) => hmeStickerHtml(o, rs, 1, pages.length, HME_W, HME_H, fs), pages) : { fs: HME_FS_MAX, small: false, over: false };
+  return (HME_LAYOUT[k] = Object.assign({ sig, pages }, f));
 }
 // สติกเกอร์ยากลับบ้าน 9 × 6 ซม. ดวงละไม่เกิน 6 รายการ (ตามที่ห้องยากำหนด — ติดใบ discharge summary)
 const HME_W = 90, HME_H = 60, HME_PER = 6;
@@ -1964,25 +2033,13 @@ function printHme(keys) {
   const orders = HME.filter(o => keys.includes(hmeKey(o)) && o.items.length);
   if (!orders.length) return;
   const pa = document.getElementById('print-area');
-  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
-  const fits = (o, rs, fs) => {
-    pa.innerHTML = hmeStickerHtml(o, rs, 1, 1, w, h, fs);
-    const bd = pa.querySelector('.bd');
-    return bd.scrollHeight <= bd.clientHeight + 1;
-  };
   const out = [];
   orders.forEach(o => {
-    const rows = o.items.map((i, k) => [hmeDrug(i), i, k + 1]);
-    const pages = [];
-    for (let k = 0; k < rows.length; k += HME_PER) pages.push(rows.slice(k, k + HME_PER));
-    // ตัวอักษรเริ่ม 9pt ย่อทีละ 0.25 จนทุกดวงพอดี (ใช้ขนาดเดียวกันทุกดวงของคนเดียวกัน) ต่ำสุด 5.5pt
-    let fs = 9;
-    while (fs > 5.5 && !pages.every(rs => fits(o, rs, fs))) fs -= 0.25;
-    pages.forEach((rs, pi) => out.push(hmeStickerHtml(o, rs, pi + 1, pages.length, w, h, fs)));
+    const L = hmeLayout(o);
+    L.pages.forEach((rs, pi) => out.push(hmeStickerHtml(o, rs, pi + 1, L.pages.length, w, h, L.fs)));
     hmeMark(o);
   });
   pa.innerHTML = out.join('');
-  pa.style.cssText = '';
   document.getElementById('page-size').textContent = `@page { size: ${w}mm ${h}mm; margin: 0; }`;
   renderHme();
   setTimeout(() => window.print(), 50);
@@ -1994,8 +2051,8 @@ function opdSumHtml(v, rows, pi, pn, fs) {
   return `<div class="hmestk opdsum" style="width:101.6mm;height:59.9mm"><div class="box"><div class="hd"><span>สรุปรายการยา · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
     <div class="hd2"><span>VN ${escHtml(v.vn)}${v.queue ? ' · คิว ' + escHtml(v.queue) : ''}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span>
       <span>${escHtml(thIso(v.date))} · ${rows.total} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
-    <div class="bd" style="font-size:${fs}pt"><table>${rows.map(([d, i, n]) => `<tr><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
-      <td>${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units, i))}</td></tr>`).join('')}</table></div></div></div>`;
+    <div class="bd" style="font-size:${fs}pt"><table${rows.loose ? ' class="loose"' : ''}>${rows.map(([d, i, n, rfs]) => `<tr${rfs ? ` style="font-size:${rfs}pt"` : ''}><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
+      <td class="u">${escHtml(d.use)}</td><td class="q">${escHtml(fmtQty(i.qty))} ${escHtml(hmeUnit(i.units, i))}</td></tr>`).join('')}</table></div></div></div>`;
 }
 function printOpdSum(vn) {
   const v = ((CUR && CUR.visits) || []).find(x => String(x.vn) === String(vn));
@@ -2006,12 +2063,8 @@ function printOpdSum(vn) {
   const pages = [];
   for (let k = 0; k < rows.length; k += HME_PER) { const p = rows.slice(k, k + HME_PER); p.total = rows.length; pages.push(p); }
   const pa = document.getElementById('print-area');
-  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
-  const fits = (rs, fs) => { pa.innerHTML = opdSumHtml(v, rs, 1, 1, fs); const bd = pa.querySelector('.bd'); return bd.scrollHeight <= bd.clientHeight + 1; };
-  let fs = 9;
-  while (fs > 5.5 && !pages.every(rs => fits(rs, fs))) fs -= 0.25;
+  const { fs } = hmeFit((rs, f) => opdSumHtml(v, rs, 1, pages.length, f), pages);
   pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs)).join('');
-  pa.style.cssText = '';
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
