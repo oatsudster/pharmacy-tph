@@ -9,7 +9,7 @@ import { ROOT } from '../helpers.mjs';
 
 // [หน้า, ลำดับปุ่มที่จะกด, ตรวจว่าเปลี่ยนจริง]
 const PAGES = [
-  ['rx-sticker.html', 3, () => document.getElementById('view-hme').style.display === ''],
+  ['rx-sticker.html', 4, () => document.getElementById('view-hme').style.display === ''],
   ['adr.html', 1, () => document.querySelectorAll('.tab-bar .tab-btn')[1].classList.contains('active')],
   ['waiting-time.html', 0, () => document.getElementById('tab-cart').classList.contains('active')],
   ['pharmacy-ha.html', 1, () => document.querySelector('#tabs [data-v="rdu"]').getAttribute('aria-selected') === 'true'],
@@ -17,7 +17,7 @@ const PAGES = [
   ['dm-remission.html', 1, () => getComputedStyle(document.getElementById('page-patients')).display !== 'none'],
   ['clinic.html', 1, () => document.getElementById('view-report').style.display === 'block'],
   ['vaccine-epi.html', 1, () => document.getElementById('count').classList.contains('on')],
-  ['rx-sticker.html', 6, () => document.getElementById('view-night').style.display === '' && !!document.getElementById('night-frame').getAttribute('src')],
+  ['rx-sticker.html', 7, () => document.getElementById('view-night').style.display === '' && !!document.getElementById('night-frame').getAttribute('src')],
 ];
 
 let browser;

@@ -325,6 +325,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน</button>
   <button class="tab" data-v="md" onclick="setView('md')">📋💊 MR + ยาเดิมผู้ป่วยใน</button>
+  <button class="tab" data-v="pre" onclick="setView('pre')">🚑 ยาเดิมเตรียม admit</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
   <button class="tab" data-v="ins" onclick="setView('ins')">💉 ฉลากภาพอินซูลิน</button>
   <button class="tab" data-v="blank" onclick="setView('blank')">⚡ ฉลากเปล่า (ไฟดับ)</button>
@@ -422,13 +423,10 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
       <label class="hint" style="margin:0 0 0 auto;font-weight:600">📋 วันที่ทำ MR (หัว MR) <input type="date" class="be" id="md-mrdate"></label>
     </div>
     <div id="mdp-list" class="mdp-list"><div class="empty">กำลังโหลด…</div></div>
-    <h2 style="margin:14px 0 6px;font-size:15px">🚑 ยังไม่ admit — ทำยาเดิมไว้ก่อน (visit ER 24 ชม.) <span class="hint" id="mdpre-meta" style="margin:0;font-weight:400"></span></h2>
-    <div class="hint" style="margin:0 0 6px">ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในรายการผู้ป่วยในด้านบน = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN ในช่องค้นหาด้านบน</div>
-    <div id="mdpre-list" class="mdp-list"></div>
   </div>
   <div class="card" id="md-card" style="display:none">
     <h2>💊 สติกเกอร์ยาเดิม (แปะตารางใบ MR) <span class="hint" id="md-meta" style="margin:0;font-weight:400"></span>
-      <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('view-md').scrollIntoView({ behavior: 'smooth' })" title="กลับไปรายชื่อผู้ป่วย">⬆ รายชื่อ</button>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="this.closest('.wrap1').scrollIntoView({ behavior: 'smooth' })" title="กลับไปรายชื่อผู้ป่วย">⬆ รายชื่อ</button>
       <button class="btn btn-sm" onclick="document.getElementById('md-card').style.display='none'">✕</button></h2>
     <div class="hint" style="margin:0 0 6px">ยาจาก รพ.ถ้ำพรรณรา 1 ปีก่อน admit — ติ๊กไว้ให้เฉพาะยาที่น่าจะยังใช้อยู่ (ครั้งล่าสุดของแต่ละตัว และจำนวนที่ได้รับน่าจะใช้ถึงวัน admit) · เภสัชตรวจและติ๊กเพิ่ม/ออกเองก่อนพิมพ์ · กด ✏️ แก้ชื่อยา/ความแรง/วิธีใช้ได้ · กดพิมพ์ = บันทึกรายการที่ติ๊กไว้ตาม HN (ทุกเครื่องเห็น) · ยาจาก รพ.อื่น คีย์เพิ่มในกรอบสีฟ้าด้านล่าง แล้วพิมพ์รวมกันได้เลย</div>
     <div class="actions" style="margin:0 0 6px">
@@ -469,6 +467,19 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
         จำรายการ + วันนัดไว้ตาม HN ทุกเครื่องเห็น admit ครั้งหน้าขึ้นให้ตรวจเลย (ไม่ต้องตามยาใหม่) · แก้ชื่อ/วิธีใช้ในรายการด้านบนได้ทันที</div>
     </div>
     <datalist id="mdx-drugs"></datalist><datalist id="mdx-usages"></datalist><datalist id="mdx-srcs"></datalist>
+  </div>
+</div>
+
+<div class="wrap1" id="view-pre" style="display:none">
+  <div class="card">
+    <h2>🚑 ผู้ป่วยนอกเตรียม admit — ทำยาเดิมไว้ก่อน <span class="hint" id="mdpre-meta" style="margin:0;font-weight:400"></span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="loadIpd()">🔄</button></h2>
+    <div class="hint" style="margin:0 0 6px">รายชื่อ = visit ER 24 ชม.ที่ยังไม่มี AN · ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในแท็บ 📋💊 MR + ยาเดิมผู้ป่วยใน = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN เต็มในช่องค้นหา</div>
+    <div class="actions" style="margin:0 0 6px">
+      <input type="text" id="mdpre-q" placeholder="ค้นหา ชื่อ / HN (HN เต็ม = ค้นใน HOSxP)" autocomplete="off" style="max-width:300px" oninput="renderPre()"
+        onkeydown="if (event.key === 'Enter' && /^\d{5,10}$/.test(this.value.trim())) mdPreSearch(this.value.trim())">
+    </div>
+    <div id="mdpre-list" class="mdp-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
 </div>
 
@@ -860,11 +871,13 @@ async function mdPreSearch(hn) {
 }
 function renderPre() {
   const el = document.getElementById('mdpre-list'); if (!el) return;
-  const q = document.getElementById('mdp-q').value.trim().toLowerCase();
+  const q = document.getElementById('mdpre-q').value.trim().toLowerCase();
   const list = PRE.filter(x => !q || [x.name, x.hn, x.vn].some(v => String(v || '').toLowerCase().includes(q)));
-  const find = /^\d{5,10}$/.test(q) && q !== PRE_HN && !IPD.some(x => x.hn === q)
+  const adm = /^\d{5,10}$/.test(q) && IPD.find(x => x.hn === q);
+  const find = /^\d{5,10}$/.test(q) && q !== PRE_HN && !adm
     ? `<button class="btn btn-sm" id="mdpre-find" onclick="mdPreSearch('${q}')">🔎 ค้น HN ${q} ใน HOSxP (visit 3 วันล่าสุดที่ยังไม่ admit)</button>` : '';
-  const msg = PRE_MSG && q === PRE_HN ? `<div class="empty">${escHtml(PRE_MSG)}</div>` : '';
+  const msg = adm ? `<div class="empty">HN ${escHtml(q)} admit แล้ว (AN ${escHtml(adm.an)}) — <a href="#" onclick="event.preventDefault();openMd('${escHtml(adm.an)}')">เปิดในแท็บ MR + ยาเดิมผู้ป่วยใน</a></div>`
+    : PRE_MSG && q === PRE_HN ? `<div class="empty">${escHtml(PRE_MSG)}</div>` : '';
   el.innerHTML = (find ? `<div class="actions" style="margin:0 0 6px">${find}</div>` : '') + msg + (list.map(x => { const k = mdKey(x); return `<div class="ipd-row mdp-row${k === MD_AN ? ' on' : ''}" onclick="openMd('${escHtml(k)}')">
       <div></div><div class="bed" style="font-size:13px">${escHtml(x.regtime || '-')}</div>
       <div><div class="nm">${escHtml(x.name || '-')}</div>
@@ -1364,11 +1377,19 @@ function mdPick(items, reg, chronicSrc) {
 }
 let MD_AN = '';
 const mdWhere = x => x.an ? `เตียง ${x.bed || '-'} · admit ${thIso(x.regdate)}` : `🚑 ยังไม่ admit · ${mdClean(x.dep) || 'visit'} ${thIso(x.regdate)} ${x.regtime || ''}`;
+// การ์ดยาเดิมมีชุดเดียว — อยู่ในแท็บผู้ป่วยใน (มี AN) หรือแท็บผู้ป่วยนอกเตรียม admit ตามผู้ป่วยที่เปิดอยู่
+function mdCardTo(v) {
+  const card = document.getElementById('md-card'), view = document.getElementById('view-' + v);
+  if (card.parentElement !== view) view.appendChild(card);
+  card.style.display = MD && MD.x && !!MD.x.an === (v === 'md') ? '' : 'none';
+}
 async function openMd(key) {
   const x = mdFind(key); if (!x) return;
-  if (document.getElementById('view-md').style.display === 'none') setView('md', true);
+  const v = x.an ? 'md' : 'pre';
+  if (document.getElementById('view-' + v).style.display === 'none') setView(v, true);
   MD_AN = key; renderMdPts();
   const card = document.getElementById('md-card');
+  mdCardTo(v);
   card.style.display = ''; mdLoadCal(); MD = null; MDV = null; document.getElementById('md-hist').style.display = 'none';
   document.getElementById('mdv').open = false; document.getElementById('mdv-list').innerHTML = '';
   document.getElementById('md-meta').textContent = `${x.name} · ${mdWhere(x)} · กำลังโหลด…`;
@@ -2350,11 +2371,13 @@ function setView(v, noLoad) {
   document.getElementById('view-ipd').style.display = v === 'ipd' ? '' : 'none';
   document.getElementById('view-hme').style.display = v === 'hme' ? '' : 'none';
   document.getElementById('view-md').style.display = v === 'md' ? '' : 'none';
+  document.getElementById('view-pre').style.display = v === 'pre' ? '' : 'none';
+  if (v === 'md' || v === 'pre') mdCardTo(v);
   document.getElementById('view-blank').style.display = v === 'blank' ? '' : 'none';
   document.getElementById('view-ins').style.display = v === 'ins' ? '' : 'none';
   document.getElementById('view-night').style.display = v === 'night' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
-  if (v === 'md') { if (!noLoad) loadIpd(); }
+  if (v === 'md' || v === 'pre') { if (!noLoad) loadIpd(); }
   else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else if (v === 'ins') { insInit(); insRender(); } else if (v === 'night') nightInit(); else document.getElementById('f-hn').focus();
 }
 
@@ -2372,7 +2395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
-  setView(['ipd', 'md', 'hme', 'blank', 'ins', 'night'].includes(v) ? v : 'rx');
+  setView(['ipd', 'md', 'pre', 'hme', 'blank', 'ins', 'night'].includes(v) ? v : 'rx');
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);
