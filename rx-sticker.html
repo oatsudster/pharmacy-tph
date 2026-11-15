@@ -322,7 +322,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   </div>
 </div>
 
-<!-- แท็บแบ่ง 3 กลุ่มในแถบซ้าย ชื่ออังกฤษ + ไทยบรรทัดเล็ก (ผู้ใช้เลือก 2026-11-15) · ผู้ป่วยในเรียงตามเส้นทางผู้ป่วย: ก่อน admit → admit → บนหอ → D/C -->
+<!-- แท็บแบ่ง 3 กลุ่มในแถบซ้าย (Night Restock = ยาทั้ง ER/OPD และหอผู้ป่วย → อยู่กลุ่มใช้ร่วม) ชื่ออังกฤษ + ไทยบรรทัดเล็ก (ผู้ใช้เลือก 2026-11-15) · ผู้ป่วยในเรียงตามเส้นทางผู้ป่วย: ก่อน admit → admit → บนหอ → D/C -->
 <div class="tabbar" id="tabs-opd">
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 OPD/ER Labels<small>ฉลากยาผู้ป่วยนอก/ER</small></button>
   <button class="tab" data-v="ins" onclick="setView('ins')">💉 Insulin Pictogram<small>ฉลากภาพอินซูลิน</small></button>
@@ -332,9 +332,9 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <button class="tab" data-v="md" onclick="setView('md')">📋 Med Reconcile<small>MR + ยาเดิมผู้ป่วยใน</small></button>
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ Cart Labels<small>หัวสติกเกอร์รถยา</small></button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 Discharge Meds<small>สรุปยากลับบ้าน</small></button>
-  <button class="tab" data-v="night" onclick="setView('night')">🌙 Night Restock<small>ยาเวรบ่าย-ดึก คืนรถยา</small></button>
 </div>
 <div class="tabbar" id="tabs-bk">
+  <button class="tab" data-v="night" onclick="setView('night')">🌙 Night Restock<small>ยาเวรบ่าย-ดึก คืนรถยา</small></button>
   <button class="tab" data-v="blank" onclick="setView('blank')">⚡ Blank Labels<small>ฉลากเขียนมือ (ไฟดับ)</small></button>
 </div>
 
@@ -2419,7 +2419,7 @@ TphHeader.mount({ from: '.topbar', title: 'h1', sub: '.sub' });
 <script>
 TphSideTabs.mount({ tabs: '#tabs-opd', group: 'ผู้ป่วยนอก · OPD' });
 TphSideTabs.mount({ tabs: '#tabs-ipd', group: 'ผู้ป่วยใน · IPD' });
-TphSideTabs.mount({ tabs: '#tabs-bk', group: 'สำรอง' });
+TphSideTabs.mount({ tabs: '#tabs-bk', group: 'ใช้ร่วม · OPD + IPD' });
 </script>
 <script src="lib/tph-icons.js"></script>
 <script src="lib/tph-ui.js"></script>
