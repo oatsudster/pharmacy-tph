@@ -324,7 +324,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 <div class="tabbar">
   <button class="tab active" data-v="rx" onclick="setView('rx')">💊 สติกเกอร์ยา (OPD/ER)</button>
   <button class="tab" data-v="ipd" onclick="setView('ipd')">🛏️ หัวสติกเกอร์ผู้ป่วยใน</button>
-  <button class="tab" data-v="md" onclick="setView('md')">📋💊 MR + ยาเดิมผู้ป่วยใน</button>
+  <button class="tab" data-v="md" onclick="setView('md')">📋💊 Med Reconcile</button>
   <button class="tab" data-v="pre" onclick="setView('pre')">🚑 ยาเดิมเตรียม admit</button>
   <button class="tab" data-v="hme" onclick="setView('hme')">🏠 สรุปยากลับบ้าน</button>
   <button class="tab" data-v="ins" onclick="setView('ins')">💉 ฉลากภาพอินซูลิน</button>
@@ -474,7 +474,7 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
   <div class="card">
     <h2>🚑 ผู้ป่วยนอกเตรียม admit — ทำยาเดิมไว้ก่อน <span class="hint" id="mdpre-meta" style="margin:0;font-weight:400"></span>
       <button class="btn btn-sm" style="margin-left:auto" onclick="loadIpd()">🔄</button></h2>
-    <div class="hint" style="margin:0 0 6px">รายชื่อ = visit ER 24 ชม.ที่ยังไม่มี AN · ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในแท็บ 📋💊 MR + ยาเดิมผู้ป่วยใน = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN เต็มในช่องค้นหา</div>
+    <div class="hint" style="margin:0 0 6px">รายชื่อ = visit ER 24 ชม.ที่ยังไม่มี AN · ยังไม่มี AN/เตียง จึงพิมพ์ได้เฉพาะสติกเกอร์ยาเดิม · พอแพทย์ admit (AN มาจาก visit เดียวกัน) เปิดชื่อในแท็บ 📋💊 Med Reconcile = โหลดรายการที่ทำไว้ให้เลย แล้วค่อยพิมพ์หัว MR · ไม่อยู่ในรายการ (เช่น admit จาก OPD) พิมพ์ HN เต็มในช่องค้นหา</div>
     <div class="actions" style="margin:0 0 6px">
       <input type="text" id="mdpre-q" placeholder="ค้นหา ชื่อ / HN (HN เต็ม = ค้นใน HOSxP)" autocomplete="off" style="max-width:300px" oninput="renderPre()"
         onkeydown="if (event.key === 'Enter' && /^\d{5,10}$/.test(this.value.trim())) mdPreSearch(this.value.trim())">
@@ -876,7 +876,7 @@ function renderPre() {
   const adm = /^\d{5,10}$/.test(q) && IPD.find(x => x.hn === q);
   const find = /^\d{5,10}$/.test(q) && q !== PRE_HN && !adm
     ? `<button class="btn btn-sm" id="mdpre-find" onclick="mdPreSearch('${q}')">🔎 ค้น HN ${q} ใน HOSxP (visit 3 วันล่าสุดที่ยังไม่ admit)</button>` : '';
-  const msg = adm ? `<div class="empty">HN ${escHtml(q)} admit แล้ว (AN ${escHtml(adm.an)}) — <a href="#" onclick="event.preventDefault();openMd('${escHtml(adm.an)}')">เปิดในแท็บ MR + ยาเดิมผู้ป่วยใน</a></div>`
+  const msg = adm ? `<div class="empty">HN ${escHtml(q)} admit แล้ว (AN ${escHtml(adm.an)}) — <a href="#" onclick="event.preventDefault();openMd('${escHtml(adm.an)}')">เปิดในแท็บ Med Reconcile</a></div>`
     : PRE_MSG && q === PRE_HN ? `<div class="empty">${escHtml(PRE_MSG)}</div>` : '';
   el.innerHTML = (find ? `<div class="actions" style="margin:0 0 6px">${find}</div>` : '') + msg + (list.map(x => { const k = mdKey(x); return `<div class="ipd-row mdp-row${k === MD_AN ? ' on' : ''}" onclick="openMd('${escHtml(k)}')">
       <div></div><div class="bed" style="font-size:13px">${escHtml(x.regtime || '-')}</div>
