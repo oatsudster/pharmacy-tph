@@ -376,14 +376,15 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 
 <div class="wrap1" id="view-hme" style="display:none">
   <div class="card">
-    <h2>🏠 ใบสั่งยากลับบ้าน (HMe) วันนี้/เมื่อวาน <span class="hint" id="hme-meta" style="margin:0;font-weight:400"></span>
+    <h2>🏠 ผู้ป่วย D/C วันนี้ + ยากลับบ้าน <span class="hint" id="hme-meta" style="margin:0;font-weight:400"></span>
       <button class="btn btn-sm" style="margin-left:auto" onclick="loadHme()">🔄</button></h2>
     <div class="actions" style="margin:0 0 8px">
       <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="hme-auto" onchange="saveHmeOpts()"> 🤖 พิมพ์อัตโนมัติเมื่อมีใบสั่งยากลับบ้านใหม่</label>
       <span class="hint" id="hme-station-note" style="display:none;margin:0">พิมพ์อัตโนมัติได้เฉพาะเครื่องห้องยาที่ตั้งไว้ — เครื่องนี้กด 🖨 พิมพ์ทีละใบ</span>
       <span class="hint" style="margin:0">สติกเกอร์ 9 × 6 ซม. · ดวงละไม่เกิน 6 รายการ</span>
     </div>
-    <div class="hint" style="margin:-2px 0 10px">ตรวจ HOSxP ทุก 30 วินาที · พิมพ์เมื่อใบสั่งนั้นไม่ถูกแก้มา 2 นาที (กันพิมพ์ตอนยังคีย์ไม่เสร็จ) · แก้รายการหลังพิมพ์ → พิมพ์ใหม่ให้ ·
+    <div class="hint" style="margin:-2px 0 10px">รายชื่อ = ผู้ป่วยที่ D/C วันนี้ใน HOSxP (+ คนที่มีใบ HMe วันนี้แต่ยังไม่กด D/C) ไม่รวมเมื่อวาน ·
+      ยากลับบ้าน = ใบ HMe · ถ้าไม่มี HMe ใช้ใบ IRx ที่คีย์หลังเวลา D/C · ตรวจ HOSxP ทุก 30 วินาที · พิมพ์เมื่อใบสั่งนั้นไม่ถูกแก้มา 2 นาที (กันพิมพ์ตอนยังคีย์ไม่เสร็จ) · แก้รายการหลังพิมพ์ → พิมพ์ใหม่ให้ ·
       ดวงละไม่เกิน 6 รายการ เกินนั้นต่อดวงถัดไป (มีเลข 1/2, 2/2) · พิมพ์ทันทีไม่ต้องกดยืนยัน: เปิดหน้านี้ด้วย HME-AutoPrint.bat ในโฟลเดอร์ HOSxP Bridge</div>
     <div id="hme-list"><div class="empty">กำลังโหลด…</div></div>
   </div>
@@ -1857,9 +1858,9 @@ async function loadHme() {
   if (hmeFirst) {
     hmeFirst = false;
     const p0 = hmePrinted();
-    HME.forEach(o => { if (!p0[hmeKey(o)] && HME_NOW - hmeChanged(o) > HME_FRESH_MS) hmeMark(o, true); });
+    HME.forEach(o => { if (o.items.length && !p0[hmeKey(o)] && HME_NOW - hmeChanged(o) > HME_FRESH_MS) hmeMark(o, true); });
   }
-  document.getElementById('hme-meta').textContent = `${HME.length} ใบ · ตรวจล่าสุด ${r.now.slice(11, 16)} น.`;
+  document.getElementById('hme-meta').textContent = `D/C ${new Set(HME.map(o => o.an)).size} คน · ตรวจล่าสุด ${r.now.slice(11, 16)} น.`;
   renderHme();
   if (document.getElementById('hme-auto').checked) {
     const p = hmePrinted();
@@ -1871,17 +1872,18 @@ function renderHme() {
   const printed = hmePrinted();
   document.getElementById('hme-list').innerHTML = HME.map(o => {
     const p = printed[hmeKey(o)];
-    const st = !p ? '<span class="badge-wait">ยังไม่พิมพ์</span>'
+    const st = !o.orderNo && !o.items.length ? '<span class="badge-wait">ยังไม่มีใบยากลับบ้าน</span>'
+      : !p ? '<span class="badge-wait">ยังไม่พิมพ์</span>'
       : p.sig !== hmeSig(o) ? '<span class="badge-wait">แก้รายการหลังพิมพ์</span>'
       : p.skipped ? '<span class="badge-wait" title="มีอยู่ก่อนเปิดหน้านี้ จึงไม่พิมพ์อัตโนมัติ">ข้าม (ก่อนเปิดหน้า)</span>'
       : `<span class="badge-ok">พิมพ์แล้ว ${new Date(p.at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>`;
     return `<div class="hme-row">
-      <div><div class="nm">${escHtml(o.name || '-')} ${st}</div>
-        <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}${o.regdate ? ` · admit ${escHtml(thIso(o.regdate))} ${escHtml(o.regtime || '')} น.` : ''} · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ</div></div>
+      <div><div class="nm">${escHtml(o.name || '-')} ${st}${o.type === 'IRx' ? ' <span class="badge-wait" title="ไม่มีใบ HMe — ใช้ใบ IRx ที่คีย์หลังเวลา D/C">ใบ IRx หลัง D/C</span>' : ''}</div>
+        <div class="mt">HN ${escHtml(o.hn)} · AN ${escHtml(o.an)} · ${escHtml(o.ward || '')} เตียง ${escHtml(o.bed || '-')}${o.regdate ? ` · admit ${escHtml(thIso(o.regdate))} ${escHtml(o.regtime || '')} น.` : ''} ${o.dchdate ? ` · <b>D/C ${escHtml(thIso(o.dchdate))} ${escHtml(o.dchtime || '')} น.</b>` : ' · ยังไม่ D/C'}${o.orderNo ? ` · สั่ง ${escHtml(thIso(o.date))} ${escHtml(o.time)} น.${o.staff ? ' · ' + escHtml(o.staff) : ''} · ยา ${o.items.length} รายการ` : ''}</div></div>
       <button class="btn btn-gold btn-sm" onclick="printHme(['${escHtml(hmeKey(o))}'])" ${o.items.length ? '' : 'disabled'}>🖨 พิมพ์</button>
       <div class="ds">${o.items.map(hmeDrug).map(d => escHtml(d.name)).join(' · ')}</div>
     </div>`;
-  }).join('') || '<div class="empty">ยังไม่มีใบสั่งยากลับบ้าน</div>';
+  }).join('') || '<div class="empty">วันนี้ยังไม่มีผู้ป่วย D/C</div>';
 }
 function hmeStickerHtml(o, rows, pi, pn, w, h, fs) {
   return `<div class="hmestk" style="width:${w}mm;height:${h}mm"><div class="hd"><span>ยากลับบ้าน · ${escHtml(o.name || '')}</span><span>HN ${escHtml(o.hn)}</span></div>

@@ -35,7 +35,7 @@
 #   /db/mrvisits?hn=&an= — ทุก visit OPD ที่มียา + ยากลับบ้านทุกครั้ง ใน 1 ปีก่อน admit พร้อมรายการยา — เภสัชเลือกดึงยาเดิมจาก visit อื่นเพิ่ม
 #   /db/mrdict      — รายการยาทั้งหมด (drugitems) + วิธีใช้ที่เปิดใช้ (drugusage.status='Y') พร้อมรหัสย่อ — คีย์ยาเดิมจาก รพ.อื่น ในใบ MR
 #   /db/ipdlist     — ผู้ป่วยในที่ยังไม่จำหน่าย (ward, เตียง, AN, HN, ชื่อ) — หัวสติกเกอร์ผู้ป่วยในแปะรถยา (แบบ CUSTOM- stickerผู้ป่วยใน) + อายุ น้ำหนัก แพ้ยา โรคประจำตัว สำหรับหัวสติกเกอร์ MR
-#   /db/hme         — ใบสั่งยากลับบ้าน (ipt_order_no.order_type='HMe') วันนี้/เมื่อวาน พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
+#   /db/hme         — ผู้ป่วย D/C วันนี้ + ใบยากลับบ้าน (HMe หรือ IRx ที่คีย์หลัง D/C) พร้อมรายการยาและวิธีใช้ — พิมพ์สรุปยากลับบ้านอัตโนมัติ
 #   /db/smartrx?hn= — Smart Pharmacy: อายุ เพศ สัญญาณชีพ lab แพ้ยา วินิจฉัย ตารางยาตีกัน — หน้าต่างลอยจ่ายยาของเภสัชกร
 #   /db/meds?hn=    — ยาเดิมสำหรับบันทึกยาคงเหลือ: visit ล่าสุด (ก่อนวันนี้) ที่มียา ของแต่ละคลินิกนัด DM/HT/COPD
 #                     + ยากลับบ้าน (HMe) ของการนอน รพ. ครั้งล่าสุด — หน้าเว็บเลือก/รวมเอง
@@ -603,34 +603,58 @@ function HmeStation {
   return [bool](@(Get-Content $f -Encoding UTF8 | ForEach-Object { $_.Trim() }) -contains $env:COMPUTERNAME)
 }
 function DbHme {
-  $ords = DbQuery ("SELECT n.an, n.order_no, DATE_FORMAT(n.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(n.rxtime,'%H:%i') AS rxtime, n.entry_staff, " +
-    "i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward_name, a.bedno, " +
+  # ผู้ป่วย D/C วันนี้ตาม HOSxP (ipt.dchdate) + ใบ HMe วันนี้ของคนที่ยังไม่ได้กด D/C — ไม่เอาของเมื่อวาน (ผู้ใช้ขอ 2026-11-15)
+  $pts = DbQuery ("SELECT i.an, i.hn, DATE_FORMAT(i.dchdate,'%Y-%m-%d') AS dchdate, TIME_FORMAT(i.dchtime,'%H:%i') AS dchtime, " +
+    "DATE_FORMAT(i.regdate,'%Y-%m-%d') AS regdate, TIME_FORMAT(i.regtime,'%H:%i') AS regtime, w.name AS ward_name, a.bedno, " +
     "CONCAT(TRIM(IFNULL(p.pname,'')), TRIM(IFNULL(p.fname,'')), '  ', TRIM(IFNULL(p.lname,''))) AS ptname, s.age_y " +
-    "FROM ipt_order_no n JOIN ipt i ON i.an=n.an LEFT JOIN iptadm a ON a.an=n.an LEFT JOIN ward w ON w.ward=i.ward " +
-    "LEFT JOIN patient p ON p.hn=i.hn LEFT JOIN an_stat s ON s.an=n.an " +
-    "WHERE n.order_type='HMe' AND n.rxdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY n.rxdate DESC, n.rxtime DESC LIMIT 60")
+    "FROM ipt i LEFT JOIN iptadm a ON a.an=i.an LEFT JOIN ward w ON w.ward=i.ward " +
+    "LEFT JOIN patient p ON p.hn=i.hn LEFT JOIN an_stat s ON s.an=i.an " +
+    "WHERE i.dchdate=CURDATE() OR i.an IN (SELECT an FROM ipt_order_no WHERE order_type='HMe' AND rxdate=CURDATE()) LIMIT 80")
   $out = @()
-  if ($ords.Count) {
-    $ans = ($ords | ForEach-Object { "'" + [HxDb]::Digits($_['an']) + "'" } | Select-Object -Unique) -join ','
+  if ($pts.Count) {
+    $ans = ($pts | ForEach-Object { "'" + [HxDb]::Digits($_['an']) + "'" } | Select-Object -Unique) -join ','
+    # ใบยากลับบ้าน = ใบ HMe ของ AN นั้น · ไม่มี HMe = ใบ IRx ที่คีย์หลังเวลา D/C (ห้องยาคีย์ยากลับบ้านเป็น IRx เช่น AN 690001245 วันที่ 15 พ.ย. 69)
+    $ords = DbQuery ("SELECT n.an, n.order_no, n.order_type, DATE_FORMAT(n.rxdate,'%Y-%m-%d') AS rxdate, TIME_FORMAT(n.rxtime,'%H:%i') AS rxtime, n.entry_staff " +
+      "FROM ipt_order_no n JOIN ipt i ON i.an=n.an WHERE n.an IN ($ans) AND (n.order_type='HMe' OR (n.order_type='IRx' AND i.dchdate IS NOT NULL " +
+      "AND TIMESTAMP(n.rxdate, n.rxtime) >= TIMESTAMP(i.dchdate, i.dchtime))) ORDER BY n.rxdate DESC, n.rxtime DESC")
+    $items = @()
     $nos = ($ords | ForEach-Object { [HxDb]::Digits($_['order_no']) } | Where-Object { $_ } | Select-Object -Unique) -join ','
-    # วิธีใช้ตามแบบสติกเกอร์ HOSxP: opi_dispense.usage_line1-3 ถ้า usage_lock='Y' ไม่งั้น drugusage.name1-3
-    $items = DbQuery ("SELECT r.an, r.order_no, r.icode, r.qty, DATE_FORMAT(r.last_modified,'%Y-%m-%d %H:%i:%s') AS lastmod, " +
-      "d.name, d.strength, d.units, d.dosageform, TRIM(IFNULL(d.name_print,'')) AS name_print, " +
-      "IF(od.usage_lock='Y', od.usage_line1, IF(r.sp_use<>'', sp.name1, u.name1)) AS line1, " +
-      "IF(od.usage_lock='Y', od.usage_line2, IF(r.sp_use<>'', sp.name2, u.name2)) AS line2, " +
-      "IF(od.usage_lock='Y', od.usage_line3, IF(r.sp_use<>'', sp.name3, u.name3)) AS line3 " +
-      "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode LEFT JOIN drugusage u ON u.drugusage=r.drugusage " +
-      "LEFT JOIN sp_use sp ON sp.sp_use=r.sp_use LEFT JOIN opi_dispense od ON od.hos_guid=r.hos_guid " +
-      "WHERE r.an IN ($ans) AND r.order_no IN ($nos) ORDER BY r.an, r.order_no, r.item_no")
-    $out = @($ords | ForEach-Object {
-      $an = $_['an']; $no = $_['order_no']
-      $its = @($items | Where-Object { $_['an'] -eq $an -and $_['order_no'] -eq $no })
-      [ordered]@{ an = $an; orderNo = $no; date = $_['rxdate']; time = $_['rxtime']; staff = $_['entry_staff']; hn = $_['hn']
-        dchdate = $_['dchdate']; regdate = $_['regdate']; regtime = $_['regtime']; ward = $_['ward_name']; bed = $_['bedno']; name = $_['ptname']; ageY = $_['age_y']
-        lastmod = (@($its | ForEach-Object { $_['lastmod'] }) | Sort-Object | Select-Object -Last 1)
-        items = @($its | ForEach-Object {
-          [ordered]@{ icode = $_['icode']; qty = $_['qty']; name = $_['name']; strength = $_['strength']; units = $_['units']
-            form = $_['dosageform']; namePrint = $_['name_print']; line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3'] } }) } })
+    if ($nos) {
+      # วิธีใช้ตามแบบสติกเกอร์ HOSxP: opi_dispense.usage_line1-3 ถ้า usage_lock='Y' ไม่งั้น drugusage.name1-3
+      $items = DbQuery ("SELECT r.an, r.order_no, r.icode, r.qty, DATE_FORMAT(r.last_modified,'%Y-%m-%d %H:%i:%s') AS lastmod, " +
+        "d.name, d.strength, d.units, d.dosageform, TRIM(IFNULL(d.name_print,'')) AS name_print, " +
+        "IF(od.usage_lock='Y', od.usage_line1, IF(r.sp_use<>'', sp.name1, u.name1)) AS line1, " +
+        "IF(od.usage_lock='Y', od.usage_line2, IF(r.sp_use<>'', sp.name2, u.name2)) AS line2, " +
+        "IF(od.usage_lock='Y', od.usage_line3, IF(r.sp_use<>'', sp.name3, u.name3)) AS line3 " +
+        "FROM opitemrece r JOIN drugitems d ON d.icode=r.icode LEFT JOIN drugusage u ON u.drugusage=r.drugusage " +
+        "LEFT JOIN sp_use sp ON sp.sp_use=r.sp_use LEFT JOIN opi_dispense od ON od.hos_guid=r.hos_guid " +
+        "WHERE r.an IN ($ans) AND r.order_no IN ($nos) ORDER BY r.an, r.order_no, r.item_no")
+    }
+    foreach ($pt in $pts) {
+      $an = $pt['an']
+      $mine = @($ords | Where-Object { $_['an'] -eq $an })
+      $use = @($mine | Where-Object { $_['order_type'] -eq 'HMe' })
+      if (-not $use.Count) { $use = $mine }
+      $base = [ordered]@{ hn = $pt['hn']; dchdate = $pt['dchdate']; dchtime = $pt['dchtime']; regdate = $pt['regdate']; regtime = $pt['regtime']
+        ward = $pt['ward_name']; bed = $pt['bedno']; name = $pt['ptname']; ageY = $pt['age_y'] }
+      if (-not $use.Count) {
+        # D/C แล้วแต่ยังไม่มีใบยากลับบ้าน — แสดงไว้ให้เห็นครบตาม HOSxP (ไม่มีอะไรให้พิมพ์)
+        $o = [ordered]@{ an = $an; orderNo = ''; type = ''; date = $pt['dchdate']; time = $pt['dchtime']; staff = ''; lastmod = $null; items = @() }
+        foreach ($k in $base.Keys) { $o[$k] = $base[$k] }
+        $out += $o; continue
+      }
+      foreach ($n in $use) {
+        $no = $n['order_no']
+        $its = @($items | Where-Object { $_['an'] -eq $an -and $_['order_no'] -eq $no })
+        $o = [ordered]@{ an = $an; orderNo = $no; type = $n['order_type']; date = $n['rxdate']; time = $n['rxtime']; staff = $n['entry_staff']
+          lastmod = (@($its | ForEach-Object { $_['lastmod'] }) | Sort-Object | Select-Object -Last 1)
+          items = @($its | ForEach-Object {
+            [ordered]@{ icode = $_['icode']; qty = $_['qty']; name = $_['name']; strength = $_['strength']; units = $_['units']
+              form = $_['dosageform']; namePrint = $_['name_print']; line1 = $_['line1']; line2 = $_['line2']; line3 = $_['line3'] } }) }
+        foreach ($k in $base.Keys) { $o[$k] = $base[$k] }
+        $out += $o
+      }
+    }
   }
   [ordered]@{ ok = $true; orders = $out; now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); station = (HmeStation) }
 }
