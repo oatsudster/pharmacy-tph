@@ -1223,7 +1223,26 @@ function mdAbbr(t) {
 const MD_DOW = [['จันทร์', 'จ'], ['อังคาร', 'อ'], ['พุธ', 'พ'], ['พฤหัสบดี', 'พฤ'], ['พฤหัส', 'พฤ'], ['ศุกร์', 'ศ'], ['เสาร์', 'ส'], ['อาทิตย์', 'อา']];
 const MD_DOW_RE = MD_DOW.map(d => d[0]).join('|');
 const MD_DOW_TAIL = new RegExp(`^(.*?\\S)\\s*\\(?\\s*(?:สัปดาห์ละ\\s*\\d+\\s*วัน\\s*)?(?:เฉพาะ|ทุก)?\\s*(?:วัน)?\\s*((?:${MD_DOW_RE})(?:\\s*(?:,|และ|ถึง|-)?\\s*(?:วัน)?\\s*(?:${MD_DOW_RE}))*)\\s*\\)?$`);
+// ยาทา (ผู้ใช้ขอ 2026-11-16, Silver cream): "ทาบางๆ บริเวณที่เป็น วันละ 2 ครั้ง เช้า-เย็น" → "ap bid",
+//   "ทาบริเวณที่คัน 1 ที วันละ 1 ครั้ง" → "ap od", "... วันละ 1 ครั้ง ก่อนนอน" → "ap hs", 4 ครั้ง เช้า-กลางวัน-เย็น-ก่อนนอน → "ap qid"
+//   บริเวณเฉพาะ (ช่องคลอด ใบหน้า หลัง), ทิ้งไว้แล้วล้างออก, ระบุเวลา, ห้าม…, จำนวนมื้อไม่เท่าวันละกี่ครั้ง = ใช้ข้อความเดิม
+function mdAbbrTop(s) {
+  let r = ' ' + s.replace(/�/g, ' ') + ' ', freq = null;
+  r = r.replace(/^\s*(?:ใช้)?ทา(?:แผล)?\s*(?:ยา)?\s*(?:บางๆ|บาง\s*ๆ)?\s*(?:บริเวณ\s*(?:ที่\s*(?:เป็น|คัน|มีอาการ|เป็นแผล)|แผล))?/, ' ')
+    .replace(/(?:^|\s)1\s*(?:ที|ครั้ง)?(?=\s+วันละ)/, ' ')
+    .replace(/วันละ\s*(\d+)\s*(?:ครั้ง|เวลา)/, (_, n) => { freq = +n; return ' '; })
+    .replace(/วันละ\s*ครั้ง/, () => { freq = 1; return ' '; })
+    .replace(/กลางวัน/g, 'เที่ยง').replace(/[-,.]/g, ' ');
+  const slots = r.match(/เช้า|เที่ยง|เย็น|ก่อนนอน/g) || [];
+  if (!freq || /[฀-๿]/.test(r.replace(/เช้า|เที่ยง|เย็น|ก่อนนอน/g, '')) || /\d/.test(r)) return s;
+  if (slots.length && (slots.length !== freq || new Set(slots).size !== slots.length)) return s;
+  if (freq === 1 && slots[0] === 'ก่อนนอน') return 'ap hs';
+  if (freq === 1 && slots[0] && slots[0] !== 'เช้า') return `ap ${slots[0]}`;
+  const F = { 1: 'od', 2: 'bid', 3: 'tid', 4: 'qid' }[freq];
+  return F ? `ap ${F}` : s;
+}
 function mdAbbr0(s) {
+  if (/^(?:ใช้)?ทา(?!น)/.test(s)) return mdAbbrTop(s);
   if (/^(กด)?พ่น|^สูดลมหายใจ/.test(s)) return mdAbbrInh(s);
   if (/^ฉีด|ยูนิต|\bunits?\b|\d\s*u\b/i.test(s) && !/รับประทาน/.test(s)) return mdAbbrIns(s);
   // ทันที (ผู้ใช้ขอ 2026-10-26): "1 เม็ด ทันที" → "1 tab stat", ยาน้ำ "30 cc po stat" (KCl), ยาซอง "6 sack stat"
@@ -1936,7 +1955,7 @@ const HME_GENERIC = {
   '1000249': "Prednisolone 5 mg", '1460304': "Norethisterone 5 mg", '1000255': "Propranolol 10 mg", '1000257': "Propylthiouracil 50 mg",
   '1000258': "Pyrazinamide 500 mg", '1000264': "Rifampicin 300 mg", '1000265': "Rifampicin 450 mg", '1660318': "Risperidone 2 mg",
   '1000267': "Roxithromycin 150 mg", '1000270': "Salbutamol 2 mg", '1000271': "Salbutamol syr 2 mg/5 ml", '1000268': "Salbutamol MDI",
-  '1670011': "Sertraline 50 mg", '1440602': "Silver sulfadiazine cream 1%", '1460048': "Simethicone 80 mg", '1500005': "Simethicone drops 40 mg/0.6 ml",
+  '1670011': "Sertraline 50 mg", '1440602': "Silver cream", '1460048': "Simethicone 80 mg", '1500005': "Simethicone drops 40 mg/0.6 ml",
   '1540006': "Simvastatin 20 mg", '1000278': "Sodium bicarbonate 300 mg", '1490010': "Spironolactone 25 mg", '1530005': "TDF 300 mg",
   '1610005': "Theophylline SR 200 mg", '1480304': "Levothyroxine 100 mcg", '1650219': "TLD 300/300/50 mg", '1460014': "Tramadol 50 mg",
   '1460015': "Tramadol inj 50 mg/ml", '1670009': "Tranexamic acid 250 mg", '1430103': "Triamcinolone cream 0.1%", '1460006': "Triamcinolone cream 0.02%",
