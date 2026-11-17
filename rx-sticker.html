@@ -21,6 +21,7 @@
 <script src="lib/renal-dose.js?v=20261114c"></script>
 <script src="lib/usage-translate.js?v=20261013"></script>
 <script src="lib/usage-picto.js"></script>
+<script src="lib/eye-ear-label.js?v=20261117"></script>
 <style id="page-size"></style>
 <style>
 :root {
@@ -274,6 +275,29 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .blank-prev label { cursor: pointer; }
 .blank-prev label.on .pv { border: 2px solid var(--gold); }
 
+/* ── ฉลากเสริมวิธีหยอดตา / ป้ายตา / หยอดหู (ผู้ใช้ขอ 2026-11-17) 101.6 × 59.9 มม. รูปลายเส้นขาวดำ ── */
+.eestk { position: relative; width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; background: #fff; page-break-after: always; break-after: page; font-family: Tahoma, 'Noto Sans Thai', sans-serif; }
+.eestk:last-child { page-break-after: auto; break-after: auto; }
+.eestk .in { position: absolute; left: 10.58mm; top: 1.2mm; width: 78.3mm; height: 57.2mm; display: flex; flex-direction: column; line-height: 1.15; }
+.eestk .hd { display: flex; justify-content: space-between; align-items: center; gap: 1.5mm; white-space: nowrap; border-bottom: .35mm solid #000; padding-bottom: .4mm; }
+.eestk .hd b { font-size: 11.5pt; }
+.eestk .sd { font-size: 8.5pt; display: inline-flex; align-items: center; gap: .6mm; }
+.eestk .bx { display: inline-block; width: 2.8mm; height: 2.8mm; border: .3mm solid #000; vertical-align: -.5mm; margin-right: .3mm; flex-shrink: 0; box-sizing: border-box; }
+.eestk .bx.on { background: #000; box-shadow: inset 0 0 0 .5mm #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.eestk .who { white-space: nowrap; overflow: hidden; padding: .3mm 0; display: flex; align-items: flex-end; gap: 1mm; }
+.eestk .ln { flex: 1; border-bottom: .25mm dotted #000; height: 3.2mm; min-width: 6mm; display: inline-block; }
+.eestk .ln.s { flex: 0 0 16mm; } .eestk .ln.m { flex: 0 0 22mm; width: 22mm; }
+.eestk .bd { flex: 1; display: flex; gap: 1.2mm; min-height: 0; align-items: center; }
+.eestk .pic { flex: 0 0 25mm; height: 100%; display: flex; align-items: center; justify-content: center; }
+.eestk .pic svg { width: 25mm; height: 100%; max-height: 32mm; }
+.eestk ol { margin: 0; padding-left: 3.6mm; font-size: 8.4pt; line-height: 1.3; flex: 1; min-width: 0; }
+.eestk ol li { padding-left: .3mm; }
+.eestk .wn { font-size: 7.8pt; font-weight: 700; white-space: nowrap; border: .3mm solid #000; border-radius: 1mm; padding: 0 1mm; margin-bottom: .4mm; text-align: center; }
+.eestk .ft { font-size: 8pt; display: flex; align-items: flex-end; gap: .8mm; white-space: nowrap; border-top: .25mm solid #000; padding-top: .3mm; }
+.eestk .ft + .ft { border-top: 0; padding-top: .2mm; }
+.eestk .ft > span:first-child { display: inline-flex; align-items: flex-end; gap: 1mm; }
+.eestk .sp { flex: 1; }
+
 /* ── ฉลากภาพอินซูลิน 9 × 6 ซม. (ผู้ใช้ขอ 2026-11-13): รูปกระบอกฉีดยาจริงตามขนาดที่ใช้ + ลูกศรชี้ขีดที่ต้องดึง แยกมื้อ
    เครื่องพิมพ์ความร้อน = ขาวดำล้วน: ยาในกระบอกเป็นลายเส้นทแยง ลูกสูบดำทึบ ไม่ใช้สี/เทา ── */
 .insstk { position: relative; width: 90mm; height: 60mm; overflow: hidden; color: #000; background: #fff; page-break-after: always; break-after: page;
@@ -384,6 +408,15 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
       <label class="hint" style="margin:0;font-weight:600">จำนวน <input class="cp" style="width:64px" type="number" id="blank-n" min="1" max="300" value="20"> ดวง</label>
       <button class="btn btn-gold" onclick="printBlank()">🖨 พิมพ์ฉลากเปล่า</button>
       <span class="hint" style="margin:0">เลือกแบบโดยกดที่ภาพตัวอย่าง · เครื่องพิมพ์สติกเกอร์ยา (Zebra) · ขอบกระดาษ: ไม่มี</span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>👁👂 ฉลากเสริมวิธีหยอดตา / ป้ายตา / หยอดหู (เว้นชื่อไว้เขียนเอง)</h2>
+    <div class="hint" style="margin:0 0 10px">ใช้กับยาที่ไม่ได้พิมพ์จากแท็บ OPD/ER (เช่น ยากลับบ้าน IPD) หรือพิมพ์เก็บไว้ · ผู้ป่วย OPD/ER กดปุ่ม 👁/👂 ท้ายแถวยาได้เลย มีชื่อ-HN-ข้างที่ใช้ให้</div>
+    <div class="blank-prev" id="ee-prev"></div>
+    <div class="actions" style="margin-top:12px">
+      <label class="hint" style="margin:0;font-weight:600">จำนวน <input class="cp" style="width:64px" type="number" id="ee-n" min="1" max="100" value="1"> ดวง</label>
+      <button class="btn btn-gold" onclick="printEeBlank()">🖨 พิมพ์ฉลากเสริม</button>
     </div>
   </div>
 </div>
@@ -714,7 +747,10 @@ function render() {
   det.innerHTML = `<div class="lang-pick">🌐 ภาษาวิธีใช้บนฉลาก:
       ${Object.entries(LANGS).map(([k, t]) => `<button class="chip${k === lang ? ' on' : ''}" onclick="setLang('${escHtml(CUR.hn)}','${k}')">${t}</button>`).join('')}
       <span class="hint" style="margin:0;font-weight:400">· ผู้ป่วยอ่านภาษาไทยไม่ได้ · จำ HN นี้ไว้ในเครื่องนี้</span>
-      <label class="chip${picOn(CUR.hn) ? ' on' : ''}" style="margin-left:auto;cursor:pointer"><input type="checkbox" ${picOn(CUR.hn) ? 'checked' : ''} onchange="setPic('${escHtml(CUR.hn)}', this.checked)" style="margin-right:4px">🖼️ พิมพ์ฉลากรูปภาพเพิ่ม (อ่านหนังสือไม่ออก/สายตาไม่ดี)</label></div>` + vs.map(v => {
+      <label class="chip${picOn(CUR.hn) ? ' on' : ''}" style="margin-left:auto;cursor:pointer"><input type="checkbox" ${picOn(CUR.hn) ? 'checked' : ''} onchange="setPic('${escHtml(CUR.hn)}', this.checked)" style="margin-right:4px">🖼️ พิมพ์ฉลากรูปภาพเพิ่ม (อ่านหนังสือไม่ออก/สายตาไม่ดี)</label></div>`
+    + (vs.some(v => v.items.some(eeKind)) ? `<div class="lang-pick" style="background:#f0fdf4;border-color:#bbf7d0">👁👂 มียาหยอดตา/ป้ายตา/หยอดหู — กด 👁/👂 ท้ายแถวเพื่อพิมพ์ฉลากเสริมวิธีใช้
+      <label class="chip${eeAuto() ? ' on' : ''}" style="cursor:pointer;font-weight:400"><input type="checkbox" ${eeAuto() ? 'checked' : ''} onchange="setEeAuto(this.checked)" style="margin-right:4px">พิมพ์ต่อท้ายฉลากปกติอัตโนมัติ (เครื่องนี้)</label></div>` : '')
+    + vs.map(v => {
     const lk = lockText(v);
     return `<div style="margin-bottom:18px">
       <div class="v-head"><span class="nm">${escHtml(v.name || '-')}</span><span class="mt">HN ${escHtml(CUR.hn)} · VN ${escHtml(v.vn)} · ${escHtml(thIso(v.date))} ${escHtml(v.time)} น. · คิว ${escHtml(v.queue || '-')}${v.ageY ? ' · อายุ ' + escHtml(v.ageY) + ' ปี' : ''}</span></div>
@@ -727,7 +763,7 @@ function render() {
           <td class="num">${escHtml(fmtQty(it.qty))} ${escHtml(String(it.units || '').replace(/\s*\(.*\)\s*$/, ''))}</td>
           <td class="use">${useCell(it)}</td>
           <td class="num"><input class="cp" type="number" min="1" max="9" value="${COPIES[it.guid]}" onchange="COPIES['${it.guid}']=Math.max(1,Math.min(9,+this.value||1))"></td>
-          <td style="white-space:nowrap"><button class="btn btn-sm" onclick="printItems(['${it.guid}'])" title="ฉลากปกติ${picOn(CUR.hn) ? ' + ฉลากรูปภาพ' : ''}">🖨</button>${picParse(it).error ? '' : ` <button class="btn btn-sm" onclick="printItems(['${it.guid}'], true)" title="พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ)">🖼️</button>`}${isInsulin(it) ? ` <button class="btn btn-sm" onclick="insFromOpd('${it.guid}')" title="ฉลากภาพอินซูลิน: รูปกระบอกฉีดยาชี้ขีดที่ต้องดึงแต่ละมื้อ (9×6 ซม.)">💉</button>` : ''}</td>
+          <td style="white-space:nowrap"><button class="btn btn-sm" onclick="printItems(['${it.guid}'])" title="ฉลากปกติ${picOn(CUR.hn) ? ' + ฉลากรูปภาพ' : ''}">🖨</button>${picParse(it).error ? '' : ` <button class="btn btn-sm" onclick="printItems(['${it.guid}'], true)" title="พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ)">🖼️</button>`}${eeKind(it) ? ` <button class="btn btn-sm" onclick="printEe(['${it.guid}'])" title="ฉลากเสริม${escHtml(TphEyeEar.TEXT[eeKind(it)].title)} (ดวงละ 1 ขวด/หลอด ตามช่องดวง)">${eeKind(it) === 'ear' ? '👂' : '👁'}</button>` : ''}${isInsulin(it) ? ` <button class="btn btn-sm" onclick="insFromOpd('${it.guid}')" title="ฉลากภาพอินซูลิน: รูปกระบอกฉีดยาชี้ขีดที่ต้องดึงแต่ละมื้อ (9×6 ซม.)">💉</button>` : ''}</td>
         </tr>`).join('') + '</tbody></table>' : '<div class="empty">ไม่มียาใน visit นี้</div>'}
       <div class="actions">
         <button class="btn btn-gold" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))})" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'}>🖨 พิมพ์ที่เลือก (${v.items.filter(it => CHECK[it.guid]).reduce((s, it) => s + COPIES[it.guid], 0)} ดวง)</button>
@@ -800,6 +836,30 @@ function usageTrBlock(it, L, s, pos, lang) {
     s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th fit', L.filter(x => x && !dotLine(x)).join(' ')) +
     s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th b fit', stkTags(it) + (it.hint || ''));
 }
+// ── ฉลากเสริมวิธีหยอดตา/ป้ายตา/หยอดหู (ผู้ใช้ขอ 2026-11-17) — lib/eye-ear-label.js · ดวงละ 1 ขวด/หลอด (ใช้ช่อง "ดวง")
+// ข้างตา/หูอ่านจากวิธีใช้ (ขวา/ซ้าย/2 ข้าง) · ช่องตู้เย็นติ๊กเองถ้าคำเตือนยามีคำว่าตู้เย็น ไม่งั้นเภสัชติ๊กด้วยปากกา
+const eeKind = it => window.TphEyeEar ? TphEyeEar.detect(it) : null;
+function eeAuto() { try { return localStorage.getItem('rx_eyeear_auto') === '1'; } catch (e) { return false; } }
+function setEeAuto(on) { try { localStorage.setItem('rx_eyeear_auto', on ? '1' : '0'); } catch (e) {} render(); }
+function eeStickerHtml(v, it) {
+  const k = eeKind(it); if (!k) return '';
+  return TphEyeEar.html(k, { name: v.name, hn: CUR.hn, drug: drugName(it), side: TphEyeEar.side(usageLines(it).join(' ')), fridge: TphEyeEar.fridge(it) });
+}
+function printEe(guids) {
+  if (!CUR) return;
+  const list = [];
+  (CUR.visits || []).forEach(v => v.items.forEach(it => { if (guids.includes(it.guid) && eeKind(it)) for (let c = 0; c < (COPIES[it.guid] || 1); c++) list.push(eeStickerHtml(v, it)); }));
+  if (list.length) eePrint(list.join(''));
+}
+function eePrint(html) {
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html;
+  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
+  pa.style.cssText = 'display:block;position:fixed;left:-300mm;top:0';
+  pa.querySelectorAll('.fit').forEach(el => { let fs = parseFloat(el.style.fontSize); while (el.scrollWidth > el.clientWidth + 1 && fs > 6) { fs -= 0.5; el.style.fontSize = fs + 'pt'; } });
+  pa.style.cssText = '';
+  setTimeout(() => window.print(), 50);
+}
 // picOnly: พิมพ์เฉพาะฉลากรูปภาพ (ไม่มีฉลากปกติ) — ใช้กับยาที่มีฉลากปกติอยู่แล้ว ต้องกดปุ่มเองทุกครั้ง ไม่จำเป็นโหมด
 function printItems(guids, picOnly) {
   if (!CUR || !guids.length) return;
@@ -815,7 +875,8 @@ function printItems(guids, picOnly) {
     pa.innerHTML = html;
   } else {
     const pic = picOn(CUR.hn);
-    pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now) + (pic ? picStickerHtml(v, it) : '')).join('');
+    const ee = eeAuto();
+    pa.innerHTML = list.map(([v, it], i) => stickerHtml(v, it, i + 1, list.length, now) + (pic ? picStickerHtml(v, it) : '') + (ee ? eeStickerHtml(v, it) : '')).join('');
   }
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   // ข้อความยาวเกินช่อง → ลดขนาดตัวอักษรจนพอดี (ไม่ตัดท้ายชื่อยา/วิธีใช้) วัดได้เฉพาะตอนแสดงผล จึงเปิด print-area ชั่วคราว
@@ -2188,6 +2249,17 @@ function renderBlank() {
   el.innerHTML = Object.entries(BLANK_TYPES).map(([k, n]) => `<label class="${k === BLANK_T ? 'on' : ''}" onclick="BLANK_T='${k}';try{localStorage.setItem('rx_blank_type','${k}')}catch(e){};renderBlank()">
     <div class="pv">${blankHtml(k)}</div><div class="cap">${k === BLANK_T ? '✔ ' : ''}${n}</div></label>`).join('');
 }
+let EE_T = 'eye';
+function renderEeBlank() {
+  const el = document.getElementById('ee-prev'); if (!el || !window.TphEyeEar) return;
+  el.innerHTML = TphEyeEar.KINDS.map(k => `<label class="${k === EE_T ? 'on' : ''}" onclick="EE_T='${k}';renderEeBlank()">
+    <div class="pv">${TphEyeEar.html(k)}</div><div class="cap">${k === EE_T ? '✔ ' : ''}${TphEyeEar.LABEL[k]}</div></label>`).join('');
+}
+function printEeBlank() {
+  const n = Math.max(1, Math.min(100, Math.round(+document.getElementById('ee-n').value || 1)));
+  document.getElementById('ee-n').value = n;
+  eePrint(TphEyeEar.html(EE_T).repeat(n));
+}
 function printBlank() {
   const n = Math.max(1, Math.min(300, Math.round(+document.getElementById('blank-n').value || 1)));
   document.getElementById('blank-n').value = n;
@@ -2403,7 +2475,7 @@ function setView(v, noLoad) {
   document.getElementById('view-night').style.display = v === 'night' ? '' : 'none';
   try { localStorage.setItem('rx_sticker_view', v); } catch (e) {}
   if (v === 'md' || v === 'pre') { if (!noLoad) loadIpd(); }
-  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') renderBlank(); else if (v === 'ins') { insInit(); insRender(); } else if (v === 'night') nightInit(); else document.getElementById('f-hn').focus();
+  else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') { renderBlank(); renderEeBlank(); } else if (v === 'ins') { insInit(); insRender(); } else if (v === 'night') nightInit(); else document.getElementById('f-hn').focus();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
