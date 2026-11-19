@@ -174,7 +174,20 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .hmestk.opdsum .hd span:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .hmestk.opdsum .hd span:last-child { flex-shrink: 0; }
 .hmestk.opdsum table.loose td.q { width: 3em; }   /* จำนวนแบบ #60 ไม่มีหน่วย — คอลัมน์แคบลง */
+.hmestk:not(.opdsum) > .box { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }   /* สรุปยาส่งต่อ รพ.สต. = เต็มดวง */
 .hmestk.opdsum .box { width: 70mm; height: 100%; border: .35mm solid #000; padding: 1.2mm 2mm 1mm 4mm; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── ดวงแจ้งเตือนส่งต่อ รพ.สต. (เหน็บสมุดประจำตัว) 101.6 × 59.9 มม. ── */
+.refnote { width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; padding: 2mm 3mm 1.5mm 4mm;
+  font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif; font-size: 13.5pt; line-height: 1.12; display: flex; flex-direction: column; }
+.refnote:last-child { page-break-after: auto; break-after: auto; }
+.refnote .t { font-size: 17pt; font-weight: 700; text-align: center; border: .4mm solid #000; border-radius: 1.5mm; padding: 0 2mm; }
+.refnote .who { display: flex; justify-content: space-between; font-weight: 700; margin-top: .6mm; white-space: nowrap; gap: 2mm; }
+.refnote .who span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.refnote .m { margin-top: .4mm; }
+.refnote ol { margin: .6mm 0 0; padding-left: 5mm; }
+.refnote .w { margin-top: auto; font-weight: 700; text-align: center; border-top: .3mm solid #000; padding-top: .4mm; }
+.refnote .ft { text-align: center; font-size: 11pt; }
 
 /* ── หัวสติกเกอร์ผู้ป่วยใน 9 × 6 ซม. (แบบ CUSTOM- stickerผู้ป่วยใน ของ HOSxP: เตียง / ชื่อ / HN) ── */
 .ipdstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
@@ -771,6 +784,7 @@ function render() {
         ${(() => { const sel = v.items.filter(it => CHECK[it.guid] && !picParse(it).error);   /* นับเฉพาะที่ทำภาพได้ — ส่งทุกตัวที่เลือก ให้แจ้งชื่อยาที่ถูกข้าม */ const n = sel.reduce((s, it) => s + COPIES[it.guid], 0);
           return `<button class="btn" onclick="printItems(${escHtml(JSON.stringify(v.items.filter(it => CHECK[it.guid]).map(it => it.guid)))}, true)" ${n ? '' : 'disabled'} title="ไม่พิมพ์ฉลากปกติ — ใช้กับยาที่มีฉลากปกติแล้ว (เช่น พิมพ์ฉลากภาพเพิ่มให้คนไข้)">🖼️ พิมพ์เฉพาะฉลากรูปภาพ (${n} ดวง)</button>`; })()}
         <button class="btn" onclick="printOpdSum('${escHtml(v.vn)}')" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'} title="ใบสรุปรายการยาที่เลือกทั้งหมดในดวงเดียว (แบบสรุปยากลับบ้าน IPD) — ดวงละไม่เกิน 6 รายการ">🧾 พิมพ์สรุปรายการยา</button>
+        <button class="btn" onclick="printOpdSum('${escHtml(v.vn)}', true)" ${v.items.some(it => CHECK[it.guid]) ? '' : 'disabled'} title="คนไข้ส่งกลับไปรับยาต่อที่ รพ.สต.: สรุปรายการยาเต็มดวง 9×6 + ดวงแจ้งเตือนให้ถือสมุดไปติดต่อ รพ.สต. ภายใน 7 วัน (เหน็บสมุดประจำตัว)">🏥 สรุปยาส่งต่อ รพ.สต.</button>
         <button class="btn" onclick="loadHn('${escHtml(CUR.hn)}')">🔄 ดึงใหม่</button>
         <span class="hint" style="margin:0">เลือกเครื่องพิมพ์ ZDesigner ZD230 · ขอบกระดาษ: ไม่มี · สเกล 100%</span>
       </div>
@@ -2205,14 +2219,15 @@ function printHme(keys) {
 // ── สรุปรายการยา OPD/ER (ผู้ใช้ขอ 2026-11-12) — แบบเดียวกับสรุปยากลับบ้าน IPD แต่พิมพ์ลงม้วนสติกเกอร์ยา OPD 101.6 × 59.9 มม.
 //    เฉพาะรายการที่ติ๊กไว้ · วิธีใช้ตามที่แก้ ✏️ (ถ้ามี) ย่อภาษาอังกฤษแบบ HMe · ดวงละไม่เกิน 6 รายการ
 //    2026-11-19: จำนวนเป็น #60 (ไม่มีหน่วย ให้ชื่อยายาวไม่ต้องขึ้นบรรทัดสอง) · ตัด VN/คิว ออก ใส่วันนัดครั้งถัดไปแทน (v.nextDate จาก bridge /db/rxsticker; bridge รุ่นเก่าไม่มี → '-')
-function opdSumHtml(v, rows, pi, pn, fs) {
-  return `<div class="hmestk opdsum" style="width:101.6mm;height:59.9mm"><div class="box"><div class="hd"><span>สรุปรายการยา · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
-    <div class="hd2"><span>${v.ageY ? 'อายุ ' + escHtml(v.ageY) + ' ปี · ' : ''}นัดครั้งถัดไป ${v.nextDate ? '<b>' + escHtml(thIso(v.nextDate)) + '</b>' : '-'}</span>
+function opdSumHtml(v, rows, pi, pn, fs, refer) {
+  // refer = สรุปยาส่งต่อ รพ.สต. (ผู้ใช้ขอ 2026-11-19): เต็มดวง 9×6 ไม่มีกรอบ 7 ซม. · แถวสองบอกว่ารับยาต่อที่ รพ.สต.
+  return `<div class="hmestk${refer ? '' : ' opdsum'}" style="width:101.6mm;height:59.9mm"><div class="box"><div class="hd"><span>${refer ? 'สรุปยา ส่งต่อ รพ.สต.' : 'สรุปรายการยา'} · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
+    <div class="hd2"><span>${v.ageY ? 'อายุ ' + escHtml(v.ageY) + ' ปี · ' : ''}${refer ? 'รับยาต่อเนื่องที่ รพ.สต. ......................' : 'นัดครั้งถัดไป ' + (v.nextDate ? '<b>' + escHtml(thIso(v.nextDate)) + '</b>' : '-')}</span>
       <span>${escHtml(thIso(v.date))} · ${rows.total} รายการ${pn > 1 ? ` (${pi}/${pn})` : ''}</span></div>
     <div class="bd" style="font-size:${fs}pt"><table${rows.loose ? ' class="loose"' : ''}>${rows.map(([d, i, n, rfs]) => `<tr${rfs ? ` style="font-size:${rfs}pt"` : ''}><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
       <td class="u">${escHtml(d.use)}</td><td class="q">#${escHtml(fmtQty(i.qty))}</td></tr>`).join('')}</table></div></div></div>`;
 }
-function printOpdSum(vn) {
+function printOpdSum(vn, refer) {
   const v = ((CUR && CUR.visits) || []).find(x => String(x.vn) === String(vn));
   if (!v) return;
   const items = v.items.filter(it => CHECK[it.guid] && !HME_SKIP.test(it.name || ''));
@@ -2221,10 +2236,25 @@ function printOpdSum(vn) {
   const pages = [];
   for (let k = 0; k < rows.length; k += HME_PER) { const p = rows.slice(k, k + HME_PER); p.total = rows.length; pages.push(p); }
   const pa = document.getElementById('print-area');
-  const { fs } = hmeFit((rs, f) => opdSumHtml(v, rs, 1, pages.length, f), pages);
-  pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs)).join('');
+  const { fs } = hmeFit((rs, f) => opdSumHtml(v, rs, 1, pages.length, f, refer), pages);
+  pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs, refer)).join('') + (refer ? referNoteHtml(v) : '');
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
+}
+
+// ดวงแจ้งเตือนเหน็บสมุดประจำตัว (ผู้ใช้ขอ 2026-11-19): ได้ยาจาก รพ. 1 เดือน ต้องรีบถือสมุดไปติดต่อ รพ.สต. เพื่อนัดรับยาต่อ
+//   ปัญหาเดิม: คนไข้ลืม/ไม่รีบไป → ไม่มีนัด → ขาดยา · กำหนด "ภายใน 7 วัน" นับจากวันที่มารับยา
+function referNoteHtml(v) {
+  const d = new Date(String(v.date || '') + 'T00:00:00'); if (isNaN(d)) d.setTime(Date.now());
+  d.setDate(d.getDate() + 7);
+  const by = thIso(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  return `<div class="refnote"><div class="t">⚠ สำคัญ · อย่าให้ยาขาด</div>
+    <div class="who"><span>${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
+    <div class="m">วันนี้ได้รับยาจาก รพ.ถ้ำพรรณรา <b>1 เดือน</b><br>ครั้งต่อไป <b>รับยาที่ รพ.สต. ใกล้บ้าน</b></div>
+    <ol><li><b>ถือสมุดประจำตัวไปติดต่อ รพ.สต. ภายใน 7 วัน</b><br>(ไม่เกินวันที่ <b>${escHtml(by)}</b>)</li>
+      <li>ให้เจ้าหน้าที่ รพ.สต. นัดวันรับยาครั้งต่อไป</li></ol>
+    <div class="w">ถ้าไม่ไปติดต่อ จะไม่มีนัด และยาจะหมด · ห้ามหยุดยาเอง</div>
+    <div class="ft">สงสัยโทร ห้องยา 075-306239 ต่อ 112</div></div>`;
 }
 
 // ── ฉลากยาเปล่า (ไฟดับ / HOSxP ล่ม) — ผู้ใช้ขอ 2026-11-12: พิมพ์เก็บไว้ล่วงหน้า เขียนมือเมื่อระบบใช้ไม่ได้ ──
