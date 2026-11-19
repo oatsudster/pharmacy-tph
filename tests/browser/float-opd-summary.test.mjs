@@ -104,3 +104,27 @@ test('clinic หน้าต่างลอย จพ.: ปุ่มพิมพ
   assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('clinic: ปุ่ม 🔄 อัปเดต Bridge สั่ง tphHosxp.bridgeUpdate แบบ manual', async () => {
+  const browser = await chromium.launch();
+  try {
+    const ctx = await ctxOf(browser, {});
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto(pathToFileURL(path.join(ROOT, 'clinic.html')).href); await page.waitForTimeout(500);
+    const r = await page.evaluate(async () => {
+      let n = 0;
+      tphHosxp.bridgeUpdate = async () => { n++; return { ok: true, updated: true, version: 'abc123' }; };
+      const w = window.open('', 'fake-float2');
+      w.document.body.innerHTML = '<div id="fl-link"></div>';
+      floatWin = w;
+      document.querySelector('button[onclick="manualBridgeUpdate()"]').click();
+      await new Promise(res => setTimeout(res, 100));
+      return { n, link: w.document.getElementById('fl-link').textContent };
+    });
+    assert.equal(r.n, 1);
+    assert.match(r.link, /อัปเดต Bridge แล้ว \(abc123\)/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});

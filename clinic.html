@@ -623,6 +623,7 @@ html:has(body[data-suite-page='clinic']) { scroll-padding-bottom: 92px; }
     <button class="tbtn" onclick="openFloatClinic()" title="หน้าต่างเล็กลอยอยู่เหนือ HosXP — กรอกยาที่คนไข้นำกลับมาแล้วบันทึก (DRP ดึงจาก COUNSELLING ใน HOSxP ให้เอง)">🩺 บันทึกคลินิก (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('tech')" title="สำหรับ จพ. — หน้าต่างเล็กลอยอยู่เหนือ HosXP ดูยาคงเหลือและคำนวณจำนวนเม็ดที่ต้อง key จนถึงวันนัด (ปุ่มลัด Alt+2 · จาก HOSxP กด Ctrl+Alt+J)">🪟 ยาคงเหลือ จพ. (ลอย)</button>
     <button class="tbtn" onclick="openFloatLeftover('rph')" title="สำหรับเภสัชกรตอนจ่ายยา — จำนวนที่ต้องจ่ายแยกเป็นซอง/แผง (prepack) + Smart Pharmacy: แจ้งยาที่แพทย์ปรับจาก visit ก่อน และตรวจความเหมาะสมกับค่า lab (ปุ่มลัด Alt+1 · จาก HOSxP กด Ctrl+Alt+P)">💊 จ่ายยา เภสัชกร (ลอย)</button>
+    <button class="tbtn" onclick="manualBridgeUpdate()" title="อัปเดต HOSxP Bridge เครื่องนี้เป็นรุ่นล่าสุดเดี๋ยวนี้ (ปกติหน้าเว็บอัปเดตให้เอง แต่ถ้าเคยอัปเดตไม่สำเร็จจะไม่ลองซ้ำเอง) — ใช้เมื่อหน้าต่างลอยไม่ขึ้น HN หลัง HOSxP อัปเดต">🔄 อัปเดต Bridge</button>
     <button class="tbtn" onclick="openPatientModal()">👥 ทะเบียนผู้ป่วย</button>
     <button class="tbtn" onclick="refreshLeftoverPrices()">🔄 อัปเดตราคายา</button>
     <button class="tbtn" onclick="showMissingPriceDrugs()">❓ ยาที่ยังไม่มีราคา</button>
@@ -2168,6 +2169,18 @@ function isoLocal(dt) {
   return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
+// ปุ่มอัปเดต Bridge เอง (ผู้ใช้ขอ 2026-11-19 — เครื่อง จพ. ไม่อัปเดตเองหลัง HOSxP 4.69.11.18 เพราะเคยอัปเดตไม่สำเร็จ แล้วหน้าเว็บไม่ลองซ้ำ)
+// tphHosxp.bridgeUpdate() = manual: สั่งซ้ำแม้เคยล้มเหลว · ข้อความผล (กำลังอัปเดต/สำเร็จ/ไม่สำเร็จ/ไม่พบ bridge) แสดงที่มุมซ้ายล่างของหน้าหลัก
+async function manualBridgeUpdate() {
+  if (!window.tphHosxp || typeof tphHosxp.bridgeUpdate !== 'function') { showToast('⚠️ หน้าเว็บยังเป็นรุ่นเก่า — กด Ctrl+F5 แล้วลองใหม่'); return; }
+  const fd = floatWin && !floatWin.closed ? floatWin.document.getElementById('fl-link') : null;
+  if (fd) fd.textContent = '⏳ กำลังอัปเดต HOSxP Bridge… (ดูผลที่หน้าหลัก)';
+  const r = await tphHosxp.bridgeUpdate();
+  const msg = r && r.ok ? (r.updated ? `✅ อัปเดต Bridge แล้ว (${r.version})` : `✅ Bridge เป็นรุ่นล่าสุดแล้ว (${r.version || ''})`)
+    : `⚠️ อัปเดต Bridge ไม่สำเร็จ: ${(r && r.error) || ''} — ใช้คำสั่งติดตั้งใหม่ (Windows + R) ที่ขึ้นมุมซ้ายล่าง`;
+  if (fd) fd.textContent = msg;
+  bridgeKey = '';
+}
 async function openFloatLeftover(mode = 'tech') {
   if (floatWin && !floatWin.closed) {
     if (floatMode === mode) { floatWin.focus(); return; }
@@ -2190,6 +2203,7 @@ async function openFloatLeftover(mode = 'tech') {
     <div class="row">
       <input id="fl-hn" placeholder="HN (Enter)" autocomplete="off">
       <button id="fl-paste" title="วาง HN ที่คัดลอกมาจาก HosXP">📋 วาง</button>
+      <button id="fl-upd" title="อัปเดต HOSxP Bridge เครื่องนี้เป็นรุ่นล่าสุด (ใช้เมื่อไม่ขึ้น HN หลัง HOSxP อัปเดต)">🔄</button>
     </div>
     <div class="row">
       <span>นัดอีก</span>
@@ -2229,6 +2243,7 @@ async function openFloatLeftover(mode = 'tech') {
     renderFloatLeftover();
   });
   renderFloatChips();
+  d.getElementById('fl-upd').addEventListener('click', manualBridgeUpdate);
   d.getElementById('fl-paste').addEventListener('click', async () => {
     try {
       const txt = (await navigator.clipboard.readText()).trim();
