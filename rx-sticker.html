@@ -541,9 +541,9 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 <div class="wrap" id="view-rx">
   <div>
     <div class="card">
-      <h2>🔎 ใส่ / สแกน HN</h2>
-      <input type="text" id="f-hn" inputmode="numeric" placeholder="HN แล้วกด Enter" autocomplete="off">
-      <div class="hint">ดึงใบสั่งยา visit วันนี้และเมื่อวานของ HN นี้จากฐานข้อมูล HOSxP</div>
+      <h2>🔎 ใส่ / สแกน HN หรือคิว</h2>
+      <input type="text" id="f-hn" inputmode="numeric" placeholder="HN หรือ คิว แล้วกด Enter" autocomplete="off">
+      <div class="hint">HN (5 หลักขึ้นไป) หรือเลขคิววันนี้ (1–4 หลัก) — ดึงใบสั่งยา visit วันนี้และเมื่อวานจากฐานข้อมูล HOSxP</div>
     </div>
     <div class="card">
       <h2>🕘 ใบสั่งยาล่าสุด <button class="btn btn-sm" style="margin-left:auto" onclick="loadQueue()">🔄</button></h2>
@@ -687,9 +687,32 @@ async function loadQueue() {
     </div>`).join('') || '<div class="empty">ยังไม่มีใบสั่งยา</div>';
 }
 
+// ช่อง 🔎 รับได้ทั้ง HN และเลขคิว (ผู้ใช้ขอ 2026-11-19): 1-4 หลัก = คิววันนี้ · 5 หลักขึ้นไป = HN
+async function findQueue(q) {
+  const today = new Date().toLocaleDateString('sv-SE');
+  let hit = QUEUE.filter(x => x.date === today && String(x.queue) === String(+q));
+  if (!hit.length) {   // ไม่อยู่ใน 40 รายการล่าสุด → ถาม bridge (bridge ตัวเก่าไม่รู้จัก ?q= จะคืนรายการล่าสุดมา กรองซ้ำกันพลาด)
+    const r = window.tphHosxp && tphHosxp.rxQueue ? await tphHosxp.rxQueue(+q) : null;
+    hit = ((r && r.items) || []).filter(x => x.date === today && String(x.queue) === String(+q));
+  }
+  return [...new Map(hit.map(x => [String(x.hn), x])).values()];
+}
 async function loadHn(hn) {
   hn = String(hn || '').replace(/\D/g, '');
   if (!hn) return;
+  if (hn.length <= 4) {
+    const q = hn, det = document.getElementById('detail');
+    det.innerHTML = `<div class="empty">⏳ กำลังหาคิว ${escHtml(String(+q))}…</div>`;
+    showStatus('');
+    SEL_HN = 'q' + q;
+    const hits = await findQueue(q);
+    if (SEL_HN !== 'q' + q) return;
+    if (hits.length === 1) return loadHn(hits[0].hn);
+    if (!hits.length) { det.innerHTML = `<div class="empty">ไม่พบคิว ${escHtml(String(+q))} ของวันนี้ — ใส่ HN แทน</div>`; return; }
+    det.innerHTML = `<div class="empty">คิว ${escHtml(String(+q))} มีหลายคน — เลือก:<br>` + hits.map(x =>
+      `<button class="btn" style="margin:6px" onclick="loadHn('${escHtml(x.hn)}')">HN ${escHtml(x.hn)} · ${escHtml(x.name || '-')} · ${escHtml(x.dep || '')}</button>`).join('') + '</div>';
+    return;
+  }
   SEL_HN = hn;
   document.querySelectorAll('.q-row').forEach(el => el.classList.toggle('sel', el.getAttribute('onclick').includes(`'${hn}'`)));
   const det = document.getElementById('detail');

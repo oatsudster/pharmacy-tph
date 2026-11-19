@@ -29,6 +29,7 @@
 #   /db/dmvisits?hn= — วันที่เข้าคลินิก NCDs remission แต่ละครั้ง พร้อมสัญญาณชีพ lab (ล่าสุดภายใน 60 วันก่อนวันนั้น) และยาที่ได้
 #   /db/dmscreen    — คัดกรองคนไข้คลินิกเบาหวาน (023 นัด LAB, 001 DM) ใน 1 ปี: HbA1c 2 ปี + การจ่ายยาลดน้ำตาล 2 ปี + ปีที่เริ่มเป็น DM
 #   /db/rxqueue     — visit วันนี้/เมื่อคืนที่มียา (ล่าสุด 40 visit) + ใครล็อก VN อยู่ (vn_lock) — หน้า rx-sticker.html
+#                     ?q=คิว = หา visit วันนี้ที่มีคิวนี้ (ช่อง 🔎 ใส่คิวแทน HN ได้)
 #   /db/rxsticker?hn= — ข้อมูลสติกเกอร์ยาแต่ละรายการของ visit วันนี้/เมื่อวาน ตามแบบ StickerDetailReport.rtm ของ HOSxP
 #                     (ชื่อยา name_print, วิธีใช้ 3 บรรทัด, คำเตือน drughint, therapeutic, ชื่อสามัญไทย, เก็บพ้นแสง/ยาปฏิชีวนะ)
 #   /db/mrmeds?hn=&an= — ยาที่ได้รับจาก รพ. 1 ปีก่อน admit (OPD + ยากลับบ้าน) — สติกเกอร์ยาเดิมแปะใบ MR
@@ -560,15 +561,18 @@ function DbDmScreen {
 }
 
 # ── สติกเกอร์ยา (พิมพ์เองเมื่อ VN ถูกพยาบาลล็อกอยู่ใน HOSxP) ──
-function DbRxQueue {
+function DbRxQueue($path) {
+  # ?q=คิว (1-4 หลัก) = visit วันนี้ที่ oqueue ตรง — ไม่กรองว่ามียา (หน้าเว็บบอกเองถ้าไม่มี)
+  $qn = if ("$path" -match '[?&]q=(\d{1,4})(&|$)') { [int]$Matches[1] } else { $null }
+  $where = if ($null -ne $qn) { "o.vstdate = CURDATE() AND o.oqueue = $qn" } else { "o.vstdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY)" }
   $rows = DbQuery ("SELECT o.vn, o.hn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, k.department, " +
     "(SELECT COUNT(*) FROM opitemrece r JOIN drugitems d ON d.icode=r.icode WHERE r.vn=o.vn) AS ndrug, " +
     "(SELECT DATE_FORMAT(MAX(r.last_modified),'%H:%i') FROM opitemrece r WHERE r.vn=o.vn) AS lastmod, " +
     "l.lock_staff, l.lock_computer, DATE_FORMAT(l.lock_date_time,'%H:%i') AS lock_time " +
     "FROM ovst o LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN kskdepartment k ON k.depcode=o.cur_dep LEFT JOIN vn_lock l ON l.vn=o.vn " +
-    "WHERE o.vstdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 150")
-  $items = @($rows | Where-Object { [int]$_['ndrug'] -gt 0 } | Select-Object -First 40 | ForEach-Object {
+    "WHERE $where ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 150")
+  $items = @($rows | Where-Object { $null -ne $qn -or [int]$_['ndrug'] -gt 0 } | Select-Object -First 40 | ForEach-Object {
     [ordered]@{ vn = $_['vn']; hn = $_['hn']; date = $_['vstdate']; time = $_['vsttime']; queue = $_['oqueue']; name = $_['ptname']
       dep = $_['department']; ndrug = [int]$_['ndrug']; lastmod = $_['lastmod']
       lockStaff = $_['lock_staff']; lockComputer = $_['lock_computer']; lockTime = $_['lock_time'] } })
@@ -959,7 +963,7 @@ function DbEndpoint($path) {
     try { $res = if ($path -like '/db/denom*') { DbDenom } elseif ($path -like '/db/adr*') { DbAdr $path }
       elseif ($path -match '^/db/me(\?|$)') { DbMe $path }
       elseif ($path -like '/db/nightmeds*') { DbNightMeds $path }
-      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } elseif ($path -like '/db/mrdict*') { DbMrDict } elseif ($path -like '/db/mrpre*') { DbMrPre $path } else { DbDmScreen } }
+      elseif ($path -like '/db/dmroster*') { DbDmRoster } elseif ($path -like '/db/rxqueue*') { DbRxQueue $path } elseif ($path -like '/db/ipdlist*') { DbIpdList } elseif ($path -like '/db/hme*') { DbHme } elseif ($path -like '/db/mrdict*') { DbMrDict } elseif ($path -like '/db/mrpre*') { DbMrPre $path } else { DbDmScreen } }
     catch { $res = [ordered]@{ ok = $false; error = "$_" } }
     return [HxDb]::Json($res)
   }
