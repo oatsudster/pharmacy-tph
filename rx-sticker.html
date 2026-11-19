@@ -821,7 +821,9 @@ function stickerHtml(v, it, idx, total, now) {
     s(pos(55.3, 53.45, 9.8, 3.5, 8), 'th b r', it.pregnancy || '');
   h += '</div>';
   // ดวงคำแนะนำ (special/precaution advice เช่น วิธีใช้ยาพ่น) — HOSxP พิมพ์เป็นดวงถัดไป
-  if (it.advice) h += `<div class="stk"><div class="th wrap2" style="${pos(10.85, 3, 78, 54, 8)}line-height:1.3">${escHtml(it.advice).replace(/\n/g, '<br>')}</div></div>`;
+  // ไม่พิมพ์เมื่อฉลากภาษาพม่า/อังกฤษ หรือเปิดฉลากรูปของ HN นี้ (ผู้ใช้ขอ 2026-11-19: คำเตือนผลข้างเคียงภาษาไทย
+  //   เช่น amlodipine / simvastatin ผู้ป่วยกลุ่มนี้อ่านไม่ได้ เปลืองสติกเกอร์)
+  if (it.advice && labelLang(CUR.hn) === 'th' && !picOn(CUR.hn)) h += `<div class="stk"><div class="th wrap2" style="${pos(10.85, 3, 78, 54, 8)}line-height:1.3">${escHtml(it.advice).replace(/\n/g, '<br>')}</div></div>`;
   return h;
 }
 // ฉลากภาษาพม่า/อังกฤษ: วิธีใช้ที่แปลแล้ว 3 บรรทัดในที่เดิม (บรรทัดที่แปลไม่ได้พิมพ์ไทย) แล้ววิธีใช้ภาษาไทยตัวเล็ก 1 บรรทัดไว้ให้เจ้าหน้าที่ตรวจ
