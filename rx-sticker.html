@@ -15,7 +15,7 @@
 <script src="lib/esc-html.js"></script>
 <script src="lib/firebase-app-compat-9.js"></script>
 <script src="lib/firebase-firestore-compat-9.js"></script>
-<script src="lib/hosxp-db.js?v=20261029"></script>
+<script src="lib/hosxp-db.js?v=20261119"></script>
 <script src="lib/rx-check.js?v=20261017a"></script>
 <script src="lib/smart-rx.js?v=20261018a"></script>
 <script src="lib/renal-dose.js?v=20261114c"></script>
@@ -2552,6 +2552,29 @@ function setView(v, noLoad) {
   else if (v === 'ipd') loadIpd(); else if (v === 'hme') loadHme(); else if (v === 'blank') { renderBlank(); renderEeBlank(); } else if (v === 'ins') { insInit(); insRender(); } else if (v === 'night') nightInit(); else document.getElementById('f-hn').focus();
 }
 
+// เปิดจากหน้าต่างลอย จพ. ใน clinic.html (ผู้ใช้ขอ 2026-11-19): #opdsum=HN = 🧾 สรุปรายการยา · #refer=HN = 🏥 สรุปยาส่งต่อ รพ.สต.
+//   ดึงใบสั่งยาจาก HOSxP ตอนนั้น → visit วันนี้ล่าสุดที่มียา → พิมพ์ทันที (รายการที่ติ๊กไว้ตามค่าเริ่ม) → ปิด popup เองหลังพิมพ์/ยกเลิก
+const AUTO_SUM_RE = /^#(opdsum|refer)=(\d{5,10})/;
+async function autoOpdSum() {
+  const m = location.hash.match(AUTO_SUM_RE);
+  if (!m) return;
+  const hn = m[2], refer = m[1] === 'refer';
+  history.replaceState(null, '', location.pathname + location.search);   // รีโหลดหน้าไม่พิมพ์ซ้ำ
+  setView('rx');
+  document.getElementById('f-hn').value = hn;
+  await loadHn(hn);
+  if (!CUR || String(CUR.hn) !== hn) return;   // ดึงไม่ได้ — loadHn แสดงข้อความแล้ว
+  const today = new Date().toLocaleDateString('sv-SE');
+  const vs = (CUR.visits || []).filter(x => x.date === today && x.items.some(it => CHECK[it.guid] && !HME_SKIP.test(it.name || '')))
+    .sort((x, y) => String(y.time || '').localeCompare(String(x.time || '')));
+  if (!vs.length) { showStatus('⚠️ HN ' + hn + ' ยังไม่มีใบสั่งยาของวันนี้ใน HOSxP — ไม่มีอะไรให้พิมพ์สรุป'); return; }
+  if (vs.length > 1) showStatus(`วันนี้มี ${vs.length} visit — พิมพ์ของ visit ล่าสุด (${vs[0].time} น.) ถ้าต้องการ visit อื่นกดปุ่มในรายการด้านล่าง`);
+  if (window.opener || window.name === 'rx-opdsum') {
+    window.addEventListener('afterprint', () => setTimeout(() => { if (vs.length === 1) window.close(); }, 300), { once: true });
+  }
+  printOpdSum(vs[0].vn, refer);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('f-hn');
   el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadHn(el.value); el.select(); } });
@@ -2566,7 +2589,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hme-auto').checked = true;
     try { localStorage.setItem('hme_opts', JSON.stringify({ auto: true })); } catch (e) {}
   }
+  if (AUTO_SUM_RE.test(location.hash)) v = 'rx';
   setView(['ipd', 'md', 'pre', 'hme', 'blank', 'ins', 'night'].includes(v) ? v : 'rx');
+  autoOpdSum();
+  window.addEventListener('hashchange', autoOpdSum);   // popup เดิมถูกเปิดซ้ำด้วย HN ใหม่ = เปลี่ยนแค่ hash ไม่โหลดหน้าใหม่
   if (v !== 'hme' && document.getElementById('hme-auto').checked) loadHme();
   // ยากลับบ้าน: ตรวจทุก 30 วินาที (ทุกแท็บ) เมื่อเปิดพิมพ์อัตโนมัติ หรือกำลังดูแท็บนี้
   setInterval(() => { if (document.getElementById('hme-auto').checked || document.getElementById('view-hme').style.display === '') loadHme(); }, 30000);

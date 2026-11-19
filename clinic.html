@@ -2079,6 +2079,12 @@ const FLOAT_CSS = `
   .pt b{font-size:14px}
   .muted{color:#587363;font-size:12px}
   .warn{color:#b45309;font-size:12px;font-weight:600}
+  #fl-sum{margin-bottom:8px}
+  .sumbox{border:1.5px solid #D6E4DA;border-radius:8px;background:#fff;padding:6px 8px}
+  .sumbox.chg{border-color:#C49A22;background:#FFFBEB}
+  .sumbox .bt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+  .sumbox .bt button.pri{background:#1A5E38;color:#fff;border-color:#1A5E38}
+  .sumbox ul{margin:3px 0 0 16px;font-size:11.5px;color:#7c4a03}
   table{width:100%;border-collapse:collapse;background:#fff;border-radius:9px;overflow:hidden}
   th{background:#EAF4EE;color:#124228;font-size:11px;padding:5px 4px;text-align:center}
   td{padding:5px 4px;border-top:1px solid #EAF4EE;text-align:center;vertical-align:middle}
@@ -2193,12 +2199,13 @@ async function openFloatLeftover(mode = 'tech') {
     </div>
     <div class="row" id="fl-chips"></div>
     <div id="fl-link">⏳ กำลังเชื่อม HOSxP…</div>
-    ${rph ? '<div id="fl-alert"></div>' : ''}
+    ${rph ? '<div id="fl-alert"></div>' : '<div id="fl-sum"></div>'}
     <div id="fl-result"><div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div></div>
     ${rph ? '<div id="fl-smart"></div>' : ''}`;
 
   const hnEl = d.getElementById('fl-hn');
   hnEl.addEventListener('input', () => { renderFloatLeftover(); if (rph) smartRefresh(); });
+  if (!rph) d.getElementById('fl-sum').addEventListener('click', e => { const b = e.target.closest('button[data-sum]'); if (b) printFloatSum(b.dataset.sum === 'refer'); });
   // จำนวนวันกับวันนัดผูกกันสองทาง พิมพ์ช่องไหนก็ได้ (HosXP บางทีบอกเป็นวัน บางทีเป็นวันที่)
   const daysEl = d.getElementById('fl-days'), apptEl = d.getElementById('fl-appt');
   daysEl.addEventListener('input', () => {
@@ -3438,11 +3445,76 @@ function saveNoAdjust() {
 }
 function cancelNoAdjust() { noAdjPending = {}; renderFloatLeftover(); }
 
+// ── ปุ่มพิมพ์สรุปรายการยา OPD จากหน้าต่างลอย จพ. (ผู้ใช้ขอ 2026-11-19) ──
+// จพ. เปิดหน้าต่างนี้ตอนปรับยาตามนัดอยู่แล้ว → กดพิมพ์ได้เลย ไม่ต้องสลับไปหน้าสติกเกอร์ยา
+// บอกด้วยว่าครั้งนี้ยาโรคเรื้อรังเปลี่ยนจากครั้งก่อนไหม (ยาใหม่/เปลี่ยนวิธีใช้/ขนาด/หยุดยา — tphSmartRx.analyze แบบเดียวกับ Smart Pharmacy)
+//   = ควรพิมพ์สรุปใหม่แปะสมุด · ตัวพิมพ์จริงคือ rx-sticker.html#opdsum=HN (popup เล็ก ดึงจาก HOSxP ตอนกด แล้วปิดเองหลังพิมพ์)
+const FLOAT_SUM_MS = 30000;
+const floatSumCache = new Map();   // HN → { at, order, visits, failed }
+let floatSumBusy = '';
+async function floatSumLoad(hn) {
+  const c = floatSumCache.get(hn);
+  if (floatSumBusy === hn || (c && Date.now() - c.at < FLOAT_SUM_MS)) return;
+  floatSumBusy = hn;
+  try {
+    const [o, v] = await Promise.all([tphHosxp.order(hn), tphHosxp.visits(hn)]);
+    floatSumCache.set(hn, { at: Date.now(), order: o, visits: (v && v.visits) || [], failed: !o && !v });
+    if (floatSumCache.size > 30) floatSumCache.delete(floatSumCache.keys().next().value);
+  } finally { floatSumBusy = ''; }
+  renderFloatSum();
+}
+function renderFloatSum() {
+  if (!floatWin || floatWin.closed || floatMode !== 'tech') return;
+  const d = floatWin.document, el = d.getElementById('fl-sum');
+  if (!el) return;
+  const hn = d.getElementById('fl-hn').value.trim();
+  if (!/^\d{5,10}$/.test(hn) || !window.tphHosxp || typeof tphHosxp.order !== 'function') { el.innerHTML = ''; return; }
+  const c = floatSumCache.get(hn);
+  floatSumLoad(hn);
+  let info = '', chg = false;
+  if (!c) info = '<div class="muted">⏳ กำลังเทียบยากับครั้งก่อน…</div>';
+  else if (c.failed) info = '<div class="muted">ต่อฐานข้อมูล HOSxP ไม่ได้ — ยังกดพิมพ์ได้ (หน้าสติกเกอร์จะแจ้งถ้าดึงไม่ได้)</div>';
+  else {
+    const today = (c.order && c.order.drugs) || [];
+    if (!today.length) info = '<div class="muted">ยังไม่มีใบสั่งยาวันนี้ใน HOSxP</div>';
+    else if (window.tphSmartRx) {
+      const res = tphSmartRx.analyze({ today, visits: c.visits });
+      const when = res.prev ? ` (เทียบ ${escHtml(tphHosxp.thDate(res.prev.date))})` : '';
+      if (!res.prev) info = '<div class="muted">ไม่มี visit ก่อนให้เทียบ — คนไข้ใหม่/ยาชุดแรก พิมพ์สรุปให้ได้</div>';
+      else if (!res.changes.length) info = `<div class="muted">✅ ยาโรคเรื้อรังเหมือนครั้งก่อน${when} — ไม่ต้องพิมพ์สรุปใหม่</div>`;
+      else {
+        chg = true;
+        info = `<div class="warn">🆕 ยาเปลี่ยนจากครั้งก่อน ${res.changes.length} รายการ${when} — ควรพิมพ์สรุปใหม่</div><ul>`
+          + res.changes.slice(0, 8).map(x => `<li>${escHtml(x.text)}</li>`).join('') + (res.changes.length > 8 ? `<li>… อีก ${res.changes.length - 8} รายการ</li>` : '') + '</ul>';
+      }
+    }
+  }
+  el.innerHTML = `<div class="sumbox${chg ? ' chg' : ''}"><div class="bt">
+      <button type="button" data-sum="1"${chg ? ' class="pri"' : ''} title="สรุปรายการยาของ visit วันนี้ลงสติกเกอร์ยา OPD (กรอบ 7 ซม. แปะสมุดประจำตัว) — คีย์จำนวนใน HOSxP ให้เสร็จก่อน ระบบดึงจำนวนตอนกด">🧾 พิมพ์สรุปรายการยา</button>
+      <button type="button" data-sum="refer" title="คนไข้ส่งกลับไปรับยาต่อที่ รพ.สต.: สรุปเต็มดวง 9×6 + ดวงเตือนให้ถือสมุดไป รพ.สต. ภายใน 7 วัน">🏥 ส่งต่อ รพ.สต.</button>
+    </div>${info}</div>`;
+}
+function printFloatSum(refer) {
+  if (!floatWin || floatWin.closed) return;
+  const hn = floatWin.document.getElementById('fl-hn').value.trim();
+  if (!/^\d{5,10}$/.test(hn)) return;
+  floatSumCache.delete(hn);   // พิมพ์แล้วอ่านใหม่ เผื่อใบสั่งเพิ่งถูกแก้
+  const url = new URL('rx-sticker.html', location.href);
+  url.hash = (refer ? 'refer=' : 'opdsum=') + hn + '&t=' + Date.now();
+  // เปิดจากหน้าต่างลอยเอง (มี user gesture ของบานนี้) — Chrome ไม่ยอมให้หน้าหลักเปิดแทน
+  let w = null;
+  try { w = floatWin.open(url.href, 'rx-opdsum', 'width=560,height=720'); } catch (e) { w = null; }
+  if (!w) { try { w = window.open(url.href, 'rx-opdsum', 'width=560,height=720'); } catch (e) { w = null; } }
+  if (!w) { const el = floatWin.document.getElementById('fl-sum'); if (el) el.insertAdjacentHTML('beforeend', '<div class="warn">⚠️ เบราว์เซอร์บล็อก popup — อนุญาต popup ของหน้านี้ก่อน</div>'); return; }
+  try { w.focus(); } catch (e) {}
+  setTimeout(renderFloatSum, 1500);
+}
 function renderFloatLeftover() {
   if (!floatWin || floatWin.closed) return;
   const d = floatWin.document;
   const out = d.getElementById('fl-result');
   if (!out) return;
+  renderFloatSum();
   const days = floatDaysToAppt();   // วันถึงนัดตามที่กรอก (ตัวคำนวณจริงใช้ floatCalcDays = +1 วัน)
   const hn = d.getElementById('fl-hn').value.trim();
   if (hn.length < 3) { out.innerHTML = '<div class="empty">พิมพ์หรือวาง HN เพื่อดูยาคงเหลือ</div>'; return; }

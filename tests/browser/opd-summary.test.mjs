@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { ROOT } from '../helpers.mjs';
 
-test('สรุปรายการยา OPD: เฉพาะที่ติ๊ก · ดวงละ 6 · วิธีใช้ย่อ · หน้า 101.6×59.9', async () => {
+test('สรุปรายการยา OPD: เฉพาะที่ติ๊ก · เต็มดวง (7 รายการ = 1 ดวง ตั้งแต่ 6febb25) · วิธีใช้ย่อ · หน้า 101.6×59.9', async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   await ctx.route('**/*', r => r.request().url().startsWith('file:') ? r.continue() : r.abort());
@@ -28,10 +28,10 @@ test('สรุปรายการยา OPD: เฉพาะที่ติ�
       head: stk[0].querySelector('.hd2').textContent, size: document.getElementById('page-size').textContent };
   });
   await page.waitForTimeout(150);
-  assert.equal(r.n, 2);
-  assert.deepEqual(r.rows, [6, 1]);
+  assert.equal(r.n, 1);
+  assert.deepEqual(r.rows, [7]);
   assert.match(r.use, /1 x 3 pc/);
-  assert.match(r.head, /7 รายการ \(1\/2\)/);
+  assert.match(r.head, /7 รายการ/);
   assert.match(r.size, /101\.6mm 59\.9mm/);
   assert.equal(await page.evaluate(() => window.__printed), 1);
   assert.deepEqual(errors, []);
