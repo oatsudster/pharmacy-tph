@@ -696,7 +696,10 @@ function DbHme {
 function DbRxSticker($hn) {
   $vis = DbQuery ("SELECT o.vn, DATE_FORMAT(o.vstdate,'%Y-%m-%d') AS vstdate, TIME_FORMAT(o.vsttime,'%H:%i') AS vsttime, o.oqueue, " +
     "TRIM(CONCAT(IFNULL(p.pname,''), IFNULL(p.fname,''), ' ', IFNULL(p.lname,''))) AS ptname, v.age_y, " +
-    "l.lock_staff, l.lock_computer, DATE_FORMAT(l.lock_date_time,'%H:%i') AS lock_time " +
+    "l.lock_staff, l.lock_computer, DATE_FORMAT(l.lock_date_time,'%H:%i') AS lock_time, " +
+    # วันนัดครั้งถัดไปบนสติกเกอร์สรุปรายการยา OPD (ผู้ใช้ขอ 2026-11-19): นัดที่ออกใน visit นี้ก่อน ไม่มีก็นัดถัดไปที่ค้างอยู่ของ HN
+    "COALESCE((SELECT DATE_FORMAT(MIN(a.nextdate),'%Y-%m-%d') FROM oapp a WHERE a.hn=o.hn AND a.vn=o.vn AND a.nextdate>o.vstdate AND (a.oapp_status_id IS NULL OR a.oapp_status_id=1)), " +
+    "(SELECT DATE_FORMAT(MIN(a.nextdate),'%Y-%m-%d') FROM oapp a WHERE a.hn=o.hn AND a.nextdate>o.vstdate AND (a.oapp_status_id IS NULL OR a.oapp_status_id=1))) AS next_date " +
     "FROM ovst o LEFT JOIN patient p ON p.hn=o.hn LEFT JOIN vn_stat v ON v.vn=o.vn LEFT JOIN vn_lock l ON l.vn=o.vn " +
     "WHERE o.hn='$hn' AND o.vstdate IN (CURDATE(), CURDATE() - INTERVAL 1 DAY) ORDER BY o.vstdate DESC, o.vsttime DESC")
   $visits = @()
@@ -715,7 +718,7 @@ function DbRxSticker($hn) {
       "WHERE o.vn IN ($vns) ORDER BY o.vn, o.item_no")
     $visits = @($vis | ForEach-Object {
       $vn = $_['vn']
-      [ordered]@{ vn = $vn; date = $_['vstdate']; time = $_['vsttime']; queue = $_['oqueue']; name = $_['ptname']; ageY = $_['age_y']
+      [ordered]@{ vn = $vn; date = $_['vstdate']; time = $_['vsttime']; queue = $_['oqueue']; name = $_['ptname']; ageY = $_['age_y']; nextDate = $_['next_date']
         lockStaff = $_['lock_staff']; lockComputer = $_['lock_computer']; lockTime = $_['lock_time']
         items = @($items | Where-Object { $_['vn'] -eq $vn } | ForEach-Object {
           [ordered]@{ guid = $_['hos_guid']; icode = $_['icode']; qty = $_['qty']; rxtime = $_['rxtime']; lastmod = $_['lastmod']; dep = $_['department']
