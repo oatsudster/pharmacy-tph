@@ -524,6 +524,7 @@ const DashUX = {
       <button type="button" onclick="stampNow('c-time-sent');calcCart()" title="บันทึกเวลาตอนนี้" style="background:var(--primary-light);border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--primary-light)';this.style.color=''">🕐</button>
     </div>
     </div>
+    <div id="c-called-fields" style="display:none">
     <div class="form-group">
       <label>เวลาโทรให้มารับรถยา</label>
       <div style="display:flex;align-items:center;gap:6px">
@@ -538,8 +539,9 @@ const DashUX = {
       <div class="calc-label" style="text-align:center;margin-top:4px">เกณฑ์ ≤ 120 นาที</div>
     </div>
     </div>
+    </div>
 
-    <button class="btn-submit" id="cart-submit-btn" onclick="submitCart()">✅ บันทึก (ครบทั้งสองเวลา)</button>
+    <button class="btn-submit" id="cart-submit-btn" onclick="submitCart()" style="display:none">✅ บันทึก (ครบทั้งสองเวลา)</button>
     <button class="btn-submit" id="cart-pending-btn" onclick="submitCartPending()" style="background:var(--gold);color:var(--tph-on-gold,#0D3320);margin-top:6px">🕐 บันทึกเวลาส่งรถ (รอรับ)</button>
     <button class="btn-clear" onclick="resetCartForm()">ล้างฟอร์ม</button>
   </div>
@@ -849,7 +851,11 @@ function calcCart() {
 function toggleNoCart() {
   const noCart = document.getElementById('c-no-cart').checked;
   document.getElementById('c-time-fields').style.display = noCart ? 'none' : '';
-  document.getElementById('cart-pending-btn').style.display = noCart ? 'none' : '';
+  // คนพิมพ์กับคนเช็ค/ส่งรถยาเป็นคนละคน → บันทึกใหม่กดได้แค่ "บันทึกเวลาส่งรถ (รอรับ)" แล้วไปกดรับในรายการรอรับ
+  // ช่องเวลาโทรรับ + ปุ่มบันทึกครบ แสดงเฉพาะตอนแก้ไขรายการ หรือวันที่ไม่ต้องส่งรถยา
+  document.getElementById('c-called-fields').style.display = editingCartId ? '' : 'none';
+  document.getElementById('cart-pending-btn').style.display = (noCart || editingCartId) ? 'none' : '';
+  document.getElementById('cart-submit-btn').style.display = (noCart || editingCartId) ? '' : 'none';
   document.getElementById('cart-submit-btn').textContent = editingCartId
     ? '💾 บันทึกการแก้ไข'
     : (noCart ? '✅ บันทึก (ไม่มีการส่งรถยา)' : '✅ บันทึก (ครบทั้งสองเวลา)');
