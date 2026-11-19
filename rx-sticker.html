@@ -2233,10 +2233,19 @@ function printOpdSum(vn, refer) {
   const items = v.items.filter(it => CHECK[it.guid] && !HME_SKIP.test(it.name || ''));
   if (!items.length) return;
   const rows = items.map((it, k) => { const L = usageLines(it); return [hmeDrug(Object.assign({}, it, { line1: L[0], line2: L[1], line3: L[2] })), it, k + 1]; });
-  const pages = [];
-  for (let k = 0; k < rows.length; k += HME_PER) { const p = rows.slice(k, k + HME_PER); p.total = rows.length; pages.push(p); }
+  // ใส่ให้เต็มดวง (ผู้ใช้ขอ 2026-11-19 — เดิมตัดที่ 6 รายการ/ดวง): ลองจำนวนดวงน้อยสุดก่อน แบ่งเท่าๆ กัน
+  //   ใช้ได้ถ้าทุกแถวอยู่บรรทัดเดียวและตัวอักษรไม่ต่ำกว่า HME_FS_MIN (7pt) — ไม่งั้นเพิ่มดวง (6 รายการ/ดวงเป็นอย่างน้อยที่รับได้เสมอ)
+  const split = np => { const per = Math.ceil(rows.length / np), out = [];
+    for (let k = 0; k < rows.length; k += per) { const p = rows.slice(k, k + per); p.total = rows.length; out.push(p); } return out; };
+  const build = pg => (rs, f) => opdSumHtml(v, rs, 1, pg.length, f, refer);
+  const maxNp = Math.ceil(rows.length / HME_PER);
+  let pages, fit;
+  for (let np = 1; np <= maxNp; np++) {
+    pages = split(np); fit = hmeFit(build(pages), pages);
+    if (!fit.small && !fit.over) break;
+  }
   const pa = document.getElementById('print-area');
-  const { fs } = hmeFit((rs, f) => opdSumHtml(v, rs, 1, pages.length, f, refer), pages);
+  const { fs } = fit;
   pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs, refer)).join('') + (refer ? referNoteHtml(v) : '');
   document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
