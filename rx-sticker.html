@@ -2217,12 +2217,25 @@ function hmeLayout(o) {
   const c = HME_LAYOUT[k];
   if (c && c.sig === sig) return c;
   const rows = o.items.map((i, n) => [hmeDrug(i), i, n + 1]);
-  const pages = [];
-  for (let n = 0; n < rows.length; n += HME_PER) pages.push(rows.slice(n, n + HME_PER));
-  const f = rows.length ? hmeFit((rs, fs) => hmeStickerHtml(o, rs, 1, pages.length, HME_W, HME_H, fs), pages) : { fs: HME_FS_MAX, small: false, over: false };
-  return (HME_LAYOUT[k] = Object.assign({ sig, pages }, f));
+  if (!rows.length) return (HME_LAYOUT[k] = { sig, pages: [], fs: HME_FS_MAX, small: false, over: false });
+  // ใส่ให้เต็มดวง (ผู้ใช้ขอ 2026-11-20 — เดิมตัด 6 รายการ/ดวง เหลือที่ว่างด้านล่าง) แบบเดียวกับสรุปยา OPD:
+  //   ลองจำนวนดวงน้อยสุดก่อน แบ่งเท่าๆ กัน ใช้ได้ถ้าทุกแถวอยู่บรรทัดเดียว ≥ 7pt (บางแถวลงได้ถึง 6.5pt)
+  //   ไม่งั้นเพิ่มดวง — ดวงละ 6 (แบบเดิม) เป็นเกณฑ์ต่ำสุด ถ้าแบบเดิมก็ต้องย่อเล็กกว่านั้น ยอมเท่าแบบเดิม
+  const split = np => { const per = Math.ceil(rows.length / np), out = [];
+    for (let n = 0; n < rows.length; n += per) out.push(rows.slice(n, n + per)); return out; };
+  const fitOf = np => { const pages = split(np); return { pages, f: hmeFit((rs, fs) => hmeStickerHtml(o, rs, 1, pages.length, HME_W, HME_H, fs), pages) }; };
+  const minRow = pg => Math.min(...pg.flat().map(r => r[3] || 99));
+  const maxNp = Math.ceil(rows.length / HME_PER);
+  const base = fitOf(maxNp), baseMin = minRow(base.pages);
+  let best = base;
+  for (let np = 1; np < maxNp; np++) {
+    const t = fitOf(np);
+    if (!t.f.over && !t.pages.some(p => p.loose) && minRow(t.pages) >= Math.min(6.5, baseMin)) { best = t; break; }
+  }
+  if (best === base) best = fitOf(maxNp);   // วัดซ้ำ — fitOf ที่ลองหลังสุดเขียนทับขนาดตัวอักษรรายแถว (r[3]) ของแถวชุดเดียวกัน
+  return (HME_LAYOUT[k] = Object.assign({ sig, pages: best.pages }, best.f));
 }
-// สติกเกอร์ยากลับบ้าน 9 × 6 ซม. ดวงละไม่เกิน 6 รายการ (ตามที่ห้องยากำหนด — ติดใบ discharge summary)
+// สติกเกอร์ยากลับบ้าน 9 × 6 ซม. (ติดใบ discharge summary) — ใส่เต็มดวงตั้งแต่ 2026-11-20 · HME_PER = ดวงละ 6 ใช้เป็นเกณฑ์ต่ำสุดเท่านั้น
 const HME_W = 90, HME_H = 60, HME_PER = 6;
 function printHme(keys) {
   const w = HME_W, h = HME_H;
