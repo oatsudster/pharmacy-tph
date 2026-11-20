@@ -3604,6 +3604,8 @@ function renderFloatLeftover() {
   const head = `<div class="pt"><b>${escHtml(hn)}</b> ${escHtml(name)}
       ${withLo ? `<div class="muted">✅ บันทึกยาคงเหลือวันนี้ ${escHtml(thTime(withLo.created))} (${escHtml(withLo.clinic)})</div>`
         : todayRecs.length ? `<div class="muted">📭 วันนี้เภสัชกรบันทึกแล้ว — ไม่มียาเหลือ · คิดเต็มจำนวน</div>`
+        // วันที่ไม่มีเภสัชลงคลินิก (ไม่มีบันทึกคลินิกของใครเลยวันนี้) = ปกติ ไม่ต้องเตือนสีส้ม (ผู้ใช้ขอ 2026-11-20 ให้ใช้ได้ทุกวันเหมือนพุธ/พฤหัส)
+        : !visitRecords.some(r => r.date === todayIso) ? `<div class="muted">📅 วันนี้ไม่มีบันทึกเภสัชลงคลินิก — คิดเต็มจำนวนตามวิธีใช้และวันนัด</div>`
         : `<div class="warn">📭 ${recs.length ? 'ยังไม่มีบันทึกของวันนี้' : 'ยังไม่มีบันทึกของ HN นี้'} — คิดเต็มจำนวน (ถือว่าไม่มียาเหลือ)${lastOld
             ? `<div class="muted" style="font-weight:400">ยาเหลือ visit ก่อน (${escHtml(thDate(lastOld.date))}) ไม่นำมาหัก: ${escHtml(lastOld.leftovers.map(l => `${cleanDrugName(l.drug)} ${+l.qty || 0} ${l.unit || ''}`.trim()).join(', '))}</div>` : ''}</div>`}
     </div><div id="fl-ocr"></div>
