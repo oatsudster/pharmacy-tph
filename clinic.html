@@ -2093,6 +2093,9 @@ const FLOAT_CSS = `
   td.lo{color:#dc2626;font-weight:800;font-size:15px}
   td.need{font-size:17px;font-weight:900;color:#1A5E38}
   td.need.zero{color:#587363;font-size:13px}
+  td.keyed{font-size:15px;font-weight:800;text-align:center;white-space:nowrap}
+  td.keyed.ok{color:#1A5E38} td.keyed.bad{color:#b91c1c;background:#fee2e2} td.keyed.na{color:#587363;font-weight:400;font-size:12px}
+  td.keyed .muted{font-weight:400;white-space:normal}
   .pd{width:52px;text-align:center}
   .empty{text-align:center;padding:24px 8px;color:#587363}
   .use{font-size:11px;font-weight:400;color:#3D5A47;margin-top:2px}
@@ -3163,7 +3166,8 @@ function dbOrderRows(drugs) {
     const usage = String(d.usage || '').replace(/\s+/g, ' ').trim();
     const u = parseUsage(usage);
     if (!u.unit && /^(tab|cap)/i.test(d.form || '')) u.unit = d.units || 'เม็ด';
-    return { name, ...u, insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null };
+    // qty = จำนวนที่คีย์ไว้ใน HOSxP ตอนนี้ (จพ. ปรับแล้วกดบันทึก) — หน้าต่างเภสัชกรใช้เทียบกับจำนวนที่ควรได้
+    return { name, ...u, insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null, qty: d.qty != null && d.qty !== '' ? +d.qty : null, qtyUnit: d.units || '' };
   });
 }
 // vn = visit ของแท็บคนไข้ที่เปิดใน HOSxP (bridge ส่งมาตั้งแต่ HOSxP 4.69.11.18) — คนไข้เมื่อวาน/เวรดึกได้ใบสั่งยาจริง ไม่ตกไปใช้ OCR
@@ -3393,15 +3397,28 @@ function isAntibiotic(...texts) {
   });
 }
 
+// หน้าต่างเภสัชกร: เทียบจำนวนที่คีย์ใน HOSxP กับจำนวนที่ควรได้ (ผู้ใช้ขอ 2026-11-20 — ตรวจซ้ำว่า จพ. ปรับยาถูกตามวิธีใช้+วันนัด)
+//   want = เม็ด (หรือ vial ของอินซูลิน) ที่ควรได้ · null = ไม่ได้คำนวณ (แสดงแค่จำนวนที่คีย์)
+function markKeyed(tr, want) {
+  const c = tr.querySelector('td.keyed');
+  if (!c || tr.dataset.keyed === '') return;
+  const k = +tr.dataset.keyed, u = c.querySelector('.muted') ? c.querySelector('.muted').outerHTML : '';
+  if (want == null) { c.className = 'keyed na'; c.innerHTML = escHtml(fmtNum(k)) + u; return; }
+  const diff = k - want;
+  c.className = 'keyed ' + (diff === 0 ? 'ok' : 'bad');
+  c.innerHTML = (diff === 0 ? '✅ ' : '⚠️ ') + escHtml(fmtNum(k)) + u
+    + (diff ? `<div class="muted" style="color:#b91c1c">${diff < 0 ? 'ขาด' : 'เกิน'} ${escHtml(fmtNum(Math.abs(diff)))}</div>` : '');
+}
+function fmtNum(n) { n = +n; return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100); }
 function updateFloatNeed(tr) {
   const inp = tr.querySelector('.pd');
-  if (!inp) return;   // ยาที่ไม่ปรับจำนวน (ยาพ่น/ไม่ใช่ยาเม็ด)
+  if (!inp) { markKeyed(tr, null); return; }   // ยาที่ไม่ปรับจำนวน (ยาพ่น/ไม่ใช่ยาเม็ด)
   const days = floatCalcDays();
   const perDay = parseFloat(inp.value);
   const cell = tr.querySelector('.need');
   const lo = +tr.dataset.lo || 0, unit = tr.dataset.unit || '';
-  if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; return; }
-  if (!days) { cell.innerHTML = '<span class="muted">ไม่มีวันนัด</span>'; cell.className = 'need zero'; return; }
+  if (!(perDay > 0)) { cell.textContent = '—'; cell.className = 'need zero'; markKeyed(tr, null); return; }
+  if (!days) { cell.innerHTML = '<span class="muted">ไม่มีวันนัด</span>'; cell.className = 'need zero'; markKeyed(tr, null); return; }
   if (tr.dataset.kind === 'insulin') {
     // lo = ยูนิตที่เหลือ, perDay = ยูนิต/วัน → vial = (วัน × ยูนิต/วัน − ยูนิตที่เหลือ) ÷ 1,000 ปัดขึ้น
     const units = Math.max(0, days * perDay - lo);
@@ -3414,6 +3431,7 @@ function updateFloatNeed(tr) {
         + (vials28 > vials ? `<div class="warn" style="font-size:11px">ถ้าทิ้งขวดที่เปิดแล้วเกิน ${INSULIN_OPEN_DAYS} วัน → ${vials28} vial</div>` : '')
       : 'ไม่ต้องจ่าย';
     cell.className = 'need' + (vials > 0 ? '' : ' zero');
+    markKeyed(tr, vials);
     return;
   }
   const need = Math.max(0, Math.ceil(days * perDay - lo));
@@ -3424,8 +3442,10 @@ function updateFloatNeed(tr) {
     cell.innerHTML = [...parts.map(([n, pu]) => `${n} ${escHtml(pu)}`), ...(rem ? [`${rem} ${u}`] : [])].join(' + ')
       + `<div class="muted">รวม ${need} ${u} (${packs.map(([n, pu]) => `${n} เม็ด/${escHtml(pu)}`).join(', ')})</div>`;
     cell.className = 'need';
+    markKeyed(tr, need);
     return;
   }
+  markKeyed(tr, need);
   cell.innerHTML = need > 0 ? `${need}<div class="muted">${escHtml(unit)}</div>` : 'ไม่ต้องจ่าย';
   cell.className = 'need' + (need > 0 ? '' : ' zero');
 }
@@ -3600,7 +3620,7 @@ function renderFloatLeftover() {
 
   out.innerHTML = head + `
     <table>
-      <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>ต้องจ่าย</th></tr></thead>
+      <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>${floatMode === 'rph' ? 'ควรได้' : 'ต้องจ่าย'}</th>${floatMode === 'rph' ? '<th title="จำนวนที่บันทึกไว้ใน HOSxP ตอนนี้ (จากฐานข้อมูล อ่านใหม่ทุก 10 วินาที)">คีย์ใน HOSxP</th>' : ''}</tr></thead>
       <tbody>${rows.map(r => {
         const insulin = r.kind === 'insulin';
         const adjust = (r.kind === 'tablet' || insulin) && !r.userNoAdj;
@@ -3621,11 +3641,12 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pk ? ` data-packs="${escHtml(pk.packs.map(([n, u]) => n + ':' + u).join(','))}"` : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr data-keyed="${floatMode === 'rph' && r.use && r.use.qty != null ? r.use.qty : ''}" data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pk ? ` data-packs="${escHtml(pk.packs.map(([n, u]) => n + ':' + u).join(','))}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
           <td class="need zero">—</td>
+          ${floatMode === 'rph' ? `<td class="keyed na">${r.use && r.use.qty != null ? `${escHtml(fmtNum(r.use.qty))}<div class="muted">${escHtml(r.use.qtyUnit || '')}</div>` : '—'}</td>` : ''}
         </tr>`; }).join('')}</tbody>
     </table>
     ${loOnlyNote}

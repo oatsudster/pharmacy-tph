@@ -128,3 +128,32 @@ test('clinic: ปุ่ม 🔄 อัปเดต Bridge สั่ง tphHosxp.
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('clinic หน้าต่างลอยเภสัชกร: คอลัมน์คีย์ใน HOSxP เทียบกับจำนวนที่ควรได้', async () => {
+  const browser = await chromium.launch();
+  try {
+    const ctx = await ctxOf(browser, {});
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto(pathToFileURL(path.join(ROOT, 'clinic.html')).href); await page.waitForTimeout(500);
+    const r = await page.evaluate(() => {
+      const w = window.open('', 'fake-rph');
+      w.document.head.innerHTML = '<style>' + FLOAT_CSS + '</style>';
+      w.document.body.innerHTML = '<input id="fl-hn" value="9999001"><input id="fl-days" value="29"><input id="fl-appt"><div id="fl-result"></div>';
+      floatWin = w; floatMode = 'rph';
+      const rows = dbOrderRows([
+        { name: 'AMLODIPINE', strength: '5 mg.', units: 'เม็ด', form: 'tab', qty: 30, usage: 'รับประทานครั้งละ 1 เม็ด วันละ 1 ครั้ง หลังอาหารเช้า' },
+        { name: 'METFORMIN', strength: '500 mg.', units: 'เม็ด', form: 'tab', qty: 50, usage: 'รับประทานครั้งละ 1 เม็ด วันละ 2 ครั้ง หลังอาหารเช้า เย็น' },
+        { name: 'CHLORPHENIRAMINE', strength: '4 mg.', units: 'เม็ด', form: 'tab', qty: 10, usage: 'รับประทานครั้งละ 1 เม็ด เมื่อมีอาการ' }]);
+      floatOrder = { hn: '9999001', rows, src: 'db' };
+      renderFloatLeftover();
+      return [...w.document.querySelectorAll('tr[data-key]')].map(tr => ({ need: tr.querySelector('.need').textContent.trim(), keyed: tr.querySelector('td.keyed').textContent.trim(), cls: tr.querySelector('td.keyed').className }));
+    });
+    // วันนัด 29 + 1 = 30 วัน: amlodipine 30 ✅ · metformin ควรได้ 60 คีย์ 50 → ขาด 10 · CPM prn ไม่คำนวณ แสดงแค่ 10
+    assert.match(r[0].keyed, /✅ 30/); assert.match(r[0].cls, /ok/);
+    assert.match(r[1].need, /^60/); assert.match(r[1].keyed, /⚠️ 50.*ขาด 10/); assert.match(r[1].cls, /bad/);
+    assert.match(r[2].keyed, /^10/); assert.match(r[2].cls, /na/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});
