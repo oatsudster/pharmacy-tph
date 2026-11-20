@@ -25,7 +25,7 @@
 <script src="lib/clinic-store.js"></script>
 <script src="lib/hosxp-db.js"></script>
 <script src="lib/rx-check.js"></script>
-<script src="lib/renal-dose.js"></script>
+<script src="lib/renal-dose.js?v=20261120"></script>
 <script src="lib/smart-rx.js"></script>
 <style>
 :root {
@@ -3895,7 +3895,7 @@ function smartRenalHtml(r) {
   const kid = [];
   if (f.cr != null) kid.push(`Cr <b>${n(f.cr, 2)}</b> <small>(${escHtml(tphHosxp.thDate(f.crDate))})</small>`);
   if (f.egfr != null) kid.push(`eGFR <b class="${f.egfr < 60 ? 'bad' : ''}">${n(f.egfr)}</b> <small>${escHtml(f.stage)}${f.egfrSrc !== 'lab' ? ` · ${escHtml(f.egfrSrc)}` : ''}</small>`);
-  if (f.crcl != null) kid.push(`CrCl <b class="${f.crcl < 60 ? 'bad' : ''}">${n(f.crcl)}</b> mL/min <small>(CG · ${escHtml(f.wtNote)} ${n(f.wt, 1)} กก.${f.wtNote !== 'น้ำหนักจริง' ? ` จากน้ำหนัก ${n(f.bw, 1)}` : ''} · อายุ ${Math.floor(f.ageY)} ปี)</small>`);
+  if (f.crcl != null) kid.push(`CrCl <b class="${f.crcl < 60 ? 'bad' : ''}">${n(f.crcl)}</b> mL/min <small>(CG · ${escHtml(f.wtNote)} ${n(f.wt, 1)} กก.${f.bwDate ? ` (ชั่ง ${escHtml(String(f.bwDate).slice(5).split('-').reverse().join('/'))})` : ''} · อายุ ${Math.floor(f.ageY)} ปี)</small>`);
   else kid.push('<small>ไม่มีน้ำหนักใน 1 ปี — ใช้ eGFR แทน CrCl</small>');
   if (f.old) kid.push('<b class="bad">ผล Cr เก่ากว่า 6 เดือน</b>');
   const IC = { high: '🔴', warn: '🟠', info: '🟢', ok: '✅' };
