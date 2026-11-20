@@ -129,7 +129,7 @@ test('clinic: ปุ่ม 🔄 อัปเดต Bridge สั่ง tphHosxp.
   } finally { await browser.close(); }
 });
 
-test('clinic หน้าต่างลอยเภสัชกร: คอลัมน์คีย์ใน HOSxP เทียบกับจำนวนที่ควรได้', async () => {
+test('clinic หน้าต่างลอยเภสัชกร: แสดงชื่อยา + ควรได้ แม้ HOSxP ไม่ได้อยู่หน้าจ่ายยา (ใบสั่งจาก DB)', async () => {
   const browser = await chromium.launch();
   try {
     const ctx = await ctxOf(browser, {});
@@ -150,12 +150,14 @@ test('clinic หน้าต่างลอยเภสัชกร: คอล�
       lastBridge = { hn: '9999001', active: false, db: true };   // HOSxP ไม่ได้อยู่หน้าจ่ายยา แต่ใบสั่งมาจาก DB → ต้องไม่ซ่อนตาราง
       renderFloatLeftover();
       if (w.document.getElementById('fl-result').classList.contains('paused')) return 'paused';
-      return [...w.document.querySelectorAll('tr[data-key]')].map(tr => ({ need: tr.querySelector('.need').textContent.trim(), keyed: tr.querySelector('td.keyed').textContent.trim(), cls: tr.querySelector('td.keyed').className }));
+      return { rows: [...w.document.querySelectorAll('tr[data-key]')].map(tr => ({ name: tr.querySelector('.drug').textContent, need: tr.querySelector('.need').textContent.trim() })),
+        head: [...w.document.querySelectorAll('thead th')].map(th => th.textContent), keyed: w.document.querySelectorAll('td.keyed').length };
     });
-    // วันนัด 29 + 1 = 30 วัน: amlodipine 30 ✅ · metformin ควรได้ 60 คีย์ 50 → ขาด 10 · CPM prn ไม่คำนวณ แสดงแค่ 10
-    assert.match(r[0].keyed, /✅ 30/); assert.match(r[0].cls, /ok/);
-    assert.match(r[1].need, /^60/); assert.match(r[1].keyed, /⚠️ 50.*ขาด 10/); assert.match(r[1].cls, /bad/);
-    assert.match(r[2].keyed, /^10/); assert.match(r[2].cls, /na/);
+    // วันนัด 29 + 1 = 30 วัน: amlodipine ควรได้ 30 · metformin 60 · ไม่มีคอลัมน์ "คีย์ใน HOSxP" (ผู้ใช้ขอปิด 2026-11-20)
+    assert.notEqual(r, 'paused');
+    assert.match(r.rows[0].name, /AMLODIPINE/); assert.match(r.rows[0].need, /^30/);
+    assert.match(r.rows[1].need, /^60/);
+    assert.ok(r.head.includes('ควรได้')); assert.ok(!r.head.some(h => /คีย์/.test(h))); assert.equal(r.keyed, 0);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

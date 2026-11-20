@@ -3399,6 +3399,8 @@ function isAntibiotic(...texts) {
 
 // หน้าต่างเภสัชกร: เทียบจำนวนที่คีย์ใน HOSxP กับจำนวนที่ควรได้ (ผู้ใช้ขอ 2026-11-20 — ตรวจซ้ำว่า จพ. ปรับยาถูกตามวิธีใช้+วันนัด)
 //   want = เม็ด (หรือ vial ของอินซูลิน) ที่ควรได้ · null = ไม่ได้คำนวณ (แสดงแค่จำนวนที่คีย์)
+// ปิดไว้ (ผู้ใช้ขอ 2026-11-20 "ไม่ต้องแสดงจำนวนที่ key ใน HOSxP") — เหลือแค่คอลัมน์ "ควรได้" · เปิดกลับ = true
+const SHOW_KEYED = false;
 function markKeyed(tr, want) {
   const c = tr.querySelector('td.keyed');
   if (!c || tr.dataset.keyed === '') return;
@@ -3622,7 +3624,7 @@ function renderFloatLeftover() {
 
   out.innerHTML = head + `
     <table>
-      <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>${floatMode === 'rph' ? 'ควรได้' : 'ต้องจ่าย'}</th>${floatMode === 'rph' ? '<th title="จำนวนที่บันทึกไว้ใน HOSxP ตอนนี้ (จากฐานข้อมูล อ่านใหม่ทุก 10 วินาที)">คีย์ใน HOSxP</th>' : ''}</tr></thead>
+      <thead><tr><th>ยา / วิธีใช้</th><th>เหลือ</th><th>ใช้/วัน</th><th>${floatMode === 'rph' ? 'ควรได้' : 'ต้องจ่าย'}</th>${SHOW_KEYED && floatMode === 'rph' ? '<th title="จำนวนที่บันทึกไว้ใน HOSxP ตอนนี้ (จากฐานข้อมูล อ่านใหม่ทุก 10 วินาที)">คีย์ใน HOSxP</th>' : ''}</tr></thead>
       <tbody>${rows.map(r => {
         const insulin = r.kind === 'insulin';
         const adjust = (r.kind === 'tablet' || insulin) && !r.userNoAdj;
@@ -3643,12 +3645,12 @@ function renderFloatLeftover() {
         const auto = insulin ? ((r.use && r.use.insulinPerDay) || '')
           : adjust && r.use && r.use.perDay && !r.use.prn ? r.use.perDay : '';
         return `
-        <tr data-keyed="${floatMode === 'rph' && r.use && r.use.qty != null ? r.use.qty : ''}" data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pk ? ` data-packs="${escHtml(pk.packs.map(([n, u]) => n + ':' + u).join(','))}"` : ''}${adjust ? '' : ' class="noadj"'}>
+        <tr data-keyed="${SHOW_KEYED && floatMode === 'rph' && r.use && r.use.qty != null ? r.use.qty : ''}" data-key="${escHtml(r.key)}" data-lo="${insulin ? insulinLoUnits(r.lo, r.loUnit) : loTabs}" data-unit="${escHtml(r.unit)}"${insulin ? ' data-kind="insulin"' : ''}${pk ? ` data-packs="${escHtml(pk.packs.map(([n, u]) => n + ':' + u).join(','))}"` : ''}${adjust ? '' : ' class="noadj"'}>
           <td class="drug">${escHtml(r.name)}${r.use ? `<div class="use">${escHtml(r.use.text)}</div>` : ''}${tag}${r.canToggle ? `<div><button type="button" class="na" data-na="${escHtml(r.cname)}">${r.userNoAdj ? '↩ ให้ปรับตามนัด' : '🚫 ไม่ต้องปรับ'}</button></div>` : ''}</td>
           <td class="lo">${r.hasLo ? escHtml(r.lo) : '<span class="muted">0</span>'}<div class="muted">${escHtml(r.loUnit)}</div></td>
           <td>${adjust ? `<input class="pd${auto ? ' auto' : ''}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0" value="${auto}">` : ''}</td>
           <td class="need zero">—</td>
-          ${floatMode === 'rph' ? `<td class="keyed na">${r.use && r.use.qty != null ? `${escHtml(fmtNum(r.use.qty))}<div class="muted">${escHtml(r.use.qtyUnit || '')}</div>` : '—'}</td>` : ''}
+          ${SHOW_KEYED && floatMode === 'rph' ? `<td class="keyed na">${r.use && r.use.qty != null ? `${escHtml(fmtNum(r.use.qty))}<div class="muted">${escHtml(r.use.qtyUnit || '')}</div>` : '—'}</td>` : ''}
         </tr>`; }).join('')}</tbody>
     </table>
     ${loOnlyNote}
