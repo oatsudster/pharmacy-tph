@@ -8,12 +8,30 @@
 $ErrorActionPreference = 'Stop'
 $base = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-$wc = New-Object Net.WebClient
-$wc.Headers['Cache-Control'] = 'no-cache'
 $utf8 = New-Object Text.UTF8Encoding $false
 $bom = New-Object Text.UTF8Encoding $true
+# 2026-11-20: one hospital PC got (403) Forbidden on the 2nd download (web filter / Bitdefender web protection).
+# Try several request shapes and the Cloudflare mirror; first one that works wins.
+$UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+$bases = @($base)
+if (-not $env:HXB_UPDATE_BASE) { $bases += 'https://tph-pharmacy.pages.dev/hosxp-bridge/' }
+function Get-Bytes($src) {
+  $errs = @()
+  foreach ($b in $bases) {
+    foreach ($q in @(('?t=' + [DateTime]::UtcNow.Ticks), '')) {
+      foreach ($ua in @($UA, '')) {
+        try {
+          $wc = New-Object Net.WebClient
+          if ($ua) { $wc.Headers['User-Agent'] = $ua }
+          return , $wc.DownloadData($b + $src + $q)
+        } catch { $errs += ($b + $src + $q + ' ' + $(if ($ua) { '[UA]' } else { '[noUA]' }) + ': ' + $_.Exception.InnerException.Message + $_.Exception.Message) }
+      }
+    }
+  }
+  throw ("download failed: " + $src + "`r`n  " + ($errs -join "`r`n  "))
+}
 function Get-Text($src) {
-  $s = $utf8.GetString($wc.DownloadData($base + $src + '?t=' + [DateTime]::UtcNow.Ticks)).TrimStart([char]0xFEFF)
+  $s = $utf8.GetString((Get-Bytes $src)).TrimStart([char]0xFEFF)
   ($s -replace "`r`n", "`n") -replace "`n", "`r`n"
 }
 $stage = Join-Path $env:TEMP ('hxb-web-' + [guid]::NewGuid().ToString('N'))
