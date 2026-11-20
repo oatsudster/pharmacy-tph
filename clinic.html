@@ -2315,7 +2315,7 @@ async function pollHosxpBridge() {
   noteBridgeActivity(s);
   const wasActive = lastBridge && lastBridge.active;
   lastBridge = s;
-  if (s.hn && s.db) loadDbOrder(s.hn);
+  if (s.hn && s.db) loadDbOrder(s.hn, s.vn);
   // ใบสั่งยาจากฐานข้อมูลได้แล้ว ไม่ต้อง OCR — OCR เฉพาะเมื่อไม่มี DB หรือ visit วันนี้ยังไม่มียาบันทึกใน HOSxP
   if (s.hn && s.active !== false && s.gridVer !== ocrDoneVer && !hasDbOrder(s.hn)) runOrderOcr();
   if (s.active !== wasActive) applyFloatPaused();
@@ -3166,12 +3166,14 @@ function dbOrderRows(drugs) {
     return { name, ...u, insulinPerDay: isInsulin(name) ? parseInsulinPerDay(usage) : null };
   });
 }
-async function loadDbOrder(hn) {
-  if (dbOrderBusy || (hn === dbOrderHn && Date.now() - dbOrderAt < DB_ORDER_REFRESH_MS)) return;
+// vn = visit ของแท็บคนไข้ที่เปิดใน HOSxP (bridge ส่งมาตั้งแต่ HOSxP 4.69.11.18) — คนไข้เมื่อวาน/เวรดึกได้ใบสั่งยาจริง ไม่ตกไปใช้ OCR
+async function loadDbOrder(hn, vn) {
+  const k = hn + '|' + (vn || '');
+  if (dbOrderBusy || (k === dbOrderHn && Date.now() - dbOrderAt < DB_ORDER_REFRESH_MS)) return;
   dbOrderBusy = true;
   try {
-    const o = await tphHosxp.order(hn);
-    dbOrderHn = hn; dbOrderAt = Date.now();
+    const o = await tphHosxp.order(hn, vn);
+    dbOrderHn = k; dbOrderAt = Date.now();
     if (!o || !lastBridge || lastBridge.hn !== hn) return;
     const rows = dbOrderRows(o.drugs || []);
     if (!rows.length) {

@@ -194,9 +194,12 @@ function DrugRow($r) {
   [ordered]@{ icode = $r['icode']; name = $r['name']; strength = $r['strength']; units = $r['units']; form = $r['dosageform']; qty = $r['qty']; usage = $r['usage_text'] }
 }
 
-function DbOrder($hn) {
+function DbOrder($hn, $vn) {
+  # vn = visit ของแท็บคนไข้ที่เปิดใน HOSxP (จาก /current) — คนไข้เมื่อวาน/เวรดึกก็ได้ใบสั่งที่ถูก visit ไม่ใช่แค่ของวันนี้ (2026-11-20)
+  $vn = [HxDb]::Digits("$vn")
+  $where = if ($vn) { "r.hn='$hn' AND r.vn='$vn'" } else { "r.hn='$hn' AND r.vstdate=CURDATE()" }
   $rows = DbQuery ("SELECT r.vn, o.vsttime, $DRUG_COLS $DRUG_JOIN JOIN ovst o ON o.vn=r.vn " +
-    "WHERE r.hn='$hn' AND r.vstdate=CURDATE() AND (r.an IS NULL OR r.an='') ORDER BY r.vn DESC, r.item_no")
+    "WHERE $where AND (r.an IS NULL OR r.an='') ORDER BY r.vn DESC, r.item_no")
   $vn = if ($rows.Count) { $rows[0]['vn'] } else { '' }
   $appts = DbAppts $hn
   $max = if ($appts.Count) { ($appts | ForEach-Object { $_.days } | Measure-Object -Maximum).Maximum } else { $null }
@@ -985,7 +988,7 @@ function DbEndpoint($path) {
   if ($path -match '[?&]hn=([^&]*)') { $hn = [HxDb]::Digits([Uri]::UnescapeDataString($Matches[1])) }
   try {
     if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
-    $res = if ($path -like '/db/order*') { DbOrder $hn } elseif ($path -like '/db/visits*') { DbVisits $hn }
+    $res = if ($path -like '/db/order*') { DbOrder $hn $(if ($path -match '[?&]vn=(\d+)') { $Matches[1] } else { '' }) } elseif ($path -like '/db/visits*') { DbVisits $hn }
       elseif ($path -like '/db/meds*') { DbMeds $hn }
       elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
       elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
@@ -1013,12 +1016,12 @@ function FieldRightOf($frame, $labelText) {
 # เปิดได้หลายแท็บคนไข้ จึงเลือกหน้าที่ตารางใบสั่งยาอยู่บนจอจริง และค้นใหม่ทุก ~1.5 วินาที
 # ชื่อแท็บคนไข้ของหน้า จพ. → HN: visit วันนี้ (หรือเมื่อวาน) ที่คิวตรงและชื่อตรง · ไม่มีคิวในชื่อแท็บ = หาตามชื่ออย่างเดียว
 #   ชื่อเทียบแบบตัดช่องว่างทิ้ง (แท็บ "นาย มโน หนูเสน" / ฐานข้อมูล pname+fname+lname) · จำผลตามชื่อแท็บไว้ทั้งวัน
-$script:tabHn = @{}; $script:tabHnDay = ''
+$script:tabHn = @{}; $script:tabVn = @{}; $script:tabHnDay = ''
 function HnFromTab($title) {
   $title = "$title".Trim()
   if (-not $title -or -not $db) { return '' }
   $day = (Get-Date).ToString('yyyy-MM-dd')
-  if ($script:tabHnDay -ne $day) { $script:tabHn = @{}; $script:tabHnDay = $day }
+  if ($script:tabHnDay -ne $day) { $script:tabHn = @{}; $script:tabVn = @{}; $script:tabHnDay = $day }
   if ($script:tabHn.ContainsKey($title)) { return $script:tabHn[$title] }
   $q = if ($title -match '\[(\d{1,5})\]\s*$') { [int]$Matches[1] } else { $null }
   $nm = (($title -replace '\s*\[\d+\]\s*$', '') -replace "[\s'`"\\%_]", '')
@@ -1027,16 +1030,16 @@ function HnFromTab($title) {
   $hn = ''
   try {
     if ($null -ne $q) {
-      $r = DbQuery ("SELECT o.hn, $full AS nm FROM ovst o JOIN patient p ON p.hn=o.hn " +
+      $r = DbQuery ("SELECT o.hn, o.vn, $full AS nm FROM ovst o JOIN patient p ON p.hn=o.hn " +
         "WHERE o.vstdate >= CURDATE() - INTERVAL 1 DAY AND o.oqueue = $q ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 10")
       $m = @($r | Where-Object { "$($_['nm'])" -eq $nm })
-      if ($m.Count) { $hn = [HxDb]::Digits($m[0]['hn']) }
+      if ($m.Count) { $hn = [HxDb]::Digits($m[0]['hn']); $script:tabVn[$title] = [HxDb]::Digits($m[0]['vn']) }
     }
     if (-not $hn) {
-      $r = DbQuery ("SELECT o.hn FROM ovst o JOIN patient p ON p.hn=o.hn " +
+      $r = DbQuery ("SELECT o.hn, o.vn FROM ovst o JOIN patient p ON p.hn=o.hn " +
         "WHERE o.vstdate >= CURDATE() - INTERVAL 1 DAY AND $full = '$nm' ORDER BY o.vstdate DESC, o.vsttime DESC LIMIT 5")
       $hns = @($r | ForEach-Object { [HxDb]::Digits($_['hn']) } | Select-Object -Unique)
-      if ($hns.Count -eq 1) { $hn = $hns[0] }   # ชื่อซ้ำกันหลายคนวันนี้ = ไม่เดา
+      if ($hns.Count -eq 1) { $hn = $hns[0]; $script:tabVn[$title] = [HxDb]::Digits($r[0]['vn']) }   # visit ล่าสุดของคนนี้   # ชื่อซ้ำกันหลายคนวันนี้ = ไม่เดา
     }
   } catch { return '' }
   if ($hn) { $script:tabHn[$title] = $hn }   # หาไม่เจอไม่จำ — visit อาจเพิ่งลงทะเบียน
@@ -1049,21 +1052,21 @@ function FindDispenseScreen2($main) {
     $grid = if ($order) { $order.FindFirst($TS::Descendants, (ClassCond 'TcxGridSite')) } else { $null }
     $info = $f.FindFirst($TS::Descendants, (ClassCond 'TPatientInformationType2Frame'))
     $hn = if ($info) { FieldRightOf $info 'HN' } else { $null }   # ใกล้ป้าย HN ที่สุด (ในกรอบมีเบอร์โทร/เลขบัตรด้วย จะหยิบผิดถ้าดูแค่ตัวเลข)
-    $hnText = ''
+    $hnText = ''; $vnText = ''
     if (-not $hn -or $hn.Current.Name.Trim() -notmatch '^\d{5,10}$') {
       # HOSxP 4.69.11.18 (2026-11-19): กรอบข้อมูลผู้ป่วยวาดเอง ไม่มีช่อง HN ให้อ่านแล้ว
       #   → ใช้ชื่อแท็บ "นายมโน หนูเสน [87]" (ชื่อ + คิว) หา HN จากฐานข้อมูล visit วันนี้
       $hn = $null
       $sh = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($f)
-      if ($sh -and $sh.Current.ClassName -eq 'TcxTabSheet') { $hnText = HnFromTab $sh.Current.Name }
+      if ($sh -and $sh.Current.ClassName -eq 'TcxTabSheet') { $hnText = HnFromTab $sh.Current.Name; $vnText = "$($script:tabVn[$sh.Current.Name.Trim()])" }
       if (-not $hnText) { continue }
     }
-    $cand = @{ hn = $hn; hnText = $hnText; grid = $grid; frame = $f }
+    $cand = @{ hn = $hn; hnText = $hnText; vnText = $vnText; grid = $grid; frame = $f }
     if (-not $best) { $best = $cand }
     if ($grid -and (ElShowing $grid)) { $best = $cand; break }
   }
   if (-not $best) { return $false }
-  $cache.hnEdit = $best.hn; $cache.hnText = $best.hnText; $cache.grid = $best.grid; $cache.layout2 = $true
+  $cache.hnEdit = $best.hn; $cache.hnText = $best.hnText; $cache.vnText = $best.vnText; $cache.grid = $best.grid; $cache.layout2 = $true
   $cache.apptLabel = $best.frame.FindAll($TS::Descendants, (ClassCond 'TcxLabel')) | Where-Object { $_.Current.Name -eq 'นัดครั้งหน้า' } | Select-Object -First 1
   $sheet = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($best.frame)
   $cache.nameEdit = if ($sheet -and $sheet.Current.ClassName -eq 'TcxTabSheet') { $sheet } else { $null }
@@ -1071,7 +1074,7 @@ function FindDispenseScreen2($main) {
 }
 
 function FindDispenseScreen {
-  $cache.hnEdit = $null; $cache.hnText = ''; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null; $cache.layout2 = $false; $cache.apptLabel = $null
+  $cache.hnEdit = $null; $cache.hnText = ''; $cache.vnText = ''; $cache.nameEdit = $null; $cache.apptList = $null; $cache.grid = $null; $cache.layout2 = $false; $cache.apptLabel = $null
   $proc = Get-Process HOSxPXE4 -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $proc) { return }
   $main = $AE::RootElement.FindFirst($TS::Children, (New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$proc.Id)))
@@ -1086,7 +1089,7 @@ function FindDispenseScreen {
     for ($i = 0; $i -lt 8 -and $p; $i++) {
       $p = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($p)
       if ($p -and $p.Current.ClassName -eq 'TcxTabSheet' -and $p.Current.Name -match '\[\d+\]\s*$') {
-        $cache.hnText = HnFromTab $p.Current.Name
+        $cache.hnText = HnFromTab $p.Current.Name; $cache.vnText = "$($script:tabVn[$p.Current.Name.Trim()])"
         if (-not $cache.nameEdit) { $cache.nameEdit = $p }
         break
       }
@@ -1351,6 +1354,7 @@ function UpdateState {
   try { ReadEmr } catch {}
   $state.ok = [bool]($cache.hnEdit -or $cache.hnText)
   $state.hn = $hn; $state.name = $name
+  $state.vn = if ($hn -and $cache.hnText -eq $hn) { $cache.vnText } else { '' }   # visit ของแท็บที่เปิด (เฉพาะ HN ที่ได้จากชื่อแท็บ)
   $state.ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
 }
 
