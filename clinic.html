@@ -3925,7 +3925,9 @@ function applyFloatPaused() {
   const d = floatWin.document, out = d.getElementById('fl-result');
   if (!out) return;
   const b = lastBridge, hn = d.getElementById('fl-hn').value.trim();
-  out.classList.toggle('paused', !!(b && b.hn && b.hn === hn && b.active === false));
+  // ใบสั่งยามาจากฐานข้อมูล = ไม่ขึ้นกับว่า HOSxP เปิดหน้าไหนอยู่ → ไม่ต้องหยุด (ผู้ใช้เจอ 2026-11-20: หน้าต่างเภสัชซ่อนตารางยาทั้งที่มีใบสั่งจาก DB)
+  //   หยุดเฉพาะตอนใช้ OCR ซึ่งต้องเห็นตารางยาของ HOSxP บนจอ
+  out.classList.toggle('paused', !!(b && b.hn && b.hn === hn && b.active === false && !hasDbOrder(hn)));
 }
 
 // รีเฟรชเฉพาะข้อมูลของแท็บที่เปิดค้างอยู่ (leftover/session/main)

@@ -147,7 +147,9 @@ test('clinic หน้าต่างลอยเภสัชกร: คอล�
         { name: 'METFORMIN', strength: '500 mg.', units: 'เม็ด', form: 'tab', qty: 50, usage: 'รับประทานครั้งละ 1 เม็ด วันละ 2 ครั้ง หลังอาหารเช้า เย็น' },
         { name: 'CHLORPHENIRAMINE', strength: '4 mg.', units: 'เม็ด', form: 'tab', qty: 10, usage: 'รับประทานครั้งละ 1 เม็ด เมื่อมีอาการ' }]);
       floatOrder = { hn: '9999001', rows, src: 'db' };
+      lastBridge = { hn: '9999001', active: false, db: true };   // HOSxP ไม่ได้อยู่หน้าจ่ายยา แต่ใบสั่งมาจาก DB → ต้องไม่ซ่อนตาราง
       renderFloatLeftover();
+      if (w.document.getElementById('fl-result').classList.contains('paused')) return 'paused';
       return [...w.document.querySelectorAll('tr[data-key]')].map(tr => ({ need: tr.querySelector('.need').textContent.trim(), keyed: tr.querySelector('td.keyed').textContent.trim(), cls: tr.querySelector('td.keyed').className }));
     });
     // วันนัด 29 + 1 = 30 วัน: amlodipine 30 ✅ · metformin ควรได้ 60 คีย์ 50 → ขาด 10 · CPM prn ไม่คำนวณ แสดงแค่ 10
