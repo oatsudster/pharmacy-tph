@@ -94,8 +94,8 @@ td.dose { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
 .sticker { width: 90mm; height: 60mm; padding: 2.5mm 6mm; overflow: hidden; page-break-after: always; break-after: page;
   font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; color: #000; display: flex; flex-direction: column; }
 .sticker:last-child { page-break-after: auto; break-after: auto; }
-/* สติกเกอร์สรุปคืนรถยา: ขอบขวาเผื่อมากขึ้น (เครื่องพิมพ์ตกขอบขวา) */
-.sticker.sum { padding-left: 4mm; padding-right: 10mm; }
+/* ชื่อยายาวไม่มีช่องว่าง (เช่น Norgesic(Orphenadrine35mg/paracetamol500mg)) ต้องตัดบรรทัดได้ ไม่งั้นตารางกว้างเกินดวง → จำนวนยาหลุดขอบขวา */
+.sticker td:first-child { overflow-wrap: anywhere; word-break: break-word; }
 .sticker .h1 { font-size: 10pt; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sticker .h2 { font-size: 7.5pt; line-height: 1.25; border-bottom: .3mm solid #000; padding-bottom: .8mm; margin-bottom: .8mm; display: flex; justify-content: space-between; gap: 2mm; }
 .sticker table { width: 100%; border-collapse: collapse; }
@@ -494,7 +494,7 @@ function printSummary() {
   if (!rows.length) return;
   const pages = [];
   for (let i = 0; i < rows.length; i += PER_STICKER) pages.push(rows.slice(i, i + PER_STICKER));
-  const html = pages.map((pr, pi) => `<div class="sticker sum">
+  const html = pages.map((pr, pi) => `<div class="sticker">
       <div class="h1">สรุปยาคืนรถยา เวรบ่าย-ดึก</div>
       <div class="h2"><span>${escHtml(thD(w.prev))} ${escHtml(w.from.slice(11))} → ${escHtml(thD(w.date))} ${escHtml(w.to.slice(11))} น.</span>
         <span>${document.getElementById('st-pt').textContent} ใบสั่ง${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}</span></div>
