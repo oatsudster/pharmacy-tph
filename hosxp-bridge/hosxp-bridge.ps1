@@ -69,7 +69,7 @@
 $PORT = if ($env:HXB_PORT) { [int]$env:HXB_PORT } else { 8765 }
 $ALLOWED_ORIGINS = @('https://oatsudster.github.io', 'https://tph-pharmacy.pages.dev', 'null')   # 'null' = เปิดไฟล์ html จากเครื่องตรงๆ · tph-pharmacy.pages.dev = Cloudflare Pages (ลิงก์ที่ 2 ของเว็บเดียวกัน)
 $UPDATE_ORIGINS = @('https://oatsudster.github.io', 'https://tph-pharmacy.pages.dev')   # สั่ง /update ได้เฉพาะหน้าเว็บของเราจริง (ไม่รับ 'null')
-$UPDATE_BASE = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://oatsudster.github.io/pharmacy-tph/hosxp-bridge/' }   # HXB_UPDATE_BASE ใช้ทดสอบ
+$UPDATE_BASE = if ($env:HXB_UPDATE_BASE) { $env:HXB_UPDATE_BASE } else { 'https://tph-hxb.pages.dev/' }   # HXB_UPDATE_BASE ใช้ทดสอบ
 $OS = if ($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) { 'win' } else { 'mac' }
 # อ่านหน้าจอ HOSxP (UI Automation + OCR ของ Windows) ได้เฉพาะ Windows PowerShell 5.1 — HXB_NOSCREEN=1 ใช้ทดสอบโหมด Mac บน Windows
 $SCREEN = $PSVersionTable.PSEdition -eq 'Desktop' -and -not $env:HXB_NOSCREEN
@@ -1391,29 +1391,17 @@ function LocalList {
   try { if (Test-Path $f) { return UpdList ((Get-Content $f -Raw -Encoding UTF8 | ConvertFrom-Json).files) } } catch {}
   UpdList $DEFAULT_FILES
 }
-# 2026-11-20: เครื่อง จพ. โดน (403) Forbidden ตอนดาวน์โหลดไฟล์อัปเดต (ตัวกรองเว็บ/Bitdefender) — ลองหลายแบบ:
-#   ส่ง User-Agent แบบเบราว์เซอร์ / ไม่มี ?t= / ลิงก์สำรอง Cloudflare Pages · แบบแรกที่ได้ใช้เลย
-$FETCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
-function FetchOnce($url, $ua) {
+# 2026-11-24: ไฟล์ bridge ย้ายจากเว็บแอปไป tph-hxb.pages.dev (Bitdefender ขึ้นบัญชีเว็บแอปเป็น Cloud Malware เพราะแจกสคริปต์/exe)
+#   ไม่ปลอม User-Agent / ไม่สลับลิงก์สำรองแล้ว (พฤติกรรมแบบนั้นเข้าข่ายมัลแวร์) · ลอง ?t= (ข้าม cache) ก่อน แล้วลองไม่มี ?t=
+function FetchOnce($url) {
   $rq = [Net.HttpWebRequest]::Create($url)
   $rq.Timeout = 10000; $rq.ReadWriteTimeout = 10000
-  if ($ua) { $rq.UserAgent = $ua }
   $rs = $rq.GetResponse()
   try { $ms = New-Object System.IO.MemoryStream; $rs.GetResponseStream().CopyTo($ms); return , $ms.ToArray() } finally { $rs.Close() }
 }
 function Fetch($url) {
   [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-  $urls = @($url)
-  if (-not $env:HXB_UPDATE_BASE -and $url.StartsWith($UPDATE_BASE)) { $urls += 'https://tph-pharmacy.pages.dev/hosxp-bridge/' + $url.Substring($UPDATE_BASE.Length) }
-  $last = $null
-  foreach ($u in $urls) {
-    foreach ($q in @(('?t=' + [DateTime]::UtcNow.Ticks), '')) {   # ?t= ข้าม cache ของ GitHub Pages
-      foreach ($ua in @($FETCH_UA, $null)) {
-        try { return , (FetchOnce ($u + $q) $ua) } catch { $last = $_ }
-      }
-    }
-  }
-  throw $last
+  try { return , (FetchOnce ($url + '?t=' + [DateTime]::UtcNow.Ticks)) } catch { return , (FetchOnce $url) }
 }
 # ไฟล์ชุดล่าสุดบนเว็บ — จำผลไว้ 10 นาที (ล้มเหลวจำ 2 นาที) bridge ทำงานวนรอบเดียว จะได้ไม่ค้างรอเน็ตบ่อย
 $remote = $null; $remoteAt = [DateTime]::MinValue

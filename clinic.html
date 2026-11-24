@@ -2180,7 +2180,7 @@ async function manualBridgeUpdate() {
   if (fd) fd.textContent = '⏳ กำลังอัปเดต HOSxP Bridge… (ดูผลที่หน้าหลัก)';
   const r = await tphHosxp.bridgeUpdate();
   const msg = r && r.ok ? (r.updated ? `✅ อัปเดต Bridge แล้ว (${r.version})` : `✅ Bridge เป็นรุ่นล่าสุดแล้ว (${r.version || ''})`)
-    : `⚠️ อัปเดต Bridge ไม่สำเร็จ: ${(r && r.error) || ''} — ใช้คำสั่งติดตั้งใหม่ (Windows + R) ที่ขึ้นมุมซ้ายล่าง`;
+    : `⚠️ อัปเดต Bridge ไม่สำเร็จ: ${(r && r.error) || ''} — ติดต่อเภสัชกรให้ลงทับ Bridge ด้วยไฟล์ zip`;
   if (fd) fd.textContent = msg;
   bridgeKey = '';
 }
