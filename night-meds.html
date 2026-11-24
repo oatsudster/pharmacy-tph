@@ -445,7 +445,8 @@ function printStickers(onlyKeys) {
 }
 // ── ฉลากติดขวดน้ำเกลือ 1000 ml (ขวดละดวง) — ตำแหน่ง/ตัวอักษรตาม stickerHtml ใน rx-sticker.html (StickerDetailReport.rtm ของ HOSxP)
 // แต่เลื่อนซ้าย 4.7 มม. ให้อยู่กลางดวง 90 มม. (ขอบซ้าย-ขวาราว 6 มม.) · วันที่/เวลา = เวลาที่สั่ง ไม่ใช่เวลาพิมพ์
-const isNss1000 = x => x.include && RE_NSS.test(String(x.drug || '')) && /1,?000/.test(String(x.units || ''));
+// สารน้ำขวด/ถุง 1000 ml ทุกชนิด (NSS, D-5-S, D5W, LRS ...) → ฉลากติดขวด + ไม่นับในสรุปคืนรถยา (คืน ER แยก)
+const isNss1000 = x => x.include && formGroup(x)[0] === 4 && /1,?000/.test(String(x.units || ''));
 const nssCount = p => p.items.filter(isNss1000).reduce((n, x) => n + Math.max(0, Math.round(+x.qty || 0)), 0);
 function nssLabels(pts) {
   if (!document.getElementById('opt-nss').checked) return '';
@@ -475,8 +476,8 @@ function nssLabelHtml(p, it, idx, total) {
     `<div class="th b fit" data-alts="${escHtml(JSON.stringify(alts))}" style="${pos(10.58, 17.2, 67.2, 5.3, 11)}">${escHtml(name)}</div>` +
     s(pos(78, 17.2, 10.9, 4.5, 10), 'th r', '#' + fmtQty(it.qty)) +
     use(23.2, L[0]) + use(28.9, L[1]) + use(34.6, L[2]) +
-    s(pos(10.58, 39.95, 78.3, 4.5, 8), 'th b fit', it.hint || '') +
-    s(pos(10.58, 44.45, 78.3, 4.5, 8), 'th fit', it.therapeutic || '') +
+    // ใต้วิธีใช้: (คืน ER) ตัวใหญ่ แทนบรรทัดคำแนะนำ/สรรพคุณ (ขวดน้ำเกลือคืนห้องฉุกเฉิน ไม่เข้ารถยา)
+    s(pos(10.58, 40.2, 78.3, 8.4, 20) + 'line-height:8.4mm;', 'th c b', '(คืน ER)') +
     `<div class="th fit" style="${pos(10.58, 48.95, 58.74, 4.5, 8)}border-top:.27mm solid #000;padding-top:.3mm">${escHtml('ชื่อสามัญ : ' + (it.thaiName || '-'))}</div>` +
     '</div>';
 }
@@ -490,8 +491,8 @@ function stickerText(t) {
 function shortUnit(u) { return String(u || '').replace(/\s*\(.*\)\s*$/, '').trim(); }
 // สรุปรวมทั้งเวรลงสติกเกอร์ 9×6 ซม. (ดวงละ PER_STICKER รายการ เรียงตามกลุ่มยา ต่อดวงถัดไปพร้อมเลขหน้า)
 function printSummary() {
-  const w = windowOf(), rows = sumItems(ITEMS);
-  if (!rows.length) return;
+  const w = windowOf(), rows = sumItems(ITEMS.filter(x => !isNss1000(x)));   // น้ำเกลือ 1000 ml คืน ER ไม่ลงสรุปรถยา
+  if (!rows.length && !ITEMS.some(isNss1000)) return;
   const pages = [];
   for (let i = 0; i < rows.length; i += PER_STICKER) pages.push(rows.slice(i, i + PER_STICKER));
   const html = pages.map((pr, pi) => `<div class="sticker">
