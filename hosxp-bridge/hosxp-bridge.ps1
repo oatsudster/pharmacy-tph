@@ -238,7 +238,9 @@ function DbVisits($hn) {
 
 # คลินิกนัดที่ใช้หายาเดิม: คลินิคเบาหวานนัดLAB, โรคเบาหวาน(DM), คลีนิคความดันนัดLAB, โรคความดัน(HT), โรคถุงลมโปงพอง(COPD)
 $MED_CLINICS = "'023','001','024','002','013'"
-function DbMeds($hn) {
+function DbMeds($hn, $path) {
+  # ?before=YYYY-MM-DD = ยาเดิม ณ วันนั้น (ตรวจย้อนหลังรายวัน hosxp-sync/daily_audit.py) — ไม่ระบุ = วันนี้
+  $asOf = if ($path -match '[?&]before=(\d{4}-\d{2}-\d{2})') { "'" + $Matches[1] + "'" } else { 'CURDATE()' }
   # visit ที่มาตามนัดของคลินิกเหล่านี้ — ผูกกับนัดด้วย visit_vn ถ้าไม่ได้ผูก ใช้ visit ของ HN นี้ในวันนัด
   # + visit ที่ "ออกนัด" คลินิกเหล่านี้ (oapp.vn) = visit ที่จ่ายยาถึงวันนัด (2026-10-29: HN 4700684 มาช้ากว่านัด, HN 5501044
   #   ได้ยาที่ OPD ทั่วไปแล้วนัด DM — เดิมไม่ถูกดึงเพราะ visit นั้นไม่ได้มาตามนัด DM/HT/COPD)
@@ -247,7 +249,7 @@ function DbMeds($hn) {
   $vis = DbQuery ("SELECT a.clinic, c.name AS clinic_name, o.vn, o.vstdate, o.vsttime FROM oapp a " +
     "JOIN clinic c ON c.clinic=a.clinic " +
     "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
-    "WHERE a.hn='$hn' AND o.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
+    "WHERE a.hn='$hn' AND o.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=$asOf-INTERVAL 2 YEAR AND o.vstdate<$asOf " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
   $drugs = @{}; $nextAppt = @{}
   if ($vis.Count) {
@@ -274,7 +276,7 @@ function DbMeds($hn) {
   #   เปลี่ยน enalapril → losartan ที่ OPD 1/9/69 หลัง HT 5/8/69 แต่ไม่ถูกดึง) — ยาเฉียบพลันหน้าเว็บกรองออกเอง
   if ($visits.Count) {
     $after = $visits[0].date
-    $ov = DbQuery ("SELECT o.vn, o.vstdate, o.vsttime FROM ovst o WHERE o.hn='$hn' AND o.vstdate>'$after' AND o.vstdate<CURDATE() " +
+    $ov = DbQuery ("SELECT o.vn, o.vstdate, o.vsttime FROM ovst o WHERE o.hn='$hn' AND o.vstdate>'$after' AND o.vstdate<$asOf " +
       "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 10")
     $ovn = @($ov | Where-Object { -not $used.ContainsKey("$($_['vn'])") })
     if ($ovn.Count) {
@@ -292,7 +294,7 @@ function DbMeds($hn) {
   }
   # ยากลับบ้านของการนอน รพ. ครั้งล่าสุดที่จำหน่ายแล้ว
   $dc = $null
-  $ipt = DbQuery "SELECT an, regdate, dchdate, dchtime FROM ipt WHERE hn='$hn' AND dchdate IS NOT NULL AND dchdate<=CURDATE() AND dchdate>=CURDATE()-INTERVAL 2 YEAR ORDER BY dchdate DESC, dchtime DESC LIMIT 1"
+  $ipt = DbQuery "SELECT an, regdate, dchdate, dchtime FROM ipt WHERE hn='$hn' AND dchdate IS NOT NULL AND dchdate<=$asOf AND dchdate>=$asOf-INTERVAL 2 YEAR ORDER BY dchdate DESC, dchtime DESC LIMIT 1"
   if ($ipt.Count) {
     $an = [HxDb]::Digits($ipt[0]['an'])
     $hme = DbQuery ("SELECT $DRUG_COLS $DRUG_JOIN JOIN ipt_order_no n ON n.an=r.an AND n.order_no=r.order_no " +
@@ -300,7 +302,7 @@ function DbMeds($hn) {
     $dc = [ordered]@{ an = $an; regdate = $ipt[0]['regdate']; dchdate = $ipt[0]['dchdate']; dchtime = $ipt[0]['dchtime']
       drugs = @($hme | ForEach-Object { DrugRow $_ }) }
   }
-  [ordered]@{ ok = $true; hn = $hn; visits = $visits; discharge = $dc }
+  [ordered]@{ ok = $true; hn = $hn; asOf = $asOf.Trim("'"); visits = $visits; discharge = $dc }
 }
 
 # ตัวหาร ME — นับแบบเดียวกับที่กรอกมือมาตลอด (ตรวจแล้วตรงกับที่กรอกไว้ ต.ค. 68 – ก.ย. 69)
@@ -1012,7 +1014,7 @@ function DbEndpoint($path) {
   try {
     if (-not $hn) { throw 'ต้องระบุ hn เป็นตัวเลข' }
     $res = if ($path -like '/db/order*') { DbOrder $hn $(if ($path -match '[?&]vn=(\d+)') { $Matches[1] } else { '' }) } elseif ($path -like '/db/visits*') { DbVisits $hn }
-      elseif ($path -like '/db/meds*') { DbMeds $hn }
+      elseif ($path -like '/db/meds*') { DbMeds $hn $path }
       elseif ($path -like '/db/dmvisits*') { DbDmVisits $hn $path }
       elseif ($path -like '/db/rxsticker*') { DbRxSticker $hn }
       elseif ($path -like '/db/smartrx*') { DbSmartRx $hn }

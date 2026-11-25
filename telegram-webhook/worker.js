@@ -7,6 +7,7 @@
 //   /monthly        (เฉพาะแชทงานโรงพยาบาล TASKS_CHAT_ID) รายการส่ง HRMS / SKYNET ประจำเดือน (cron ส่งเองทุกวันที่ 1)
 //   /help           แสดงคำสั่งทั้งหมด
 //
+// POST /pc-report (X-Report-Key): รายงานตรวจระบบทุกเช้าจากเครื่อง รพ. → TASKS_CHAT_ID (daily_audit.py)
 // Cron */5 นาที: แจ้งเอกสารใหม่ในหน้า insurance-audit เข้าแชทส่วนตัว TASKS_CHAT_ID (auditUploadsNotify) — ไม่เข้ากลุ่มห้องยา
 // Cron trigger (wrangler.toml) สั่งรัน workflow เดียวกันทุกวัน 08:30 น. ไทย —
 // ใช้แทน schedule ของ GitHub Actions ที่ดีเลย์ไม่แน่นอน (บางวันช้าไปถึงเที่ยง-บ่ายโมง)
@@ -22,6 +23,7 @@ const CHECK_COOLDOWN_MS = 60 * 1000; // กันสแปม /check — ห่�
 export default {
   async fetch(request, env) {
     if (request.method !== 'POST') return new Response('OK');
+    if (new URL(request.url).pathname === '/pc-report') return pcReport(request, env);
 
     let update;
     try {
@@ -351,6 +353,19 @@ function escTg(s) {
 }
 function fmtQty(q) {
   return q == null ? '?' : String(q);
+}
+
+// รายงานตรวจระบบอัตโนมัติจากเครื่องใน รพ. (hosxp-sync/daily_audit.py) → แชทงานส่วนตัว TASKS_CHAT_ID
+// ต้องมี header X-Report-Key = secret PC_REPORT_KEY — ข้อความเป็นข้อความธรรมดา (escape ก่อนส่ง) มีแค่ HN + ชื่อยา
+async function pcReport(request, env) {
+  if (!env.PC_REPORT_KEY || request.headers.get('X-Report-Key') !== env.PC_REPORT_KEY) return new Response('forbidden', { status: 403 });
+  if (!env.TASKS_CHAT_ID) return new Response('no TASKS_CHAT_ID', { status: 500 });
+  let body;
+  try { body = await request.json(); } catch { return new Response('bad json', { status: 400 }); }
+  const text = String(body && body.text || '').slice(0, TELEGRAM_MAX_LEN);
+  if (!text.trim()) return new Response('empty', { status: 400 });
+  await replyTelegram(env, env.TASKS_CHAT_ID, escTg(text));
+  return new Response('sent');
 }
 
 async function replyTelegram(env, chatId, text) {

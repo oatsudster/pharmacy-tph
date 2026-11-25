@@ -20,3 +20,4 @@ id = "020396f504974910b859d473e5e1a457"
 #   GITHUB_TOKEN
 #   ALLOWED_CHAT_ID
 #   TASKS_CHAT_ID     แชทส่วนตัวผู้ดูแล (ส่ง /chatid ให้บอทในแชทนั้นเพื่อดูเลข) — แจ้งเอกสารใหม่ insurance-audit
+#   PC_REPORT_KEY     กุญแจของ POST /pc-report (hosxp-sync/daily_audit.py อ่านจาก LOCALAPPDATA/HOSxPBridge/audit-report.json)

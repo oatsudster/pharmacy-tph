@@ -2770,6 +2770,21 @@ function dbLeftoverDrug(d) {
   if (isSymptomatic(name) || isAntibiotic(name) || /\bCPM\b|มะแว้ง|ฟ้าทะลายโจร|\bFTJ\b/i.test(name)) return false;
   return !drugTokens(name).some(x => EMR_ACUTE_DRUGS.concat(EMR_PAIN_DRUGS).some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
 }
+// แหล่งยาเดิมจาก /db/meds เรียงใหม่ → เก่า + แหล่งอ้างอิง (top) — ใช้ร่วมกับ hosxp-sync/daily_audit_eval.mjs ที่ตรวจทุกเช้า
+// visit OPD ทั่วไปหลังคลินิก (bridge ส่ง clinic='') เอาเฉพาะยาที่จ่าย ≥ 28 วัน = ยาเรื้อรังที่แพทย์ OPD สั่งแทน/เปลี่ยน
+//   (HN 4705079 losartan 172 เม็ด) — ยาไปตรวจเจ็บป่วย 10–30 เม็ด (omeprazole, flunarizine, prednisolone) ไม่ใช่ยาเดิม
+function dbLongSupply(d) { const pd = parseUsage(d.usage || '').perDay; return pd > 0 ? +d.qty / pd >= 28 : +d.qty >= 60; }
+function dbMedSources(m) {
+  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), nextAppt: v.nextAppt || '', opd: !v.clinic,
+    drugs: (v.drugs || []).filter(d => v.clinic || dbLongSupply(d)),
+    label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName || 'OPD'} ${tphHosxp.thDate(v.date)}` }));
+  const dc = m.discharge;
+  if (dc && (dc.drugs || []).length) srcs.push({ sort: dc.dchdate + ' ' + (dc.dchtime || ''), drugs: dc.drugs, dc: true,
+    label: `ยากลับบ้าน (D/C ${tphHosxp.thDate(dc.dchdate)})` });
+  srcs.sort((a, b) => a.sort < b.sort ? 1 : -1);
+  // แหล่งอ้างอิง = แหล่งล่าสุดที่มียาเรื้อรัง (visit OPD/ER หลังคลินิกที่มีแต่ยาเฉียบพลันไม่นับ)
+  return { srcs, top: srcs.find(x => x.drugs.some(dbLeftoverDrug)) || srcs[0] };
+}
 let fcDbEmrHn = '', fcDbEmrOk = false, fcDbEmrBusy = false, fcDbEmrFail = 0;
 async function fcDbEmrDrugs(hn) {
   if (!hn || fcDbEmrBusy) return;
@@ -2788,23 +2803,13 @@ async function fcDbEmrDrugs(hn) {
     return;
   }
   fcDbEmrOk = true;
-  // visit OPD ทั่วไปหลังคลินิก (bridge ส่ง clinic='') เอาเฉพาะยาที่จ่าย ≥ 28 วัน = ยาเรื้อรังที่แพทย์ OPD สั่งแทน/เปลี่ยน
-  //   (HN 4705079 losartan 172 เม็ด) — ยาไปตรวจเจ็บป่วย 10–30 เม็ด (omeprazole, flunarizine, prednisolone) ไม่ใช่ยาเดิม
-  const longSupply = d => { const pd = parseUsage(d.usage || '').perDay; return pd > 0 ? +d.qty / pd >= 28 : +d.qty >= 60; };
-  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), nextAppt: v.nextAppt || '',
-    drugs: (v.drugs || []).filter(d => v.clinic || longSupply(d)),
-    label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName || 'OPD'} ${tphHosxp.thDate(v.date)}` }));
-  const dc = m.discharge;
-  if (dc && (dc.drugs || []).length) srcs.push({ sort: dc.dchdate + ' ' + (dc.dchtime || ''), drugs: dc.drugs, dc: true,
-    label: `ยากลับบ้าน (D/C ${tphHosxp.thDate(dc.dchdate)})` });
-  srcs.sort((a, b) => a.sort < b.sort ? 1 : -1);
+  const { srcs, top } = dbMedSources(m);
   if (!srcs.length) { fcEmrMsg = '🗄️ ไม่พบ visit คลินิก DM/HT/COPD หรือยากลับบ้านใน 2 ปี — กรอกยาเหลือเอง'; fcRenderEmrMsg(); return; }
   // จุดตัด: วันจำหน่ายครั้งล่าสุด (ถ้ามียากลับบ้าน) หรือ 1 ปีก่อนแหล่งล่าสุด แล้วแต่อันไหนใหม่กว่า
   // ยากลับบ้านใช้เป็นจุดตัดเฉพาะเมื่อเป็นแหล่งล่าสุด — มา visit หลังจำหน่ายแล้ว แพทย์ทบทวนยาแล้ว ยากลับบ้านที่ไม่ได้สั่งต่อ = หยุดแล้ว
   //   (2026-11-25: HN 4600207 ยากลับบ้าน 4/5/69 มี lorazepam prednisolone Berodual ถูกดึงมาทั้งที่ visit HT 5/8/69 ไม่ได้สั่งต่อ)
-  // แหล่งอ้างอิง = แหล่งล่าสุดที่มียาเรื้อรัง (visit OPD/ER หลังคลินิกที่มีแต่ยาเฉียบพลันไม่นับ)
-  const top = srcs.find(x => x.drugs.some(dbLeftoverDrug)) || srcs[0];
-  const dcSrc = top.dc ? top : null;
+  // ยากลับบ้านที่มีรายการ "ยาเดิม......" = คนไข้ใช้ยาของตัวเองต่อ รายการไม่ครบ → ไม่ใช้เป็นจุดตัด (HN 4702694 simvastatin หาย)
+  const dcSrc = top.dc && !top.drugs.some(d => /^ยาเดิม/.test(String(d.name || '').trim())) ? top : null;
   const yearAgo = (+top.sort.slice(0, 4) - 1) + top.sort.slice(4, 10);
   const cut = dcSrc && dcSrc.sort.slice(0, 10) > yearAgo ? dcSrc.sort : yearAgo;
   // คลินิกที่เลิกนัดแล้ว: visit นั้นออกนัดไว้ก่อน visit ล่าสุด (มา visit ใหม่กว่าแล้วไม่ได้นัดคลินิกนั้นต่อ) = ยาของคลินิกนั้นอาจหยุดแล้ว
