@@ -2767,7 +2767,7 @@ function dbLeftoverDrug(d) {
   if (!/^(tab|cap)/i.test(d.form || '')) return false;
   if (/(^|\s)(อม|ทา(?!น)|นวด|หยอด|เหน็บ)/.test(usage)) return false;
   if (parseUsage(usage).prn) return false;
-  if (isSymptomatic(name) || isAntibiotic(name) || /\bCPM\b|มะแว้ง/i.test(name)) return false;
+  if (isSymptomatic(name) || isAntibiotic(name) || /\bCPM\b|มะแว้ง|ฟ้าทะลายโจร|\bFTJ\b/i.test(name)) return false;
   return !drugTokens(name).some(x => EMR_ACUTE_DRUGS.concat(EMR_PAIN_DRUGS).some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
 }
 let fcDbEmrHn = '', fcDbEmrOk = false, fcDbEmrBusy = false, fcDbEmrFail = 0;
@@ -2788,21 +2788,31 @@ async function fcDbEmrDrugs(hn) {
     return;
   }
   fcDbEmrOk = true;
-  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), drugs: v.drugs || [], nextAppt: v.nextAppt || '',
-    label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName} ${tphHosxp.thDate(v.date)}` }));
+  // visit OPD ทั่วไปหลังคลินิก (bridge ส่ง clinic='') เอาเฉพาะยาที่จ่าย ≥ 28 วัน = ยาเรื้อรังที่แพทย์ OPD สั่งแทน/เปลี่ยน
+  //   (HN 4705079 losartan 172 เม็ด) — ยาไปตรวจเจ็บป่วย 10–30 เม็ด (omeprazole, flunarizine, prednisolone) ไม่ใช่ยาเดิม
+  const longSupply = d => { const pd = parseUsage(d.usage || '').perDay; return pd > 0 ? +d.qty / pd >= 28 : +d.qty >= 60; };
+  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), nextAppt: v.nextAppt || '',
+    drugs: (v.drugs || []).filter(d => v.clinic || longSupply(d)),
+    label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName || 'OPD'} ${tphHosxp.thDate(v.date)}` }));
   const dc = m.discharge;
   if (dc && (dc.drugs || []).length) srcs.push({ sort: dc.dchdate + ' ' + (dc.dchtime || ''), drugs: dc.drugs, dc: true,
     label: `ยากลับบ้าน (D/C ${tphHosxp.thDate(dc.dchdate)})` });
   srcs.sort((a, b) => a.sort < b.sort ? 1 : -1);
   if (!srcs.length) { fcEmrMsg = '🗄️ ไม่พบ visit คลินิก DM/HT/COPD หรือยากลับบ้านใน 2 ปี — กรอกยาเหลือเอง'; fcRenderEmrMsg(); return; }
   // จุดตัด: วันจำหน่ายครั้งล่าสุด (ถ้ามียากลับบ้าน) หรือ 1 ปีก่อนแหล่งล่าสุด แล้วแต่อันไหนใหม่กว่า
-  const dcSrc = srcs.find(x => x.dc);
-  const yearAgo = (+srcs[0].sort.slice(0, 4) - 1) + srcs[0].sort.slice(4, 10);
+  // ยากลับบ้านใช้เป็นจุดตัดเฉพาะเมื่อเป็นแหล่งล่าสุด — มา visit หลังจำหน่ายแล้ว แพทย์ทบทวนยาแล้ว ยากลับบ้านที่ไม่ได้สั่งต่อ = หยุดแล้ว
+  //   (2026-11-25: HN 4600207 ยากลับบ้าน 4/5/69 มี lorazepam prednisolone Berodual ถูกดึงมาทั้งที่ visit HT 5/8/69 ไม่ได้สั่งต่อ)
+  // แหล่งอ้างอิง = แหล่งล่าสุดที่มียาเรื้อรัง (visit OPD/ER หลังคลินิกที่มีแต่ยาเฉียบพลันไม่นับ)
+  const top = srcs.find(x => x.drugs.some(dbLeftoverDrug)) || srcs[0];
+  const dcSrc = top.dc ? top : null;
+  const yearAgo = (+top.sort.slice(0, 4) - 1) + top.sort.slice(4, 10);
   const cut = dcSrc && dcSrc.sort.slice(0, 10) > yearAgo ? dcSrc.sort : yearAgo;
   // คลินิกที่เลิกนัดแล้ว: visit นั้นออกนัดไว้ก่อน visit ล่าสุด (มา visit ใหม่กว่าแล้วไม่ได้นัดคลินิกนั้นต่อ) = ยาของคลินิกนั้นอาจหยุดแล้ว
   //   (2026-11-25: HN 4700964 นัด DM LAB ครั้งสุดท้าย 13/8/68 แล้วย้ายไป HT LAB — B1-6-12 จาก visit นั้นถูกดึงมาทั้งที่หยุดแล้ว)
-  const newestDate = srcs[0].sort.slice(0, 10);
-  const stale = src => src !== srcs[0] && !src.dc && src.nextAppt && src.nextAppt.slice(0, 10) < newestDate;
+  const newestDate = top.sort.slice(0, 10);
+  //   นัดต่อ ≤ visit ล่าสุด = มาตามนัดนั้นแล้ว (ได้ยาใหม่) ยาที่ไม่ได้สั่งต่อถือว่าหยุด (HN 4603124 flunarizine จาก 25/3/69 นัด 5/8/69)
+  //   ยากลับบ้านที่ไม่ใช่แหล่งล่าสุด = เก่าเสมอ
+  const stale = src => src.sort < top.sort && (src.dc || (src.nextAppt && src.nextAppt.slice(0, 10) <= newestDate));
   const picked = [], older = [], used = [];
   let skipped = 0, staleN = 0;
   for (const src of srcs) {
@@ -2830,7 +2840,7 @@ async function fcDbEmrDrugs(hn) {
   const lines = [`🗄️ <b>ยาเดิมจาก ${used.map(escHtml).join(' · ')}</b> (${picked.length} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`];
   if (skipped) lines.push(`ข้ามยาบรรเทาอาการ/แก้ปวด/ยาฆ่าเชื้อ/ยาใช้เมื่อมีอาการ/ยาน้ำ-ทา-อม-หยอด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
   if (older.length) lines.push([dcSrc && cut === dcSrc.sort ? 'ยาก่อนนอน รพ. ที่ไม่อยู่ในยากลับบ้าน (อาจหยุดแล้ว)' : 'ยาจาก visit เก่ากว่า 1 ปี',
-    staleN ? 'ยาจากคลินิกที่ไม่ได้นัดต่อแล้ว (อาจหยุดแล้ว)' : ''].filter(Boolean).join(' / ') +
+    staleN ? 'ยาจาก visit/ยากลับบ้านที่ไม่ได้สั่งต่อแล้ว (อาจหยุดแล้ว)' : ''].filter(Boolean).join(' / ') +
     ' — กดเพิ่มถ้าคนไข้นำมา:<br>' + older.map(x => `<button class="chip" data-drug="${escHtml(x.key)}">+ ${escHtml(drugLabel(x.key))}</button>`).join(' '));
   fcEmrMsg = lines.join('<br>');
   renderFloatClinic();
@@ -2918,7 +2928,7 @@ async function emrDrugNameLines(blob) {
 // ยาที่มักสั่งตามอาการในวันนั้น (ใช้เฉพาะตอนดึงจาก EMR ไม่กระทบการปรับยาตามนัดของ จพ.)
 const EMR_ACUTE_DRUGS = ['CETIRIZINE', 'LORATADINE', 'CHLORPHENIRAMINE', 'HYDROXYZINE', 'ATARAX', 'DIMENHYDRINATE', 'DRAMAMINE',
   'IBUPROFEN', 'MEFENAMIC', 'NAPROXEN', 'METOCLOPRAMIDE', 'SIMETHICONE', 'SENOKOT', 'BISACODYL', 'ALBENDAZOLE',
-  'ACYCLOVIR', 'FAVIPIRAVIR', 'CAFERGOT', 'AMBROXOL', 'BROMHEXINE', 'CARBOCYSTEINE', 'KETOCONAZOLE'];
+  'ACYCLOVIR', 'FAVIPIRAVIR', 'OSELTAMIVIR', 'TAMIFLU', 'CAFERGOT', 'AMBROXOL', 'BROMHEXINE', 'CARBOCYSTEINE', 'KETOCONAZOLE'];
 function emrSkipDrug(key, name) {
   if (isInsulin(key, name)) return false;
   if (isSymptomatic(key, name) || isAntibiotic(key, name)) return true;

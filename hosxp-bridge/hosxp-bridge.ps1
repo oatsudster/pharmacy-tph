@@ -270,6 +270,26 @@ function DbMeds($hn) {
     $used["$($v['vn'])"] = $true
     [void]$visits.Add([ordered]@{ clinic = $v['clinic']; clinicName = $v['clinic_name']; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; nextAppt = $nextAppt["$($v['vn'])"]; drugs = $drugs[$v['vn']] })
   }
+  # visit OPD อื่น (ไม่ใช่คลินิกนัด) หลัง visit คลินิกล่าสุด — แพทย์ OPD ทั่วไปเปลี่ยนยาเรื้อรังได้ (2026-11-25: HN 4705079
+  #   เปลี่ยน enalapril → losartan ที่ OPD 1/9/69 หลัง HT 5/8/69 แต่ไม่ถูกดึง) — ยาเฉียบพลันหน้าเว็บกรองออกเอง
+  if ($visits.Count) {
+    $after = $visits[0].date
+    $ov = DbQuery ("SELECT o.vn, o.vstdate, o.vsttime FROM ovst o WHERE o.hn='$hn' AND o.vstdate>'$after' AND o.vstdate<CURDATE() " +
+      "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 10")
+    $ovn = @($ov | Where-Object { -not $used.ContainsKey("$($_['vn'])") })
+    if ($ovn.Count) {
+      $od = @{}
+      foreach ($r in (DbQuery ("SELECT r.vn, $DRUG_COLS $DRUG_JOIN WHERE r.vn IN (" + (($ovn | ForEach-Object { "'" + [HxDb]::Digits($_['vn']) + "'" }) -join ',') +
+          ") AND (r.an IS NULL OR r.an='') ORDER BY r.item_no"))) {
+        if (-not $od.ContainsKey($r['vn'])) { $od[$r['vn']] = New-Object System.Collections.ArrayList }
+        [void]$od[$r['vn']].Add((DrugRow $r))
+      }
+      foreach ($v in $ovn) {
+        if (-not $od.ContainsKey($v['vn'])) { continue }
+        [void]$visits.Add([ordered]@{ clinic = ''; clinicName = 'OPD'; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; nextAppt = $null; drugs = $od[$v['vn']] })
+      }
+    }
+  }
   # ยากลับบ้านของการนอน รพ. ครั้งล่าสุดที่จำหน่ายแล้ว
   $dc = $null
   $ipt = DbQuery "SELECT an, regdate, dchdate, dchtime FROM ipt WHERE hn='$hn' AND dchdate IS NOT NULL AND dchdate<=CURDATE() AND dchdate>=CURDATE()-INTERVAL 2 YEAR ORDER BY dchdate DESC, dchtime DESC LIMIT 1"
