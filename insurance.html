@@ -382,6 +382,11 @@ td small { display: block; color: var(--text-light); }
       <div class="kpis" id="pp-kpis"></div>
       <div class="card" style="margin-top:14px"><h2>รายการที่ รพ. ทำอยู่แล้ว</h2><p class="note">"เข้าเกณฑ์" = ตรวจแล้วและตรงเงื่อนไขในคู่มือ · "ลงรหัส Z ครบ" = visit นั้นมีรหัส ICD-10 ที่ต้องใช้คู่กับรหัสเบิก (ถ้าไม่มี ระบบส่งเบิกจะไม่รับ)</p>
         <div class="tbl"><table id="pp-table" style="min-width:860px"></table></div><div id="pp-act"></div></div>
+      <div class="card" style="margin-top:14px" id="pp70-card" hidden><h2>PPFS ปีงบ 70 ครบ 29 รายการ (+ HIVSST) — รพ. ทำอะไรได้บ้าง</h2>
+        <p class="note">ตามสไลด์ สปสช.เขต 11 "หลักเกณฑ์และเงื่อนไข PP Fee Schedule ปีงบ 2570" · คนไทยทุกสิทธิ · จัดกลุ่มตามโปรแกรมที่ใช้บันทึก · "ใน HOSxP" = งานที่ทำแล้วและเข้าเงื่อนไขอายุ/ความถี่ (ยอดสรุป ไม่มีรายชื่อ) · ปีงบที่ยังไม่มีไฟล์ผลงานเคลมจะเทียบไม่ได้</p>
+        <div class="kpis" id="pp70-kpis" style="margin-bottom:10px"></div>
+        <div id="pp70-caps"></div>
+        <div class="tbl"><table id="pp70-table" style="min-width:900px"></table></div></div>
       <div id="pp-refs"></div>
       <p class="note" style="margin-top:10px" id="pp-foot"></p>
     </section>
@@ -502,9 +507,9 @@ td small { display: block; color: var(--text-light); }
     PNC: ['ดูแลหลังคลอด', 'ตรวจแม่หลังคลอดตามนัด', 'งานแม่และเด็ก'],
     FP: ['วางแผนครอบครัว', 'บริการคุมกำเนิด เช่น ยาฉีด ยาฝัง', 'งานแม่และเด็ก'],
     UPT: ['ทดสอบการตั้งครรภ์', '', 'งานแม่และเด็ก'],
-    IRON: ['ยาเสริมธาตุเหล็ก', 'เบิกได้เมื่อจ่ายยาจริงเท่านั้น', 'งานแม่และเด็ก'],
-    IRON_PRE: ['ยาเสริมธาตุเหล็ก (กลุ่มย่อย)', 'น่าจะเป็นธาตุเหล็กในหญิงตั้งครรภ์/ก่อนตั้งครรภ์', 'งานแม่และเด็ก', true],
-    IRON_SCR: ['คัดกรองภาวะโลหิตจาง', 'น่าจะเป็นการตรวจคัดกรองซีดเพื่อให้ธาตุเหล็ก', 'งานแม่และเด็ก', true],
+    IRON: ['ยาเม็ดเสริมธาตุเหล็ก+โฟลิก หญิง 13–45 ปี (PPFS ข้อ 13)', '80 บาท/คน/ปี · เบิกได้เมื่อจ่ายยาจริงเท่านั้น · ปีงบ 69 ยอด 960 = 12 × 80', 'ห้องยา/งานแม่และเด็ก'],
+    IRON_PRE: ['ยาน้ำเสริมธาตุเหล็กเด็ก 6–12 เดือน (PPFS ข้อ 27)', '50 บาท/คน/ปี · ปีงบ 69 ยอด 550 = 11 × 50', 'งานเด็ก/ห้องยา', false],
+    IRON_SCR: ['ตรวจ Hb/Hct คัดกรองซีดในเด็ก 6–12 เดือน และ 3–5 ปี (PPFS ข้อ 26)', '30 บาท/ครั้ง/ช่วงอายุ · ปีงบ 69 ยอด 420 = 14 × 30', 'งานเด็ก/lab', false],
     Fluoride: ['เคลือบ/ทาฟลูออไรด์', 'ป้องกันฟันผุในเด็ก', 'ทันตกรรม'],
     Fit_Test: ['FIT test คัดกรองมะเร็งลำไส้ใหญ่', 'ตรวจเลือดแฝงในอุจจาระ', 'PCU, Lab — เบิกผ่าน e-Claim'],
     Fit_test: ['FIT test คัดกรองมะเร็งลำไส้ใหญ่', 'ตรวจเลือดแฝงในอุจจาระ', 'PCU, Lab'],
@@ -733,6 +738,7 @@ td small { display: block; color: var(--text-light); }
     dmht: ['UC@KKPHO: สรุปบริการ DM/HT ปีงบ 69', 'https://www.uckkpho.com/dmht69/'],
     ppfs: ['UC@KKPHO: ตาราง PP Fee Schedule ปีงบ 69', 'https://www.uckkpho.com/ppfs69/'],
     pp7: ['สไลด์ สปสช.เขต 7: แนวทาง PP ปีงบ 69 (10 พ.ย. 68)', 'https://www.uckkpho.com/wp-content/uploads/2025/11/03_%E0%B8%99%E0%B8%B3%E0%B9%80%E0%B8%AA%E0%B8%99%E0%B8%ADPP-69_10%E0%B8%9E%E0%B8%A268_%E0%B8%AA%E0%B8%B8%E0%B8%91%E0%B8%B2%E0%B8%A3%E0%B8%B1%E0%B8%95%E0%B8%99%E0%B9%8C.pdf'],
+    pp70: ['สไลด์ สปสช.เขต 11: หลักเกณฑ์และเงื่อนไข PP Fee Schedule ปีงบ 2570 (29 รายการ) — ไฟล์ Desktop\งานประกันฯ\บริการสร้างเสริมสุขภาพและป้องกันโรค ปี 2570.pdf', ''],
     ppman: ['คู่มือการเบิกจ่ายกิจกรรม PP + API 13Plus v1.3 (สปสช. 18 ส.ค. 69) — ไฟล์ Desktop\\งานประกันฯ\\คู่มือการเบิกจ่ายกิจกรรม PP 2570.pdf', ''],
     tc: ['The Coverage 4 พ.ย. 69: ร่างประกาศ DM/HT ปีงบ 70 (outcome-based)', 'https://www.thecoverage.info/news/content/12501'],
     fy70: ['ประกาศกองทุน UC ปีงบ 70 (ราชกิจจาฯ) — ข้อ 88 บทเฉพาะกาล', 'https://dga-backoffice-upload.law.go.th/dga-backoffice-api/dga-storage/uploads/20261012174125434_24be495277fb.pdf'],
@@ -855,8 +861,96 @@ td small { display: block; color: var(--text-light); }
       ['HBsAg (ข้อ 72)', 'Z11.5 + TMLT 350162 / 350163 · CSMBS 36318 / 36319', CH.ktb, refLink('ppman', 'หน้า 118') + '<br>' + refLink('ppfs')],
       ['Anti-HCV (ข้อ 73)', 'Z11.5 + TMLT 351425', CH.ktb, refLink('ppman', 'หน้า 119') + '<br>' + refLink('pp7', 'หน้า 13')],
       ['ค่าฉีดวัคซีน (ข้อ 78–92)', 'dT: Z23.5/Z23.6 + TMT · ไข้หวัดใหญ่: Z25.1 + TMT (GPU) · ปีงบ 70 เพิ่ม PCV เด็ก 2, 4, 12 เดือน', CH.ktb + ' / หมอพร้อม', refLink('ppman', 'หน้า 126–144') + '<br>' + refLink('pp7', 'หน้า 5')],
-    ], 'งบ PP คิดจากประชากรไทยทุกสิทธิ (' + refLink('pp7', 'หน้า 5') + ') · อัตราปีงบ 70 ยังไม่ประกาศ ใช้อัตราปีงบ 69 · ตรวจฉบับลงนามที่ ' + refLink('law') + ' · สรุปทั้งหมด: ' + refLink('report'));
-    document.getElementById('pp-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · นับเฉพาะงานที่ทำใน รพ. (lab_order / ovst_vaccine ใน HOSxP) คนสัญชาติไทย · เข้าเกณฑ์ = คนละ 1 ครั้งในปีงบ · ไม่ได้ตรวจ Authen Code · ที่มา: Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/pp_claim.py`;
+    ], 'งบ PP คิดจากประชากรไทยทุกสิทธิ (' + refLink('pp7', 'หน้า 5') + ') · อัตราปีงบ 70: ' + refLink('pp70') + ' (FPG/lipid/FIT/HBsAg/HCV อัตราเท่าเดิม) · ตรวจฉบับลงนามที่ ' + refLink('law') + ' · สรุปทั้งหมด: ' + refLink('report'));
+    document.getElementById('pp-foot').textContent = `คำนวณ ${new Date(R.computed).toLocaleString('th-TH')} · นับเฉพาะงานที่ทำใน รพ. (lab_order / ovst_vaccine / opitemrece / ANC / xray ใน HOSxP) คนสัญชาติไทย · ไม่ได้ตรวจ Authen Code · ที่มา: Hospital Tasks/2026-11 ติดตามเบิก NCD (ประกาศ DM-HT 68)/pp_claim.py`;
+    drawPp70(R);
+  }
+
+  // ---------- PPFS ปีงบ 70: แคตตาล็อก 29 รายการ + ยอดจาก HOSxP (R.ppfs70 จาก pp_claim.ppfs70) ----------
+  // here: y = รพ. ทำได้/ทำอยู่ · m = ทำได้บางส่วน/ต้องถามงานที่ทำ · n = ไม่ใช่บริการระดับ รพช. (ส่งต่อ)
+  const PP70 = [
+    { g: 'E-Claim / NDP', no: 1, t: 'ทดสอบการตั้งครรภ์ (UPT)', r: '75 บาท/ครั้ง ≤ 4 ครั้ง/คน/ปี', here: 'y', k: 'upt', c: [['e-Claim', 'UPT']] },
+    { g: 'E-Claim / NDP', no: 2, t: 'ฝากครรภ์ (ANC + Lab1/Lab2 + U/S + ช่องปาก)', r: '360/ครั้ง · Lab1 ครบ 6 รายการ 600 · Lab2 (ซิฟิลิส+HIV ซ้ำ) 190 · U/S 400 · ตรวจช่องปาก+ขูดหินปูน 500 (ต่อการตั้งครรภ์)', here: 'y', k: 'anc', c: [['e-Claim', 'ANC'], ['e-Claim', 'ANC_ULTRA'], ['e-Claim', 'ANC_DENT']] },
+    { g: 'E-Claim / NDP', no: 5, t: 'ตรวจหลังคลอด + ยาเสริมธาตุเหล็ก', r: '150/ครั้ง ≤ 3 ครั้ง (วัน 1–7, 8–15, 16–42) · ยาเสริม 135/ครั้ง ≤ 2 ครั้ง', here: 'y', k: 'pnc', c: [['e-Claim', 'PNC']] },
+    { g: 'E-Claim / NDP', no: 7, t: 'วางแผนครอบครัว', r: 'ยาเม็ดรวม 40/แผง · ฮอร์โมนเดี่ยว 80/แผง (≤ 3 แผง/ครั้ง, ≤ 13 แผง/ปี) · ฉีด 60 (≤ 5/ปี) · ฉุกเฉิน 50 (≤ 2 แผง/ปี) · ห่วง 800 · ฝัง 2,150 / ถอด 350 (ทุก 3 ปี) · ถุงยาง = ชดเชยเป็นของ (KTB)', here: 'y', k: 'fp', c: [['e-Claim', 'FP']] },
+    { g: 'E-Claim / NDP', no: 12, t: 'CBC คัดกรองโลหิตจาง หญิง 13–24 ปี', r: '65 บาท · 1 ครั้ง/คน', here: 'y', k: 'cbc_w', c: [['e-Claim', 'CBC'], ['KTB', 'CBC']] },
+    { g: 'E-Claim / NDP', no: 13, t: 'ยาเม็ดเสริมธาตุเหล็ก+โฟลิก หญิง 13–45 ปี', r: '80 บาท/คน/ปี (ไม่รวมคนฝากครรภ์ — อยู่ใน ANC แล้ว)', here: 'y', k: 'iron_w', c: [['e-Claim', 'IRON']] },
+    { g: 'E-Claim / NDP', no: 26, t: 'ตรวจ Hb/Hct เด็ก 6–12 เดือน และ 3–5 ปี', r: '30 บาท/ครั้ง/ช่วงอายุ', here: 'y', k: 'child_hb', c: [['e-Claim', 'IRON_SCR']] },
+    { g: 'E-Claim / NDP', no: 27, t: 'ยาน้ำเสริมธาตุเหล็กเด็ก 6–12 เดือน', r: '50 บาท/ปี · เบิกได้เฉพาะที่จ่ายยาจริง', here: 'y', k: 'child_iron', c: [['e-Claim', 'IRON_PRE']] },
+    { g: 'E-Claim / NDP', no: 11, t: 'แว่นตาเด็ก 3–12 ปี สายตาผิดปกติ', r: 'Stock lens 800 · Lab lens 1,000 (ต่อคนต่อปี)', here: 'm' },
+    { g: 'E-Claim / NDP', no: 14, t: 'เคลือบฟลูออไรด์ 25–59 ปีกลุ่มเสี่ยงฟันผุ / ผู้ต้องขัง', r: '100 บาท ≤ 2 ครั้ง/คน/ปี (ปากแห้งจากฉายแสง/ยา, เหงือกร่น)', here: 'm', c: [['e-Claim', 'Fluoride'], ['KTB', 'Fluoride']] },
+    { g: 'E-Claim / NDP', no: 18, t: 'FPG 35–59 ปี · Chol+HDL 45–70 ปี', r: 'FPG 40/ปี · lipid 160 ทุก 5 ปี (สไลด์ปี 70 ระบุ E-Claim)', here: 'y', note: 'ดูตารางด้านบน' },
+    { g: 'E-Claim / NDP', no: 24, t: 'FIT 50–70 ปี', r: '60 บาท ทุก 2 ปี', here: 'y', note: 'ดูตารางด้านบน' },
+    { g: 'E-Claim / NDP', no: 19, t: 'CA Oral screening (biopsy + พยาธิ) อายุ ≥ 40 ปี', r: '600 บาท เหมาจ่าย', here: 'm', c: [['e-Claim', 'CA_ORAL']] },
+    { g: 'E-Claim / NDP', no: 8, t: 'ยุติการตั้งครรภ์ที่ปลอดภัย (MTP pack / MVA)', r: '3,000 บาท/การตั้งครรภ์', here: 'm', c: [['e-Claim', 'ABORTION']] },
+    { g: 'E-Claim / NDP', no: 23, t: 'Mammogram + U/S หญิง ≥ 40 ปีญาติสายตรงเป็นมะเร็งเต้านม', r: '2,400 ทุก 2 ปี', here: 'n', c: [['e-Claim', 'BREAST_CA_SCR']] },
+    { g: 'E-Claim / NDP', no: 22, t: 'BRCA1/2', r: 'ประเมิน 500 · ตรวจ ≤ 10,000 / ญาติ ≤ 2,500', here: 'n' },
+    { g: 'E-Claim / NDP', no: 28, t: 'ฮอร์โมนยืนยันเพศสภาพ', r: 'จ่ายตาม protocol (FS) · ยาผ่าน VMI', here: 'n' },
+    { g: 'E-Claim / NDP', no: 29, t: 'BMD หญิง ≥ 60 ปี', r: '400 / 800 ทุก 5 ปี · ต้องมี DXA + แพทย์เฉพาะทาง', here: 'n' },
+    { g: 'KTB', no: 16, t: 'HBsAg (เกิดก่อน 2535)', r: '50 บาท ครั้งเดียวในชีวิต', here: 'y', note: 'ดูตารางด้านบน' },
+    { g: 'KTB', no: 17, t: 'Anti-HCV (เกิดก่อน 2535 / กลุ่มเสี่ยง 5 กลุ่ม ≤ 2 ครั้ง/ปี) · HCV core Ag 400 / RNA 1,690 (E-Claim)', r: '50 บาท', here: 'y', note: 'ดูตารางด้านบน' },
+    { g: 'KTB', no: 20, t: 'มะเร็งปากมดลูก 30–59 ปี (15–29 ปีกลุ่มเสี่ยง)', r: 'Pap/VIA 250 · HPV self 50 · เก็บตัวอย่าง 280/370 · LBC 250 · Colpo 900 · คนละ 1 ครั้งทุก 5 ปี', here: 'm', c: [['KTB', 'PAP'], ['KTB', 'HPV'], ['KTB', 'Liguid_BC'], ['KTB', 'Colposcope']], note: 'HOSxP ของ รพ. ไม่มีบันทึกตรวจมะเร็งปากมดลูก (person_women_service ว่าง) — ดูยอดเบิกจริงจาก KTB' },
+    { g: 'KTB', no: 6, t: 'ซิฟิลิส ผู้ต้องขัง/วัยรุ่นกลุ่มเสี่ยง · คัดกรองธาลัสซีเมียสามี (NPRP 120)', r: 'TT/NTT 50 · TPHA 100', here: 'm', c: [['KTB', 'VDRL'], ['KTB', 'TPHA'], ['KTB', 'CLIA,EIA']] },
+    { g: 'KTB', no: 30, t: 'HIV self-screening test (HIVSST)', r: '100 บาท ≤ 1 test/วัน (รวมให้คำปรึกษา)', here: 'm', c: [['KTB', 'SelftestHIV']] },
+    { g: 'KTB', no: 21, t: 'OV-RDT (พยาธิใบไม้ตับ)', r: '150 บาท/ปี · เฉพาะหน่วยนวัตกรรม', here: 'n' },
+    { g: 'NTIP', no: 15, t: 'CXR คัดกรองวัณโรคกลุ่มเสี่ยง 7 กลุ่ม', r: '100 บาท ≤ 1 ครั้ง/คน/ปี (+ TB-LAMP 200 / Xpert 500 / culture 200–300)', here: 'y', k: 'cxr_tb', c: [['KTB', 'CXR']] },
+    { g: 'NTIP', no: 25, t: 'Latent TB (IGRA)', r: 'เจาะเลือด 100 + ส่ง 100 + IGRA 650 · ต้องเป็นหน่วยตามแนวทางกองวัณโรค', here: 'm' },
+    { g: 'NPRP', no: 9, t: 'TSH ทารกแรกเกิด', r: 'คัดกรอง 135 + ติดตามยืนยัน 350', here: 'y', k: 'nb_tsh' },
+    { g: 'NPRP', no: 10, t: 'TMS ทารกแรกเกิด (โรคพันธุกรรมเมตาบอลิก)', r: '500 บาท/คน', here: 'y', k: 'nb_tms' },
+    { g: 'NPRP', no: 3, t: 'ยืนยันธาลัสซีเมียคู่เสี่ยง (Hb typing 270 / Alpha-1 800 / Beta 3,000 / PND 2,500)', r: 'ต่อการตั้งครรภ์ต่อคน', here: 'm' },
+    { g: 'NPRP', no: 4, t: 'ดาวน์ซินโดรม (เจาะเลือดส่ง 100–200 / NIPT 2,500–2,600 / Quad 1,200–1,300)', r: 'ต่อการตั้งครรภ์', here: 'm' },
+  ];
+  function pp70Val(P, k) {
+    const x = P[k];
+    if (k === 'upt') return [x.eligible, x.baht, `${fmt(x.tests)} ครั้ง · ${fmt(x.persons)} คน`];
+    if (k === 'anc') return [x.visits, x.baht, `${fmt(x.pregnancies)} ครรภ์ · ${fmt(x.visits)} ครั้ง (${fmt(x.baht_visits)}) · Lab1 ครบ ${fmt(x.lab1)} (${fmt(x.baht_lab1)}) · Lab2 ${fmt(x.lab2)} (${fmt(x.baht_lab2)}) · U/S ${fmt(x.us)} (${fmt(x.baht_us)}) · ช่องปาก ${fmt(x.dent)} (${fmt(x.baht_dent)})`];
+    if (k === 'pnc') return [x.visits, x.baht, `แม่ ${fmt(x.mothers)} คน · ตรวจ ${fmt(x.visits)} ครั้ง · ได้ยาเสริม ${fmt(x.iron)} ครั้ง`];
+    if (k === 'fp') {
+      const N = { pill_c: 'ยาเม็ดรวม (แผง)', pill_p: 'ฮอร์โมนเดี่ยว (แผง)', inj: 'ยาฉีด', ec: 'ฉุกเฉิน', iud: 'ห่วง', implant: 'ยาฝัง' };
+      return [Object.values(x).reduce((s, v) => s + v.persons, 0), P.fp_baht, Object.keys(x).map((t) => `${N[t] || t} ${fmt(x[t].n)} (${fmt(x[t].persons)} คน)`).join(' · ') + (P.fp_items && P.fp_items.length ? `<br><span class="note">ยาที่พบ: ${esc(P.fp_items.join(', '))}</span>` : '')];
+    }
+    if (k === 'nb_tsh' || k === 'nb_tms') { const n = P.newborn; return [n.births, k === 'nb_tsh' ? n.baht_tsh : n.baht_tms, `ทารกเกิดที่ รพ. ${fmt(n.births)} คน · เบิกได้เมื่อส่งกระดาษซับเลือดและบันทึก NPRP`]; }
+    if (k === 'cxr_tb') {
+      const G = { dm_a1c7: 'DM HbA1c ≥ 7', ckd: 'CKD', hiv: 'HIV', contact: 'สัมผัสวัณโรค', substance: 'สารเสพติด/สุรา', elderly65: '≥ 65 ปี + DM/COPD' };
+      return [x.eligible, x.baht, `CXR ทั้งหมด ${fmt(x.cxr_persons)} คน · กลุ่มเสี่ยง: ${Object.entries(x.by_group || {}).map(([g, n]) => `${G[g] || g} ${fmt(n)}`).join(' · ')} · <b>ยอดสูงสุดที่เป็นไปได้</b> — นับได้เฉพาะ CXR ที่สั่งเพื่อคัดกรอง TB และบันทึก NTIP`];
+    }
+    const extra = k === 'iron_w' ? `ไม่นับคนฝากครรภ์/หลังคลอด ${fmt(x.pregnant_excluded)} คน` : k === 'child_iron' ? `เด็ก < 5 ปีที่ได้ยาน้ำธาตุเหล็ก ${fmt(x.under5_any_liquid_iron)} คน (เข้าเกณฑ์อายุ 6–12 เดือน ${fmt(x.eligible)})` : '';
+    return [x.eligible, x.baht, `ลง Z ครบ ${fmt(x.coded)} ราย` + (extra ? ' · ' + extra : '')];
+  }
+  function drawPp70(R) {
+    const card = document.getElementById('pp70-card'), P = R.ppfs70;
+    card.hidden = !P;
+    if (!P) return;
+    const F = R.fy, HERE = { y: '✅ ทำได้', m: '⚠️ บางส่วน / ถามงานที่ทำ', n: '— ส่งต่อ' };
+    let est = 0, gap = 0, anyC = false;
+    const groups = [...new Set(PP70.map((x) => x.g))];
+    const rows = groups.map((g) => `<tr><td colspan="6" style="background:var(--primary-soft,#eef4ff)"><b>${esc(g)}</b></td></tr>` + PP70.filter((x) => x.g === g).map((x) => {
+      let n = '–', b = '–', d = x.note ? esc(x.note) : '', cl = x.c ? claimedOf(F, x.c) : null, gp = '–';
+      if (x.k && (x.k.startsWith('nb_') ? P.newborn : P[x.k])) {
+        const [cnt, baht, det] = pp70Val(P, x.k);
+        n = fmt(cnt); b = fmt(baht); d = det; est += baht;
+        if (cl) { anyC = true; gap += Math.max(0, baht - cl.baht); gp = gapCell(baht, cl); }
+      }
+      return `<tr><td><b>${x.no <= 29 ? x.no + '. ' : ''}${esc(x.t)}</b><br><span class="note">${esc(x.r)}</span></td><td class="note">${HERE[x.here]}</td>
+        <td class="num"><b>${n}</b></td><td class="num">${b}</td><td>${x.c ? claimCell(cl) : '<span class="note">–</span>'}${d ? `<br><span class="note">${d}</span>` : ''}</td><td>${gp}</td></tr>`;
+    }).join('')).join('');
+    document.getElementById('pp70-table').innerHTML = `<thead><tr><th>รายการ · อัตรา/เงื่อนไข ปีงบ 70</th><th>ที่ รพ.</th><th class="num">ใน HOSxP</th><th class="num">มูลค่า (บาท)</th><th>เบิกได้จริง · รายละเอียด</th><th>ส่วนต่าง</th></tr></thead><tbody>${rows}</tbody>`;
+    const C = P.caps || {};
+    document.getElementById('pp70-kpis').innerHTML = [
+      kpiH('รายการใหม่ที่ทำแล้วเข้าเกณฑ์ (ประมาณ)', fmt(est) + ' บาท', `ฝากครรภ์ หลังคลอด วางแผนครอบครัว ธาตุเหล็ก CBC CXR ทารกแรกเกิด · ปีงบ ${F}`),
+      kpiH('ฝากครรภ์ (ANC ทั้งชุด)', fmt(P.anc.baht) + ' บาท', `${fmt(P.anc.pregnancies)} ครรภ์ · ${fmt(P.anc.visits)} ครั้ง`),
+      kpiH('ทำแล้วแต่ยังไม่เห็นในยอดเบิก', anyC ? fmt(gap) + ' บาท' : '–', anyC ? 'เฉพาะรายการที่ HOSxP มากกว่าไฟล์เคลม' : 'ยังไม่มีไฟล์ผลงานเคลมปีงบนี้', gap > 0),
+      kpiH('CXR กลุ่มเสี่ยง TB (สูงสุด)', fmt(P.cxr_tb.eligible) + ' คน', `≈ ${fmt(P.cxr_tb.baht)} บาท ถ้าบันทึก NTIP/KTB`),
+    ].join('');
+    const cw = [
+      [C.fp_pill_packs_over_3_per_visit, 'แผงยาคุมที่จ่ายเกิน 3 แผง/ครั้ง (ส่วนเกินเบิกไม่ได้)'],
+      [C.fp_pill_packs_over_13_per_year, 'แผงยาคุมที่เกิน 13 แผง/คน/ปี'],
+      [C.fp_inj_over_5, 'ยาฉีดคุมกำเนิดเกิน 5 ครั้ง/คน/ปี'],
+      [C.upt_over4, 'UPT เกิน 4 ครั้ง/คน/ปี'],
+    ].filter((x) => x[0] > 0);
+    document.getElementById('pp70-caps').innerHTML = cw.length
+      ? `<p class="note" style="color:var(--danger);margin:0 0 8px">⚠️ เกินเพดานเบิก (ห้องยา/คลินิกปรับตอนจ่ายได้): ${cw.map((x) => `${esc(x[1])} <b>${fmt(x[0])}</b>`).join(' · ')}</p>`
+      : '<p class="note" style="color:var(--ok);margin:0 0 8px">✓ ไม่พบการจ่ายเกินเพดาน (ยาคุม 3 แผง/ครั้ง, 13 แผง/ปี, ยาฉีด 5 ครั้ง/ปี, UPT 4 ครั้ง/ปี)</p>';
   }
 
   function drawPal() {
