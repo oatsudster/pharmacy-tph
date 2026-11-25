@@ -249,13 +249,16 @@ function DbMeds($hn) {
     "JOIN ovst o ON o.vn=a.visit_vn OR o.vn=a.vn OR ((a.visit_vn IS NULL OR a.visit_vn='') AND o.hn=a.hn AND o.vstdate=a.nextdate) " +
     "WHERE a.hn='$hn' AND o.hn='$hn' AND a.clinic IN ($MED_CLINICS) AND a.nextdate>=CURDATE()-INTERVAL 2 YEAR AND o.vstdate<CURDATE() " +
     "ORDER BY o.vstdate DESC, o.vn DESC LIMIT 40")
-  $drugs = @{}
+  $drugs = @{}; $nextAppt = @{}
   if ($vis.Count) {
     $vns = ($vis | ForEach-Object { "'" + [HxDb]::Digits($_['vn']) + "'" } | Select-Object -Unique) -join ','
     foreach ($r in (DbQuery "SELECT r.vn, $DRUG_COLS $DRUG_JOIN WHERE r.vn IN ($vns) AND (r.an IS NULL OR r.an='') ORDER BY r.item_no")) {
       if (-not $drugs.ContainsKey($r['vn'])) { $drugs[$r['vn']] = New-Object System.Collections.ArrayList }
       [void]$drugs[$r['vn']].Add((DrugRow $r))
     }
+    # วันนัดไกลสุดที่ออกจาก visit นั้น — หน้าเว็บใช้ตัดคลินิกที่เลิกนัดแล้ว (2026-11-25: HN 4700964 นัด DM LAB ครั้งสุดท้าย 13/8/68
+    #   แล้วย้ายไป HT LAB แต่ยังดึง B1-6-12 จาก visit DM นั้นมาเป็นยาเดิม)
+    foreach ($r in (DbQuery "SELECT vn, MAX(nextdate) AS nd FROM oapp WHERE hn='$hn' AND vn IN ($vns) GROUP BY vn")) { $nextAppt["$($r['vn'])"] = $r['nd'] }
   }
   # แต่ละคลินิกเอา visit ล่าสุดที่มียา (นัด LAB บางครั้งไม่มียา ข้ามไป visit ก่อนหน้าของคลินิกนั้น)
   $visits = New-Object System.Collections.ArrayList; $seen = @{}; $used = @{}
@@ -265,7 +268,7 @@ function DbMeds($hn) {
     # visit เดียวกันทั้งมาตามนัดคลินิกหนึ่งและออกนัดอีกคลินิก เอาครั้งเดียว
     if ($used.ContainsKey("$($v['vn'])")) { continue }
     $used["$($v['vn'])"] = $true
-    [void]$visits.Add([ordered]@{ clinic = $v['clinic']; clinicName = $v['clinic_name']; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; drugs = $drugs[$v['vn']] })
+    [void]$visits.Add([ordered]@{ clinic = $v['clinic']; clinicName = $v['clinic_name']; vn = $v['vn']; date = $v['vstdate']; time = $v['vsttime']; nextAppt = $nextAppt["$($v['vn'])"]; drugs = $drugs[$v['vn']] })
   }
   # ยากลับบ้านของการนอน รพ. ครั้งล่าสุดที่จำหน่ายแล้ว
   $dc = $null

@@ -2645,7 +2645,7 @@ function fcSetPatient(hn, name) {
   // ชื่อยาที่ดึงจาก EMR ของคนก่อนแต่ยังไม่ได้ใส่จำนวน ไม่ใช่ของคนใหม่
   document.querySelectorAll('#lo-list .lo-row[data-auto]').forEach(r => { if (!r.querySelector('.lo-qty').value) r.remove(); });
   updateLoTotal();
-  fcEmrHash = ''; fcEmrMsg = ''; fcEmrSrc = null; fcDbEmrHn = ''; fcDbEmrOk = false;
+  fcEmrHash = ''; fcEmrMsg = ''; fcEmrSrc = null; fcDbEmrHn = ''; fcDbEmrOk = false; fcDbEmrFail = 0; fcDbEmrBusy = false;
   document.getElementById('f-hn').value = hn;
   document.getElementById('f-name').value = '';
   onHnLookup();
@@ -2677,8 +2677,10 @@ async function pollClinicBridge() {
     }
   }
   // ยาเดิม: จากฐานข้อมูล HOSxP ถ้า bridge ต่อได้ ไม่งั้น OCR ตารางยาใน EMR ที่เภสัชเปิดอยู่
+  // OCR ตารางใหม่ของ HOSxP 4.69.11.18 อ่านเพี้ยน — ใช้เฉพาะเมื่อ DB ใช้ไม่ได้จริง (ลองแล้วไม่สำเร็จ 3 ครั้ง) ห้ามวิ่งคู่กับ DB
+  //   (2026-11-25: OCR เสร็จทีหลัง DB แล้วลบแถวยาเดิมจาก DB ทิ้ง เหลือแต่ชื่อที่ OCR อ่านได้ เช่น HN 4800346 เหลือ amlodipine ตัวเดียว)
   if (s.db) fcDbEmrDrugs(document.getElementById('f-hn').value.trim());
-  if (!s.db || !fcDbEmrOk) fcEmrDrugs(s);
+  if (!s.db || fcDbEmrFail >= 3) fcEmrDrugs(s);
 }
 
 // เภสัชเปิด visit ก่อนหน้าใน Patient EMR (แท็บ "รายการยา") → bridge ส่งภาพตารางยามา → OCR เอาชื่อยา
@@ -2720,6 +2722,8 @@ async function fcEmrDrugs(s) {
     fcEmrHash = gh;
     // ผู้ป่วยในฟอร์มเปลี่ยนไประหว่างรอ OCR — ทิ้งผล
     if (!clinicWin || clinicWin.closed || s.emrHn !== document.getElementById('f-hn').value.trim()) { fcEmrMsg = ''; return; }
+    // DB ดึงยาเดิมได้ระหว่างรอ OCR — ใช้ของ DB ห้ามทับ
+    if (fcDbEmrOk || fcDbEmrBusy) return;
     fcApplyEmrLines(lines, parseEmrVisit(s.emrVisit), '📷');
   } catch (e) {
     console.error('OCR รายการยา EMR', e);
@@ -2766,14 +2770,25 @@ function dbLeftoverDrug(d) {
   if (isSymptomatic(name) || isAntibiotic(name) || /\bCPM\b|มะแว้ง/i.test(name)) return false;
   return !drugTokens(name).some(x => EMR_ACUTE_DRUGS.concat(EMR_PAIN_DRUGS).some(y => x === y || (x.length >= 6 && editDist(x, y) <= 2)));
 }
-let fcDbEmrHn = '', fcDbEmrOk = false;
+let fcDbEmrHn = '', fcDbEmrOk = false, fcDbEmrBusy = false, fcDbEmrFail = 0;
 async function fcDbEmrDrugs(hn) {
-  if (!hn || hn === fcDbEmrHn) return;
-  fcDbEmrHn = hn; fcDbEmrOk = false;
-  const m = await tphHosxp.meds(hn);
-  if (!m || !clinicWin || clinicWin.closed || document.getElementById('f-hn').value.trim() !== hn) return;
+  if (!hn || fcDbEmrBusy) return;
+  if (hn === fcDbEmrHn && (fcDbEmrOk || fcDbEmrFail >= 3)) return;
+  if (hn !== fcDbEmrHn) { fcDbEmrHn = hn; fcDbEmrOk = false; fcDbEmrFail = 0; }
+  fcDbEmrBusy = true;
+  let m;
+  try { m = await tphHosxp.meds(hn); } finally { fcDbEmrBusy = false; }
+  if (!clinicWin || clinicWin.closed || document.getElementById('f-hn').value.trim() !== hn || fcDbEmrHn !== hn) return;
+  // ครั้งเดียวไม่สำเร็จ (HOSxP ตอบช้าเกิน 20 วิ เป็นพักๆ) ลองใหม่รอบ poll ถัดไป — เดิมไม่ลองใหม่เลย แล้วไปใช้ OCR ที่อ่านเพี้ยน
+  if (!m) {
+    fcDbEmrFail++;
+    fcEmrMsg = fcDbEmrFail >= 3 ? '⚠️ ดึงยาเดิมจากฐานข้อมูล HOSxP ไม่สำเร็จ 3 ครั้ง — อ่านจากตารางยาใน EMR แทน (ตรวจชื่อยาด้วย)'
+      : `⏳ ฐานข้อมูล HOSxP ตอบช้า — กำลังลองดึงยาเดิมใหม่ (ครั้งที่ ${fcDbEmrFail + 1})…`;
+    fcRenderEmrMsg();
+    return;
+  }
   fcDbEmrOk = true;
-  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), drugs: v.drugs || [],
+  const srcs = (m.visits || []).map(v => ({ sort: v.date + ' ' + (v.time || ''), drugs: v.drugs || [], nextAppt: v.nextAppt || '',
     label: `${MED_CLINIC_SHORT[v.clinic] || v.clinicName} ${tphHosxp.thDate(v.date)}` }));
   const dc = m.discharge;
   if (dc && (dc.drugs || []).length) srcs.push({ sort: dc.dchdate + ' ' + (dc.dchtime || ''), drugs: dc.drugs, dc: true,
@@ -2784,10 +2799,15 @@ async function fcDbEmrDrugs(hn) {
   const dcSrc = srcs.find(x => x.dc);
   const yearAgo = (+srcs[0].sort.slice(0, 4) - 1) + srcs[0].sort.slice(4, 10);
   const cut = dcSrc && dcSrc.sort.slice(0, 10) > yearAgo ? dcSrc.sort : yearAgo;
+  // คลินิกที่เลิกนัดแล้ว: visit นั้นออกนัดไว้ก่อน visit ล่าสุด (มา visit ใหม่กว่าแล้วไม่ได้นัดคลินิกนั้นต่อ) = ยาของคลินิกนั้นอาจหยุดแล้ว
+  //   (2026-11-25: HN 4700964 นัด DM LAB ครั้งสุดท้าย 13/8/68 แล้วย้ายไป HT LAB — B1-6-12 จาก visit นั้นถูกดึงมาทั้งที่หยุดแล้ว)
+  const newestDate = srcs[0].sort.slice(0, 10);
+  const stale = src => src !== srcs[0] && !src.dc && src.nextAppt && src.nextAppt.slice(0, 10) < newestDate;
   const picked = [], older = [], used = [];
-  let skipped = 0;
+  let skipped = 0, staleN = 0;
   for (const src of srcs) {
-    const current = src.sort >= cut;
+    const current = src.sort >= cut && !stale(src);
+    if (src.sort >= cut && stale(src)) staleN++;
     if (current) used.push(src.label);
     for (const d of src.drugs) {
       if (!dbLeftoverDrug(d)) { if (current) skipped++; continue; }
@@ -2809,7 +2829,8 @@ async function fcDbEmrDrugs(hn) {
   fcEmrSrc = null;
   const lines = [`🗄️ <b>ยาเดิมจาก ${used.map(escHtml).join(' · ')}</b> (${picked.length} รายการ) — ใส่จำนวนที่คนไข้นำมา ยาที่ไม่ได้นำมาเว้นว่างไว้ ไม่ถูกบันทึก`];
   if (skipped) lines.push(`ข้ามยาบรรเทาอาการ/แก้ปวด/ยาฆ่าเชื้อ/ยาใช้เมื่อมีอาการ/ยาน้ำ-ทา-อม-หยอด ${skipped} รายการ (ถ้ามีเหลือ เพิ่มเองได้)`);
-  if (older.length) lines.push((dcSrc && cut === dcSrc.sort ? 'ยาก่อนนอน รพ. ที่ไม่อยู่ในยากลับบ้าน (อาจหยุดแล้ว)' : 'ยาจาก visit เก่ากว่า 1 ปี') +
+  if (older.length) lines.push([dcSrc && cut === dcSrc.sort ? 'ยาก่อนนอน รพ. ที่ไม่อยู่ในยากลับบ้าน (อาจหยุดแล้ว)' : 'ยาจาก visit เก่ากว่า 1 ปี',
+    staleN ? 'ยาจากคลินิกที่ไม่ได้นัดต่อแล้ว (อาจหยุดแล้ว)' : ''].filter(Boolean).join(' / ') +
     ' — กดเพิ่มถ้าคนไข้นำมา:<br>' + older.map(x => `<button class="chip" data-drug="${escHtml(x.key)}">+ ${escHtml(drugLabel(x.key))}</button>`).join(' '));
   fcEmrMsg = lines.join('<br>');
   renderFloatClinic();
