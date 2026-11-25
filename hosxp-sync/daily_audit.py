@@ -200,7 +200,9 @@ def build_report(date, bridge_issues, a, full):
 def send(cfg, text):
     body = json.dumps({'text': text[:TG_MAX]}).encode('utf-8')
     req = urllib.request.Request(cfg['url'], data=body, method='POST',
-                                 headers={'Content-Type': 'application/json', 'X-Report-Key': cfg['key']})
+                                 # Cloudflare บล็อก User-Agent ปกติของ Python-urllib (error 1010) → 403
+                                 headers={'Content-Type': 'application/json', 'X-Report-Key': cfg['key'],
+                                          'User-Agent': 'tph-daily-audit/1.0'})
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.status
 
