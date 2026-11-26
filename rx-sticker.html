@@ -2580,12 +2580,24 @@ async function autoOpdSum() {
   history.replaceState(null, '', location.pathname + location.search);   // รีโหลดหน้าไม่พิมพ์ซ้ำ
   setView('rx');
   document.getElementById('f-hn').value = hn;
-  await loadHn(hn);
-  if (!CUR || String(CUR.hn) !== hn) return;   // ดึงไม่ได้ — loadHn แสดงข้อความแล้ว
   const today = new Date().toLocaleDateString('sv-SE');
-  const vs = (CUR.visits || []).filter(x => x.date === today && x.items.some(it => CHECK[it.guid] && !HME_SKIP.test(it.name || '')))
-    .sort((x, y) => String(y.time || '').localeCompare(String(x.time || '')));
+  // จำนวน 0 = จพ. ยังไม่ได้กดบันทึกจำนวนใน HOSxP ตอนกดพิมพ์ (2026-11-26: สติกเกอร์ออกมา #0 ทั้งแผ่น ยกเว้นยาที่แพทย์ใส่จำนวนมาเอง)
+  //   → ไม่พิมพ์ทันที ดึงใหม่ทุก 5 วินาที นานสุด 1 นาที ถ้ายังเป็น 0 ไม่พิมพ์ ให้กดพิมพ์เองหลังบันทึก
+  const zeroOf = v => v.items.filter(it => CHECK[it.guid] && !HME_SKIP.test(it.name || '') && !(+it.qty > 0));
+  let vs = [], zeros = [];
+  for (let k = 0; k < 13; k++) {
+    if (k) { showStatus(`⏳ ยังมี ${zeros.length} รายการจำนวน 0 (${zeros.slice(0, 3).map(it => it.name).join(', ')}${zeros.length > 3 ? ' …' : ''}) — กดบันทึกจำนวนใน HOSxP ก่อน · รอแล้วจะพิมพ์ให้เอง (${k}/12)`);
+      await new Promise(r => setTimeout(r, 5000)); }
+    await loadHn(hn);
+    if (!CUR || String(CUR.hn) !== hn) return;   // ดึงไม่ได้ — loadHn แสดงข้อความแล้ว
+    vs = (CUR.visits || []).filter(x => x.date === today && x.items.some(it => CHECK[it.guid] && !HME_SKIP.test(it.name || '')))
+      .sort((x, y) => String(y.time || '').localeCompare(String(x.time || '')));
+    if (!vs.length) break;
+    zeros = zeroOf(vs[0]);
+    if (!zeros.length) break;
+  }
   if (!vs.length) { showStatus('⚠️ HN ' + hn + ' ยังไม่มีใบสั่งยาของวันนี้ใน HOSxP — ไม่มีอะไรให้พิมพ์สรุป'); return; }
+  if (zeros.length) { showStatus(`⚠️ ไม่ได้พิมพ์: ${zeros.length} รายการยังเป็นจำนวน 0 ใน HOSxP (${zeros.map(it => it.name).join(', ')}) — บันทึกจำนวนแล้วกดปุ่มพิมพ์สรุปในรายการด้านล่าง หรือเอาติ๊กรายการที่ไม่ได้จ่ายออก`); return; }
   if (vs.length > 1) showStatus(`วันนี้มี ${vs.length} visit — พิมพ์ของ visit ล่าสุด (${vs[0].time} น.) ถ้าต้องการ visit อื่นกดปุ่มในรายการด้านล่าง`);
   if (window.opener || window.name === 'rx-opdsum') {
     window.addEventListener('afterprint', () => setTimeout(() => { if (vs.length === 1) window.close(); }, 300), { once: true });
