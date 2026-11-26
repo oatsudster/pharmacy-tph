@@ -181,6 +181,8 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 /* พิมพ์กลับหัว 180° (ผู้ใช้ขอ 2026-11-26): ม้วนสติกเกอร์ OPD มีตรา รพ. พิมพ์ไว้มุมซ้ายบน หัวกรอบทับตรา
    → หมุนทั้งดวง กรอบ 70 มม. ไปชิดมุมตรงข้าม (ขวาล่างของม้วน) ตราไปอยู่ท้ายกรอบแทน · จอยังแสดงตามปกติ */
 @media print { .hmestk.opdsum { transform: rotate(180deg); transform-origin: 50% 50%; } }
+/* หัวสติกเกอร์แปะรถยาผู้ป่วยใน ก็พิมพ์กลับหัวเหมือนกัน (ผู้ใช้ขอ 2026-11-26): "เตียง" ทับตรา รพ. มุมซ้ายบน */
+@media print { .ipdstk { transform: rotate(180deg); transform-origin: 50% 50%; } }
 
 /* ── ดวงแจ้งเตือนส่งต่อ รพ.สต. (เหน็บสมุดประจำตัว) 101.6 × 59.9 มม. ── */
 .refnote { width: 101.6mm; height: 59.9mm; overflow: hidden; color: #000; page-break-after: always; break-after: page; padding: 2mm 3mm 1.5mm 4mm;
