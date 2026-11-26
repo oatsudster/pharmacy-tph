@@ -212,6 +212,10 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .ipdstk .hn { font-size: 16pt; font-weight: 700; text-align: center; line-height: 1.05; }
 .ipdstk .hn b { font-size: 24pt; margin-left: 2mm; }
 .ipdstk .ft { margin-top: auto; font-size: 10.5pt; display: flex; justify-content: space-between; line-height: 1.1; padding-left: 3mm; }
+/* ชิดมุมขวาบนของดวง (ผู้ใช้ขอ 2026-11-26): ตรา รพ. พิมพ์ไว้มุมซ้ายบนของม้วน — "เตียง" ทับตรา · ดวงเต็มม้วน 101.6 × 59.9 แบบสติกเกอร์ OPD
+   ขอบในกันตกขอบ 3 มม. ย้ายไปด้านขวา */
+.ipdstk { width: 101.6mm; height: 59.9mm; justify-content: flex-end; }
+.ipdstk .top, .ipdstk .ft { padding-left: 0; padding-right: 3mm; }
 
 /* ── หัวสติกเกอร์ Medication Reconciliation 9 × 6 ซม. — ครึ่งบน = ใบ MR ตัวจริง, ครึ่งล่าง = ใบสำเนา (ข้อมูลเหมือนกัน) ── */
 .mrstk { width: 90mm; height: 60mm; overflow: hidden; color: #000; page-break-after: always; break-after: page;
@@ -1052,7 +1056,7 @@ function printIpd(ans) {
     while (el.scrollWidth > el.clientWidth + 1 && fs > 11) { fs -= 0.5; el.style.fontSize = fs + 'pt'; }
   });
   pa.style.cssText = '';
-  document.getElementById('page-size').textContent = '@page { size: 90mm 60mm; margin: 0; }';
+  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
 // ── หัวสติกเกอร์ MR: ข้อมูลจาก HOSxP ตอนแรกรับ (อายุ/น้ำหนัก/โรคประจำตัว = an_stat, ipt.bw, opdscreen.pmh ของ visit แรกรับ)
