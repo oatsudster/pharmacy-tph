@@ -2264,7 +2264,7 @@ function printHme(keys) {
 //    2026-11-19: จำนวนเป็น #60 (ไม่มีหน่วย ให้ชื่อยายาวไม่ต้องขึ้นบรรทัดสอง) · ตัด VN/คิว ออก ใส่วันนัดครั้งถัดไปแทน (v.nextDate จาก bridge /db/rxsticker; bridge รุ่นเก่าไม่มี → '-')
 function opdSumHtml(v, rows, pi, pn, fs, refer) {
   // refer = สรุปยาส่งต่อ รพ.สต. (ผู้ใช้ขอ 2026-11-19): เต็มดวง 9×6 ไม่มีกรอบ 7 ซม. · แถวสองบอกว่ารับยาต่อที่ รพ.สต.
-  return `<div class="hmestk opdx${refer ? '' : ' opdsum'}" style="width:101.6mm;height:59.9mm"><div class="box"><div class="hd"><span>${refer ? 'สรุปยา ส่งต่อ รพ.สต.' : 'สรุปรายการยา'} · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
+  return `<div class="hmestk opdx${refer ? '' : ' opdsum'}" style="${refer ? 'width:101.6mm;height:59.9mm' : 'width:90mm;height:60mm'}"><div class="box"><div class="hd"><span>${refer ? 'สรุปยา ส่งต่อ รพ.สต.' : 'สรุปรายการยา'} · ${escHtml(v.name || '')}</span><span>HN ${escHtml(CUR.hn)}</span></div>
     <div class="hd2"><span>${v.ageY ? 'อายุ ' + escHtml(v.ageY) + ' ปี · ' : ''}${refer ? 'รับยาต่อเนื่องที่ รพ.สต. ......................' : 'นัดครั้งถัดไป ' + (v.nextDate ? '<b>' + escHtml(thIso(v.nextDate)) + '</b>' : '-')}</span>
       <span>${escHtml(thIso(v.date))} · ${pn > 1 ? `แผ่น ${pi}/${pn}` : rows.total + ' รายการ'}</span></div>
     <div class="bd" style="font-size:${fs}pt"><table${rows.loose ? ' class="loose"' : ''}>${rows.map(([d, i, n, rfs]) => `<tr${rfs ? ` style="font-size:${rfs}pt"` : ''}><td class="n">${n}</td><td class="dn">${escHtml(d.name)}</td>
@@ -2296,7 +2296,9 @@ function printOpdSum(vn, refer) {
   const pa = document.getElementById('print-area');
   const { fs } = fit;
   pa.innerHTML = pages.map((rs, pi) => opdSumHtml(v, rs, pi + 1, pages.length, fs, refer)).join('') + (refer ? referNoteHtml(v) : '');
-  document.getElementById('page-size').textContent = '@page { size: 101.6mm 59.9mm; margin: 0; }';
+  // สรุปรายการยา: หน้า 9 × 6 ซม. แบบหัวสติกเกอร์รถยา IPD (ผู้ใช้ขอ 2026-11-26) — หน้า 101.6 × 59.9 กรอบพิมพ์ต่ำกว่าขอบบน ~4 มม.
+  //   ส่วนหัวสติกเกอร์รถยาพิมพ์ชิดขอบบนพอดี → ตัดกรรไกร 2 ครั้ง (ขวา + ล่าง) เหมือนกัน · ส่งต่อ รพ.สต. เต็มดวงคงขนาดเดิม
+  document.getElementById('page-size').textContent = refer ? '@page { size: 101.6mm 59.9mm; margin: 0; }' : '@page { size: 90mm 60mm; margin: 0; }';
   setTimeout(() => window.print(), 50);
 }
 
