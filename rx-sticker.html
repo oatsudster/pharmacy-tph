@@ -180,6 +180,9 @@ td.use .use-ed input { font: inherit; font-size: 13.5px; padding: 4px 6px; borde
 .hmestk.opdsum .box { width: 70mm; height: 100%; border: .35mm solid #000; padding: 1.2mm 2mm 1mm 4mm; display: flex; flex-direction: column; overflow: hidden; }
 /* ชิดมุมขวาบนของดวง (ผู้ใช้ขอ 2026-11-26): ตรา รพ. พิมพ์ไว้มุมซ้ายบนของม้วน — กรอบชิดซ้ายหัวกรอบทับตรา · ขอบในกันตกขอบย้ายไปด้านขวา */
 .hmestk.opdsum .box { align-self: flex-end; padding: 1.2mm 4mm 1mm 2mm; }
+/* กรอบสูงแค่ถึงรายการยาตัวสุดท้าย (ผู้ใช้ขอ 2026-11-26 — ตัดสติกเกอร์ง่าย) · ยาเยอะสูงสุดเต็มดวง แล้ว .bd หดให้ hmeFit ยังจับล้นได้ */
+.hmestk.opdsum .box { height: auto; max-height: 100%; }
+.hmestk.opdsum .bd { flex: 0 1 auto; min-height: 0; }
 /* เคยลองพิมพ์กลับหัว 180° ด้วย CSS transform (2026-11-26) หนีตรา รพ. มุมซ้ายบน — ตัวอักษรบน Zebra จางลง ผู้ใช้ให้กลับแนวเดิม (ทั้งหัวสติกเกอร์รถยา IPD) */
 
 /* ── ดวงแจ้งเตือนส่งต่อ รพ.สต. (เหน็บสมุดประจำตัว) 101.6 × 59.9 มม. ── */
