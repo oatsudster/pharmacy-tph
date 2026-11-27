@@ -20,6 +20,7 @@ import json
 import os
 import re
 import socket
+import subprocess
 import sys
 import time
 import urllib.error
@@ -34,11 +35,12 @@ hx.LOG_FILE = os.path.join(HOME, 'med-remote.log')
 log = hx.log
 LOCK_PORT = 8791
 POLL_SEC = 4
+NODE = 'node'   # main() ใช้ "node" ใน audit-report.json ถ้ามี
 TH_MONTH = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 PREFIX_RE = re.compile(r'^(นาย|นางสาว|น\.ส\.|นส\.?|นาง|ด\.ช\.|ด\.ญ\.|เด็กชาย|เด็กหญิง|ดช\.?|ดญ\.?|Mr\.?|Mrs\.?|Miss|Ms\.?)\s*', re.I)
 
 # เหมือน $DRUG_COLS / $DRUG_JOIN ใน hosxp-bridge.ps1 — วิธีใช้ที่แก้ใน HOSxP ก่อน แล้ว sp_use แล้วรหัสวิธีใช้ปกติ
-DRUG_COLS = ("d.icode, d.name, d.strength, d.units, r.qty, r.item_no, "
+DRUG_COLS = ("d.icode, d.name, d.strength, d.units, d.dosageform, TRIM(IFNULL(d.name_print,'')) AS name_print, r.qty, r.item_no, "
              "TRIM(IF(od.usage_lock='Y', CONCAT_WS(' ', od.usage_line1, od.usage_line2, od.usage_line3), "
              "IF(r.sp_use IS NOT NULL AND r.sp_use<>'', CONCAT_WS(' ', s.name1, s.name2, s.name3), "
              "CONCAT_WS(' ', u.name1, u.name2, u.name3)))) AS usage_text")
@@ -175,9 +177,28 @@ def allergies(db, hn):
                     "ORDER BY report_date", (hn,))
 
 
+def abbr_all(rows):
+    """ชื่อยา/วิธีใช้ย่อ/หน่วย แบบใบสรุปรายการยา OPD + ยากลับบ้าน — รันโค้ดจริงของ rx-sticker.html ผ่าน md_abbr.mjs
+    Node ใช้ไม่ได้ = None (ใช้ชื่อ/วิธีใช้เต็มจาก HOSxP แทน)"""
+    inp = [{'icode': hx.s(r['icode']), 'name': clean(r['name']), 'strength': clean(r['strength']), 'namePrint': clean(r['name_print']),
+            'usage': clean(r['usage_text']), 'units': clean(r['units']), 'form': clean(r['dosageform'])} for r in rows]
+    try:
+        p = subprocess.run([NODE, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'md_abbr.mjs')],
+                           input=json.dumps(inp, ensure_ascii=False).encode('utf-8'), capture_output=True, timeout=20,
+                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        out = json.loads(p.stdout.decode('utf-8'))
+        return out if len(out) == len(rows) else None
+    except Exception as e:  # noqa: BLE001
+        log(f'md_abbr ใช้ไม่ได้ ({e.__class__.__name__}: {e}) — ใช้วิธีใช้เต็ม')
+        return None
+
+
 def report(db, p):
     hn = p['hn']
     groups, admitted = old_meds(db, hn)
+    allrows = [r for g in groups for r in g[2]]
+    ab = abbr_all(allrows)
+    abm = {id(r): ab[i] for i, r in enumerate(allrows)} if ab else {}
     ap = appts(db, hn)
     al = allergies(db, hn)
     now = dt.datetime.now()
@@ -196,15 +217,23 @@ def report(db, p):
         out.append(f"▪ {title} {th_date(d)}" + (' (ล่าสุด)' if i == 0 and len(groups) > 1 else ''))
         seen = set()
         n = 0
+        # ใบยากลับบ้านบางใบคีย์จำนวน 1 ทุกรายการ (ไม่ใช่จำนวนจริง) — ไม่แสดงจำนวนทั้งกลุ่ม
+        noqty = len(rows) > 1 and all(qty_str(r['qty']) in ('0', '1', '') for r in rows)
         for r in rows:
             key = (r['icode'], clean(r['usage_text']))
             if key in seen:
                 continue
             seen.add(key)
             n += 1
-            drug = clean(f"{hx.s(r['name'])} {hx.s(r['strength'])}")
-            use = clean(r['usage_text'])
-            out.append(f"{n}. {drug}" + (f" — {use}" if use else '') + f" #{qty_str(r['qty'])}")
+            a = abm.get(id(r))
+            if a and a.get('skip'):
+                n -= 1
+                continue
+            if a and a.get('name'):
+                drug, use, unit = a['name'], a.get('use', ''), a.get('unit', '')
+            else:
+                drug, use, unit = clean(f"{hx.s(r['name'])} {hx.s(r['strength'])}"), clean(r['usage_text']), ''
+            out.append(f"{n}. {drug}" + (f"  {use}" if use else '') + ('' if noqty else f"  #{qty_str(r['qty'])}" + (f" {unit}" if unit else '')))
         out.append('')
     if ap:
         out.append('📅 นัดครั้งต่อไป')
@@ -293,6 +322,8 @@ def main():
         return   # มีตัวรันอยู่แล้ว (Task Scheduler ปลุกทุก 5 นาที)
     with open(CONFIG_FILE, encoding='utf-8-sig') as f:
         cfg = json.load(f)
+    global NODE
+    NODE = cfg.get('node') or NODE
     loop(cfg)
 
 

@@ -1126,6 +1126,7 @@ function mdSaveCal() {
   try { localStorage.setItem('mr_md_cal', JSON.stringify(c)); } catch (e) {}
   if (MD) renderMd();
 }
+// @shared-md-begin — hosxp-sync/md_abbr.mjs รันโค้ดช่วงนี้ใน Node (บอท /med) · ใส่ได้แค่นิยามฟังก์ชัน/ค่าคงที่ ห้ามแตะ DOM ตอนโหลด
 const mdClean = t => String(t || '').replace(/[�\u0000-\u001F ]/g, ' ').replace(/\s+/g, ' ').trim();
 const mdDays = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
 const mdName0 = d => mdClean(d.namePrint || [d.name, d.strength].filter(Boolean).join(' '));
@@ -1471,6 +1472,7 @@ function mdAbbr0(s) {
 }
 // จำนวนเม็ดเป็นทศนิยม: ครึ่งเม็ด = 0.5, 1 เม็ดครึ่ง = 1.5, 1/4 = 0.25 (ผู้ใช้ขอ 2026-10-21 แทน ½)
 const mdAmt = v => String(Math.round(v * 100) / 100);
+// @shared-md-end
 // วิธีใช้ขึ้นต้น "off" = แพทย์สั่งหยุดยา เช่น "off >> cough", "off due to dry cough"
 const mdOff = d => /^\s*off\b/i.test(d.usage || '');
 const mdPer = () => { const c = mdCal(); return Math.max(1, Math.floor((60 - Math.max(0, c.top) + 0.01) / c.rowH)); };
@@ -2029,6 +2031,7 @@ function loadHmeOpts() {
   try { o = JSON.parse(localStorage.getItem('hme_opts') || '{}'); } catch (e) {}
   document.getElementById('hme-auto').checked = !!o.auto;
 }
+// @shared-hme-begin — ชื่อยา/วิธีใช้/หน่วยแบบใบสรุปรายการยา OPD + ยากลับบ้าน (hosxp-sync/md_abbr.mjs ใช้ด้วย)
 const dotLine = t => !String(t || '').replace(/[.\s…_-]/g, '');
 // ชื่อบนสติกเกอร์ยากลับบ้าน = ชื่อสามัญ + ขนาดยาเท่านั้น (ผู้ใช้ขอ 2026-11-15) เช่น SimVastatin(zocor) (NL) -> Simvastatin 20 mg,
 // ยาพ่น = ชื่อสามัญ + MDI ไม่ใส่ขนาด · ตาม icode จากยาที่เคยอยู่ในใบ HMe 1 ปี — ตัวที่ไม่อยู่ในตาราง (รอเภสัชยืนยัน/ยาใหม่) ใช้ชื่อเดิมจาก HOSxP
@@ -2107,6 +2110,7 @@ function hmeUnit(u, it) {
   if (/\bMDI\b|inhaler|evohaler|accuhaler/i.test([raw, it && it.form, it && it.name].join(' '))) return 'หลอด';
   return base;
 }
+// @shared-hme-end
 async function loadHme() {
   const r = window.tphHosxp && tphHosxp.hme ? await tphHosxp.hme() : null;
   if (!r) { document.getElementById('hme-list').innerHTML = `<div class="empty">${escHtml(NOBRIDGE)}</div>`; return; }
