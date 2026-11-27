@@ -2191,7 +2191,7 @@ function hmeFit(build, pages) {
   pages.forEach(rs => { rs.loose = false; rs.forEach(r => { r[3] = 0; }); });
   let fs = HME_FS_MAX;
   while (fs > HME_FS_MIN && !pages.every(rs => ok(rs, fs))) fs -= 0.25;
-  let small = false, over = false;
+  let small = false, over = false, overflow = false;
   pages.forEach(rs => {
     for (let guard = 0; guard < 300 && !ok(rs, fs); guard++) {
       const trs = [...el.querySelectorAll('.bd tr')];
@@ -2205,6 +2205,7 @@ function hmeFit(build, pages) {
         over = small = true; rs.loose = true; rs.forEach(r => { r[3] = 0; });
         let f = fs;
         while (f > 5.5 && !ok(rs, f)) f -= 0.25;
+        if (!ok(rs, f)) overflow = true;   // 5.5pt แล้วยังสูงเกินดวง = ข้อความหาย
         if (f !== fs) rs.forEach(r => { r[3] = f; });
         break;
       }
@@ -2213,7 +2214,7 @@ function hmeFit(build, pages) {
     }
   });
   el.innerHTML = '';
-  return { fs, small, over };
+  return { fs, small, over, overflow };
 }
 // แบ่งดวง + จัดตัวอักษรของใบยากลับบ้าน 1 ใบ (เก็บไว้ตาม key+sig — ใช้ทั้งป้าย ⚠️ ในรายการและตอนพิมพ์)
 const HME_LAYOUT = {};
@@ -2231,11 +2232,13 @@ function hmeLayout(o) {
   const fitOf = np => { const pages = split(np); return { pages, f: hmeFit((rs, fs) => hmeStickerHtml(o, rs, 1, pages.length, HME_W, HME_H, fs), pages) }; };
   const minRow = pg => Math.min(...pg.flat().map(r => r[3] || 99));
   const maxNp = Math.ceil(rows.length / HME_PER);
-  const base = fitOf(maxNp), baseMin = minRow(base.pages);
+  const base = fitOf(maxNp), baseMin = minRow(base.pages), baseLoose = base.pages.some(p => p.loose);
   let best = base;
+  // แถวที่ยาวจนต้องขึ้น 2 บรรทัด (เช่น DMPA "ฉีด IM … (ฉีดแล้ว 14/9/69") ทำให้แบบเดิมก็ loose อยู่แล้ว —
+  // ยอมให้ดวงน้อยลงเป็น loose ได้ถ้าแบบเดิมก็ loose และไม่ล้นความสูง (เดิมตัดทิ้ง → 10 รายการแยก 2 ดวง ดวงแรกว่างครึ่ง, ผู้ใช้แจ้ง 2026-11-27)
   for (let np = 1; np < maxNp; np++) {
     const t = fitOf(np);
-    if (!t.f.over && !t.pages.some(p => p.loose) && minRow(t.pages) >= Math.min(6.5, baseMin)) { best = t; break; }
+    if (!t.f.overflow && (baseLoose || !t.pages.some(p => p.loose)) && minRow(t.pages) >= Math.min(6.5, baseMin)) { best = t; break; }
   }
   if (best === base) best = fitOf(maxNp);   // วัดซ้ำ — fitOf ที่ลองหลังสุดเขียนทับขนาดตัวอักษรรายแถว (r[3]) ของแถวชุดเดียวกัน
   return (HME_LAYOUT[k] = Object.assign({ sig, pages: best.pages }, best.f));
