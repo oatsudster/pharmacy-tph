@@ -20,10 +20,120 @@ const TRACKER_URL = 'https://tph-pharmacy.pages.dev/expiry-tracker';
 const TELEGRAM_MAX_LEN = 4000;
 const CHECK_COOLDOWN_MS = 60 * 1000; // กันสแปม /check — ห่างกันอย่างน้อย 1 นาที
 
+// ── /med: ค้นประวัติยาเดิม + วันนัดจาก HOSxP นอกเวลา (2026-11-27) ──
+// ใช้ได้เฉพาะแชทส่วนตัว TASKS_CHAT_ID — คำขอเข้าคิวใน Durable Object (MedQueue) เครื่องใน รพ.
+// (hosxp-sync/med_remote.py) มาถามคิวเองทุก 4 วิ ด้วย X-Report-Key = PC_REPORT_KEY แล้วส่งผลกลับ /med/result
+// ผลค้นลบเองหลัง 1 ชม. (cron */5) — DO เก็บแค่คำค้น/HN ไว้เป็น log ไม่เก็บรายการยา
+const MED_TTL_MS = 60 * 60 * 1000;
+const MED_OFFLINE_MS = 60 * 1000;
+
+export class MedQueue {
+  constructor(state) { this.st = state.storage; }
+  async fetch(request) {
+    const url = new URL(request.url);
+    const body = request.method === 'POST' ? await request.json() : {};
+    const now = Date.now();
+    if (url.pathname === '/enqueue') {
+      const jobs = (await this.st.get('jobs')) || [];
+      const job = { id: `${now}-${Math.random().toString(36).slice(2, 7)}`, chat: body.chat, q: body.q, ts: now };
+      jobs.push(job);
+      await this.st.put('jobs', jobs.slice(-20));
+      return Response.json({ job, lastPoll: (await this.st.get('lastPoll')) || 0 });
+    }
+    if (url.pathname === '/poll') {
+      await this.st.put('lastPoll', now);
+      const jobs = ((await this.st.get('jobs')) || []).filter((j) => now - j.ts < 10 * 60 * 1000);
+      await this.st.put('jobs', []);
+      return Response.json({ jobs });
+    }
+    if (url.pathname === '/log') {
+      const log = (await this.st.get('log')) || [];
+      log.push({ ts: now, q: body.q, hn: body.hn || '' });
+      await this.st.put('log', log.slice(-500));
+      if (body.messageIds && body.messageIds.length) {
+        const del = (await this.st.get('del')) || [];
+        for (const m of body.messageIds) del.push({ chat: body.chat, m, at: now + MED_TTL_MS });
+        await this.st.put('del', del);
+      }
+      return Response.json({ ok: true });
+    }
+    if (url.pathname === '/due') {   // ข้อความผลค้นที่ครบ 1 ชม. แล้ว (cron */5 เรียก)
+      const del = (await this.st.get('del')) || [];
+      await this.st.put('del', del.filter((d) => d.at > now));
+      return Response.json({ due: del.filter((d) => d.at <= now), lastPoll: (await this.st.get('lastPoll')) || 0 });
+    }
+    return new Response('not found', { status: 404 });
+  }
+}
+
+function medStub(env) { return env.MED_QUEUE.get(env.MED_QUEUE.idFromName('main')); }
+async function medCall(env, path, body) {
+  const res = await medStub(env).fetch(`https://med${path}`, body ? { method: 'POST', body: JSON.stringify(body) } : {});
+  return res.json();
+}
+
+async function handleMed(env, chatId, arg) {
+  if (!arg) {
+    await replyTelegram(env, chatId, '💊 <b>/med</b> ตามด้วย HN, เลขบัตรประชาชน 13 หลัก หรือ ชื่อ สกุล\nเช่น <code>/med 4700684</code> · <code>/med สมชาย ใจดี</code>');
+    return;
+  }
+  const { lastPoll } = await medCall(env, '/enqueue', { chat: chatId, q: arg.slice(0, 80) });
+  const ago = Date.now() - lastPoll;
+  if (ago > MED_OFFLINE_MS) {
+    const when = lastPoll ? new Date(lastPoll + 7 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 16) : 'ไม่เคย';
+    await replyTelegram(env, chatId, `⚠️ เครื่องใน รพ. ไม่ได้ติดต่อมา ${lastPoll ? 'ตั้งแต่ ' + when + ' น.' : '(ยังไม่เคยติดต่อ)'}\nคำขอเก็บไว้ในคิว 10 นาที — ถ้าเครื่องกลับมาจะตอบเอง`);
+  }
+}
+
+async function medPoll(request, env) {
+  if (!env.PC_REPORT_KEY || request.headers.get('X-Report-Key') !== env.PC_REPORT_KEY) return new Response('forbidden', { status: 403 });
+  return Response.json(await medCall(env, '/poll'));
+}
+
+async function medResult(request, env) {
+  if (!env.PC_REPORT_KEY || request.headers.get('X-Report-Key') !== env.PC_REPORT_KEY) return new Response('forbidden', { status: 403 });
+  let b;
+  try { b = await request.json(); } catch { return new Response('bad json', { status: 400 }); }
+  const chat = String(b.chat || '');
+  if (!chat || chat !== String(env.TASKS_CHAT_ID)) return new Response('bad chat', { status: 400 });
+  const text = String(b.text || '').trim() || '(ไม่มีผล)';
+  // แบ่งข้อความตามบรรทัดให้ไม่เกินขนาดของ Telegram — ส่งเป็นข้อความธรรมดา copy ไปวางในไลน์ได้ทันที
+  const chunks = [];
+  let cur = '';
+  for (const line of text.split('\n')) {
+    if (cur && (cur.length + line.length + 1) > TELEGRAM_MAX_LEN) { chunks.push(cur); cur = ''; }
+    cur += (cur ? '\n' : '') + line;
+  }
+  if (cur) chunks.push(cur);
+  const ids = [];
+  for (const c of chunks) {
+    const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text: c, disable_web_page_preview: true }),
+    }).then((x) => x.json()).catch(() => null);
+    if (r && r.ok) ids.push(r.result.message_id);
+  }
+  await medCall(env, '/log', { chat, q: b.q || '', hn: b.hn || '', messageIds: b.hn ? ids : [] });
+  return Response.json({ ok: true, sent: ids.length });
+}
+
+async function medCleanup(env) {
+  const { due } = await medCall(env, '/due');
+  for (const d of due) {
+    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: d.chat, message_id: d.m }),
+    }).catch(() => {});
+  }
+}
+
 export default {
   async fetch(request, env) {
+    const pathname = new URL(request.url).pathname;
+    if (pathname === '/med/poll') return medPoll(request, env);
     if (request.method !== 'POST') return new Response('OK');
-    if (new URL(request.url).pathname === '/pc-report') return pcReport(request, env);
+    if (pathname === '/pc-report') return pcReport(request, env);
+    if (pathname === '/med/result') return medResult(request, env);
 
     let update;
     try {
@@ -41,9 +151,15 @@ export default {
       const c = msg.text.trim().split(/[\s@]/)[0];
       if (c === '/chatid' || c === '/start') {
         await replyTelegram(env, chatId, `chat id ของแชทนี้: <code>${escTg(chatId)}</code>` +
-          (chatId === env.TASKS_CHAT_ID ? '\n✅ แชทนี้คือแชทงานโรงพยาบาล (เอกสาร insurance-audit, HRMS/SKYNET) — /monthly ใช้ได้' : ''));
+          (chatId === env.TASKS_CHAT_ID ? '\n✅ แชทนี้คือแชทงานโรงพยาบาล (เอกสาร insurance-audit, HRMS/SKYNET) — /monthly ใช้ได้\n💊 /med HN | เลขบัตร 13 หลัก | ชื่อ สกุล — ค้นยาเดิม + วันนัดจาก HOSxP' : ''));
       } else if (c === '/monthly' && chatId === env.TASKS_CHAT_ID) {
         await replyTelegram(env, chatId, monthlyReminder(new Date(), true));
+      } else if (/^\/med(_\d+)?$/.test(c) && chatId === env.TASKS_CHAT_ID && msg.chat.type === 'private'
+                 && String(msg.from && msg.from.id) === chatId) {
+        // /med <คำค้น> หรือแตะ /med_4700684 จากรายชื่อที่ค้นด้วยชื่อ
+        const t = msg.text.trim();
+        const arg = c.includes('_') ? c.split('_')[1] : t.slice(t.indexOf(' ') === -1 ? t.length : t.indexOf(' ') + 1).trim();
+        await handleMed(env, chatId, arg);
       }
       return new Response('OK');
     }
@@ -70,6 +186,7 @@ export default {
     // ทุก 5 นาที: เอกสารใหม่ในหน้า insurance-audit → แชทส่วนตัว (TASKS_CHAT_ID) ไม่ใช่กลุ่มห้องยา
     if (event.cron === AUDIT_CRON) {
       ctx.waitUntil(auditUploadsNotify(env).catch((e) => console.error('audit uploads', e)));
+      ctx.waitUntil(medCleanup(env).catch((e) => console.error('med cleanup', e)));
       return;
     }
     ctx.waitUntil(

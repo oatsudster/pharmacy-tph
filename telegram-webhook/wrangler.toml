@@ -11,6 +11,15 @@ GITHUB_OWNER = "oatsudster"
 GITHUB_REPO = "pharmacy-tph"
 GITHUB_WORKFLOW_FILE = "expiry-telegram-notify.yml"
 
+# คิวคำขอ /med (ค้นยาเดิมจาก HOSxP นอกเวลา) — เครื่องใน รพ. มาถามคิวเอง (hosxp-sync/med_remote.py)
+[[durable_objects.bindings]]
+name = "MED_QUEUE"
+class_name = "MedQueue"
+
+[[migrations]]
+tag = "v1-med-queue"
+new_sqlite_classes = ["MedQueue"]
+
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "020396f504974910b859d473e5e1a457"
